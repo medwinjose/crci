@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-// ─── Structured Signal (Layer 1 — anomaly-checkable) ─────────────────────────
+// ─── Structured Signal (Layer 1) ─────────────────────────────────────────────
 
 #[derive(Clone, Debug)]
 struct Signal {
-    severity: u8,        // 1–5
+    severity: u8,
     needs_help: bool,
     can_help_others: bool,
     location_confirmed: bool,
@@ -17,14 +17,14 @@ impl Signal {
     }
 }
 
-// ─── Message (Layer 1 + Layer 2) ─────────────────────────────────────────────
+// ─── Message ─────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Debug)]
 struct Message {
     id: String,
     origin: String,
     signal: Signal,
-    note: Option<String>,  // Layer 2 — freeform, never penalised
+    note: Option<String>,
 }
 
 impl Message {
@@ -44,16 +44,18 @@ struct Node {
     id: String,
     is_honest: bool,
     reputation: f64,
+    zone: String,
     peers: Vec<String>,
     seen_messages: HashSet<String>,
 }
 
 impl Node {
-    fn new(id: &str, is_honest: bool) -> Node {
+    fn new(id: &str, is_honest: bool, zone: &str) -> Node {
         Node {
             id: id.to_string(),
             is_honest,
             reputation: 1.0,
+            zone: zone.to_string(),
             peers: Vec::new(),
             seen_messages: HashSet::new(),
         }
@@ -79,21 +81,18 @@ impl Node {
     fn status(&self) {
         let trust_label = if self.is_trusted() { "TRUSTED" } else { "ISOLATED" };
         println!(
-            "ID: {:10} | Honest: {:5} | Reputation: {:.2} | Status: {} | Peers: {:?}",
-            self.id,
-            self.is_honest.to_string(),
-            self.reputation,
-            trust_label,
-            self.peers
+            "ID: {:10} | Zone: {:6} | Honest: {:5} | Reputation: {:.2} | Status: {}",
+            self.id, self.zone, self.is_honest.to_string(), self.reputation, trust_label
         );
     }
 }
 
-// ─── Observation log (what each node claimed) ────────────────────────────────
+// ─── Observation ─────────────────────────────────────────────────────────────
 
 #[derive(Debug)]
 struct Observation {
     node_id: String,
+    zone: String,
     severity: u8,
 }
 
@@ -101,7 +100,7 @@ struct Observation {
 
 struct Network {
     nodes: HashMap<String, Node>,
-    observations: Vec<Observation>,  // grows as messages are gossiped
+    observations: Vec<Observation>,
 }
 
 impl Network {
@@ -111,11 +110,6 @@ impl Network {
             observations: Vec::new(),
         }
     }
-fn new_round(&mut self) {
-    for node in self.nodes.values_mut() {
-        node.seen_messages.clear();
-    }
-}
 
     fn add_node(&mut self, node: Node) {
         self.nodes.insert(node.id.clone(), node);
@@ -127,6 +121,12 @@ fn new_round(&mut self) {
         }
         if let Some(node_b) = self.nodes.get_mut(b) {
             node_b.add_peer(a);
+        }
+    }
+
+    fn new_round(&mut self) {
+        for node in self.nodes.values_mut() {
+            node.seen_messages.clear();
         }
     }
 
@@ -145,10 +145,10 @@ fn new_round(&mut self) {
                 }
                 sender.seen_messages.insert(msg.id.clone());
 
-                // Log the Layer 1 signal from this node
                 println!(
-                    "  [{}] received msg '{}' | severity: {} | needs_help: {} | note: {}",
+                    "  [{}][{}] received msg '{}' | severity: {} | needs_help: {} | note: {}",
                     sender.id,
+                    sender.zone,
                     msg.id,
                     msg.signal.severity,
                     msg.signal.needs_help,
@@ -163,9 +163,14 @@ fn new_round(&mut self) {
                 sender.peers.clone()
             };
 
-            // Record observation from the origin of this message (Layer 1 only)
+            // Record observation with zone from the origin node
+            let origin_zone = self.nodes.get(&msg.origin)
+                .map(|n| n.zone.clone())
+                .unwrap_or_default();
+
             self.observations.push(Observation {
                 node_id: msg.origin.clone(),
+                zone: origin_zone,
                 severity: msg.signal.severity,
             });
 
@@ -179,64 +184,70 @@ fn new_round(&mut self) {
         }
     }
 
-    // ─── Consensus Engine ────────────────────────────────────────────────────
-    // After gossip rounds, check all observations.
-    // Any node whose severity deviates more than 2 from the median gets a strike.
+    // ─── Consensus Engine (per zone) ─────────────────────────────────────────
 
     fn run_consensus(&mut self) {
-    if self.observations.is_empty() {
-        println!("  No observations to analyse.");
-        return;
-    }
+        if self.observations.is_empty() {
+            println!("  No observations to analyse.");
+            return;
+        }
 
-    // Deduplicate: one observation per origin node (take last reported)
-    let mut deduped: HashMap<String, u8> = HashMap::new();
-    for obs in &self.observations {
-        deduped.insert(obs.node_id.clone(), obs.severity);
-    }
+        // Deduplicate: one observation per origin node
+        let mut deduped: HashMap<String, (String, u8)> = HashMap::new(); // node_id → (zone, severity)
+        for obs in &self.observations {
+            deduped.insert(obs.node_id.clone(), (obs.zone.clone(), obs.severity));
+        }
 
-    // Require at least 3 unique reporters before judging
-    if deduped.len() < 3 {
-        println!("  ⚠ Insufficient reporters ({}) — consensus skipped this round.", deduped.len());
-        self.observations.clear();
-        return;
-    }
+        // Group by zone
+        let mut by_zone: HashMap<String, Vec<(String, u8)>> = HashMap::new();
+        for (node_id, (zone, severity)) in &deduped {
+            by_zone.entry(zone.clone()).or_default().push((node_id.clone(), *severity));
+        }
 
-    let mut severities: Vec<u8> = deduped.values().cloned().collect();
-    severities.sort();
-    let mid = severities.len() / 2;
-    let median = if severities.len() % 2 == 0 {
-        (severities[mid - 1] + severities[mid]) / 2
-    } else {
-        severities[mid]
-    };
+        for (zone, reporters) in &by_zone {
+            println!("  [Zone {}] {} reporter(s)", zone, reporters.len());
 
-    println!("  Median severity across network: {}", median);
+            if reporters.len() < 3 {
+                println!("  [Zone {}] ⚠ Insufficient reporters — consensus skipped.", zone);
+                continue;
+            }
 
-    for (node_id, severity) in &deduped {
-        let deviation = (*severity as i16 - median as i16).unsigned_abs();
-        if deviation > 2 {
-            println!(
-                "  ⚠ ANOMALY: [{}] reported severity {} (deviation {} from median {})",
-                node_id, severity, deviation, median
-            );
-            if let Some(node) = self.nodes.get_mut(node_id) {
-                node.penalize();
-                println!(
-                    "  ✗ [{}] auto-penalised → reputation now {:.2}",
-                    node.id, node.reputation
-                );
+            let mut severities: Vec<u8> = reporters.iter().map(|(_, s)| *s).collect();
+            severities.sort();
+            let mid = severities.len() / 2;
+            let median = if severities.len() % 2 == 0 {
+                (severities[mid - 1] + severities[mid]) / 2
+            } else {
+                severities[mid]
+            };
+
+            println!("  [Zone {}] Median severity: {}", zone, median);
+
+            let mut any_anomaly = false;
+            for (node_id, severity) in reporters {
+                let deviation = (*severity as i16 - median as i16).unsigned_abs();
+                if deviation > 2 {
+                    any_anomaly = true;
+                    println!(
+                        "  [Zone {}] ⚠ ANOMALY: [{}] reported severity {} (deviation {} from median {})",
+                        zone, node_id, severity, deviation, median
+                    );
+                    if let Some(node) = self.nodes.get_mut(node_id) {
+                        node.penalize();
+                        println!(
+                            "  [Zone {}] ✗ [{}] auto-penalised → reputation now {:.2}",
+                            zone, node.id, node.reputation
+                        );
+                    }
+                }
+            }
+            if !any_anomaly {
+                println!("  [Zone {}] ✓ All nodes within acceptable deviation.", zone);
             }
         }
-    }
 
-    let all_ok = deduped.values().all(|s| (*s as i16 - median as i16).unsigned_abs() <= 2);
-    if all_ok {
-        println!("  ✓ All nodes within acceptable deviation. No anomalies.");
+        self.observations.clear();
     }
-
-    self.observations.clear();
-}
 
     fn print_all(&self) {
         let mut ids: Vec<&String> = self.nodes.keys().collect();
@@ -252,27 +263,37 @@ fn new_round(&mut self) {
 fn main() {
     let mut net = Network::new();
 
-    net.add_node(Node::new("node-001", true));
-    net.add_node(Node::new("node-002", true));
-    net.add_node(Node::new("node-003", false));
-    net.add_node(Node::new("node-004", true));
-    net.add_node(Node::new("node-005", true));
+    // Zone A — crisis area, Byzantine node here
+    net.add_node(Node::new("node-001", true,  "zone-a"));
+    net.add_node(Node::new("node-002", true,  "zone-a"));
+    net.add_node(Node::new("node-003", false, "zone-a")); // Byzantine
+    net.add_node(Node::new("node-004", true,  "zone-a"));
+
+    // Zone B — separate safe area, low severity is legitimate here
+    net.add_node(Node::new("node-005", true, "zone-b"));
+    net.add_node(Node::new("node-006", true, "zone-b"));
+    net.add_node(Node::new("node-007", true, "zone-b"));
 
     net.connect("node-001", "node-002");
     net.connect("node-002", "node-003");
     net.connect("node-003", "node-004");
-    net.connect("node-004", "node-005");
+    net.connect("node-005", "node-006");
+    net.connect("node-006", "node-007");
 
     println!("=== CRCI Network — Initial State ===");
     net.print_all();
 
     // ── Round 1 ──────────────────────────────────────────────────────────────
     println!("\n=== Gossip Round 1 ===");
-    net.gossip("node-001", Message::new("msg-001", "node-001", Signal::new(4, true, false, true), Some("flooding on main road")));
-    net.gossip("node-002", Message::new("msg-002", "node-002", Signal::new(4, true, false, true), None));
-    net.gossip("node-003", Message::new("msg-003", "node-003", Signal::new(1, false, true, false), Some("all clear here")));
-    net.gossip("node-004", Message::new("msg-004", "node-004", Signal::new(5, true, false, true), Some("bridge collapsed")));
-    net.gossip("node-005", Message::new("msg-005", "node-005", Signal::new(4, true, false, true), None));
+    // Zone A — crisis, node-003 lies
+    net.gossip("node-001", Message::new("msg-001", "node-001", Signal::new(4, true,  false, true), Some("flooding on main road")));
+    net.gossip("node-002", Message::new("msg-002", "node-002", Signal::new(4, true,  false, true), None));
+    net.gossip("node-003", Message::new("msg-003", "node-003", Signal::new(1, false, true,  false), Some("all clear here")));
+    net.gossip("node-004", Message::new("msg-004", "node-004", Signal::new(5, true,  false, true), Some("bridge collapsed")));
+    // Zone B — genuinely calm, low severity is honest
+    net.gossip("node-005", Message::new("msg-005", "node-005", Signal::new(1, false, true, true), Some("no issues here")));
+    net.gossip("node-006", Message::new("msg-006", "node-006", Signal::new(1, false, true, true), None));
+    net.gossip("node-007", Message::new("msg-007", "node-007", Signal::new(2, false, true, true), None));
 
     println!("\n=== Consensus Engine — Round 1 ===");
     net.run_consensus();
@@ -282,10 +303,13 @@ fn main() {
 
     // ── Round 2 ──────────────────────────────────────────────────────────────
     println!("\n=== Gossip Round 2 ===");
-    net.gossip("node-001", Message::new("msg-006", "node-001", Signal::new(5, true, false, true), Some("situation worsening")));
-    net.gossip("node-002", Message::new("msg-007", "node-002", Signal::new(5, true, false, true), None));
-    net.gossip("node-003", Message::new("msg-008", "node-003", Signal::new(1, false, true, false), None));
-    net.gossip("node-004", Message::new("msg-009", "node-004", Signal::new(5, true, false, true), None));
+    net.gossip("node-001", Message::new("msg-008", "node-001", Signal::new(5, true,  false, true), Some("situation worsening")));
+    net.gossip("node-002", Message::new("msg-009", "node-002", Signal::new(5, true,  false, true), None));
+    net.gossip("node-003", Message::new("msg-010", "node-003", Signal::new(1, false, true,  false), None));
+    net.gossip("node-004", Message::new("msg-011", "node-004", Signal::new(5, true,  false, true), None));
+    net.gossip("node-005", Message::new("msg-012", "node-005", Signal::new(1, false, true, true), None));
+    net.gossip("node-006", Message::new("msg-013", "node-006", Signal::new(2, false, true, true), None));
+    net.gossip("node-007", Message::new("msg-014", "node-007", Signal::new(1, false, true, true), None));
 
     println!("\n=== Consensus Engine — Round 2 ===");
     net.run_consensus();
@@ -295,10 +319,13 @@ fn main() {
 
     // ── Round 3 ──────────────────────────────────────────────────────────────
     println!("\n=== Gossip Round 3 ===");
-    net.gossip("node-001", Message::new("msg-010", "node-001", Signal::new(5, true, false, true), Some("roads completely blocked")));
-    net.gossip("node-002", Message::new("msg-011", "node-002", Signal::new(5, true, false, true), None));
-    net.gossip("node-003", Message::new("msg-012", "node-003", Signal::new(1, false, true, false), None));
-    net.gossip("node-004", Message::new("msg-013", "node-004", Signal::new(5, true, false, true), None));
+    net.gossip("node-001", Message::new("msg-015", "node-001", Signal::new(5, true,  false, true), Some("roads completely blocked")));
+    net.gossip("node-002", Message::new("msg-016", "node-002", Signal::new(5, true,  false, true), None));
+    net.gossip("node-003", Message::new("msg-017", "node-003", Signal::new(1, false, true,  false), None));
+    net.gossip("node-004", Message::new("msg-018", "node-004", Signal::new(5, true,  false, true), None));
+    net.gossip("node-005", Message::new("msg-019", "node-005", Signal::new(1, false, true, true), None));
+    net.gossip("node-006", Message::new("msg-020", "node-006", Signal::new(1, false, true, true), None));
+    net.gossip("node-007", Message::new("msg-021", "node-007", Signal::new(2, false, true, true), None));
 
     println!("\n=== Consensus Engine — Round 3 ===");
     net.run_consensus();
