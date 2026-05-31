@@ -171,11 +171,16 @@ struct Observation {
 struct Network {
     nodes: HashMap<String, Node>,
     observations: Vec<Observation>,
+    declared_mce_zones: HashSet<String>, // ← add this
 }
 
 impl Network {
     fn new() -> Network {
-        Network { nodes: HashMap::new(), observations: Vec::new() }
+        Network {
+            nodes: HashMap::new(),
+            observations: Vec::new(),
+            declared_mce_zones: HashSet::new(), // ← add this
+        }
     }
 
     fn add_node(&mut self, node: Node) {
@@ -232,6 +237,7 @@ impl Network {
                     None => continue,
                 };
 
+                if !sender.is_online { continue; }
                 if sender.seen_messages.contains(&msg.id) { continue; }
                 sender.seen_messages.insert(msg.id.clone());
 
@@ -399,7 +405,8 @@ impl Network {
             }
 
             // MCE declaration: 3+ rescue requests in same zone same round
-            if rescue_count >= 3 {
+            if rescue_count >= 3 && !self.declared_mce_zones.contains(zone) {
+                self.declared_mce_zones.insert(zone.clone());
                 println!(
                     "  [Zone {}] 🚨 MASS CASUALTY EVENT DECLARED — {} rescue requests clustered",
                     zone, rescue_count
