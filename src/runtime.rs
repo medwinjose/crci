@@ -1,13 +1,3 @@
-// ─── Node Runtime ─────────────────────────────────────────────────────────────
-// In real life: this is the CRCI app running on one phone. It has its own
-// node, its own peers, its own transport (radio). It receives bytes,
-// deserialises them into messages, verifies signatures, processes them,
-// and decides what to forward — completely independently of every other phone.
-//
-// Technical: this is the distributed architecture. No central Network struct.
-// Each NodeRuntime owns its own Node and its own transport handle.
-// The MeshSimulator (in main) just wires them together physically.
-
 use std::collections::{HashMap, HashSet};
 use serde::{Serialize, Deserialize};
 use ed25519_dalek::{Signature, VerifyingKey, Verifier};
@@ -15,34 +5,29 @@ use ed25519_dalek::{Signature, VerifyingKey, Verifier};
 use crate::message::{Message, Signal, Visibility, MessageType};
 use crate::identity::Identity;
 use crate::transport::{Transport, SimTransport, SharedInbox};
-
-// ─── Wire Message ─────────────────────────────────────────────────────────────
-// The serialisable form of a message — what actually gets sent as bytes
-// over the transport layer. Includes the signature as raw bytes so it
-// survives serialisation/deserialisation.
+use crate::storage::{NodeStorage, PersistedState, PersistedRescue};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WireMessage {
     pub id: String,
     pub origin: String,
-    pub origin_pubkey: Vec<u8>,   // sender's public key so receiver can verify
+    pub origin_pubkey: Vec<u8>,
     pub severity: u8,
     pub confidence: u8,
     pub needs_help: bool,
     pub can_help_others: bool,
     pub location_confirmed: bool,
-    pub visibility: String,       // "direct" | "indirect" | "unknown"
+    pub visibility: String,
     pub note: Option<String>,
-    pub message_type: String,     // "normal" | "rescue" | "mce"
+    pub message_type: String,
     pub origin_active: bool,
-    pub signature_bytes: Vec<u8>, // 64-byte Ed25519 signature
+    pub signature_bytes: Vec<u8>,
 }
 
 impl WireMessage {
     pub fn from_message(msg: &Message, identity: &Identity) -> WireMessage {
         let payload = format!("{}:{}:{}", msg.id, msg.origin, msg.signal.severity);
         let sig = identity.sign(payload.as_bytes());
-
         WireMessage {
             id: msg.id.clone(),
             origin: msg.origin.clone(),
@@ -69,7 +54,6 @@ impl WireMessage {
     }
 
     pub fn verify_signature(&self) -> bool {
-        // Reconstruct the public key from bytes
         let key_bytes: [u8; 32] = match self.origin_pubkey.as_slice().try_into() {
             Ok(b) => b,
             Err(_) => return false,
@@ -78,15 +62,11 @@ impl WireMessage {
             Ok(k) => k,
             Err(_) => return false,
         };
-
-        // Reconstruct the signature from bytes
         let sig_bytes: [u8; 64] = match self.signature_bytes.as_slice().try_into() {
             Ok(b) => b,
             Err(_) => return false,
         };
         let signature = Signature::from_bytes(&sig_bytes);
-
-        // Verify
         let payload = format!("{}:{}:{}", self.id, self.origin, self.severity);
         verifying_key.verify(payload.as_bytes(), &signature).is_ok()
     }
@@ -114,7 +94,7 @@ impl WireMessage {
                 _ => MessageType::Normal,
             },
             origin_active: self.origin_active,
-            signature: None, // signature already verified before this point
+            signature: None,
         }
     }
 }
@@ -132,16 +112,19 @@ pub struct NodeRuntime {
     pub persistent_messages: HashMap<String, WireMessage>,
     pub transport: SimTransport,
     pub inbox: SharedInbox,
-    // Observations collected this round for consensus
-    pub observations: Vec<(String, u8, u8, bool)>, // (node_id, severity, confidence, unknown_vis)
+    pub storage: NodeStorage,
+    pub observations: Vec<(String, u8, u8, bool)>,
 }
 
 impl NodeRuntime {
     pub fn new(id: &str, zone: &str, inbox: SharedInbox) -> NodeRuntime {
         let transport = SimTransport::new(id, inbox.clone());
+        let identity = Identity::new(id);
+        let key_bytes = identity.signing_key.to_bytes();
+        let storage = NodeStorage::new(id, &key_bytes);
         NodeRuntime {
             id: id.to_string(),
-            identity: Identity::new(id),
+            identity,
             reputation: 1.0,
             zone: zone.to_string(),
             peers: Vec::new(),
@@ -151,6 +134,47 @@ impl NodeRuntime {
             transport,
             inbox,
             observations: Vec::new(),
+            storage,
+        }
+    }
+
+    pub fn save_state(&self) {
+        let rescues: Vec<PersistedRescue> = self.persistent_messages
+            .values()
+            .filter(|m| m.message_type == "rescue")
+            .map(|m| PersistedRescue {
+                id: m.id.clone(),
+                origin: m.origin.clone(),
+                note: m.note.clone(),
+                origin_active: m.origin_active,
+            })
+            .collect();
+        let state = PersistedState {
+            node_id: self.id.clone(),
+            zone: self.zone.clone(),
+            reputation: self.reputation,
+            peers: self.peers.clone(),
+            rescue_messages: rescues,
+            mce_zones: vec![],
+        };
+        if let Err(e) = self.storage.save(&state) {
+            println!("  ⚠ [{}] save failed: {}", self.id, e);
+        }
+    }
+
+    pub fn load_state(&mut self) {
+        match self.storage.load() {
+            Ok(state) => {
+                self.reputation = state.reputation;
+                self.peers = state.peers;
+                println!("  ✅ [{}] restored: rep={:.2}, {} peers, {} rescues",
+                    self.id, self.reputation,
+                    self.peers.len(),
+                    state.rescue_messages.len());
+            }
+            Err(e) => {
+                println!("  ℹ [{}] no prior state ({})", self.id, e);
+            }
         }
     }
 
@@ -174,34 +198,25 @@ impl NodeRuntime {
         println!("  ⚡ [{}] went OFFLINE", self.id);
     }
 
-    // Originate a message from this node — sign it and send to all peers
     pub fn originate(&mut self, msg: Message) {
         if !self.is_online {
             println!("  [{}] OFFLINE — cannot originate", self.id);
             return;
         }
-
         let wire = WireMessage::from_message(&msg, &self.identity);
         let is_persistent = matches!(msg.message_type,
             MessageType::RescueRequest | MessageType::MassCasualtyEvent);
-
         if is_persistent {
             self.persistent_messages.insert(wire.id.clone(), wire.clone());
         }
-
         self.seen_messages.insert(wire.id.clone());
-
         let payload = serde_json::to_vec(&wire).unwrap();
         let sig_preview = wire.signature_bytes.iter().take(4)
             .map(|b| format!("{:02x}", b)).collect::<String>();
-
         println!("  ✍  [{}] originating '{}' → sig: {}...", self.id, wire.id, sig_preview);
-
         for peer in &self.peers.clone() {
             self.transport.send(peer, &payload);
         }
-
-        // Record own observation
         self.observations.push((
             self.id.clone(),
             wire.severity,
@@ -210,15 +225,12 @@ impl NodeRuntime {
         ));
     }
 
-    // Process all messages waiting in this node's inbox
     pub fn process_inbox(&mut self) {
         if !self.is_online { return; }
-
         let messages: Vec<Vec<u8>> = {
             let mut inbox = self.inbox.lock().unwrap();
             inbox.remove(&self.id).unwrap_or_default()
         };
-
         for raw in messages {
             let wire: WireMessage = match serde_json::from_slice(&raw) {
                 Ok(w) => w,
@@ -227,48 +239,36 @@ impl NodeRuntime {
                     continue;
                 }
             };
-
-            // Signature verification — drop tampered messages
             if wire.message_type != "mce" && !wire.verify_signature() {
                 println!("  ⚠ [{}] INVALID SIGNATURE on '{}' — dropped!", self.id, wire.id);
                 continue;
             }
-
             if self.seen_messages.contains(&wire.id) { continue; }
             self.seen_messages.insert(wire.id.clone());
-
             let type_label = match wire.message_type.as_str() {
                 "rescue" => "🆘 RESCUE",
                 "mce" => "🚨 MCE",
                 _ => "normal",
             };
-
             println!(
                 "  [{}][{}] {} | sev:{} conf:{} vis:{} | note: {}",
                 self.id, self.zone, type_label,
                 wire.severity, wire.confidence, wire.visibility,
                 wire.note.as_deref().unwrap_or("—")
             );
-
-            // Store persistent messages
             if wire.message_type == "rescue" || wire.message_type == "mce" {
                 self.persistent_messages.insert(wire.id.clone(), wire.clone());
             }
-
             if !self.is_trusted() {
                 println!("  [{}] ISOLATED — not forwarding", self.id);
                 continue;
             }
-
-            // Record observation for consensus
             self.observations.push((
                 wire.origin.clone(),
                 wire.severity,
                 wire.confidence,
                 wire.visibility == "unknown",
             ));
-
-            // Forward to peers who haven't seen it
             let payload = serde_json::to_vec(&wire).unwrap();
             for peer in &self.peers.clone() {
                 self.transport.send(peer, &payload);
