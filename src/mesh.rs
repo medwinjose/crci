@@ -34,8 +34,24 @@ impl MeshSimulator {
 
     // Wire two nodes as peers — bidirectional
     pub fn connect(&mut self, a: &str, b: &str) {
-        if let Some(node) = self.nodes.get_mut(a) { node.add_peer(b); }
-        if let Some(node) = self.nodes.get_mut(b) { node.add_peer(a); }
+        let key_a = self.nodes.get(a)
+            .map(|n| (n.id.clone(), n.identity.verifying_key.to_bytes().to_vec()));
+        let key_b = self.nodes.get(b)
+            .map(|n| (n.id.clone(), n.identity.verifying_key.to_bytes().to_vec()));
+
+        if let Some(node) = self.nodes.get_mut(a) {
+            node.add_peer(b);
+            if let Some((id_b, kb)) = &key_b {
+                node.known_keys.insert(id_b.clone(), kb.clone());
+            }
+        }
+
+        if let Some(node) = self.nodes.get_mut(b) {
+            node.add_peer(a);
+            if let Some((id_a, ka)) = &key_a {
+                node.known_keys.insert(id_a.clone(), ka.clone());
+            }
+        }
     }
 
     // A node originates a message
