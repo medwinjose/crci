@@ -5,7 +5,8 @@ mod network;
 mod transport;
 mod runtime;
 mod mesh;
-mod storage;  
+mod storage;
+mod stress; 
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -162,4 +163,10 @@ fn main() {
             println!("  🗑  deleted {}_state.enc", id);
         }
     }
+
+    // ── Sessions 11-13: Adversarial Stress Tests ─────────────────────────────
+    crate::stress::test_large_network();
+    crate::stress::test_sybil_attack();
+    crate::stress::test_signature_forgery();
+    crate::stress::test_network_partition();
 }   // ← this is the closing brace of fn main()

@@ -99,8 +99,6 @@ impl WireMessage {
     }
 }
 
-// ─── Node Runtime ─────────────────────────────────────────────────────────────
-
 pub struct NodeRuntime {
     pub id: String,
     pub identity: Identity,
@@ -114,6 +112,7 @@ pub struct NodeRuntime {
     pub inbox: SharedInbox,
     pub storage: NodeStorage,
     pub observations: Vec<(String, u8, u8, bool)>,
+    pub known_keys: HashMap<String, Vec<u8>>,
 }
 
 impl NodeRuntime {
@@ -135,6 +134,7 @@ impl NodeRuntime {
             inbox,
             observations: Vec::new(),
             storage,
+            known_keys: HashMap::new(),
         }
     }
 
@@ -239,12 +239,28 @@ impl NodeRuntime {
                     continue;
                 }
             };
+
+            // Step 1: verify cryptographic signature
             if wire.message_type != "mce" && !wire.verify_signature() {
                 println!("  ⚠ [{}] INVALID SIGNATURE on '{}' — dropped!", self.id, wire.id);
                 continue;
             }
+
+            // Step 2: pubkey consistency check — reject impersonation
+            if wire.message_type != "mce" {
+                if let Some(known) = self.known_keys.get(&wire.origin) {
+                    if *known != wire.origin_pubkey {
+                        println!("  ⚠ [{}] PUBKEY MISMATCH on '{}' — impersonation dropped!", self.id, wire.id);
+                        continue;
+                    }
+                } else {
+                    self.known_keys.insert(wire.origin.clone(), wire.origin_pubkey.clone());
+                }
+            }
+
             if self.seen_messages.contains(&wire.id) { continue; }
             self.seen_messages.insert(wire.id.clone());
+
             let type_label = match wire.message_type.as_str() {
                 "rescue" => "🆘 RESCUE",
                 "mce" => "🚨 MCE",
@@ -256,19 +272,23 @@ impl NodeRuntime {
                 wire.severity, wire.confidence, wire.visibility,
                 wire.note.as_deref().unwrap_or("—")
             );
+
             if wire.message_type == "rescue" || wire.message_type == "mce" {
                 self.persistent_messages.insert(wire.id.clone(), wire.clone());
             }
+
             if !self.is_trusted() {
                 println!("  [{}] ISOLATED — not forwarding", self.id);
                 continue;
             }
+
             self.observations.push((
                 wire.origin.clone(),
                 wire.severity,
                 wire.confidence,
                 wire.visibility == "unknown",
             ));
+
             let payload = serde_json::to_vec(&wire).unwrap();
             for peer in &self.peers.clone() {
                 self.transport.send(peer, &payload);
