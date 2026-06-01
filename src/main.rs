@@ -5,6 +5,7 @@ mod network;
 mod transport;
 mod runtime;
 mod mesh;
+mod storage;  
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -138,4 +139,27 @@ fn main() {
 
     println!("\n=== Final State ===");
     sim.print_all();
-}
+
+    // ── Session 10: Save and reload state ────────────────────────────────────
+    println!("\n=== Saving node states to disk ===");
+    for id in ["node-001", "node-002", "node-003", "node-006"] {
+        if let Some(node) = sim.nodes.get(id) {
+            node.save_state();
+        }
+    }
+
+    println!("\n=== node-001 restarts — loading saved state ===");
+    let fresh_inbox: crate::transport::SharedInbox =
+        Arc::new(Mutex::new(HashMap::new()));
+    let mut restarted = crate::runtime::NodeRuntime::new("node-001", "zone-a", fresh_inbox);
+    restarted.load_state();
+    restarted.status();
+
+    println!("\n=== Cleaning up state files ===");
+    for id in ["node-001", "node-002", "node-003", "node-006"] {
+        if let Some(node) = sim.nodes.get(id) {
+            node.storage.delete();
+            println!("  🗑  deleted {}_state.enc", id);
+        }
+    }
+}   // ← this is the closing brace of fn main()
