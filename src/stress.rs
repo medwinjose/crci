@@ -158,6 +158,7 @@ pub fn test_signature_forgery() {
         message_type: "normal".to_string(),
         origin_active: true,
         signature_bytes: fake_sig.to_bytes().to_vec(),
+        seq: 1,
     };
 
     let raw = serde_json::to_vec(&forged).unwrap();
