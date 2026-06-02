@@ -9,6 +9,7 @@ mod storage;
 mod stress; 
 mod crisis;
 mod replay;
+mod bench;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -218,5 +219,8 @@ fn main() {
         replay_sim.nodes.get("victim")
             .map(|n| n.replay_filter.tracked_origins())
             .unwrap_or(0));
-}   // ← this is the closing brace of fn main()
 
+    // ── Session 18: Benchmark harness ────────────────────────────────────
+    bench::run_benchmarks();
+
+}   // ← this is the closing brace of fn main()
