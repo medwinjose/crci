@@ -47,6 +47,7 @@ impl WireMessage {
                 MessageType::Normal => "normal".to_string(),
                 MessageType::RescueRequest => "rescue".to_string(),
                 MessageType::MassCasualtyEvent => "mce".to_string(),
+                MessageType::Panic => "panic".to_string(), 
             },
             origin_active: msg.origin_active,
             signature_bytes: sig.to_bytes().to_vec(),
@@ -75,7 +76,13 @@ impl WireMessage {
         Message {
             id: self.id.clone(),
             origin: self.origin.clone(),
+            created_at: crate::message::now_ts(),
+            ttl_seconds: 0,
+            priority: crate::message::MessagePriority::Normal,
+            hop_count: 0,
             signal: Signal {
+                gps: None,
+                resource_type: None,
                 severity: self.severity,
                 confidence: self.confidence,
                 needs_help: self.needs_help,

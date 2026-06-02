@@ -155,6 +155,7 @@ impl Network {
                     MessageType::Normal => "normal",
                     MessageType::RescueRequest => "🆘 RESCUE",
                     MessageType::MassCasualtyEvent => "🚨 MCE",
+                    MessageType::Panic => "🆘 PANIC", 
                 };
 
                 let vis_label = match msg.signal.visibility {
@@ -312,6 +313,10 @@ impl Network {
                             message_type: MessageType::MassCasualtyEvent,
                             origin_active: true,
                             signature: None,
+                            created_at: crate::message::now_ts(),
+                            ttl_seconds: 0,
+                            priority: crate::message::MessagePriority::Critical,
+                            hop_count: 0,
                         };
                         node.persistent_messages.insert(mce.id.clone(), mce);
                     }

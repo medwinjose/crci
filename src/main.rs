@@ -7,6 +7,7 @@ mod runtime;
 mod mesh;
 mod storage;
 mod stress; 
+mod crisis;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -169,4 +170,11 @@ fn main() {
     crate::stress::test_sybil_attack();
     crate::stress::test_signature_forgery();
     crate::stress::test_network_partition();
+
+    // ── Crisis Scenarios ──────────────────────────────────────────────────────
+    crate::crisis::scenario_flood();
+    crate::crisis::scenario_earthquake();
+    crate::crisis::scenario_conflict();
+    crate::crisis::scenario_hazmat();
 }   // ← this is the closing brace of fn main()
+
