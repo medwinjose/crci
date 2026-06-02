@@ -22,6 +22,7 @@ pub struct WireMessage {
     pub message_type: String,
     pub origin_active: bool,
     pub signature_bytes: Vec<u8>,
+    pub seq: u64,
 }
 
 impl WireMessage {
@@ -51,6 +52,7 @@ impl WireMessage {
             },
             origin_active: msg.origin_active,
             signature_bytes: sig.to_bytes().to_vec(),
+            seq: msg.seq,
         }
     }
 
@@ -80,6 +82,7 @@ impl WireMessage {
             ttl_seconds: 0,
             priority: crate::message::MessagePriority::Normal,
             hop_count: 0,
+            seq: self.seq,
             signal: Signal {
                 gps: None,
                 resource_type: None,
@@ -120,6 +123,8 @@ pub struct NodeRuntime {
     pub storage: NodeStorage,
     pub observations: Vec<(String, u8, u8, bool)>,
     pub known_keys: HashMap<String, Vec<u8>>,
+    pub replay_filter: crate::replay::ReplayFilter,
+    pub seq_counter: u64,
 }
 
 impl NodeRuntime {
@@ -142,6 +147,8 @@ impl NodeRuntime {
             observations: Vec::new(),
             storage,
             known_keys: HashMap::new(),
+            replay_filter: crate::replay::ReplayFilter::new(),
+            seq_counter: 0,
         }
     }
 
@@ -205,7 +212,9 @@ impl NodeRuntime {
         println!("  ⚡ [{}] went OFFLINE", self.id);
     }
 
-    pub fn originate(&mut self, msg: Message) {
+    pub fn originate(&mut self, mut msg: Message) {
+        self.seq_counter += 1;
+        msg.seq = self.seq_counter;
         if !self.is_online {
             println!("  [{}] OFFLINE — cannot originate", self.id);
             return;
@@ -263,6 +272,28 @@ impl NodeRuntime {
                 } else {
                     self.known_keys.insert(wire.origin.clone(), wire.origin_pubkey.clone());
                 }
+            }
+
+                        // Replay check
+            let verdict = self.replay_filter.check_and_record(
+                &wire.origin,
+                wire.seq,
+                crate::message::now_ts(),
+            );
+            if !verdict.is_accept() {
+                match &verdict {
+                    crate::replay::ReplayVerdict::Replayed { received_seq, expected_min } =>
+                        println!("  ⛔ [{}] REPLAY dropped from '{}' — seq {} already seen (min {})",
+                            self.id, wire.origin, received_seq, expected_min),
+                    crate::replay::ReplayVerdict::Stale { age_seconds } =>
+                        println!("  ⏰ [{}] STALE msg from '{}' — {}s old, dropped",
+                            self.id, wire.origin, age_seconds),
+                    crate::replay::ReplayVerdict::FromFuture { skew_seconds } =>
+                        println!("  ⚠ [{}] FUTURE msg from '{}' — {}s ahead, dropped",
+                            self.id, wire.origin, skew_seconds),
+                    _ => {}
+                }
+                continue;
             }
 
             if self.seen_messages.contains(&wire.id) { continue; }

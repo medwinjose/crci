@@ -160,8 +160,8 @@ pub struct Message {
     pub ttl_seconds: u64,   // 0 = never expires
     pub priority: MessagePriority,
     pub hop_count: u8,
+    pub seq: u64,
 }
-
 impl Message {
     pub fn new(id: &str, origin: &str, signal: Signal, note: Option<&str>) -> Message {
         Message {
@@ -176,6 +176,7 @@ impl Message {
             ttl_seconds: 600,
             priority: MessagePriority::Normal,
             hop_count: 0,
+            seq: 0,
         }
     }
 
@@ -192,6 +193,7 @@ impl Message {
             ttl_seconds: 0,   // rescue requests never expire
             priority: MessagePriority::Critical,
             hop_count: 0,
+            seq: 0,
         }
     }
 

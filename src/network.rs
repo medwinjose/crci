@@ -317,6 +317,7 @@ impl Network {
                             ttl_seconds: 0,
                             priority: crate::message::MessagePriority::Critical,
                             hop_count: 0,
+                            seq: 0,
                         };
                         node.persistent_messages.insert(mce.id.clone(), mce);
                     }
