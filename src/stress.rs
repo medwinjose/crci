@@ -182,9 +182,12 @@ pub fn test_signature_forgery() {
         seq: 1,
     };
 
-    let raw = serde_json::to_vec(&forged).unwrap();
+    let raw = serde_json::to_vec(&forged).unwrap_or_default();
     {
-        let mut ib = inbox.lock().unwrap();
+        let mut ib = match inbox.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
         ib.entry("node-002".to_string()).or_default().push(raw);
     }
 
