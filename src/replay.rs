@@ -72,9 +72,16 @@ impl ReplayFilter {
 #[derive(Debug)]
 pub enum ReplayVerdict {
     Accept,
-    Replayed { received_seq: u64, expected_min: u64 },
-    Stale { age_seconds: u64 },
-    FromFuture { skew_seconds: u64 },
+    Replayed {
+        received_seq: u64,
+        expected_min: u64,
+    },
+    Stale {
+        age_seconds: u64,
+    },
+    FromFuture {
+        skew_seconds: u64,
+    },
 }
 
 impl ReplayVerdict {

@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
 use crate::message::{Message, MessageType, Signal, Visibility};
 use crate::node::Node;
+use std::collections::{HashMap, HashSet};
 
 #[allow(dead_code)]
 pub struct Observation {
@@ -36,8 +36,14 @@ impl Network {
     // In real life: when two phones first see each other over Bluetooth,
     // they swap public keys. From then on, each can verify the other's messages.
     pub fn connect(&mut self, a: &str, b: &str) {
-        let key_a = self.nodes.get(a).map(|n| (n.id.clone(), n.identity.verifying_key));
-        let key_b = self.nodes.get(b).map(|n| (n.id.clone(), n.identity.verifying_key));
+        let key_a = self
+            .nodes
+            .get(a)
+            .map(|n| (n.id.clone(), n.identity.verifying_key));
+        let key_b = self
+            .nodes
+            .get(b)
+            .map(|n| (n.id.clone(), n.identity.verifying_key));
 
         if let (Some((id_a, vk_a)), Some((id_b, vk_b))) = (key_a, key_b) {
             if let Some(node_b) = self.nodes.get_mut(&id_b) {
@@ -56,14 +62,21 @@ impl Network {
             node.seen_messages.clear();
         }
 
-        let adoptable: Vec<(String, Message)> = self.nodes.values()
-            .flat_map(|n| n.persistent_messages.values()
-                .cloned()
-                .map(move |m| (n.id.clone(), m)))
+        let adoptable: Vec<(String, Message)> = self
+            .nodes
+            .values()
+            .flat_map(|n| {
+                n.persistent_messages
+                    .values()
+                    .cloned()
+                    .map(move |m| (n.id.clone(), m))
+            })
             .collect();
 
         for (holder_id, msg) in adoptable {
-            let origin_online = self.nodes.get(&msg.origin)
+            let origin_online = self
+                .nodes
+                .get(&msg.origin)
                 .map(|n| n.is_online)
                 .unwrap_or(false);
             if !origin_online && msg.message_type == MessageType::RescueRequest {
@@ -125,14 +138,19 @@ impl Network {
         // Sign the message before it enters the network
         self.sign_message(origin_id, &mut message);
 
-        let sig_preview = message.signature.as_ref()
+        let sig_preview = message
+            .signature
+            .as_ref()
             .map(|s| {
                 let b = s.to_bytes();
                 format!("{:02x}{:02x}{:02x}{:02x}", b[0], b[1], b[2], b[3])
             })
             .unwrap_or_else(|| "unsigned".to_string());
 
-        println!("  ✍  [{}] signed msg '{}' → sig: {}...", origin_id, message.id, sig_preview);
+        println!(
+            "  ✍  [{}] signed msg '{}' → sig: {}...",
+            origin_id, message.id, sig_preview
+        );
 
         let is_persistent = message.message_type == MessageType::RescueRequest
             || message.message_type == MessageType::MassCasualtyEvent;
@@ -146,19 +164,25 @@ impl Network {
                     None => continue,
                 };
 
-                if !sender.is_online { continue; }
-                if sender.seen_messages.contains(&msg.id) { continue; }
+                if !sender.is_online {
+                    continue;
+                }
+                if sender.seen_messages.contains(&msg.id) {
+                    continue;
+                }
                 sender.seen_messages.insert(msg.id.clone());
 
                 if is_persistent {
-                    sender.persistent_messages.insert(msg.id.clone(), msg.clone());
+                    sender
+                        .persistent_messages
+                        .insert(msg.id.clone(), msg.clone());
                 }
 
                 let type_label = match msg.message_type {
                     MessageType::Normal => "normal",
                     MessageType::RescueRequest => "🆘 RESCUE",
                     MessageType::MassCasualtyEvent => "🚨 MCE",
-                    MessageType::Panic => "🆘 PANIC", 
+                    MessageType::Panic => "🆘 PANIC",
                 };
 
                 let vis_label = match msg.signal.visibility {
@@ -169,8 +193,12 @@ impl Network {
 
                 println!(
                     "  [{}][{}] {} | sev:{} conf:{} vis:{} | note: {}",
-                    sender.id, sender.zone, type_label,
-                    msg.signal.severity, msg.signal.confidence, vis_label,
+                    sender.id,
+                    sender.zone,
+                    type_label,
+                    msg.signal.severity,
+                    msg.signal.confidence,
+                    vis_label,
                     msg.note.as_deref().unwrap_or("—")
                 );
 
@@ -187,7 +215,10 @@ impl Network {
             // signature before passing it on. Tampered messages die here.
             for peer_id in &peers_to_forward {
                 if !self.verify_message(peer_id, &msg) {
-                    println!("  ⚠ [{}] rejected msg '{}' — invalid signature!", peer_id, msg.id);
+                    println!(
+                        "  ⚠ [{}] rejected msg '{}' — invalid signature!",
+                        peer_id, msg.id
+                    );
                     continue;
                 }
                 if let Some(peer) = self.nodes.get(peer_id) {
@@ -197,13 +228,16 @@ impl Network {
                 }
             }
 
-            let (origin_zone, origin_conf, origin_vis_unknown) = self.nodes
+            let (origin_zone, origin_conf, origin_vis_unknown) = self
+                .nodes
                 .get(&msg.origin)
-                .map(|n| (
-                    n.zone.clone(),
-                    msg.signal.confidence,
-                    matches!(msg.signal.visibility, Visibility::Unknown),
-                ))
+                .map(|n| {
+                    (
+                        n.zone.clone(),
+                        msg.signal.confidence,
+                        matches!(msg.signal.visibility, Visibility::Unknown),
+                    )
+                })
                 .unwrap_or_default();
 
             self.observations.push(Observation {
@@ -229,9 +263,12 @@ impl Network {
 
         let mut by_zone: HashMap<String, Vec<(String, u8, u8, bool)>> = HashMap::new();
         for (node_id, obs) in &deduped {
-            by_zone.entry(obs.zone.clone())
-                .or_default()
-                .push((node_id.clone(), obs.severity, obs.confidence, obs.is_unknown_visibility));
+            by_zone.entry(obs.zone.clone()).or_default().push((
+                node_id.clone(),
+                obs.severity,
+                obs.confidence,
+                obs.is_unknown_visibility,
+            ));
         }
 
         for (zone, reporters) in &by_zone {
@@ -242,13 +279,17 @@ impl Network {
                 continue;
             }
 
-            let confident_severities: Vec<u8> = reporters.iter()
+            let confident_severities: Vec<u8> = reporters
+                .iter()
                 .filter(|(_, _, conf, unknown_vis)| *conf >= 3 && !unknown_vis)
                 .map(|(_, sev, _, _)| *sev)
                 .collect();
 
             if confident_severities.len() < 2 {
-                println!("  [Zone {}] ⚠ Not enough confident observers — skipped.", zone);
+                println!(
+                    "  [Zone {}] ⚠ Not enough confident observers — skipped.",
+                    zone
+                );
                 continue;
             }
 
@@ -268,28 +309,45 @@ impl Network {
 
             for (node_id, severity, confidence, unknown_vis) in reporters {
                 if *unknown_vis {
-                    println!("  [Zone {}] ℹ [{}] sev {} — unknown visibility, not penalised", zone, node_id, severity);
+                    println!(
+                        "  [Zone {}] ℹ [{}] sev {} — unknown visibility, not penalised",
+                        zone, node_id, severity
+                    );
                     continue;
                 }
                 if *confidence < 3 {
-                    println!("  [Zone {}] ℹ [{}] sev {} — low confidence, not penalised", zone, node_id, severity);
+                    println!(
+                        "  [Zone {}] ℹ [{}] sev {} — low confidence, not penalised",
+                        zone, node_id, severity
+                    );
                     continue;
                 }
 
                 let deviation = (*severity as i16 - median as i16).unsigned_abs();
                 if deviation > 2 {
                     any_anomaly = true;
-                    println!("  [Zone {}] ⚠ ANOMALY: [{}] sev {} (dev {} from median {})", zone, node_id, severity, deviation, median);
+                    println!(
+                        "  [Zone {}] ⚠ ANOMALY: [{}] sev {} (dev {} from median {})",
+                        zone, node_id, severity, deviation, median
+                    );
                     if let Some(node) = self.nodes.get_mut(node_id) {
                         node.penalize();
-                        println!("  [Zone {}] ✗ [{}] penalised → rep {:.2}", zone, node.id, node.reputation);
+                        println!(
+                            "  [Zone {}] ✗ [{}] penalised → rep {:.2}",
+                            zone, node.id, node.reputation
+                        );
                     }
                 }
 
-                rescue_count += self.nodes.get(node_id)
-                    .map(|n| n.persistent_messages.values()
-                        .filter(|m| m.message_type == MessageType::RescueRequest)
-                        .count() as u32)
+                rescue_count += self
+                    .nodes
+                    .get(node_id)
+                    .map(|n| {
+                        n.persistent_messages
+                            .values()
+                            .filter(|m| m.message_type == MessageType::RescueRequest)
+                            .count() as u32
+                    })
                     .unwrap_or(0);
             }
 
@@ -299,9 +357,14 @@ impl Network {
 
             if rescue_count >= 3 && !self.declared_mce_zones.contains(zone) {
                 self.declared_mce_zones.insert(zone.clone());
-                println!("  [Zone {}] 🚨 MASS CASUALTY EVENT DECLARED — {} rescue requests", zone, rescue_count);
+                println!(
+                    "  [Zone {}] 🚨 MASS CASUALTY EVENT DECLARED — {} rescue requests",
+                    zone, rescue_count
+                );
 
-                let zone_nodes: Vec<String> = self.nodes.values()
+                let zone_nodes: Vec<String> = self
+                    .nodes
+                    .values()
                     .filter(|n| n.zone == *zone)
                     .map(|n| n.id.clone())
                     .collect();
@@ -312,7 +375,10 @@ impl Network {
                             id: format!("mce-{}", zone),
                             origin: "system".to_string(),
                             signal: Signal::panic(),
-                            note: Some(format!("MCE declared in {} — {} casualties", zone, rescue_count)),
+                            note: Some(format!(
+                                "MCE declared in {} — {} casualties",
+                                zone, rescue_count
+                            )),
                             message_type: MessageType::MassCasualtyEvent,
                             origin_active: true,
                             signature: None,
@@ -332,6 +398,8 @@ impl Network {
     pub fn print_all(&self) {
         let mut ids: Vec<&String> = self.nodes.keys().collect();
         ids.sort();
-        for id in ids { self.nodes[id].status(); }
+        for id in ids {
+            self.nodes[id].status();
+        }
     }
 }

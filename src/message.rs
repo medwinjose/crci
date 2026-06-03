@@ -29,10 +29,10 @@ impl MessageType {
     #[allow(dead_code)]
     pub fn as_str(&self) -> &str {
         match self {
-            MessageType::Normal        => "normal",
+            MessageType::Normal => "normal",
             MessageType::RescueRequest => "rescue",
             MessageType::MassCasualtyEvent => "mce",
-            MessageType::Panic         => "panic",
+            MessageType::Panic => "panic",
         }
     }
 }
@@ -68,8 +68,8 @@ impl GpsCoord {
         let dlon = (other.lon - self.lon).to_radians();
         let a = (dlat / 2.0).sin().powi(2)
             + self.lat.to_radians().cos()
-            * other.lat.to_radians().cos()
-            * (dlon / 2.0).sin().powi(2);
+                * other.lat.to_radians().cos()
+                * (dlon / 2.0).sin().powi(2);
         r * 2.0 * a.sqrt().atan2((1.0 - a).sqrt())
     }
 }
@@ -163,7 +163,7 @@ pub struct Message {
     #[allow(dead_code)]
     pub created_at: u64,
     #[allow(dead_code)]
-    pub ttl_seconds: u64,   // 0 = never expires
+    pub ttl_seconds: u64, // 0 = never expires
     pub priority: MessagePriority,
     #[allow(dead_code)]
     pub hop_count: u8,
@@ -197,7 +197,7 @@ impl Message {
             origin_active: true,
             signature: None,
             created_at: now_ts(),
-            ttl_seconds: 0,   // rescue requests never expire
+            ttl_seconds: 0, // rescue requests never expire
             priority: MessagePriority::Critical,
             hop_count: 0,
             seq: 0,

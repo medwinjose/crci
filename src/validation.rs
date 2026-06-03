@@ -32,9 +32,18 @@ const MAX_SEVERITY: u8 = 5;
 pub enum ValidationError {
     SeverityOutOfRange(f32),
     NanOrInfinity,
-    RateLimitExceeded { node_id: String, count: usize },
-    PanicButtonCooldown { node_id: String, rounds_remaining: u64 },
-    PayloadTooLarge { size: usize, max: usize },
+    RateLimitExceeded {
+        node_id: String,
+        count: usize,
+    },
+    PanicButtonCooldown {
+        node_id: String,
+        rounds_remaining: u64,
+    },
+    PayloadTooLarge {
+        size: usize,
+        max: usize,
+    },
     InvalidNodeId,
     SeqOverflow,
 }
@@ -42,20 +51,23 @@ pub enum ValidationError {
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ValidationError::SeverityOutOfRange(v) =>
-                write!(f, "severity {v} out of range [1,5]"),
-            ValidationError::NanOrInfinity =>
-                write!(f, "NaN or Infinity in numeric field"),
-            ValidationError::RateLimitExceeded { node_id, count } =>
-                write!(f, "rate limit: {node_id} sent {count} msgs this round"),
-            ValidationError::PanicButtonCooldown { node_id, rounds_remaining } =>
-                write!(f, "panic cooldown: {node_id} must wait {rounds_remaining} rounds"),
-            ValidationError::PayloadTooLarge { size, max } =>
-                write!(f, "payload {size}B exceeds max {max}B"),
-            ValidationError::InvalidNodeId =>
-                write!(f, "empty or malformed node ID"),
-            ValidationError::SeqOverflow =>
-                write!(f, "sequence number overflow — wrap detected"),
+            ValidationError::SeverityOutOfRange(v) => write!(f, "severity {v} out of range [1,5]"),
+            ValidationError::NanOrInfinity => write!(f, "NaN or Infinity in numeric field"),
+            ValidationError::RateLimitExceeded { node_id, count } => {
+                write!(f, "rate limit: {node_id} sent {count} msgs this round")
+            }
+            ValidationError::PanicButtonCooldown {
+                node_id,
+                rounds_remaining,
+            } => write!(
+                f,
+                "panic cooldown: {node_id} must wait {rounds_remaining} rounds"
+            ),
+            ValidationError::PayloadTooLarge { size, max } => {
+                write!(f, "payload {size}B exceeds max {max}B")
+            }
+            ValidationError::InvalidNodeId => write!(f, "empty or malformed node ID"),
+            ValidationError::SeqOverflow => write!(f, "sequence number overflow — wrap detected"),
         }
     }
 }
@@ -136,10 +148,7 @@ impl RateLimiter {
     }
 
     /// Record a message from node_id. Returns Err if rate limit exceeded.
-    pub fn check_and_record(
-        &mut self,
-        node_id: &str,
-    ) -> Result<(), ValidationError> {
+    pub fn check_and_record(&mut self, node_id: &str) -> Result<(), ValidationError> {
         let count = self.counts.entry(node_id.to_string()).or_insert(0);
         *count += 1;
         if *count > MAX_MSGS_PER_NODE_PER_ROUND {
@@ -166,7 +175,8 @@ impl RateLimiter {
                 });
             }
         }
-        self.panic_last_round.insert(node_id.to_string(), current_round);
+        self.panic_last_round
+            .insert(node_id.to_string(), current_round);
         Ok(())
     }
 

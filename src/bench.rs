@@ -111,9 +111,7 @@ fn bench_propagation(node_count: usize, seed: u64) -> PropagationResult {
     let t0 = Instant::now();
 
     // Build nodes
-    let mut nodes: Vec<BenchNode> = (0..node_count)
-        .map(BenchNode::new)
-        .collect();
+    let mut nodes: Vec<BenchNode> = (0..node_count).map(BenchNode::new).collect();
 
     // Wire peers: each node gets ~log2(N) connections (minimum 2)
     let peer_count = (node_count as f64).log2().max(2.0).round() as usize;
@@ -157,7 +155,10 @@ fn bench_propagation(node_count: usize, seed: u64) -> PropagationResult {
             nodes[peer].received.insert(id);
         }
 
-        let reached = nodes.iter().filter(|n| n.received.contains(&msg_id)).count();
+        let reached = nodes
+            .iter()
+            .filter(|n| n.received.contains(&msg_id))
+            .count();
 
         if half_round.is_none() && reached >= half_target {
             half_round = Some(round);
@@ -191,9 +192,7 @@ fn bench_propagation(node_count: usize, seed: u64) -> PropagationResult {
 fn bench_convergence(node_count: usize, byzantine_count: usize, _seed: u64) -> ConvergenceResult {
     let t0 = Instant::now();
 
-    let mut nodes: Vec<BenchNode> = (0..node_count)
-        .map(BenchNode::new)
-        .collect();
+    let mut nodes: Vec<BenchNode> = (0..node_count).map(BenchNode::new).collect();
 
     // All nodes report their severity each round
     // Byzantine: sev 1. Honest: sev 5.
@@ -203,13 +202,18 @@ fn bench_convergence(node_count: usize, byzantine_count: usize, _seed: u64) -> C
     // Initial observations
     #[allow(clippy::needless_range_loop)]
     for i in 0..node_count {
-        let sev = if i < byzantine_count { byz_sev } else { honest_sev };
+        let sev = if i < byzantine_count {
+            byz_sev
+        } else {
+            honest_sev
+        };
         nodes[i].observations.push(sev);
     }
 
     let mut round = 0;
     let mut stable_rounds = 0;
-    let mut prev_rep_snapshot: Vec<u32> = nodes.iter()
+    let mut prev_rep_snapshot: Vec<u32> = nodes
+        .iter()
         .map(|n| (n.reputation * 1000.0) as u32)
         .collect();
 
@@ -217,8 +221,15 @@ fn bench_convergence(node_count: usize, byzantine_count: usize, _seed: u64) -> C
         round += 1;
 
         // Collect all severity reports for this round
-        let all_sevs: Vec<u8> = nodes.iter()
-            .map(|n| if n.id < byzantine_count { byz_sev } else { honest_sev })
+        let all_sevs: Vec<u8> = nodes
+            .iter()
+            .map(|n| {
+                if n.id < byzantine_count {
+                    byz_sev
+                } else {
+                    honest_sev
+                }
+            })
             .collect();
 
         // Compute median severity
@@ -237,7 +248,8 @@ fn bench_convergence(node_count: usize, byzantine_count: usize, _seed: u64) -> C
         }
 
         // Check stability: did any reputation change this round?
-        let current_snapshot: Vec<u32> = nodes.iter()
+        let current_snapshot: Vec<u32> = nodes
+            .iter()
             .map(|n| (n.reputation * 1000.0) as u32)
             .collect();
 
@@ -260,11 +272,13 @@ fn bench_convergence(node_count: usize, byzantine_count: usize, _seed: u64) -> C
     }
 
     // Check: do Byzantine nodes have lower reputation than honest nodes?
-    let min_honest_rep = nodes[byzantine_count..].iter()
+    let min_honest_rep = nodes[byzantine_count..]
+        .iter()
         .map(|n| (n.reputation * 1000.0) as u32)
         .min()
         .unwrap_or(0);
-    let max_byz_rep = nodes[..byzantine_count].iter()
+    let max_byz_rep = nodes[..byzantine_count]
+        .iter()
         .map(|n| (n.reputation * 1000.0) as u32)
         .max()
         .unwrap_or(1001);
@@ -397,12 +411,15 @@ struct SimpleLcg {
 
 impl SimpleLcg {
     fn new(seed: u64) -> Self {
-        SimpleLcg { state: seed.wrapping_add(1) }
+        SimpleLcg {
+            state: seed.wrapping_add(1),
+        }
     }
 
     fn next_u64(&mut self) -> u64 {
         // Knuth's multiplicative LCG
-        self.state = self.state
+        self.state = self
+            .state
             .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1_442_695_040_888_963_407);
         self.state
@@ -424,10 +441,7 @@ fn print_propagation_table(results: &[PropagationResult]) {
     for r in results {
         println!(
             "│ {:>8} │ {:>8} rd │ {:>8} rd │ {:>16} μs │",
-            r.node_count,
-            r.rounds_to_half_propagation,
-            r.rounds_to_full_propagation,
-            r.wall_us
+            r.node_count, r.rounds_to_half_propagation, r.rounds_to_full_propagation, r.wall_us
         );
     }
     println!("└──────────┴────────────┴────────────┴────────────────────┘");
@@ -445,7 +459,11 @@ fn print_convergence_table(results: &[ConvergenceResult]) {
             r.node_count,
             r.byzantine_count,
             r.rounds_to_convergence,
-            if r.honest_majority_held { "✅ yes" } else { "❌ no" },
+            if r.honest_majority_held {
+                "✅ yes"
+            } else {
+                "❌ no"
+            },
             r.wall_us
         );
     }
@@ -479,9 +497,7 @@ fn print_memory_table(results: &[MemoryResult]) {
         let total_kb = r.approx_total_bytes / 1024;
         println!(
             "│ {:>8} │ {:>14} B  │ {:>16} KB    │",
-            r.node_count,
-            r.approx_bytes_per_node,
-            total_kb
+            r.node_count, r.approx_bytes_per_node, total_kb
         );
     }
     println!("└──────────┴──────────────────┴────────────────────────┘");
@@ -493,7 +509,10 @@ fn print_replay_result(r: &ReplayThroughputResult) {
     println!("├────────────────────────┬─────────────────────────────┤");
     println!("│  Total checks          │ {:>27} │", r.total_checked);
     println!("│  Wall time             │ {:>24} ms  │", r.wall_ms);
-    println!("│  Throughput            │ {:>18} checks/s  │", r.checks_per_second);
+    println!(
+        "│  Throughput            │ {:>18} checks/s  │",
+        r.checks_per_second
+    );
     println!("└────────────────────────┴─────────────────────────────┘");
 }
 
@@ -518,12 +537,16 @@ pub fn run_benchmarks() {
                 .collect();
             PropagationResult {
                 node_count: n,
-                rounds_to_full_propagation: runs.iter()
+                rounds_to_full_propagation: runs
+                    .iter()
                     .map(|r| r.rounds_to_full_propagation)
-                    .sum::<usize>() / BENCH_REPS,
-                rounds_to_half_propagation: runs.iter()
+                    .sum::<usize>()
+                    / BENCH_REPS,
+                rounds_to_half_propagation: runs
+                    .iter()
                     .map(|r| r.rounds_to_half_propagation)
-                    .sum::<usize>() / BENCH_REPS,
+                    .sum::<usize>()
+                    / BENCH_REPS,
                 wall_us: runs.iter().map(|r| r.wall_us).sum::<u128>() / BENCH_REPS as u128,
             }
         })
@@ -533,9 +556,9 @@ pub fn run_benchmarks() {
     // ── Benchmark 2: Convergence at various Byzantine fractions ───
     println!("\n  Running convergence benchmarks...");
     let conv_scenarios: Vec<(usize, usize)> = vec![
-        (100, 10),   // 10% Byzantine
-        (100, 25),   // 25% Byzantine
-        (100, 33),   // 33% Byzantine — theoretical limit
+        (100, 10),    // 10% Byzantine
+        (100, 25),    // 25% Byzantine
+        (100, 33),    // 33% Byzantine — theoretical limit
         (1_000, 100), // 10% at scale
         (1_000, 333), // 33% at scale
     ];
@@ -547,10 +570,8 @@ pub fn run_benchmarks() {
 
     // ── Benchmark 3: Byzantine tolerance threshold ─────────────────
     println!("\n  Running tolerance threshold benchmarks...");
-    let tol_results: Vec<ToleranceResult> = SCALE_LEVELS
-        .iter()
-        .map(|&n| bench_tolerance(n))
-        .collect();
+    let tol_results: Vec<ToleranceResult> =
+        SCALE_LEVELS.iter().map(|&n| bench_tolerance(n)).collect();
     print_tolerance_table(&tol_results);
 
     // ── Benchmark 4: Memory footprint ──────────────────────────────

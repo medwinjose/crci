@@ -1,4 +1,4 @@
-use ed25519_dalek::{SigningKey, VerifyingKey, Signature, Signer, Verifier};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
 
 // ─── Identity ────────────────────────────────────────────────────────────────
@@ -9,8 +9,8 @@ use rand::rngs::OsRng;
 pub struct Identity {
     #[allow(dead_code)]
     pub id: String,
-    pub signing_key: SigningKey,       // private — never leaves this device
-    pub verifying_key: VerifyingKey,   // public — shared with everyone
+    pub signing_key: SigningKey,     // private — never leaves this device
+    pub verifying_key: VerifyingKey, // public — shared with everyone
 }
 
 impl Identity {

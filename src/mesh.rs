@@ -8,10 +8,10 @@
 // moves bytes. It doesn't understand what's in them. This is correct
 // architecture — the transport layer is dumb, the nodes are smart.
 
-use std::collections::{HashMap, HashSet};
+use crate::message::Message;
 use crate::runtime::NodeRuntime;
 use crate::transport::SharedInbox;
-use crate::message::Message;
+use std::collections::{HashMap, HashSet};
 
 pub struct MeshSimulator {
     pub nodes: HashMap<String, NodeRuntime>,
@@ -34,9 +34,13 @@ impl MeshSimulator {
 
     // Wire two nodes as peers — bidirectional
     pub fn connect(&mut self, a: &str, b: &str) {
-        let key_a = self.nodes.get(a)
+        let key_a = self
+            .nodes
+            .get(a)
             .map(|n| (n.id.clone(), n.identity.verifying_key.to_bytes().to_vec()));
-        let key_b = self.nodes.get(b)
+        let key_b = self
+            .nodes
+            .get(b)
             .map(|n| (n.id.clone(), n.identity.verifying_key.to_bytes().to_vec()));
 
         if let Some(node) = self.nodes.get_mut(a) {
@@ -90,7 +94,8 @@ impl MeshSimulator {
                 // Group observations by the ZONE OF THE ORIGINATOR, not the observer.
                 // This is critical for multi-zone scenarios.
                 if let Some(origin_node) = self.nodes.get(&obs.0) {
-                    by_zone.entry(origin_node.zone.clone())
+                    by_zone
+                        .entry(origin_node.zone.clone())
                         .or_default()
                         .push(obs.clone());
                 }
@@ -116,13 +121,17 @@ impl MeshSimulator {
                 continue;
             }
 
-            let confident: Vec<u8> = reporters.values()
+            let confident: Vec<u8> = reporters
+                .values()
                 .filter(|(_, conf, unknown)| *conf >= 3 && !unknown)
                 .map(|(sev, _, _)| *sev)
                 .collect();
 
             if confident.len() < 2 {
-                println!("  [Zone {}] ⚠ Not enough confident observers — skipped", zone);
+                println!(
+                    "  [Zone {}] ⚠ Not enough confident observers — skipped",
+                    zone
+                );
                 continue;
             }
 
@@ -131,7 +140,9 @@ impl MeshSimulator {
             let mid = sorted.len() / 2;
             let median = if sorted.len().is_multiple_of(2) {
                 (sorted[mid - 1] + sorted[mid]) / 2
-            } else { sorted[mid] };
+            } else {
+                sorted[mid]
+            };
 
             println!("  [Zone {}] Median severity: {}", zone, median);
 
@@ -148,21 +159,33 @@ impl MeshSimulator {
                 }
 
                 if *unknown_vis {
-                    println!("  [Zone {}] ℹ [{}] sev {} — unknown vis, not penalised", zone, node_id, severity);
+                    println!(
+                        "  [Zone {}] ℹ [{}] sev {} — unknown vis, not penalised",
+                        zone, node_id, severity
+                    );
                     continue;
                 }
                 if *confidence < 3 {
-                    println!("  [Zone {}] ℹ [{}] sev {} — low confidence, not penalised", zone, node_id, severity);
+                    println!(
+                        "  [Zone {}] ℹ [{}] sev {} — low confidence, not penalised",
+                        zone, node_id, severity
+                    );
                     continue;
                 }
 
                 let deviation = (*severity as i16 - median as i16).unsigned_abs();
                 if deviation > 2 {
                     any_anomaly = true;
-                    println!("  [Zone {}] ⚠ ANOMALY: [{}] sev {} (dev {} from {})", zone, node_id, severity, deviation, median);
+                    println!(
+                        "  [Zone {}] ⚠ ANOMALY: [{}] sev {} (dev {} from {})",
+                        zone, node_id, severity, deviation, median
+                    );
                     if let Some(node) = self.nodes.get_mut(node_id) {
                         node.penalize();
-                        println!("  [Zone {}] ✗ [{}] penalised → rep {:.2}", zone, node_id, node.reputation);
+                        println!(
+                            "  [Zone {}] ✗ [{}] penalised → rep {:.2}",
+                            zone, node_id, node.reputation
+                        );
                     }
                 }
             }
@@ -174,7 +197,10 @@ impl MeshSimulator {
             let rescue_count = unique_rescue_ids.len() as u32;
             if rescue_count >= 3 && !self.declared_mce_zones.contains(zone) {
                 self.declared_mce_zones.insert(zone.clone());
-                println!("  [Zone {}] 🚨 MASS CASUALTY EVENT — {} rescue requests", zone, rescue_count);
+                println!(
+                    "  [Zone {}] 🚨 MASS CASUALTY EVENT — {} rescue requests",
+                    zone, rescue_count
+                );
             }
         }
 
@@ -190,23 +216,36 @@ impl MeshSimulator {
         }
 
         // Re-announce persistent rescue requests from offline nodes
-        let offline_rescues: Vec<(String, String)> = self.nodes.values()
-            .flat_map(|n| n.persistent_messages.values()
-                .filter(|m| m.message_type == "rescue")
-                .map(move |m| (n.id.clone(), m.id.clone())))
+        let offline_rescues: Vec<(String, String)> = self
+            .nodes
+            .values()
+            .flat_map(|n| {
+                n.persistent_messages
+                    .values()
+                    .filter(|m| m.message_type == "rescue")
+                    .map(move |m| (n.id.clone(), m.id.clone()))
+            })
             .collect();
 
         for (holder_id, msg_id) in offline_rescues {
-            let origin = self.nodes.values()
+            let origin = self
+                .nodes
+                .values()
                 .find(|n| n.persistent_messages.contains_key(&msg_id))
                 .and_then(|n| n.persistent_messages.get(&msg_id))
                 .map(|m| m.origin.clone());
 
             if let Some(origin_id) = origin {
-                let origin_online = self.nodes.get(&origin_id)
-                    .map(|n| n.is_online).unwrap_or(false);
+                let origin_online = self
+                    .nodes
+                    .get(&origin_id)
+                    .map(|n| n.is_online)
+                    .unwrap_or(false);
                 if !origin_online {
-                    println!("  📡 [{}] keeping rescue '{}' alive — origin OFFLINE", holder_id, msg_id);
+                    println!(
+                        "  📡 [{}] keeping rescue '{}' alive — origin OFFLINE",
+                        holder_id, msg_id
+                    );
                 }
             }
         }

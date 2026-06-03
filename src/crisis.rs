@@ -2,11 +2,11 @@
 // Each function runs a complete crisis event through the mesh, exposing how
 // the system behaves under real-world conditions. Not tests — demonstrations.
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use crate::mesh::MeshSimulator;
 use crate::message::{Message, Signal, Visibility};
-use crate::transport::SharedInbox;  
+use crate::transport::SharedInbox;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 // ─── Scenario 1: Flash Flood — Tamil Nadu Coastline ──────────────────────────
 // Rising water cuts off nodes progressively. Some nodes report from indoors.
@@ -24,22 +24,22 @@ pub fn scenario_flood() {
     let mut sim = MeshSimulator::new();
 
     // Coastal village: 8 civilians, 1 liar, 1 will go offline
-    sim.add_node("ravi",      "coastal-north", inbox.clone()); // fisherman, outdoor
-    sim.add_node("priya",     "coastal-north", inbox.clone()); // teacher, indoor
-    sim.add_node("kumar",     "coastal-south", inbox.clone()); // shopkeeper
-    sim.add_node("meera",     "coastal-south", inbox.clone()); // liar — politically motivated to downplay
-    sim.add_node("arjun",     "inland-relief", inbox.clone()); // relief coordinator, can help
-    sim.add_node("lakshmi",   "inland-relief", inbox.clone()); // nurse, can help
-    sim.add_node("selvam",    "coastal-north", inbox.clone()); // will lose phone in flood
+    sim.add_node("ravi", "coastal-north", inbox.clone()); // fisherman, outdoor
+    sim.add_node("priya", "coastal-north", inbox.clone()); // teacher, indoor
+    sim.add_node("kumar", "coastal-south", inbox.clone()); // shopkeeper
+    sim.add_node("meera", "coastal-south", inbox.clone()); // liar — politically motivated to downplay
+    sim.add_node("arjun", "inland-relief", inbox.clone()); // relief coordinator, can help
+    sim.add_node("lakshmi", "inland-relief", inbox.clone()); // nurse, can help
+    sim.add_node("selvam", "coastal-north", inbox.clone()); // will lose phone in flood
     sim.add_node("district-control", "inland-relief", inbox.clone()); // official node
 
-    sim.connect("ravi",      "priya");
-    sim.connect("priya",     "kumar");
-    sim.connect("kumar",     "meera");
-    sim.connect("meera",     "arjun");
-    sim.connect("arjun",     "lakshmi");
-    sim.connect("lakshmi",   "district-control");
-    sim.connect("ravi",      "selvam");
+    sim.connect("ravi", "priya");
+    sim.connect("priya", "kumar");
+    sim.connect("kumar", "meera");
+    sim.connect("meera", "arjun");
+    sim.connect("arjun", "lakshmi");
+    sim.connect("lakshmi", "district-control");
+    sim.connect("ravi", "selvam");
 
     println!("=== T+0: Cyclone makes landfall ===");
     println!("Network: 8 nodes across coastal and inland zones\n");
@@ -48,39 +48,58 @@ pub fn scenario_flood() {
     println!("--- T+15 min: Storm surge reaches coastal zone ---");
 
     sim.originate("ravi", {
-        let mut m = Message::new("r1", "ravi",
-            Signal::new(4, true, false, true, 5, Visibility::Direct)
-                .with_gps(11.3410, 79.8012),
-            Some("water rising fast, knee deep on main street"));
+        let mut m = Message::new(
+            "r1",
+            "ravi",
+            Signal::new(4, true, false, true, 5, Visibility::Direct).with_gps(11.3410, 79.8012),
+            Some("water rising fast, knee deep on main street"),
+        );
         m.priority = crate::message::MessagePriority::High;
         m
     });
 
-    sim.originate("priya", Message::new("r2", "priya",
-            Signal::new(2, false, false, false, 2, Visibility::Unknown)
-                .with_gps(11.3415, 79.8018),
-            Some("indoors, can hear water, cannot see outside"))
+    sim.originate(
+        "priya",
+        Message::new(
+            "r2",
+            "priya",
+            Signal::new(2, false, false, false, 2, Visibility::Unknown).with_gps(11.3415, 79.8018),
+            Some("indoors, can hear water, cannot see outside"),
+        ),
     );
 
     sim.originate("selvam", {
-        let mut m = Message::new("r3", "selvam",
+        let mut m = Message::new(
+            "r3",
+            "selvam",
             Signal::new(5, true, false, true, 5, Visibility::Direct),
-            Some("boat torn loose, water entering ground floor"));
+            Some("boat torn loose, water entering ground floor"),
+        );
         m.priority = crate::message::MessagePriority::Critical;
         m
     });
 
     // Meera lies — politically motivated to downplay disaster response
-    sim.originate("meera", Message::new("r4", "meera",
+    sim.originate(
+        "meera",
+        Message::new(
+            "r4",
+            "meera",
             Signal::new(1, false, true, false, 5, Visibility::Direct),
-            Some("situation manageable, no evacuation needed"))
+            Some("situation manageable, no evacuation needed"),
+        ),
     );
 
-    sim.originate("arjun", Message::new("r5", "arjun",
+    sim.originate(
+        "arjun",
+        Message::new(
+            "r5",
+            "arjun",
             Signal::new(1, false, true, true, 5, Visibility::Direct)
                 .with_gps(11.3180, 79.7940)
                 .with_resource("transport"),
-            Some("inland relief camp ready, have 3 trucks available"))
+            Some("inland relief camp ready, have 3 trucks available"),
+        ),
     );
 
     sim.drain();
@@ -90,30 +109,48 @@ pub fn scenario_flood() {
 
     // Round 2: T+45 minutes — selvam's phone submerged
     println!("\n--- T+45 min: Selvam's phone submerged by rising water ---");
-    if let Some(n) = sim.nodes.get_mut("selvam") { n.go_offline(); }
+    if let Some(n) = sim.nodes.get_mut("selvam") {
+        n.go_offline();
+    }
 
     sim.originate("ravi", {
-        let mut m = Message::rescue("rescue-ravi", "ravi",
-            Some("trapped on roof, 4 family members, GPS: 11.3410,79.8012"));
+        let mut m = Message::rescue(
+            "rescue-ravi",
+            "ravi",
+            Some("trapped on roof, 4 family members, GPS: 11.3410,79.8012"),
+        );
         m.signal = m.signal.with_gps(11.3410, 79.8012);
         m
     });
 
-    sim.originate("kumar", Message::new("r6", "kumar",
-            Signal::new(5, true, false, true, 5, Visibility::Direct)
-                .with_gps(11.3390, 79.8005),
-            Some("entire street underwater, 12 families need boats"))
+    sim.originate(
+        "kumar",
+        Message::new(
+            "r6",
+            "kumar",
+            Signal::new(5, true, false, true, 5, Visibility::Direct).with_gps(11.3390, 79.8005),
+            Some("entire street underwater, 12 families need boats"),
+        ),
     );
 
-    sim.originate("meera", Message::new("r7", "meera",
+    sim.originate(
+        "meera",
+        Message::new(
+            "r7",
+            "meera",
             Signal::new(1, false, true, false, 5, Visibility::Direct),
-            Some("overreaction, drainage systems handling it"))
+            Some("overreaction, drainage systems handling it"),
+        ),
     );
 
-    sim.originate("arjun", Message::new("r8", "arjun",
-            Signal::new(1, false, true, true, 5, Visibility::Direct)
-                .with_resource("transport"),
-            Some("dispatching trucks, need GPS coordinates"))
+    sim.originate(
+        "arjun",
+        Message::new(
+            "r8",
+            "arjun",
+            Signal::new(1, false, true, true, 5, Visibility::Direct).with_resource("transport"),
+            Some("dispatching trucks, need GPS coordinates"),
+        ),
     );
 
     sim.drain();
@@ -200,14 +237,20 @@ pub fn scenario_earthquake() {
     println!("  ⚡ apt-08, apt-09, apt-10 phones destroyed by collapse");
     for i in [8usize, 9, 10] {
         let id = format!("apt-{:02}", i);
-        if let Some(n) = sim.nodes.get_mut(&id) { n.go_offline(); }
+        if let Some(n) = sim.nodes.get_mut(&id) {
+            n.go_offline();
+        }
     }
 
     // SAR team reports what they observe
-    sim.originate("sar-001", Message::new("sar-obs-1", "sar-001",
-            Signal::new(5, false, true, true, 5, Visibility::Direct)
-                .with_gps(37.5765, 36.9228),
-            Some("multiple structural collapses visible, dispatching teams"))
+    sim.originate(
+        "sar-001",
+        Message::new(
+            "sar-obs-1",
+            "sar-001",
+            Signal::new(5, false, true, true, 5, Visibility::Direct).with_gps(37.5765, 36.9228),
+            Some("multiple structural collapses visible, dispatching teams"),
+        ),
     );
 
     sim.drain();
@@ -217,20 +260,32 @@ pub fn scenario_earthquake() {
 
     // T+22 minutes: Aftershock M5.2
     println!("\n--- T+22 min: Aftershock M5.2 — secondary collapses ---");
-    if let Some(n) = sim.nodes.get_mut("apt-04") { n.go_offline(); }
-    if let Some(n) = sim.nodes.get_mut("apt-06") { n.go_offline(); }
+    if let Some(n) = sim.nodes.get_mut("apt-04") {
+        n.go_offline();
+    }
+    if let Some(n) = sim.nodes.get_mut("apt-06") {
+        n.go_offline();
+    }
 
     // Remaining survivors send updated status
     sim.originate("apt-01", {
-        let mut m = Message::rescue("panic-01-update", "apt-01",
-            Some("aftershock worsened collapse, now 5 people confirmed trapped"));
+        let mut m = Message::rescue(
+            "panic-01-update",
+            "apt-01",
+            Some("aftershock worsened collapse, now 5 people confirmed trapped"),
+        );
         m.signal = m.signal.with_gps(37.5762, 36.9225);
         m
     });
 
-    sim.originate("sar-002", Message::new("sar-obs-2", "sar-002",
+    sim.originate(
+        "sar-002",
+        Message::new(
+            "sar-obs-2",
+            "sar-002",
             Signal::new(5, false, true, true, 5, Visibility::Direct),
-            Some("aftershock caused 2 additional collapses, need more teams"))
+            Some("aftershock caused 2 additional collapses, need more teams"),
+        ),
     );
 
     sim.drain();
@@ -239,11 +294,16 @@ pub fn scenario_earthquake() {
 
     println!("\n=== Earthquake Scenario — Rescue Request Survival Check ===");
     for (id, node) in &sim.nodes {
-        let rescue_count = node.persistent_messages.values()
+        let rescue_count = node
+            .persistent_messages
+            .values()
             .filter(|m| m.message_type == "rescue")
             .count();
         if rescue_count > 0 || !node.is_online {
-            println!("  [{}] online:{} rescue_msgs_held:{}", id, node.is_online, rescue_count);
+            println!(
+                "  [{}] online:{} rescue_msgs_held:{}",
+                id, node.is_online, rescue_count
+            );
         }
     }
 }
@@ -269,11 +329,11 @@ pub fn scenario_conflict() {
     sim.add_node("civ-003", "district-7", inbox.clone());
     sim.add_node("civ-004", "district-7", inbox.clone());
     // Enemy-injected nodes — look like civilians, report false "safe"
-    sim.add_node("enemy-a",  "district-7", inbox.clone());
-    sim.add_node("enemy-b",  "district-7", inbox.clone());
-    sim.add_node("enemy-c",  "district-7", inbox.clone());
+    sim.add_node("enemy-a", "district-7", inbox.clone());
+    sim.add_node("enemy-b", "district-7", inbox.clone());
+    sim.add_node("enemy-c", "district-7", inbox.clone());
     // UN observer team
-    sim.add_node("un-001",   "district-7", inbox.clone());
+    sim.add_node("un-001", "district-7", inbox.clone());
 
     sim.connect("civ-001", "civ-002");
     sim.connect("civ-002", "enemy-a");
@@ -286,32 +346,68 @@ pub fn scenario_conflict() {
     println!("=== Active conflict — 3 enemy nodes seeding false intelligence ===\n");
 
     // Round 1: Enemy nodes outnumbered 4:3 — honest majority should win
-    sim.originate("civ-001", Message::new("c1", "civ-001",
-        Signal::new(5, true, false, true, 5, Visibility::Direct),
-        Some("active shelling, building on fire, need evacuation")));
+    sim.originate(
+        "civ-001",
+        Message::new(
+            "c1",
+            "civ-001",
+            Signal::new(5, true, false, true, 5, Visibility::Direct),
+            Some("active shelling, building on fire, need evacuation"),
+        ),
+    );
 
-    sim.originate("civ-002", Message::new("c2", "civ-002",
-        Signal::new(5, true, false, true, 5, Visibility::Direct),
-        Some("sniper fire, cannot leave building")));
+    sim.originate(
+        "civ-002",
+        Message::new(
+            "c2",
+            "civ-002",
+            Signal::new(5, true, false, true, 5, Visibility::Direct),
+            Some("sniper fire, cannot leave building"),
+        ),
+    );
 
-    sim.originate("civ-003", Message::new("c3", "civ-003",
-        Signal::new(4, true, false, true, 4, Visibility::Direct),
-        Some("explosions heard, indirect fire in area")));
+    sim.originate(
+        "civ-003",
+        Message::new(
+            "c3",
+            "civ-003",
+            Signal::new(4, true, false, true, 4, Visibility::Direct),
+            Some("explosions heard, indirect fire in area"),
+        ),
+    );
 
-    sim.originate("civ-004", Message::new("c4", "civ-004",
-        Signal::new(5, true, false, true, 5, Visibility::Direct),
-        Some("casualties on street, medical needed urgently")));
+    sim.originate(
+        "civ-004",
+        Message::new(
+            "c4",
+            "civ-004",
+            Signal::new(5, true, false, true, 5, Visibility::Direct),
+            Some("casualties on street, medical needed urgently"),
+        ),
+    );
 
     // Enemy nodes report false all-clear
     for (id, msg_id) in [("enemy-a", "e1"), ("enemy-b", "e2"), ("enemy-c", "e3")] {
-        sim.originate(id, Message::new(msg_id, id,
-            Signal::new(1, false, true, false, 5, Visibility::Direct),
-            Some("area secure, no threat observed")));
+        sim.originate(
+            id,
+            Message::new(
+                msg_id,
+                id,
+                Signal::new(1, false, true, false, 5, Visibility::Direct),
+                Some("area secure, no threat observed"),
+            ),
+        );
     }
 
-    sim.originate("un-001", Message::new("un1", "un-001",
-        Signal::new(4, false, true, true, 4, Visibility::Direct),
-        Some("UN observer: confirmed civilian distress, requesting corridor")));
+    sim.originate(
+        "un-001",
+        Message::new(
+            "un1",
+            "un-001",
+            Signal::new(4, false, true, true, 4, Visibility::Direct),
+            Some("UN observer: confirmed civilian distress, requesting corridor"),
+        ),
+    );
 
     sim.drain();
     println!("--- Consensus Round 1 (enemy nodes should be flagged) ---");
@@ -335,71 +431,116 @@ pub fn scenario_hazmat() {
     let mut sim = MeshSimulator::new();
 
     // Contamination zone (upwind) — severity 5
-    sim.add_node("worker-1",   "plant-zone",     inbox.clone());
-    sim.add_node("worker-2",   "plant-zone",     inbox.clone());
-    sim.add_node("security-1", "plant-zone",     inbox.clone());
+    sim.add_node("worker-1", "plant-zone", inbox.clone());
+    sim.add_node("worker-2", "plant-zone", inbox.clone());
+    sim.add_node("security-1", "plant-zone", inbox.clone());
     // Evacuation zone (downwind) — severity 4, people need to leave
-    sim.add_node("resident-a", "evac-zone",      inbox.clone());
-    sim.add_node("resident-b", "evac-zone",      inbox.clone());
-    sim.add_node("resident-c", "evac-zone",      inbox.clone());
+    sim.add_node("resident-a", "evac-zone", inbox.clone());
+    sim.add_node("resident-b", "evac-zone", inbox.clone());
+    sim.add_node("resident-c", "evac-zone", inbox.clone());
     // Safe zone (perpendicular to wind) — severity 1 honestly
-    sim.add_node("safe-x",     "clear-zone",     inbox.clone());
-    sim.add_node("safe-y",     "clear-zone",     inbox.clone());
-    sim.add_node("safe-z",     "clear-zone",     inbox.clone());
+    sim.add_node("safe-x", "clear-zone", inbox.clone());
+    sim.add_node("safe-y", "clear-zone", inbox.clone());
+    sim.add_node("safe-z", "clear-zone", inbox.clone());
     // First responders — staging at perimeter
-    sim.add_node("hazmat-1",   "perimeter",      inbox.clone());
-    sim.add_node("hazmat-2",   "perimeter",      inbox.clone());
+    sim.add_node("hazmat-1", "perimeter", inbox.clone());
+    sim.add_node("hazmat-2", "perimeter", inbox.clone());
 
-    sim.connect("worker-1",   "worker-2");
-    sim.connect("worker-2",   "security-1");
+    sim.connect("worker-1", "worker-2");
+    sim.connect("worker-2", "security-1");
     sim.connect("security-1", "resident-a");
     sim.connect("resident-a", "resident-b");
     sim.connect("resident-b", "resident-c");
     sim.connect("resident-c", "hazmat-1");
-    sim.connect("hazmat-1",   "hazmat-2");
-    sim.connect("safe-x",     "safe-y");
-    sim.connect("safe-y",     "safe-z");
+    sim.connect("hazmat-1", "hazmat-2");
+    sim.connect("safe-x", "safe-y");
+    sim.connect("safe-y", "safe-z");
 
     println!("=== Chemical plant explosion — multi-zone crisis ===");
     println!("plant-zone: contaminated. evac-zone: at risk. clear-zone: safe.\n");
 
     // Plant zone: max severity, immediate rescue
-    sim.originate("worker-1", Message::rescue("w-panic", "worker-1",
-        Some("explosion, chemical burn, cannot evacuate, need hazmat rescue")));
-    sim.originate("worker-2", Message::new("w2", "worker-2",
-        Signal::new(5, true, false, true, 5, Visibility::Direct)
-            .with_gps(51.4912, -0.1442)
-            .with_resource("medical"),
-        Some("acid cloud visible, multiple workers down")));
-    sim.originate("security-1", Message::new("s1", "security-1",
-        Signal::new(5, false, false, true, 5, Visibility::Direct),
-        Some("plant sealed, shelter in place for all remaining staff")));
+    sim.originate(
+        "worker-1",
+        Message::rescue(
+            "w-panic",
+            "worker-1",
+            Some("explosion, chemical burn, cannot evacuate, need hazmat rescue"),
+        ),
+    );
+    sim.originate(
+        "worker-2",
+        Message::new(
+            "w2",
+            "worker-2",
+            Signal::new(5, true, false, true, 5, Visibility::Direct)
+                .with_gps(51.4912, -0.1442)
+                .with_resource("medical"),
+            Some("acid cloud visible, multiple workers down"),
+        ),
+    );
+    sim.originate(
+        "security-1",
+        Message::new(
+            "s1",
+            "security-1",
+            Signal::new(5, false, false, true, 5, Visibility::Direct),
+            Some("plant sealed, shelter in place for all remaining staff"),
+        ),
+    );
 
     // Evac zone: severity 4 — get out
     for (id, msg_id, note) in [
-        ("resident-a", "ra", "smell chemical, eyes burning, evacuating"),
-        ("resident-b", "rb", "family evacuating on foot, need transport"),
-        ("resident-c", "rc", "elderly parent cannot walk, need medical transport"),
+        (
+            "resident-a",
+            "ra",
+            "smell chemical, eyes burning, evacuating",
+        ),
+        (
+            "resident-b",
+            "rb",
+            "family evacuating on foot, need transport",
+        ),
+        (
+            "resident-c",
+            "rc",
+            "elderly parent cannot walk, need medical transport",
+        ),
     ] {
-        sim.originate(id, Message::new(msg_id, id,
-            Signal::new(4, true, false, true, 4, Visibility::Direct)
-                .with_resource("transport"),
-            Some(note)));
+        sim.originate(
+            id,
+            Message::new(
+                msg_id,
+                id,
+                Signal::new(4, true, false, true, 4, Visibility::Direct).with_resource("transport"),
+                Some(note),
+            ),
+        );
     }
 
     // Clear zone: honestly severity 1 — this should NOT be penalised
-    for (id, msg_id) in [("safe-x","sx"),("safe-y","sy"),("safe-z","sz")] {
-        sim.originate(id, Message::new(msg_id, id,
-            Signal::new(1, false, true, true, 5, Visibility::Direct)
-                .with_resource("shelter"),
-            Some("area clear of contamination, can shelter evacuees")));
+    for (id, msg_id) in [("safe-x", "sx"), ("safe-y", "sy"), ("safe-z", "sz")] {
+        sim.originate(
+            id,
+            Message::new(
+                msg_id,
+                id,
+                Signal::new(1, false, true, true, 5, Visibility::Direct).with_resource("shelter"),
+                Some("area clear of contamination, can shelter evacuees"),
+            ),
+        );
     }
 
     // Hazmat team
-    sim.originate("hazmat-1", Message::new("h1", "hazmat-1",
-        Signal::new(1, false, true, true, 5, Visibility::Direct)
-            .with_resource("medical"),
-        Some("hazmat team staged at perimeter, awaiting entry clearance")));
+    sim.originate(
+        "hazmat-1",
+        Message::new(
+            "h1",
+            "hazmat-1",
+            Signal::new(1, false, true, true, 5, Visibility::Direct).with_resource("medical"),
+            Some("hazmat team staged at perimeter, awaiting entry clearance"),
+        ),
+    );
 
     sim.drain();
     println!("--- Consensus (zones must be isolated — clear-zone severity 1 is honest) ---");
@@ -410,11 +551,16 @@ pub fn scenario_hazmat() {
     for node in sim.nodes.values() {
         let entry = zone_summary.entry(node.zone.clone()).or_insert((0, 0));
         entry.0 += 1;
-        entry.1 += node.persistent_messages.values()
+        entry.1 += node
+            .persistent_messages
+            .values()
             .filter(|m| m.message_type == "rescue")
             .count() as u32;
     }
     for (zone, (nodes, rescues)) in &zone_summary {
-        println!("  Zone {:20} | {} nodes | {} rescue msgs", zone, nodes, rescues);
+        println!(
+            "  Zone {:20} | {} nodes | {} rescue msgs",
+            zone, nodes, rescues
+        );
     }
 }

@@ -15,11 +15,14 @@ struct SimpleLcg {
 
 impl SimpleLcg {
     fn new(seed: u64) -> Self {
-        SimpleLcg { state: seed.wrapping_add(1) }
+        SimpleLcg {
+            state: seed.wrapping_add(1),
+        }
     }
 
     fn next_u64(&mut self) -> u64 {
-        self.state = self.state
+        self.state = self
+            .state
             .wrapping_mul(6_364_136_223_846_793_005)
             .wrapping_add(1_442_695_040_888_963_407);
         self.state
@@ -105,7 +108,9 @@ fn run_packet_loss_scenario(loss_rate: f32, label: &str) {
             if nodes[i].online && nodes[i].received.contains(&msg_id) {
                 let peers = nodes[i].peers.clone();
                 for &peer in &peers {
-                    if !nodes[peer].online { continue; }
+                    if !nodes[peer].online {
+                        continue;
+                    }
                     if !nodes[peer].received.contains(&msg_id) {
                         // Apply packet loss
                         if rng.next_f32() >= loss_rate {
@@ -121,7 +126,8 @@ fn run_packet_loss_scenario(loss_rate: f32, label: &str) {
             nodes[peer].rescue_msgs.push(id);
         }
 
-        let reached = nodes.iter()
+        let reached = nodes
+            .iter()
             .filter(|n| n.online && n.received.contains(&msg_id))
             .count();
         let total_online = nodes.iter().filter(|n| n.online).count();
@@ -132,7 +138,8 @@ fn run_packet_loss_scenario(loss_rate: f32, label: &str) {
         }
     }
 
-    let reached = nodes.iter()
+    let reached = nodes
+        .iter()
         .filter(|n| n.received.contains(&msg_id))
         .count();
     let wall_ms = t0.elapsed().as_millis();
@@ -155,14 +162,16 @@ fn run_packet_loss_scenario(loss_rate: f32, label: &str) {
     );
 
     // Rescue persistence check
-    let rescue_holders = nodes.iter()
-        .filter(|n| !n.rescue_msgs.is_empty())
-        .count();
+    let rescue_holders = nodes.iter().filter(|n| !n.rescue_msgs.is_empty()).count();
     println!(
         "  Rescue msg held by {}/{} nodes — {}",
         rescue_holders,
         node_count,
-        if rescue_holders > 0 { "✅ rescue survived" } else { "❌ rescue lost" }
+        if rescue_holders > 0 {
+            "✅ rescue survived"
+        } else {
+            "❌ rescue lost"
+        }
     );
 }
 
@@ -208,11 +217,15 @@ fn run_crash_restart_scenario() {
 
         let mut deliveries: Vec<(usize, String)> = Vec::new();
         for i in 0..node_count {
-            if !nodes[i].online { continue; }
+            if !nodes[i].online {
+                continue;
+            }
             if nodes[i].received.contains(&msg_before) {
                 let peers = nodes[i].peers.clone();
                 for &peer in &peers {
-                    if !nodes[peer].online { continue; }
+                    if !nodes[peer].online {
+                        continue;
+                    }
                     if !nodes[peer].received.contains(&msg_before) {
                         // Low loss (5%) for normal operation
                         if rng.next_f32() >= 0.05 {
@@ -237,13 +250,13 @@ fn run_crash_restart_scenario() {
             for _ in 0..20 {
                 let mut d2: Vec<(usize, String)> = Vec::new();
                 for i in 0..node_count {
-                    if !nodes[i].online { continue; }
+                    if !nodes[i].online {
+                        continue;
+                    }
                     if nodes[i].received.contains(&msg_after) {
                         let peers = nodes[i].peers.clone();
                         for &peer in &peers {
-                            if nodes[peer].online
-                                && !nodes[peer].received.contains(&msg_after)
-                            {
+                            if nodes[peer].online && !nodes[peer].received.contains(&msg_after) {
                                 d2.push((peer, msg_after.clone()));
                             }
                         }
@@ -255,7 +268,8 @@ fn run_crash_restart_scenario() {
                 }
             }
 
-            let reached_after = nodes.iter()
+            let reached_after = nodes
+                .iter()
                 .filter(|n| n.online && n.received.contains(&msg_after))
                 .count();
             println!(
@@ -329,11 +343,15 @@ fn run_reconnect_storm() {
         let mut attempted_duplicates = 0;
 
         for i in 0..node_count {
-            if !nodes[i].online { continue; }
+            if !nodes[i].online {
+                continue;
+            }
             if nodes[i].received.contains(&msg_id) {
                 let peers = nodes[i].peers.clone();
                 for &peer in &peers {
-                    if !nodes[peer].online { continue; }
+                    if !nodes[peer].online {
+                        continue;
+                    }
                     if nodes[peer].received.contains(&msg_id) {
                         attempted_duplicates += 1; // would be replay-dropped
                     } else if rng.next_f32() >= 0.05 {
@@ -373,7 +391,10 @@ fn run_reconnect_storm() {
         }
     }
 
-    let final_reached = nodes.iter().filter(|n| n.received.contains(&msg_id)).count();
+    let final_reached = nodes
+        .iter()
+        .filter(|n| n.received.contains(&msg_id))
+        .count();
     let wall_ms = t0.elapsed().as_millis();
 
     println!(
@@ -390,7 +411,11 @@ fn run_reconnect_storm() {
     );
     println!(
         "  Rescue survived reconnect storm: {}",
-        if final_reached == node_count { "✅ yes" } else { "⚠ partial" }
+        if final_reached == node_count {
+            "✅ yes"
+        } else {
+            "⚠ partial"
+        }
     );
 }
 
