@@ -1,7 +1,11 @@
 # CRCI — Current State
+
 # Update this at the END of every session before committing.
+
 # This is the single source of truth for where the project is right now.
-# Last updated: End of Session 7
+
+# Last updated: End of Session 18
+
 
 ---
 
@@ -9,12 +13,16 @@
 
 ```
 src/
-  main.rs         — wiring only, entry point
-  identity.rs     — Ed25519 keypair, NodeId, signing, verification
-  message.rs      — Message types, serialization, signature fields
-  node.rs         — Node struct, reputation engine, behavioral logic
-  network.rs      — Transport, peer discovery, gossip propagation
-  state.rs        — State history, SHA3-256 Merkle chain
+main.rs
+identity.rs
+message.rs
+node.rs
+network.rs
+state.rs
+replay.rs         — NEW: Lamport sequence, clock drift tolerance
+bench.rs          — NEW: Benchmark harness (5 measurements)
+crisis.rs         — Crisis scenarios (flood, earthquake, conflict, hazmat)
+stress.rs         — Stress tests (Byzantine, Sybil, forgery, partition)
 ```
 
 All modules introduced in Session 6. Module split is complete and stable.
@@ -95,17 +103,20 @@ Do not add dependencies without updating this file.
 
 | Session | Status | Capability |
 |---|---|---|
-| 1 | Complete | Node struct, reputation engine, Byzantine detection |
-| 2 | Complete | Peer discovery, gossip protocol, deduplication |
-| 3 | Complete | Structured signal input, anomaly detection, consensus engine |
-| 4 | Complete | Geographic zone clustering, zone-isolated consensus |
-| 5 | Complete | Confidence/visibility fields, panic button, rescue persistence, MCE, offline adoption |
-| 6 | Complete | Module split, Ed25519 signatures, SHA3-256 Merkle chain, serde |
-| 7 | Complete | rust-libp2p transport layer |
-| 8+9 | Next | Mesh transport simulation + distributed node architecture (combined) |
-| 10 | Planned | Encrypted local storage |
-| 11–15 | Planned | Stress testing, adversarial hardening, documentation |
+| 1–7 | Complete | Core (signatures, gossip, zones, MCE, persistence) |
+| 8 | Complete | Mesh transport + distributed architecture |
+| 10 | Complete | Encrypted local storage |
+| 11–13 | Complete | Stress tests + adversarial hardening |
+| 14–16 | Complete | Crisis scenarios + GPS + priority queue |
+| 17 | Complete | Replay protection + Lamport sequence |
+| 18 | Complete | Benchmark harness (5 measurements for paper) |
+| **19** | **Next** | **Chaos engineering (packet loss, node crashes)** |
 
+## Current Development Priority (Next Session)
+
+**Session 19: Chaos Engineering**
+Test system under 10% and 40% packet loss, simultaneous node restarts, reconnect storms.
+One file: `src/chaos.rs` + call in `main()`.
 ---
 
 ## Current Development Priority (Next Session)
@@ -116,6 +127,7 @@ Goal: Multiple real nodes communicating over simulated BLE/WiFi Direct/LoRa tran
 No more single-process simulation — actual distributed message passing between node instances.
 
 Pre-session checklist:
+
 - [ ] Confirm Session 7 (libp2p) compiles cleanly with no warnings
 - [ ] Confirm all existing tests pass
 - [ ] Run `rustfmt` on all files
@@ -137,6 +149,7 @@ Pre-session checklist:
 ## How to Update This File
 
 At the end of every session:
+
 1. Move the completed session row to "Complete" in the roadmap table.
 2. Add any new known issues discovered.
 3. Add any non-obvious decisions made this session to the decisions section.
