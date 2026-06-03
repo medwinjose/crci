@@ -4,7 +4,7 @@
 
 # This is the single source of truth for where the project is right now.
 
-# Last updated: End of Session 25
+# Last updated: End of Session 26
 
 ---
 
@@ -61,6 +61,8 @@ All modules introduced in Session 6. Module split is complete and stable.
 - Integration layer wiring validation, AEDA, battery, and TTL (Session 24)
 - STRIDE security hardening: opaque Node IDs, payload audits, signed audit log, zone membership vouching, reputation-weighted MCE (Session 25)
 - Safety features: GOODBYE signal, priority message queue, rescue resolution (Session 25)
+- Sequence overflow protection actively preventing long-term replay attacks (Session 26)
+- Safe mutex and serialization execution — zero unwrap panics in production logic (Session 26)
 
 ---
 
@@ -84,7 +86,7 @@ Do not add dependencies without updating this file.
 
 - [ ] Over-penalization bug: fixed in Session 3, monitor for regression in new penalty paths
 - [ ] Stale observation carryover: fixed in Session 3, ensure zone isolation didn't reintroduce it
-- [ ] `unwrap()` calls may still exist in early session code — audit needed before v1
+- [x] `unwrap()` calls may still exist in early session code (Audit completed, unwraps removed from production paths in Session 26)
 - [ ] No persistent storage yet (planned: Session 10)
 - [ ] Device-agnostic cross-platform support deferred — not addressed yet
 - [x] Broader security pass pending (Completed Session 25 - STRIDE hardening)
@@ -136,18 +138,19 @@ Do not add dependencies without updating this file.
 | 23      | Complete | Battery-aware throttling & TTL enforcement         |
 | 24      | Complete | Integration pipeline + bug fixes                   |
 | 25      | Complete | STRIDE security hardening + safety features        |
-| **26**  | **Next** | **TBD**                                            |
+| 26      | Complete | Debug audit, logic fixes, & unwrap cleanup         |
+| **27**  | **Next** | **TBD**                                            |
 
 ## Current Development Priority (Next Session)
 
-**Session 26: TBD**
+**Session 27: TBD**
 Wait for the next set of instructions.
 
 Pre-session checklist:
 
 - [ ] Confirm all existing tests pass
 - [ ] Run `rustfmt` on all files
-- [ ] Commit current state with message format: `session-26: next steps`
+- [ ] Commit current state with message format: `session-27: next steps`
 
 ---
 
