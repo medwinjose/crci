@@ -4,7 +4,7 @@
 
 # This is the single source of truth for where the project is right now.
 
-# Last updated: End of Session 19
+# Last updated: End of Session 23
 
 ---
 
@@ -18,11 +18,15 @@ message.rs
 node.rs
 network.rs
 state.rs
-replay.rs         — NEW: Lamport sequence, clock drift tolerance
-bench.rs          — NEW: Benchmark harness (5 measurements)
-chaos.rs          — NEW: Chaos engineering scenarios
+replay.rs         — Lamport sequence, clock drift tolerance
+bench.rs          — Benchmark harness (5 measurements)
+chaos.rs          — Chaos engineering scenarios
 crisis.rs         — Crisis scenarios (flood, earthquake, conflict, hazmat)
 stress.rs         — Stress tests (Byzantine, Sybil, forgery, partition)
+validation.rs     — NEW: Input validation and rate limiting
+aeda.rs           — NEW: Autonomous emergency decision architecture
+battery.rs        — NEW: Battery-aware gossip throttling
+ttl.rs            — NEW: Message TTL enforcement and storage pruning
 ```
 
 All modules introduced in Session 6. Module split is complete and stable.
@@ -47,6 +51,11 @@ All modules introduced in Session 6. Module split is complete and stable.
 - MCE (Mass Casualty Event) declaration at 3+ rescue requests per zone
 - Serde serialization across all message types
 - rust-libp2p transport layer (Session 7 — integrated, verify compile status)
+- Chaos engineering scenarios: packet loss, node crashes, reconnect storms (Session 19)
+- Input validation, rate limiting, and panic cooldowns (Session 21)
+- Autonomous Emergency Decision Architecture (AEDA) (Session 22)
+- Battery-aware gossip throttling and dynamic drain rates (Session 23)
+- Message TTL enforcement, bounded storage pruning, and tombstones (Session 23)
 
 ---
 
@@ -110,29 +119,22 @@ Do not add dependencies without updating this file.
 | 14–16   | Complete | Crisis scenarios + GPS + priority queue            |
 | 17      | Complete | Replay protection + Lamport sequence               |
 | 18      | Complete | Benchmark harness (5 measurements for paper)       |
-| **19**  | **Next** | **Chaos engineering (packet loss, node crashes)**  |
+| 19      | Complete | Chaos engineering (packet loss, node crashes)      |
+| 21      | Complete | Input validation + rate limiting                   |
+| 22      | Complete | Autonomous Emergency Decisions (AEDA)              |
+| 23      | Complete | Battery-aware throttling & TTL enforcement         |
+| **24**  | **Next** | **TBD**                                            |
 
 ## Current Development Priority (Next Session)
 
-**Session 19: Chaos Engineering**
-Test system under 10% and 40% packet loss, simultaneous node restarts, reconnect storms.
-One file: `src/chaos.rs` + call in `main()`.
-
----
-
-## Current Development Priority (Next Session)
-
-**Session 8+9: Mesh transport simulation + distributed node architecture**
-
-Goal: Multiple real nodes communicating over simulated BLE/WiFi Direct/LoRa transports.
-No more single-process simulation — actual distributed message passing between node instances.
+**Session 24: TBD**
+Wait for the next set of instructions.
 
 Pre-session checklist:
 
-- [ ] Confirm Session 7 (libp2p) compiles cleanly with no warnings
 - [ ] Confirm all existing tests pass
 - [ ] Run `rustfmt` on all files
-- [ ] Commit current state with message format: `session-7: libp2p transport layer`
+- [ ] Commit current state with message format: `session-24: next steps`
 
 ---
 
