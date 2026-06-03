@@ -594,6 +594,7 @@ fn main() {
         payload_bytes: 80,
         reputation: 1.0,
         round: 1,
+        seq: 1,
     };
     let v = pipe.process(&r);
     println!("  Alice rescue (full battery):    {:?}", v);
@@ -607,6 +608,7 @@ fn main() {
         payload_bytes: 80,
         reputation: 1.0,
         round: 1,
+        seq: 1,
     };
     let v2 = pipe.process(&r2);
     println!("  Charlie rescue (critical batt): {:?}", v2);
@@ -621,6 +623,7 @@ fn main() {
         payload_bytes: 40,
         reputation: 1.0,
         round: 1,
+        seq: 1,
     };
     let v3 = pipe.process(&n1);
     println!("  Charlie normal (critical batt): {:?}", v3);
@@ -635,6 +638,7 @@ fn main() {
         payload_bytes: 40,
         reputation: 0.5,
         round: 1,
+        seq: 1,
     };
     let v4 = pipe.process(&bad);
     println!("  Attacker invalid severity:      {:?}", v4);
@@ -650,6 +654,7 @@ fn main() {
             payload_bytes: 30,
             reputation: 0.9,
             round: 1,
+            seq: 1,
         });
     }
     println!("  Spammer (12 msgs, limit=10):    throttled/rejected as expected");
@@ -664,6 +669,7 @@ fn main() {
         payload_bytes: 60,
         reputation: 1.0,
         round: 1,
+        seq: 1,
     });
 
     let (esc, sus, dis) = pipe.aeda_summary();

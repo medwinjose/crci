@@ -13,7 +13,7 @@
 use crate::aeda::{AedaEngine, RescueEvent};
 use crate::battery::{BatteryState, BatteryTier};
 use crate::ttl::{StoredMessage, TtlStore};
-use crate::validation::{validate_node_id, validate_payload_size, validate_severity, RateLimiter};
+use crate::validation::{validate_node_id, validate_payload_size, validate_severity, validate_seq, RateLimiter};
 use std::collections::{HashMap, HashSet};
 
 // ── Message types for the integrated pipeline ─────────────────────
@@ -35,6 +35,7 @@ pub struct PipelineMessage {
     pub payload_bytes: usize,
     pub reputation: f32,
     pub round: u64,
+    pub seq: u64,
 }
 
 // ── Pipeline decision ─────────────────────────────────────────────
@@ -104,6 +105,12 @@ impl GossipPipeline {
         if let Err(e) = validate_node_id(&msg.origin_node) {
             self.rejected += 1;
             return PipelineVerdict::Reject(format!("invalid node id: {e}"));
+        }
+
+        // ── Stage 1.5: Sequence overflow validation ───────────────
+        if let Err(e) = validate_seq(msg.seq) {
+            self.rejected += 1;
+            return PipelineVerdict::Reject(format!("sequence overflow: {e}"));
         }
 
         // ── Stage 2: Severity validation ──────────────────────────
@@ -354,6 +361,7 @@ mod tests {
             payload_bytes: 50,
             reputation: 1.0,
             round: 0,
+            seq: 1,
         }
     }
 

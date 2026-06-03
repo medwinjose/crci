@@ -48,7 +48,10 @@ impl SimTransport {
 impl Transport for SimTransport {
     fn send(&self, to: &str, data: &[u8]) {
         // Drop bytes into the recipient's inbox
-        let mut inbox = self.inbox.lock().unwrap();
+        let mut inbox = match self.inbox.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
         inbox.entry(to.to_string()).or_default().push(data.to_vec());
     }
 

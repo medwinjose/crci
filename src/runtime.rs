@@ -236,7 +236,13 @@ impl NodeRuntime {
                 .insert(wire.id.clone(), wire.clone());
         }
         self.seen_messages.insert(wire.id.clone());
-        let payload = serde_json::to_vec(&wire).unwrap();
+        let payload = match serde_json::to_vec(&wire) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                println!("  ⚠ [{}] failed to serialize origination message: {}", self.id, e);
+                return;
+            }
+        };
         let sig_preview = wire
             .signature_bytes
             .iter()
@@ -263,7 +269,10 @@ impl NodeRuntime {
             return;
         }
         let messages: Vec<Vec<u8>> = {
-            let mut inbox = self.inbox.lock().unwrap();
+            let mut inbox = match self.inbox.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
             inbox.remove(&self.id).unwrap_or_default()
         };
         for raw in messages {
@@ -366,7 +375,10 @@ impl NodeRuntime {
                 wire.visibility == "unknown",
             ));
 
-            let payload = serde_json::to_vec(&wire).unwrap();
+            let payload = match serde_json::to_vec(&wire) {
+                Ok(bytes) => bytes,
+                Err(_) => continue,
+            };
             for peer in &self.peers.clone() {
                 self.transport.send(peer, &payload);
             }

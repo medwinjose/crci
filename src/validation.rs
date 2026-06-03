@@ -80,7 +80,7 @@ pub fn validate_severity(severity: f32) -> Result<u8, ValidationError> {
         return Err(ValidationError::NanOrInfinity);
     }
     let s = severity as u8;
-    if s < MIN_SEVERITY || s > MAX_SEVERITY {
+    if !(MIN_SEVERITY..=MAX_SEVERITY).contains(&s) {
         return Err(ValidationError::SeverityOutOfRange(severity));
     }
     Ok(s)
@@ -88,7 +88,7 @@ pub fn validate_severity(severity: f32) -> Result<u8, ValidationError> {
 
 /// Validate an integer severity directly.
 pub fn validate_severity_u8(severity: u8) -> Result<u8, ValidationError> {
-    if severity < MIN_SEVERITY || severity > MAX_SEVERITY {
+    if !(MIN_SEVERITY..=MAX_SEVERITY).contains(&severity) {
         return Err(ValidationError::SeverityOutOfRange(severity as f32));
     }
     Ok(severity)
