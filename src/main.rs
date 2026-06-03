@@ -1,4 +1,5 @@
 mod aeda;
+mod battery;
 mod bench;
 mod chaos;
 mod crisis;
@@ -12,6 +13,7 @@ mod runtime;
 mod storage;
 mod stress;
 mod transport;
+mod ttl;
 mod validation;
 
 use mesh::MeshSimulator;
@@ -453,4 +455,113 @@ fn main() {
     }
     println!();
     println!("  ✅ Session 22 AEDA complete.");
+
+    // ── Session 23: Battery-Aware Mode ───────────────────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════╗");
+    println!("║  SESSION 23A — BATTERY-AWARE GOSSIP THROTTLING           ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+
+    // Simulate 3 nodes draining from full → critical
+    let mut nodes_bat = vec![
+        battery::BatteryState::new("node-full", 85),
+        battery::BatteryState::new("node-low", 15),
+        battery::BatteryState::new("node-critical", 3),
+    ];
+
+    for state in &mut nodes_bat {
+        let rescue_fwd = state.should_forward(true);
+        let normal_fwd = state.should_forward(false);
+        println!(
+            "  [{}] tier={} | rescue forwarded={} | normal forwarded={}",
+            state.node_id,
+            state.tier.label(),
+            rescue_fwd,
+            normal_fwd
+        );
+    }
+
+    // Drain simulation: node-full goes critical over 20 rounds
+    let mut draining = battery::BatteryState::new("draining-node", 100);
+    for round in 0..20u8 {
+        draining.update(100 - round * 5);
+    }
+    println!(
+        "  After draining: {}% | tier={} | drain_rate={:.1}/round | est_rounds={}",
+        draining.percent,
+        draining.tier.label(),
+        draining.drain_rate_per_round(),
+        draining.estimated_rounds_remaining().unwrap_or(0)
+    );
+
+    let all_states = vec![
+        battery::BatteryState::new("a", 80),
+        battery::BatteryState::new("b", 12),
+        battery::BatteryState::new("c", 2),
+    ];
+    let summary = battery::NetworkBatterySummary::from_states(&all_states);
+    println!(
+        "  Network: {} nodes | full={} low={} critical={} | min={}% avg={:.1}%",
+        summary.total_nodes,
+        summary.full_count,
+        summary.low_count,
+        summary.critical_count,
+        summary.min_percent,
+        summary.avg_percent
+    );
+    println!("  ✅ Session 23A battery tests complete.");
+
+    // ── Session 23: TTL Enforcement ──────────────────────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════╗");
+    println!("║  SESSION 23B — MESSAGE TTL + STORAGE PRUNING             ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+
+    let mut store = ttl::TtlStore::new();
+
+    // Add 5 normal messages at round 0
+    for i in 0..5 {
+        store.store(ttl::StoredMessage::new_normal(&format!("msg-{i}"), 0));
+    }
+    // Add 2 rescue messages at round 0
+    store.store(ttl::StoredMessage::new_rescue("rescue-A", 0));
+    store.store(ttl::StoredMessage::new_rescue("rescue-B", 0));
+
+    println!(
+        "  Round 0: active={} rescue={}",
+        store.active_count(),
+        store.rescue_count()
+    );
+
+    // Prune at round 60 — all 5 normal messages should expire
+    let pruned = store.prune(60);
+    println!(
+        "  Round 60 prune: {} normal msgs pruned | active={} rescue={}",
+        pruned,
+        store.active_count(),
+        store.rescue_count()
+    );
+
+    // Resolve rescue-A — it can now expire
+    store.resolve_rescue("rescue-A");
+    let pruned2 = store.prune(510);
+    println!(
+        "  Round 510 prune after resolving rescue-A: {} pruned | active={} rescue={}",
+        pruned2,
+        store.active_count(),
+        store.rescue_count()
+    );
+
+    // Tombstone test: try to re-store a pruned message
+    let readmit = store.store(ttl::StoredMessage::new_normal("msg-0", 600));
+    println!(
+        "  Re-store of tombstoned msg-0: admitted={} (expected false)",
+        readmit
+    );
+
+    println!(
+        "  Total stored: {} | pruned: {} | evicted: {}",
+        store.total_stored, store.total_pruned, store.total_evicted
+    );
+    println!("  ✅ Session 23B TTL tests complete.");
 } // ← this is the closing brace of fn main()
