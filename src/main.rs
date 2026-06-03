@@ -4,6 +4,7 @@ mod bench;
 mod chaos;
 mod crisis;
 mod identity;
+mod integration;
 mod mesh;
 mod message;
 mod network;
@@ -564,4 +565,168 @@ fn main() {
         store.total_stored, store.total_pruned, store.total_evicted
     );
     println!("  ✅ Session 23B TTL tests complete.");
+
+    // ── Session 24: Integration Pipeline ─────────────────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════╗");
+    println!("║  SESSION 24 — INTEGRATED GOSSIP PIPELINE                 ║");
+    println!("║  Validation + Battery + TTL + AEDA wired together        ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+
+    let mut pipe = integration::GossipPipeline::new();
+
+    // Register node battery states
+    pipe.update_battery("alice", 85);
+    pipe.update_battery("bob", 15);
+    pipe.update_battery("charlie", 2);
+
+    // Round 1: mix of valid, invalid, rescue, and spam
+    println!("\n  --- Round 1 ---");
+
+    // Valid rescue from charlie (critical battery) — MUST go through
+    let r = integration::PipelineMessage {
+        id: "rescue-alice".to_string(),
+        origin_node: "alice".to_string(),
+        zone: "zone-hot".to_string(),
+        severity: 5,
+        kind: integration::MessageKind::Rescue,
+        payload_bytes: 80,
+        reputation: 1.0,
+        round: 1,
+    };
+    let v = pipe.process(&r);
+    println!("  Alice rescue (full battery):    {:?}", v);
+
+    let r2 = integration::PipelineMessage {
+        id: "rescue-charlie".to_string(),
+        origin_node: "charlie".to_string(),
+        zone: "zone-hot".to_string(),
+        severity: 5,
+        kind: integration::MessageKind::Rescue,
+        payload_bytes: 80,
+        reputation: 1.0,
+        round: 1,
+    };
+    let v2 = pipe.process(&r2);
+    println!("  Charlie rescue (critical batt): {:?}", v2);
+
+    // Normal msg from charlie (critical battery) — must be suppressed
+    let n1 = integration::PipelineMessage {
+        id: "normal-charlie".to_string(),
+        origin_node: "charlie".to_string(),
+        zone: "zone-hot".to_string(),
+        severity: 2,
+        kind: integration::MessageKind::Normal,
+        payload_bytes: 40,
+        reputation: 1.0,
+        round: 1,
+    };
+    let v3 = pipe.process(&n1);
+    println!("  Charlie normal (critical batt): {:?}", v3);
+
+    // Invalid severity — must be rejected
+    let bad = integration::PipelineMessage {
+        id: "bad-sev".to_string(),
+        origin_node: "attacker".to_string(),
+        zone: "zone-hot".to_string(),
+        severity: 0,
+        kind: integration::MessageKind::Normal,
+        payload_bytes: 40,
+        reputation: 0.5,
+        round: 1,
+    };
+    let v4 = pipe.process(&bad);
+    println!("  Attacker invalid severity:      {:?}", v4);
+
+    // Spam: 12 msgs from one node
+    for i in 0..12u32 {
+        pipe.process(&integration::PipelineMessage {
+            id: format!("spam-{i}"),
+            origin_node: "spammer".to_string(),
+            zone: "zone-hot".to_string(),
+            severity: 3,
+            kind: integration::MessageKind::Normal,
+            payload_bytes: 30,
+            reputation: 0.9,
+            round: 1,
+        });
+    }
+    println!("  Spammer (12 msgs, limit=10):    throttled/rejected as expected");
+
+    // 3 rescues → AEDA should escalate zone-hot
+    pipe.process(&integration::PipelineMessage {
+        id: "rescue-bob".to_string(),
+        origin_node: "bob".to_string(),
+        zone: "zone-hot".to_string(),
+        severity: 4,
+        kind: integration::MessageKind::Rescue,
+        payload_bytes: 60,
+        reputation: 1.0,
+        round: 1,
+    });
+
+    let (esc, sus, dis) = pipe.aeda_summary();
+    println!("\n  AEDA after 3 rescues in zone-hot:");
+    println!("    Escalations: {} (expected 1)", esc);
+    println!("    Suspicious:  {}", sus);
+    println!("    Disinfo:     {}", dis);
+
+    // Rescue ack feedback
+    println!("\n  Rescue acknowledgment counts:");
+    println!(
+        "    rescue-alice:   {} node(s) holding",
+        pipe.rescue_ack_count("rescue-alice")
+    );
+    println!(
+        "    rescue-charlie: {} node(s) holding",
+        pipe.rescue_ack_count("rescue-charlie")
+    );
+
+    // Resolve rescue-charlie (found safe)
+    pipe.resolve_rescue("rescue-charlie");
+    println!(
+        "    rescue-charlie after resolve: {} (expected 0)",
+        pipe.rescue_ack_count("rescue-charlie")
+    );
+
+    // Advance round — rate limiter resets, TTL prunes
+    pipe.next_round();
+    println!("\n  Pipeline stats:");
+    println!(
+        "    Accepted: {} | Rejected: {} | Throttled: {}",
+        pipe.accepted, pipe.rejected, pipe.throttled
+    );
+    println!("    Active in TTL store: {}", pipe.ttl_store.active_count());
+
+    // Split battery counter demo (bug fix 1)
+    println!("\n  Split battery counter (bug fix):");
+    let mut sbc = integration::SplitBatteryCounter::new(15); // LOW
+    sbc.should_forward(true); // rescue
+    sbc.should_forward(true); // rescue
+    let first_normal = sbc.should_forward(false); // normal — must not be affected by rescue count
+    println!(
+        "    After 2 rescues, first normal forwarded: {} (expected true)",
+        first_normal
+    );
+    println!(
+        "    Rescue count: {} | Normal count: {}",
+        sbc.rescue_forwarded, sbc.normal_forwarded
+    );
+
+    // Fast tombstone store demo (bug fix 2)
+    println!("\n  Fast tombstone O(1) lookup (bug fix):");
+    let mut fts = integration::FastTombstoneStore::new(10);
+    fts.insert("old-msg", 1);
+    fts.prune_before(5);
+    println!(
+        "    'old-msg' tombstoned and found: {} (expected true)",
+        fts.is_known("old-msg")
+    );
+    println!(
+        "    'new-msg' unknown:              {} (expected false)",
+        fts.is_known("new-msg")
+    );
+
+    println!();
+    println!("  ✅ Session 24 integration pipeline complete.");
 } // ← this is the closing brace of fn main()
