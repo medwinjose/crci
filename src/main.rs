@@ -11,6 +11,7 @@ mod network;
 mod node;
 mod replay;
 mod runtime;
+mod security;
 mod storage;
 mod stress;
 mod transport;
@@ -729,4 +730,162 @@ fn main() {
 
     println!();
     println!("  ✅ Session 24 integration pipeline complete.");
+
+    // ── Session 25: STRIDE Security Hardening ────────────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════╗");
+    println!("║  SESSION 25 — STRIDE SECURITY HARDENING                  ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+
+    // S: Spoofing — Node ID derivation
+    println!("\n  [S] Spoofing — Opaque Node IDs:");
+    let fake_pubkey = b"example_pubkey_bytes_32_aabbccdd";
+    let derived_id = security::derive_node_id(fake_pubkey);
+    println!("    Derived ID from pubkey: {derived_id}");
+    println!(
+        "    Is valid format: {}",
+        security::is_valid_node_id_format(&derived_id)
+    );
+    println!(
+        "    Sequential ID 'zone-a-node-01' valid: {}",
+        security::is_valid_node_id_format("zone-a-node-01")
+    );
+
+    // T: Tampering — Signable payload audit
+    println!("\n  [T] Tampering — Signable Payload Audit:");
+    let complete = "node_id=abc zone=z1 severity=5 kind=rescue round=42";
+    let incomplete = "node_id=abc severity=5";
+    println!(
+        "    Complete payload:   {:?}",
+        security::audit_signable_payload(complete)
+    );
+    println!(
+        "    Incomplete payload: {:?}",
+        security::audit_signable_payload(incomplete)
+    );
+
+    // R: Repudiation — Audit log
+    println!("\n  [R] Repudiation — Audit Log:");
+    let mut audit = security::AuditLog::new(1000);
+    audit.append(
+        1,
+        security::AuditEventKind::MessageRejected {
+            node_id: "attacker".to_string(),
+            reason: "invalid severity".to_string(),
+        },
+    );
+    audit.append(
+        2,
+        security::AuditEventKind::AedaEscalation {
+            zone: "zone-hot".to_string(),
+        },
+    );
+    audit.append(
+        3,
+        security::AuditEventKind::ZoneSpoofAttempt {
+            node_id: "enemy-node".to_string(),
+            claimed_zone: "zone-alpha".to_string(),
+        },
+    );
+    audit.append(
+        4,
+        security::AuditEventKind::RescueResolved {
+            rescue_id: "rescue-001".to_string(),
+            resolver: "sar-team-1".to_string(),
+        },
+    );
+    println!("    Audit entries logged: {}", audit.len());
+    for entry in audit.entries() {
+        println!("    [round {}] {}", entry.round, entry.event);
+    }
+
+    // I: Information Disclosure — Zone membership
+    println!("\n  [I] Information Disclosure — Zone Membership:");
+    let mut zone_reg = security::ZoneMembershipRegistry::new();
+    zone_reg.register_bootstrap("trusted-node", "zone-alpha");
+    let spoof = zone_reg.claim_zone("enemy-node", "zone-alpha");
+    println!("    Enemy zone claim accepted: {} (expected false)", spoof);
+    println!(
+        "    Enemy pending vouching: {}",
+        zone_reg.is_pending("enemy-node")
+    );
+    let vouched = zone_reg.vouch("trusted-node", "enemy-node");
+    println!("    Vouched by trusted node: {}", vouched);
+    println!(
+        "    Enemy now verified: {}",
+        zone_reg.is_verified("enemy-node", "zone-alpha")
+    );
+
+    // D: Denial of Service — Reputation-weighted MCE
+    println!("\n  [D] Denial of Service — Weighted MCE Threshold:");
+    let mut mce = security::WeightedRescueCounter::new(3.0);
+    for _ in 0..5 {
+        let t = mce.record("zone-fake", 0.3); // low-rep spam
+        if t {
+            println!("    UNEXPECTED: low-rep triggered MCE");
+        }
+    }
+    println!(
+        "    5 low-rep (0.3) rescues — MCE triggered: false (zone count: {:.1})",
+        mce.zone_count("zone-fake")
+    );
+    let mut mce2 = security::WeightedRescueCounter::new(3.0);
+    let t1 = mce2.record("zone-real", 1.0);
+    let t2 = mce2.record("zone-real", 1.0);
+    let t3 = mce2.record("zone-real", 1.0);
+    println!(
+        "    3 full-rep (1.0) rescues — MCE triggered: {} (expected true)",
+        t1 || t2 || t3
+    );
+
+    // E: Elevation of Privilege + Safety: Priority Queue
+    println!("\n  [E] Elevation + Safety — Priority Message Queue:");
+    let mut q = security::PriorityMessageQueue::new();
+    q.push(security::QueuedMessage {
+        id: "n1".to_string(),
+        kind: security::ProtocolMessageKind::Normal,
+        round: 1,
+    });
+    q.push(security::QueuedMessage {
+        id: "h1".to_string(),
+        kind: security::ProtocolMessageKind::Hazard,
+        round: 1,
+    });
+    q.push(security::QueuedMessage {
+        id: "r1".to_string(),
+        kind: security::ProtocolMessageKind::Rescue,
+        round: 1,
+    });
+    q.push(security::QueuedMessage {
+        id: "g1".to_string(),
+        kind: security::ProtocolMessageKind::Goodbye,
+        round: 1,
+    });
+    println!("    Dequeue order (highest priority first):");
+    while let Some(msg) = q.pop() {
+        println!("      [{:?}] id={}", msg.kind, msg.id);
+    }
+
+    // GOODBYE message demo
+    println!("\n  Safety: GOODBYE + RescueResolution message types:");
+    let bye = security::QueuedMessage {
+        id: "bye-001".to_string(),
+        kind: security::ProtocolMessageKind::Goodbye,
+        round: 10,
+    };
+    let resolved = security::QueuedMessage {
+        id: "res-001".to_string(),
+        kind: security::ProtocolMessageKind::RescueResolution {
+            rescue_id: "rescue-priya".to_string(),
+        },
+        round: 11,
+    };
+    println!("    GOODBYE priority: {}", bye.kind.priority());
+    println!(
+        "    RescueResolution priority: {}",
+        resolved.kind.priority()
+    );
+
+    println!();
+    println!("  ✅ Session 25 STRIDE hardening complete.");
 } // ← this is the closing brace of fn main()
