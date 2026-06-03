@@ -10,6 +10,7 @@ mod stress;
 mod crisis;
 mod replay;
 mod bench;
+mod chaos;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -223,4 +224,5 @@ fn main() {
     // ── Session 18: Benchmark harness ────────────────────────────────────
     bench::run_benchmarks();
 
+    chaos::run_chaos_tests();
 }   // ← this is the closing brace of fn main()
