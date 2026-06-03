@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use crate::mesh::MeshSimulator;
 use crate::message::{Message, Signal, Visibility};
 use crate::transport::SharedInbox;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 // ─── Test 1: Large Network ────────────────────────────────────────────────────
 
@@ -37,11 +37,22 @@ pub fn test_large_network() {
             let is_byzantine = i == 1;
             let sev = if is_byzantine { 1 } else { 5 };
             let msg_id = format!("{}-msg-r1-{:02}", zone, i);
-            sim.originate(&id, Message::new(
-                &msg_id, &id,
-                Signal::new(sev, !is_byzantine, is_byzantine, !is_byzantine, 5, Visibility::Direct),
-                None,
-            ));
+            sim.originate(
+                &id,
+                Message::new(
+                    &msg_id,
+                    &id,
+                    Signal::new(
+                        sev,
+                        !is_byzantine,
+                        is_byzantine,
+                        !is_byzantine,
+                        5,
+                        Visibility::Direct,
+                    ),
+                    None,
+                ),
+            );
         }
     }
 
@@ -62,7 +73,10 @@ pub fn test_large_network() {
             }
         }
     }
-    println!("\nResult: {}/3 Byzantine nodes penalised (full isolation requires 3 rounds)", caught);
+    println!(
+        "\nResult: {}/3 Byzantine nodes penalised (full isolation requires 3 rounds)",
+        caught
+    );
 }
 
 // ─── Test 2: Sybil Attack ─────────────────────────────────────────────────────
@@ -89,21 +103,29 @@ pub fn test_sybil_attack() {
     for i in 1..=4usize {
         let id = format!("node-{:02}", i);
         let msg_id = format!("msg-byz-{:02}", i);
-        sim.originate(&id, Message::new(
-            &msg_id, &id,
-            Signal::new(1, false, true, false, 5, Visibility::Direct),
-            Some("all clear"),
-        ));
+        sim.originate(
+            &id,
+            Message::new(
+                &msg_id,
+                &id,
+                Signal::new(1, false, true, false, 5, Visibility::Direct),
+                Some("all clear"),
+            ),
+        );
     }
 
     for i in 5..=7usize {
         let id = format!("node-{:02}", i);
         let msg_id = format!("msg-hon-{:02}", i);
-        sim.originate(&id, Message::new(
-            &msg_id, &id,
-            Signal::new(5, true, false, true, 5, Visibility::Direct),
-            Some("critical"),
-        ));
+        sim.originate(
+            &id,
+            Message::new(
+                &msg_id,
+                &id,
+                Signal::new(5, true, false, true, 5, Visibility::Direct),
+                Some("critical"),
+            ),
+        );
     }
 
     sim.drain();
@@ -125,8 +147,8 @@ pub fn test_signature_forgery() {
     println!("║  STRESS TEST 3 — Signature Forgery Attempt  ║");
     println!("╚══════════════════════════════════════════════╝");
 
-    use crate::runtime::WireMessage;
     use crate::identity::Identity;
+    use crate::runtime::WireMessage;
 
     let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
     let mut sim = MeshSimulator::new();
@@ -203,17 +225,22 @@ pub fn test_network_partition() {
 
     println!("Partition active: left-001/002/003 isolated from right-001/002/003\n");
 
-    sim.originate("left-001", Message::rescue(
-        "msg-rescue-left", "left-001",
-        Some("trapped, need help"),
-    ));
+    sim.originate(
+        "left-001",
+        Message::rescue("msg-rescue-left", "left-001", Some("trapped, need help")),
+    );
     sim.drain();
 
-    let right_has_rescue = sim.nodes.get("right-001")
+    let right_has_rescue = sim
+        .nodes
+        .get("right-001")
         .map(|n| n.persistent_messages.contains_key("msg-rescue-left"))
         .unwrap_or(false);
 
-    println!("Right partition received rescue during partition: {}", right_has_rescue);
+    println!(
+        "Right partition received rescue during partition: {}",
+        right_has_rescue
+    );
     if !right_has_rescue {
         println!("  ✅ Partition correctly isolated — message did not cross");
     }
@@ -222,13 +249,19 @@ pub fn test_network_partition() {
     sim.connect("left-003", "right-001");
     sim.new_round();
 
-    sim.originate("left-001", Message::rescue(
-        "msg-rescue-left-2", "left-001",
-        Some("still trapped, partition healed"),
-    ));
+    sim.originate(
+        "left-001",
+        Message::rescue(
+            "msg-rescue-left-2",
+            "left-001",
+            Some("still trapped, partition healed"),
+        ),
+    );
     sim.drain();
 
-    let right_has_rescue_after = sim.nodes.get("right-003")
+    let right_has_rescue_after = sim
+        .nodes
+        .get("right-003")
         .map(|n| !n.persistent_messages.is_empty())
         .unwrap_or(false);
 

@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use crate::message::{Message, MessageType};
 use crate::identity::Identity;
+use crate::message::{Message, MessageType};
+use std::collections::{HashMap, HashSet};
 
 // ─── Node ────────────────────────────────────────────────────────────────────
 // In real life: one person with one phone. Now each person has a cryptographic
@@ -47,7 +47,9 @@ impl Node {
 
     pub fn penalize(&mut self) {
         self.reputation -= 0.2;
-        if self.reputation < 0.0 { self.reputation = 0.0; }
+        if self.reputation < 0.0 {
+            self.reputation = 0.0;
+        }
     }
 
     pub fn is_trusted(&self) -> bool {
@@ -60,13 +62,20 @@ impl Node {
     }
 
     pub fn status(&self) {
-        let trust_label = if self.is_trusted() { "TRUSTED" } else { "ISOLATED" };
+        let trust_label = if self.is_trusted() {
+            "TRUSTED"
+        } else {
+            "ISOLATED"
+        };
         let online_label = if self.is_online { "ONLINE" } else { "OFFLINE" };
-        let rescue_count = self.persistent_messages
+        let rescue_count = self
+            .persistent_messages
             .values()
             .filter(|m| m.message_type == MessageType::RescueRequest)
             .count();
-        let key_hex: String = self.identity.verifying_key
+        let key_hex: String = self
+            .identity
+            .verifying_key
             .as_bytes()
             .iter()
             .take(6)
@@ -74,8 +83,7 @@ impl Node {
             .collect();
         println!(
             "ID: {:10} | Zone: {:6} | Rep: {:.2} | {} | {} | Rescue: {} | PubKey: {}...",
-            self.id, self.zone, self.reputation,
-            trust_label, online_label, rescue_count, key_hex
+            self.id, self.zone, self.reputation, trust_label, online_label, rescue_count, key_hex
         );
     }
 }

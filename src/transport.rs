@@ -33,7 +33,7 @@ pub type SharedInbox = Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>;
 pub struct SimTransport {
     #[allow(dead_code)]
     pub node_id: String,
-    pub inbox: SharedInbox,   // shared across all nodes in the simulation
+    pub inbox: SharedInbox, // shared across all nodes in the simulation
 }
 
 impl SimTransport {
@@ -49,10 +49,7 @@ impl Transport for SimTransport {
     fn send(&self, to: &str, data: &[u8]) {
         // Drop bytes into the recipient's inbox
         let mut inbox = self.inbox.lock().unwrap();
-        inbox
-            .entry(to.to_string())
-            .or_default()
-            .push(data.to_vec());
+        inbox.entry(to.to_string()).or_default().push(data.to_vec());
     }
 
     #[allow(dead_code)]

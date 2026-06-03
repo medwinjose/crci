@@ -1,11 +1,11 @@
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use serde::{Serialize, Deserialize};
-use ed25519_dalek::{Signature, VerifyingKey, Verifier};
 
-use crate::message::{Message, Signal, Visibility, MessageType};
 use crate::identity::Identity;
-use crate::transport::{Transport, SimTransport, SharedInbox};
-use crate::storage::{NodeStorage, PersistedState, PersistedRescue};
+use crate::message::{Message, MessageType, Signal, Visibility};
+use crate::storage::{NodeStorage, PersistedRescue, PersistedState};
+use crate::transport::{SharedInbox, SimTransport, Transport};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WireMessage {
@@ -48,7 +48,7 @@ impl WireMessage {
                 MessageType::Normal => "normal".to_string(),
                 MessageType::RescueRequest => "rescue".to_string(),
                 MessageType::MassCasualtyEvent => "mce".to_string(),
-                MessageType::Panic => "panic".to_string(), 
+                MessageType::Panic => "panic".to_string(),
             },
             origin_active: msg.origin_active,
             signature_bytes: sig.to_bytes().to_vec(),
@@ -154,7 +154,8 @@ impl NodeRuntime {
     }
 
     pub fn save_state(&self) {
-        let rescues: Vec<PersistedRescue> = self.persistent_messages
+        let rescues: Vec<PersistedRescue> = self
+            .persistent_messages
             .values()
             .filter(|m| m.message_type == "rescue")
             .map(|m| PersistedRescue {
@@ -182,10 +183,13 @@ impl NodeRuntime {
             Ok(state) => {
                 self.reputation = state.reputation;
                 self.peers = state.peers;
-                println!("  ✅ [{}] restored: rep={:.2}, {} peers, {} rescues",
-                    self.id, self.reputation,
+                println!(
+                    "  ✅ [{}] restored: rep={:.2}, {} peers, {} rescues",
+                    self.id,
+                    self.reputation,
                     self.peers.len(),
-                    state.rescue_messages.len());
+                    state.rescue_messages.len()
+                );
             }
             Err(e) => {
                 println!("  ℹ [{}] no prior state ({})", self.id, e);
@@ -205,7 +209,9 @@ impl NodeRuntime {
 
     pub fn penalize(&mut self) {
         self.reputation -= 0.2;
-        if self.reputation < 0.0 { self.reputation = 0.0; }
+        if self.reputation < 0.0 {
+            self.reputation = 0.0;
+        }
     }
 
     pub fn go_offline(&mut self) {
@@ -221,16 +227,26 @@ impl NodeRuntime {
             return;
         }
         let wire = WireMessage::from_message(&msg, &self.identity);
-        let is_persistent = matches!(msg.message_type, MessageType::RescueRequest | MessageType::MassCasualtyEvent)
-            || msg.signal.can_help_others;
+        let is_persistent = matches!(
+            msg.message_type,
+            MessageType::RescueRequest | MessageType::MassCasualtyEvent
+        ) || msg.signal.can_help_others;
         if is_persistent {
-            self.persistent_messages.insert(wire.id.clone(), wire.clone());
+            self.persistent_messages
+                .insert(wire.id.clone(), wire.clone());
         }
         self.seen_messages.insert(wire.id.clone());
         let payload = serde_json::to_vec(&wire).unwrap();
-        let sig_preview = wire.signature_bytes.iter().take(4)
-            .map(|b| format!("{:02x}", b)).collect::<String>();
-        println!("  ✍  [{}] originating '{}' → sig: {}...", self.id, wire.id, sig_preview);
+        let sig_preview = wire
+            .signature_bytes
+            .iter()
+            .take(4)
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>();
+        println!(
+            "  ✍  [{}] originating '{}' → sig: {}...",
+            self.id, wire.id, sig_preview
+        );
         for peer in &self.peers.clone() {
             self.transport.send(peer, &payload);
         }
@@ -243,7 +259,9 @@ impl NodeRuntime {
     }
 
     pub fn process_inbox(&mut self) {
-        if !self.is_online { return; }
+        if !self.is_online {
+            return;
+        }
         let messages: Vec<Vec<u8>> = {
             let mut inbox = self.inbox.lock().unwrap();
             inbox.remove(&self.id).unwrap_or_default()
@@ -259,7 +277,10 @@ impl NodeRuntime {
 
             // Step 1: verify cryptographic signature
             if wire.message_type != "mce" && !wire.verify_signature() {
-                println!("  ⚠ [{}] INVALID SIGNATURE on '{}' — dropped!", self.id, wire.id);
+                println!(
+                    "  ⚠ [{}] INVALID SIGNATURE on '{}' — dropped!",
+                    self.id, wire.id
+                );
                 continue;
             }
 
@@ -267,15 +288,19 @@ impl NodeRuntime {
             if wire.message_type != "mce" {
                 if let Some(known) = self.known_keys.get(&wire.origin) {
                     if *known != wire.origin_pubkey {
-                        println!("  ⚠ [{}] PUBKEY MISMATCH on '{}' — impersonation dropped!", self.id, wire.id);
+                        println!(
+                            "  ⚠ [{}] PUBKEY MISMATCH on '{}' — impersonation dropped!",
+                            self.id, wire.id
+                        );
                         continue;
                     }
                 } else {
-                    self.known_keys.insert(wire.origin.clone(), wire.origin_pubkey.clone());
+                    self.known_keys
+                        .insert(wire.origin.clone(), wire.origin_pubkey.clone());
                 }
             }
 
-                        // Replay check
+            // Replay check
             let verdict = self.replay_filter.check_and_record(
                 &wire.origin,
                 wire.seq,
@@ -283,21 +308,29 @@ impl NodeRuntime {
             );
             if !verdict.is_accept() {
                 match &verdict {
-                    crate::replay::ReplayVerdict::Replayed { received_seq, expected_min } =>
-                        println!("  ⛔ [{}] REPLAY dropped from '{}' — seq {} already seen (min {})",
-                            self.id, wire.origin, received_seq, expected_min),
-                    crate::replay::ReplayVerdict::Stale { age_seconds } =>
-                        println!("  ⏰ [{}] STALE msg from '{}' — {}s old, dropped",
-                            self.id, wire.origin, age_seconds),
-                    crate::replay::ReplayVerdict::FromFuture { skew_seconds } =>
-                        println!("  ⚠ [{}] FUTURE msg from '{}' — {}s ahead, dropped",
-                            self.id, wire.origin, skew_seconds),
+                    crate::replay::ReplayVerdict::Replayed {
+                        received_seq,
+                        expected_min,
+                    } => println!(
+                        "  ⛔ [{}] REPLAY dropped from '{}' — seq {} already seen (min {})",
+                        self.id, wire.origin, received_seq, expected_min
+                    ),
+                    crate::replay::ReplayVerdict::Stale { age_seconds } => println!(
+                        "  ⏰ [{}] STALE msg from '{}' — {}s old, dropped",
+                        self.id, wire.origin, age_seconds
+                    ),
+                    crate::replay::ReplayVerdict::FromFuture { skew_seconds } => println!(
+                        "  ⚠ [{}] FUTURE msg from '{}' — {}s ahead, dropped",
+                        self.id, wire.origin, skew_seconds
+                    ),
                     _ => {}
                 }
                 continue;
             }
 
-            if self.seen_messages.contains(&wire.id) { continue; }
+            if self.seen_messages.contains(&wire.id) {
+                continue;
+            }
             self.seen_messages.insert(wire.id.clone());
 
             let type_label = match wire.message_type.as_str() {
@@ -307,13 +340,18 @@ impl NodeRuntime {
             };
             println!(
                 "  [{}][{}] {} | sev:{} conf:{} vis:{} | note: {}",
-                self.id, self.zone, type_label,
-                wire.severity, wire.confidence, wire.visibility,
+                self.id,
+                self.zone,
+                type_label,
+                wire.severity,
+                wire.confidence,
+                wire.visibility,
                 wire.note.as_deref().unwrap_or("—")
             );
 
             if wire.message_type == "rescue" || wire.message_type == "mce" {
-                self.persistent_messages.insert(wire.id.clone(), wire.clone());
+                self.persistent_messages
+                    .insert(wire.id.clone(), wire.clone());
             }
 
             if !self.is_trusted() {
@@ -336,12 +374,25 @@ impl NodeRuntime {
     }
 
     pub fn status(&self) {
-        let trust = if self.is_trusted() { "TRUSTED" } else { "ISOLATED" };
+        let trust = if self.is_trusted() {
+            "TRUSTED"
+        } else {
+            "ISOLATED"
+        };
         let online = if self.is_online { "ONLINE" } else { "OFFLINE" };
-        let rescue = self.persistent_messages.values()
-            .filter(|m| m.message_type == "rescue").count();
-        let key_hex: String = self.identity.verifying_key.as_bytes()
-            .iter().take(6).map(|b| format!("{:02x}", b)).collect();
+        let rescue = self
+            .persistent_messages
+            .values()
+            .filter(|m| m.message_type == "rescue")
+            .count();
+        let key_hex: String = self
+            .identity
+            .verifying_key
+            .as_bytes()
+            .iter()
+            .take(6)
+            .map(|b| format!("{:02x}", b))
+            .collect();
         println!(
             "ID: {:10} | Zone: {:6} | Rep: {:.2} | {} | {} | Rescue: {} | PubKey: {}...",
             self.id, self.zone, self.reputation, trust, online, rescue, key_hex

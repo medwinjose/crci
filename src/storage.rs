@@ -12,7 +12,7 @@ use aes_gcm::{
     Aes256Gcm, Key, Nonce,
 };
 use rand::RngCore;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
@@ -66,8 +66,7 @@ impl NodeStorage {
     // Save state to disk, encrypted
     pub fn save(&self, state: &PersistedState) -> Result<(), String> {
         // Serialise to JSON bytes
-        let json = serde_json::to_vec(state)
-            .map_err(|e| format!("Serialise failed: {}", e))?;
+        let json = serde_json::to_vec(state).map_err(|e| format!("Serialise failed: {}", e))?;
 
         // Generate a random 12-byte nonce — different every save
         // (nonce = "number used once" — prevents pattern analysis)
@@ -76,7 +75,8 @@ impl NodeStorage {
         let nonce = Nonce::from_slice(&nonce_bytes);
 
         // Encrypt
-        let ciphertext = self.cipher
+        let ciphertext = self
+            .cipher
             .encrypt(nonce, json.as_ref())
             .map_err(|e| format!("Encrypt failed: {}", e))?;
 
@@ -84,10 +84,13 @@ impl NodeStorage {
         let mut output = nonce_bytes.to_vec();
         output.extend_from_slice(&ciphertext);
 
-        fs::write(&self.path, &output)
-            .map_err(|e| format!("Write failed: {}", e))?;
+        fs::write(&self.path, &output).map_err(|e| format!("Write failed: {}", e))?;
 
-        println!("  💾 [{}] state saved ({} bytes)", state.node_id, output.len());
+        println!(
+            "  💾 [{}] state saved ({} bytes)",
+            state.node_id,
+            output.len()
+        );
         Ok(())
     }
 
@@ -97,8 +100,7 @@ impl NodeStorage {
             return Err("No saved state found".to_string());
         }
 
-        let raw = fs::read(&self.path)
-            .map_err(|e| format!("Read failed: {}", e))?;
+        let raw = fs::read(&self.path).map_err(|e| format!("Read failed: {}", e))?;
 
         if raw.len() < 12 {
             return Err("Corrupted file — too short".to_string());
@@ -109,18 +111,21 @@ impl NodeStorage {
         let ciphertext = &raw[12..];
 
         // Decrypt
-        let plaintext = self.cipher
+        let plaintext = self
+            .cipher
             .decrypt(nonce, ciphertext)
             .map_err(|_| "Decrypt failed — wrong key or corrupted data".to_string())?;
 
         // Deserialise
-        let state: PersistedState = serde_json::from_slice(&plaintext)
-            .map_err(|e| format!("Deserialise failed: {}", e))?;
+        let state: PersistedState =
+            serde_json::from_slice(&plaintext).map_err(|e| format!("Deserialise failed: {}", e))?;
 
-        println!("  📂 [{}] state loaded ({} rescue msgs, {} peers)",
+        println!(
+            "  📂 [{}] state loaded ({} rescue msgs, {} peers)",
             state.node_id,
             state.rescue_messages.len(),
-            state.peers.len());
+            state.peers.len()
+        );
 
         Ok(state)
     }
