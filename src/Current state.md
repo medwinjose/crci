@@ -4,8 +4,7 @@
 
 # This is the single source of truth for where the project is right now.
 
-# Last updated: End of Session 18
-
+# Last updated: End of Session 19
 
 ---
 
@@ -21,6 +20,7 @@ network.rs
 state.rs
 replay.rs         — NEW: Lamport sequence, clock drift tolerance
 bench.rs          — NEW: Benchmark harness (5 measurements)
+chaos.rs          — NEW: Chaos engineering scenarios
 crisis.rs         — Crisis scenarios (flood, earthquake, conflict, hazmat)
 stress.rs         — Stress tests (Byzantine, Sybil, forgery, partition)
 ```
@@ -101,22 +101,23 @@ Do not add dependencies without updating this file.
 
 ## Session Roadmap
 
-| Session | Status | Capability |
-|---|---|---|
-| 1–7 | Complete | Core (signatures, gossip, zones, MCE, persistence) |
-| 8 | Complete | Mesh transport + distributed architecture |
-| 10 | Complete | Encrypted local storage |
-| 11–13 | Complete | Stress tests + adversarial hardening |
-| 14–16 | Complete | Crisis scenarios + GPS + priority queue |
-| 17 | Complete | Replay protection + Lamport sequence |
-| 18 | Complete | Benchmark harness (5 measurements for paper) |
-| **19** | **Next** | **Chaos engineering (packet loss, node crashes)** |
+| Session | Status   | Capability                                         |
+| ------- | -------- | -------------------------------------------------- |
+| 1–7     | Complete | Core (signatures, gossip, zones, MCE, persistence) |
+| 8       | Complete | Mesh transport + distributed architecture          |
+| 10      | Complete | Encrypted local storage                            |
+| 11–13   | Complete | Stress tests + adversarial hardening               |
+| 14–16   | Complete | Crisis scenarios + GPS + priority queue            |
+| 17      | Complete | Replay protection + Lamport sequence               |
+| 18      | Complete | Benchmark harness (5 measurements for paper)       |
+| **19**  | **Next** | **Chaos engineering (packet loss, node crashes)**  |
 
 ## Current Development Priority (Next Session)
 
 **Session 19: Chaos Engineering**
 Test system under 10% and 40% packet loss, simultaneous node restarts, reconnect storms.
 One file: `src/chaos.rs` + call in `main()`.
+
 ---
 
 ## Current Development Priority (Next Session)

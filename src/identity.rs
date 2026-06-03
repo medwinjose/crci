@@ -7,6 +7,7 @@ use rand::rngs::OsRng;
 // forged — a private key only they hold, and a public key everyone can check.
 
 pub struct Identity {
+    #[allow(dead_code)]
     pub id: String,
     pub signing_key: SigningKey,       // private — never leaves this device
     pub verifying_key: VerifyingKey,   // public — shared with everyone
@@ -29,6 +30,7 @@ impl Identity {
     }
 
     // Verify a signature against this identity's public key
+    #[allow(dead_code)]
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
         self.verifying_key.verify(payload, signature).is_ok()
     }

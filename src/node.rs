@@ -6,6 +6,7 @@ use crate::identity::Identity;
 // In real life: one person with one phone. Now each person has a cryptographic
 // identity — a keypair generated on their device that cannot be faked.
 
+#[allow(dead_code)]
 pub struct Node {
     pub id: String,
     pub identity: Identity,
@@ -20,6 +21,7 @@ pub struct Node {
     pub known_keys: HashMap<String, ed25519_dalek::VerifyingKey>,
 }
 
+#[allow(dead_code)]
 impl Node {
     pub fn new(id: &str, is_honest: bool, zone: &str) -> Node {
         let identity = Identity::new(id);

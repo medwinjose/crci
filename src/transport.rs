@@ -8,6 +8,7 @@
 // This lets us swap the real radio for a simulation without changing
 // any node logic — the node just sees "something I can send bytes through."
 
+#[allow(dead_code)]
 pub trait Transport {
     // Send raw bytes to a specific peer by their ID
     fn send(&self, to: &str, data: &[u8]);
@@ -30,6 +31,7 @@ use std::sync::{Arc, Mutex};
 pub type SharedInbox = Arc<Mutex<HashMap<String, Vec<Vec<u8>>>>>;
 
 pub struct SimTransport {
+    #[allow(dead_code)]
     pub node_id: String,
     pub inbox: SharedInbox,   // shared across all nodes in the simulation
 }
@@ -53,6 +55,7 @@ impl Transport for SimTransport {
             .push(data.to_vec());
     }
 
+    #[allow(dead_code)]
     fn node_id(&self) -> &str {
         &self.node_id
     }

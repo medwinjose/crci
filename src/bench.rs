@@ -116,8 +116,9 @@ fn bench_propagation(node_count: usize, seed: u64) -> PropagationResult {
         .collect();
 
     // Wire peers: each node gets ~log2(N) connections (minimum 2)
-    let peer_count = (node_count as f64).log2().max(2.0) as usize;
+    let peer_count = (node_count as f64).log2().max(2.0).round() as usize;
     let mut rng = SimpleLcg::new(seed);
+    #[allow(clippy::needless_range_loop)]
     for i in 0..node_count {
         let mut chosen = HashSet::new();
         while chosen.len() < peer_count.min(node_count - 1) {
@@ -143,8 +144,8 @@ fn bench_propagation(node_count: usize, seed: u64) -> PropagationResult {
 
         for i in 0..node_count {
             if nodes[i].received.contains(&msg_id) {
-                let peers = nodes[i].peers.clone();
-                for &peer in &peers {
+                let peers = &nodes[i].peers;
+                for &peer in peers {
                     if !nodes[peer].received.contains(&msg_id) {
                         new_deliveries.push((peer, msg_id.clone()));
                     }
@@ -200,6 +201,7 @@ fn bench_convergence(node_count: usize, byzantine_count: usize, _seed: u64) -> C
     let byz_sev: u8 = 1;
 
     // Initial observations
+    #[allow(clippy::needless_range_loop)]
     for i in 0..node_count {
         let sev = if i < byzantine_count { byz_sev } else { honest_sev };
         nodes[i].observations.push(sev);

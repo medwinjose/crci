@@ -127,7 +127,6 @@ pub fn test_signature_forgery() {
 
     use crate::runtime::WireMessage;
     use crate::identity::Identity;
-    use crate::transport::Transport;
 
     let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
     let mut sim = MeshSimulator::new();

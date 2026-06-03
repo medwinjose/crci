@@ -125,7 +125,7 @@ impl MeshSimulator {
             let mut sorted = confident.clone();
             sorted.sort();
             let mid = sorted.len() / 2;
-            let median = if sorted.len() % 2 == 0 {
+            let median = if sorted.len().is_multiple_of(2) {
                 (sorted[mid - 1] + sorted[mid]) / 2
             } else { sorted[mid] };
 

@@ -56,13 +56,11 @@ pub fn scenario_flood() {
         m
     });
 
-    sim.originate("priya", {
-        let m = Message::new("r2", "priya",
+    sim.originate("priya", Message::new("r2", "priya",
             Signal::new(2, false, false, false, 2, Visibility::Unknown)
                 .with_gps(11.3415, 79.8018),
-            Some("indoors, can hear water, cannot see outside"));
-        m
-    });
+            Some("indoors, can hear water, cannot see outside"))
+    );
 
     sim.originate("selvam", {
         let mut m = Message::new("r3", "selvam",
@@ -73,21 +71,17 @@ pub fn scenario_flood() {
     });
 
     // Meera lies — politically motivated to downplay disaster response
-    sim.originate("meera", {
-        let m = Message::new("r4", "meera",
+    sim.originate("meera", Message::new("r4", "meera",
             Signal::new(1, false, true, false, 5, Visibility::Direct),
-            Some("situation manageable, no evacuation needed"));
-        m
-    });
+            Some("situation manageable, no evacuation needed"))
+    );
 
-    sim.originate("arjun", {
-        let m = Message::new("r5", "arjun",
+    sim.originate("arjun", Message::new("r5", "arjun",
             Signal::new(1, false, true, true, 5, Visibility::Direct)
                 .with_gps(11.3180, 79.7940)
                 .with_resource("transport"),
-            Some("inland relief camp ready, have 3 trucks available"));
-        m
-    });
+            Some("inland relief camp ready, have 3 trucks available"))
+    );
 
     sim.drain();
     println!("\n--- Consensus Round 1 ---");
@@ -105,28 +99,22 @@ pub fn scenario_flood() {
         m
     });
 
-    sim.originate("kumar", {
-        let m = Message::new("r6", "kumar",
+    sim.originate("kumar", Message::new("r6", "kumar",
             Signal::new(5, true, false, true, 5, Visibility::Direct)
                 .with_gps(11.3390, 79.8005),
-            Some("entire street underwater, 12 families need boats"));
-        m
-    });
+            Some("entire street underwater, 12 families need boats"))
+    );
 
-    sim.originate("meera", {
-        let m = Message::new("r7", "meera",
+    sim.originate("meera", Message::new("r7", "meera",
             Signal::new(1, false, true, false, 5, Visibility::Direct),
-            Some("overreaction, drainage systems handling it"));
-        m
-    });
+            Some("overreaction, drainage systems handling it"))
+    );
 
-    sim.originate("arjun", {
-        let m = Message::new("r8", "arjun",
+    sim.originate("arjun", Message::new("r8", "arjun",
             Signal::new(1, false, true, true, 5, Visibility::Direct)
                 .with_resource("transport"),
-            Some("dispatching trucks, need GPS coordinates"));
-        m
-    });
+            Some("dispatching trucks, need GPS coordinates"))
+    );
 
     sim.drain();
     println!("\n--- Consensus Round 2 (meera flagged, selvam rescue kept alive) ---");
@@ -216,13 +204,11 @@ pub fn scenario_earthquake() {
     }
 
     // SAR team reports what they observe
-    sim.originate("sar-001", {
-        let m = Message::new("sar-obs-1", "sar-001",
+    sim.originate("sar-001", Message::new("sar-obs-1", "sar-001",
             Signal::new(5, false, true, true, 5, Visibility::Direct)
                 .with_gps(37.5765, 36.9228),
-            Some("multiple structural collapses visible, dispatching teams"));
-        m
-    });
+            Some("multiple structural collapses visible, dispatching teams"))
+    );
 
     sim.drain();
     println!("\n--- Consensus T+0 (MCE should declare) ---");
@@ -242,12 +228,10 @@ pub fn scenario_earthquake() {
         m
     });
 
-    sim.originate("sar-002", {
-        let m = Message::new("sar-obs-2", "sar-002",
+    sim.originate("sar-002", Message::new("sar-obs-2", "sar-002",
             Signal::new(5, false, true, true, 5, Visibility::Direct),
-            Some("aftershock caused 2 additional collapses, need more teams"));
-        m
-    });
+            Some("aftershock caused 2 additional collapses, need more teams"))
+    );
 
     sim.drain();
     println!("\n--- Consensus T+22 (rescue msgs from offline nodes kept alive) ---");

@@ -26,6 +26,7 @@ pub enum MessageType {
 }
 
 impl MessageType {
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &str {
         match self {
             MessageType::Normal        => "normal",
@@ -40,6 +41,7 @@ impl MessageType {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum MessagePriority {
+    #[allow(dead_code)]
     Low,
     Normal,
     High,
@@ -59,6 +61,7 @@ impl GpsCoord {
         GpsCoord { lat, lon }
     }
 
+    #[allow(dead_code)]
     pub fn distance_metres(&self, other: &GpsCoord) -> f64 {
         let r = 6_371_000.0_f64;
         let dlat = (other.lat - self.lat).to_radians();
@@ -95,8 +98,8 @@ impl Signal {
         confidence: u8,
         visibility: Visibility,
     ) -> Signal {
-        assert!(severity >= 1 && severity <= 5);
-        assert!(confidence >= 1 && confidence <= 5);
+        assert!((1..=5).contains(&severity));
+        assert!((1..=5).contains(&confidence));
         Signal {
             severity,
             needs_help,
@@ -154,11 +157,15 @@ pub struct Message {
     pub note: Option<String>,
     pub message_type: MessageType,
     pub origin_active: bool,
+    #[allow(dead_code)]
     pub signature: Option<Signature>,
     // Session 14 additions
+    #[allow(dead_code)]
     pub created_at: u64,
+    #[allow(dead_code)]
     pub ttl_seconds: u64,   // 0 = never expires
     pub priority: MessagePriority,
+    #[allow(dead_code)]
     pub hop_count: u8,
     pub seq: u64,
 }
@@ -197,6 +204,7 @@ impl Message {
         }
     }
 
+    #[allow(dead_code)]
     pub fn is_expired(&self) -> bool {
         if self.ttl_seconds == 0 {
             return false;
@@ -205,10 +213,12 @@ impl Message {
         age > self.ttl_seconds
     }
 
+    #[allow(dead_code)]
     pub fn age_seconds(&self) -> u64 {
         now_ts().saturating_sub(self.created_at)
     }
 
+    #[allow(dead_code)]
     pub fn signable_payload(&self) -> Vec<u8> {
         format!("{}:{}:{}", self.id, self.origin, self.signal.severity).into_bytes()
     }

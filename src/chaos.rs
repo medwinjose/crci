@@ -4,7 +4,7 @@
 //! No new crates. Uses SimpleLcg from bench.rs pattern.
 //! All output prefixed with "CHAOS TEST:" for easy grep.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::time::Instant;
 
 // ── Deterministic RNG (same pattern as bench.rs) ──────────────────
@@ -29,6 +29,7 @@ impl SimpleLcg {
         (self.next_u64() >> 33) as f32 / (u32::MAX as f32)
     }
 
+    #[allow(dead_code)]
     fn next_usize(&mut self) -> usize {
         self.next_u64() as usize
     }
@@ -42,6 +43,7 @@ struct ChaosNode {
     peers: Vec<usize>,
     online: bool,
     rescue_msgs: Vec<String>,
+    #[allow(dead_code)]
     reputation: f32,
 }
 
@@ -94,16 +96,13 @@ fn run_packet_loss_scenario(loss_rate: f32, label: &str) {
     nodes[0].received.insert(msg_id.clone());
     nodes[0].rescue_msgs.push(msg_id.clone());
 
-    let mut round = 0;
     let mut full_propagation_round: Option<usize> = None;
 
-    for _ in 0..100 {
-        round += 1;
+    for round in 1..=100 {
         let mut deliveries: Vec<(usize, String)> = Vec::new();
 
         for i in 0..node_count {
-            if !nodes[i].online { continue; }
-            if nodes[i].received.contains(&msg_id) {
+            if nodes[i].online && nodes[i].received.contains(&msg_id) {
                 let peers = nodes[i].peers.clone();
                 for &peer in &peers {
                     if !nodes[peer].online { continue; }
@@ -303,7 +302,7 @@ fn run_reconnect_storm() {
 
     for round in 0..50usize {
         // Rounds 10-30: storm — nodes 2,3,4,5 rapidly disconnect/reconnect
-        if round >= 10 && round < 30 {
+        if (10..30).contains(&round) {
             for storm_node in 2..=5 {
                 let toggle = rng.next_f32() < 0.4; // 40% chance of toggle
                 if toggle {

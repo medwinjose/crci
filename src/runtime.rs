@@ -74,6 +74,7 @@ impl WireMessage {
         verifying_key.verify(payload.as_bytes(), &signature).is_ok()
     }
 
+    #[allow(dead_code)]
     pub fn to_message(&self) -> Message {
         Message {
             id: self.id.clone(),
