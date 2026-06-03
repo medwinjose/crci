@@ -11,6 +11,7 @@ mod crisis;
 mod replay;
 mod bench;
 mod chaos;
+mod validation;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -225,4 +226,45 @@ fn main() {
     bench::run_benchmarks();
 
     chaos::run_chaos_tests();
+
+    // ── Session 21: Validation + Rate Limiting ────────────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════╗");
+    println!("║  SESSION 21 — INPUT VALIDATION + RATE LIMITING           ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+
+    // Severity validation
+    let nan_result = validation::validate_severity(f32::NAN);
+    println!("  NaN severity rejected: {}", nan_result.is_err());
+    let inf_result = validation::validate_severity(f32::INFINITY);
+    println!("  Infinity severity rejected: {}", inf_result.is_err());
+    let oob_result = validation::validate_severity(99.0);
+    println!("  Out-of-range severity rejected: {}", oob_result.is_err());
+
+    // Rate limiting
+    let mut limiter = validation::RateLimiter::new();
+    let mut blocked = 0usize;
+    for _ in 0..15 {
+        if limiter.check_and_record("spammer").is_err() {
+            blocked += 1;
+        }
+    }
+    println!("  Rate limit: 15 msgs → {} blocked (limit=10)", blocked);
+
+    // Panic cooldown
+    let mut limiter2 = validation::RateLimiter::new();
+    let first = limiter2.check_panic_cooldown("node-a", 1);
+    let second = limiter2.check_panic_cooldown("node-a", 5);
+    println!("  Panic button: first press ok={}, spam blocked={}", first.is_ok(), second.is_err());
+
+    // Seq overflow
+    let overflow = validation::validate_seq(u64::MAX - 100);
+    println!("  Seq overflow detected: {}", overflow.is_err());
+
+    // Payload size
+    let big = vec![0u8; 300];
+    let size_result = validation::validate_payload_size(&big);
+    println!("  Oversized payload blocked: {}", size_result.is_err());
+
+    println!("  ✅ Session 21 validation tests complete.");
 }   // ← this is the closing brace of fn main()

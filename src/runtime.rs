@@ -221,8 +221,8 @@ impl NodeRuntime {
             return;
         }
         let wire = WireMessage::from_message(&msg, &self.identity);
-        let is_persistent = matches!(msg.message_type,
-            MessageType::RescueRequest | MessageType::MassCasualtyEvent);
+        let is_persistent = matches!(msg.message_type, MessageType::RescueRequest | MessageType::MassCasualtyEvent)
+            || msg.signal.can_help_others;
         if is_persistent {
             self.persistent_messages.insert(wire.id.clone(), wire.clone());
         }

@@ -85,11 +85,15 @@ impl MeshSimulator {
         // Gather all observations from all nodes, grouped by zone
         let mut by_zone: HashMap<String, Vec<(String, u8, u8, bool)>> = HashMap::new();
 
-        for node in self.nodes.values() {
-            for obs in &node.observations {
-                by_zone.entry(node.zone.clone())
-                    .or_default()
-                    .push(obs.clone());
+        for observer_node in self.nodes.values() {
+            for obs in &observer_node.observations {
+                // Group observations by the ZONE OF THE ORIGINATOR, not the observer.
+                // This is critical for multi-zone scenarios.
+                if let Some(origin_node) = self.nodes.get(&obs.0) {
+                    by_zone.entry(origin_node.zone.clone())
+                        .or_default()
+                        .push(obs.clone());
+                }
             }
         }
 
@@ -131,10 +135,18 @@ impl MeshSimulator {
 
             println!("  [Zone {}] Median severity: {}", zone, median);
 
+            let mut unique_rescue_ids = HashSet::new();
             let mut any_anomaly = false;
-            let mut rescue_count = 0u32;
 
             for (node_id, (severity, confidence, unknown_vis)) in reporters {
+                if let Some(node) = self.nodes.get(node_id) {
+                    for msg in node.persistent_messages.values() {
+                        if msg.message_type == "rescue" {
+                            unique_rescue_ids.insert(msg.id.clone());
+                        }
+                    }
+                }
+
                 if *unknown_vis {
                     println!("  [Zone {}] ℹ [{}] sev {} — unknown vis, not penalised", zone, node_id, severity);
                     continue;
@@ -153,17 +165,13 @@ impl MeshSimulator {
                         println!("  [Zone {}] ✗ [{}] penalised → rep {:.2}", zone, node_id, node.reputation);
                     }
                 }
-
-                rescue_count += self.nodes.get(node_id)
-                    .map(|n| n.persistent_messages.values()
-                        .filter(|m| m.message_type == "rescue").count() as u32)
-                    .unwrap_or(0);
             }
 
             if !any_anomaly {
                 println!("  [Zone {}] ✓ No anomalies", zone);
             }
 
+            let rescue_count = unique_rescue_ids.len() as u32;
             if rescue_count >= 3 && !self.declared_mce_zones.contains(zone) {
                 self.declared_mce_zones.insert(zone.clone());
                 println!("  [Zone {}] 🚨 MASS CASUALTY EVENT — {} rescue requests", zone, rescue_count);
