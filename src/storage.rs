@@ -7,9 +7,8 @@
 // Nobody else can read the file even if they physically take the phone,
 // because the encryption key never leaves the device in plaintext.
 
-use std::collections::HashMap;
 use aes_gcm::{
-    aead::{Aead, KeyInit, OsRng as AesOsRng},
+    aead::{Aead, KeyInit},
     Aes256Gcm, Key, Nonce,
 };
 use rand::RngCore;

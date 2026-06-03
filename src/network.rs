@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use crate::message::{Message, MessageType, Signal, Visibility};
 use crate::node::Node;
 
+#[allow(dead_code)]
 pub struct Observation {
     pub node_id: String,
     pub zone: String,
@@ -10,12 +11,14 @@ pub struct Observation {
     pub is_unknown_visibility: bool,
 }
 
+#[allow(dead_code)]
 pub struct Network {
     pub nodes: HashMap<String, Node>,
     pub observations: Vec<Observation>,
     pub declared_mce_zones: HashSet<String>,
 }
 
+#[allow(dead_code)]
 impl Network {
     pub fn new() -> Network {
         Network {
@@ -252,7 +255,7 @@ impl Network {
             let mut sorted = confident_severities.clone();
             sorted.sort();
             let mid = sorted.len() / 2;
-            let median = if sorted.len() % 2 == 0 {
+            let median = if sorted.len().is_multiple_of(2) {
                 (sorted[mid - 1] + sorted[mid]) / 2
             } else {
                 sorted[mid]
