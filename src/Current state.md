@@ -4,7 +4,7 @@
 
 # This is the single source of truth for where the project is right now.
 
-# Last updated: End of Session 23
+# Last updated: End of Session 25
 
 ---
 
@@ -27,6 +27,8 @@ validation.rs     — NEW: Input validation and rate limiting
 aeda.rs           — NEW: Autonomous emergency decision architecture
 battery.rs        — NEW: Battery-aware gossip throttling
 ttl.rs            — NEW: Message TTL enforcement and storage pruning
+integration.rs    — NEW: Gossip pipeline integrating all subsystems (Session 24)
+security.rs       — NEW: STRIDE security hardening and safety features (Session 25)
 ```
 
 All modules introduced in Session 6. Module split is complete and stable.
@@ -56,6 +58,9 @@ All modules introduced in Session 6. Module split is complete and stable.
 - Autonomous Emergency Decision Architecture (AEDA) (Session 22)
 - Battery-aware gossip throttling and dynamic drain rates (Session 23)
 - Message TTL enforcement, bounded storage pruning, and tombstones (Session 23)
+- Integration layer wiring validation, AEDA, battery, and TTL (Session 24)
+- STRIDE security hardening: opaque Node IDs, payload audits, signed audit log, zone membership vouching, reputation-weighted MCE (Session 25)
+- Safety features: GOODBYE signal, priority message queue, rescue resolution (Session 25)
 
 ---
 
@@ -82,7 +87,7 @@ Do not add dependencies without updating this file.
 - [ ] `unwrap()` calls may still exist in early session code — audit needed before v1
 - [ ] No persistent storage yet (planned: Session 10)
 - [ ] Device-agnostic cross-platform support deferred — not addressed yet
-- [ ] Broader security pass pending (Ed25519 landed but full security hardening not done)
+- [x] Broader security pass pending (Completed Session 25 - STRIDE hardening)
 
 ---
 
@@ -106,6 +111,12 @@ Do not add dependencies without updating this file.
 - **Peer proximity triangulation for GPS-denied location.**
   Reason: disaster environments often have GPS denial. Location is inferred from peer proximity.
 
+- **Reputation-weighted MCE threshold.**
+  Reason: Coordinated low-rep nodes could spam rescues to trigger false MCEs. Nodes with rep < 0.5 now count as 0.
+
+- **Zone claim vouching.**
+  Reason: To prevent zone spoofing, nodes claiming a zone must be vouched for by at least one existing verified member of that zone, unless they are the bootstrap node.
+
 ---
 
 ## Session Roadmap
@@ -123,18 +134,20 @@ Do not add dependencies without updating this file.
 | 21      | Complete | Input validation + rate limiting                   |
 | 22      | Complete | Autonomous Emergency Decisions (AEDA)              |
 | 23      | Complete | Battery-aware throttling & TTL enforcement         |
-| **24**  | **Next** | **TBD**                                            |
+| 24      | Complete | Integration pipeline + bug fixes                   |
+| 25      | Complete | STRIDE security hardening + safety features        |
+| **26**  | **Next** | **TBD**                                            |
 
 ## Current Development Priority (Next Session)
 
-**Session 24: TBD**
+**Session 26: TBD**
 Wait for the next set of instructions.
 
 Pre-session checklist:
 
 - [ ] Confirm all existing tests pass
 - [ ] Run `rustfmt` on all files
-- [ ] Commit current state with message format: `session-24: next steps`
+- [ ] Commit current state with message format: `session-26: next steps`
 
 ---
 
