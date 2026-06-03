@@ -126,25 +126,25 @@ pub fn scenario_flood() {
 
     // Resource matching report
     println!("\n=== Resource Matching Report ===");
-    let mut help_needed = vec![];
-    let mut help_available = vec![];
-    for (id, node) in &sim.nodes {
+    let mut help_needed: HashMap<String, String> = HashMap::new();
+    let mut help_available: HashMap<String, String> = HashMap::new();
+    for node in sim.nodes.values() {
         for msg in node.persistent_messages.values() {
             if msg.needs_help {
-                help_needed.push((id.clone(), msg.note.clone().unwrap_or_default()));
+                help_needed.insert(msg.origin.clone(), msg.note.clone().unwrap_or_default());
             }
             if msg.can_help_others {
-                help_available.push((id.clone(), msg.note.clone().unwrap_or_default()));
+                help_available.insert(msg.origin.clone(), msg.note.clone().unwrap_or_default());
             }
         }
     }
     println!("Nodes needing help: {}", help_needed.len());
-    for (id, note) in &help_needed {
-        println!("  🆘 [{}]: {}", id, &note[..note.len().min(60)]);
+    for (origin_id, note) in &help_needed {
+        println!("  🆘 [{}]: {}", origin_id, &note[..note.len().min(60)]);
     }
     println!("Nodes that can help: {}", help_available.len());
-    for (id, note) in &help_available {
-        println!("  ✅ [{}]: {}", id, &note[..note.len().min(60)]);
+    for (origin_id, note) in &help_available {
+        println!("  ✅ [{}]: {}", origin_id, &note[..note.len().min(60)]);
     }
 }
 
