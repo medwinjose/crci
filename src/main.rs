@@ -3,6 +3,7 @@ mod battery;
 mod bench;
 mod chaos;
 mod crisis;
+mod discovery;
 mod identity;
 mod integration;
 mod mesh;
@@ -894,4 +895,107 @@ fn main() {
 
     println!();
     println!("  ✅ Session 25 STRIDE hardening complete.");
+
+    // ── Session 27: Node Discovery Protocol ──────────────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════╗");
+    println!("║  SESSION 27 — NODE DISCOVERY PROTOCOL                    ║");
+    println!("║  Beacon + Peer Exchange + Zone Bootstrap                 ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+
+    // Scenario: 3 nodes in zone-alpha, 2 in zone-beta
+    // node-a and node-b hear each other directly via beacon
+    // node-c only knows node-a and learns about node-b via exchange
+    let id_a = "a1a1a1a1a1a1a1a1";
+    let id_b = "b2b2b2b2b2b2b2b2";
+    let id_c = "c3c3c3c3c3c3c3c3";
+    let id_d = "d4d4d4d4d4d4d4d4";
+    let id_e = "e5e5e5e5e5e5e5e5";
+
+    let mut eng_a = discovery::DiscoveryEngine::new(id_a, "zone-alpha");
+    let mut eng_b = discovery::DiscoveryEngine::new(id_b, "zone-alpha");
+    let mut eng_c = discovery::DiscoveryEngine::new(id_c, "zone-alpha");
+    let mut eng_d = discovery::DiscoveryEngine::new(id_d, "zone-beta");
+    let mut eng_e = discovery::DiscoveryEngine::new(id_e, "zone-beta");
+
+    println!("\n  --- Round 10: First beacon round ---");
+
+    // Round 10 beacons
+    let beacon_a = eng_a.generate_beacon(10, "FULL");
+    let beacon_b = eng_b.generate_beacon(10, "LOW");
+    let beacon_d = eng_d.generate_beacon(10, "FULL");
+    let beacon_e = eng_e.generate_beacon(10, "CRITICAL");
+
+    // A and B hear each other; C only hears A; D and E hear each other
+    eng_b.receive_beacon(&beacon_a, 10);
+    eng_a.receive_beacon(&beacon_b, 10);
+    eng_c.receive_beacon(&beacon_a, 10);
+    eng_e.receive_beacon(&beacon_d, 10);
+    eng_d.receive_beacon(&beacon_e, 10);
+
+    println!(
+        "  node-a knows: {} peers | node-b knows: {} peers | node-c knows: {} peers",
+        eng_a.known_peers(),
+        eng_b.known_peers(),
+        eng_c.known_peers()
+    );
+    println!(
+        "  node-c knows node-b directly: {} (expected false)",
+        eng_c.knows_peer(id_b)
+    );
+
+    println!("\n  --- Round 20: Peer exchange — C asks A for peers ---");
+
+    // C connects to A and requests peer list
+    let shared_by_a = eng_a.generate_peer_exchange(id_c, 20);
+    let found = eng_c.receive_peer_exchange(id_a, &shared_by_a, "zone-alpha", 20);
+    println!("  node-c discovered {} new peer(s) via exchange", found);
+    println!(
+        "  node-c now knows node-b: {} (expected true)",
+        eng_c.knows_peer(id_b)
+    );
+    println!("  node-c total known: {}", eng_c.known_peers());
+
+    println!("\n  --- Round 20: Zone-beta peer exchange ---");
+    let shared_by_d = eng_d.generate_peer_exchange(id_e, 20);
+    let found_e = eng_e.receive_peer_exchange(id_d, &shared_by_d, "zone-beta", 20);
+    println!("  node-e discovered {} new peer(s) from node-d", found_e);
+
+    println!("\n  --- Full network simulation (10 nodes, 50 rounds) ---");
+    let (beacons_sent, total_discovered) = discovery::simulate_discovery(10, 50);
+    println!(
+        "  Beacons broadcast: {} | Peer discoveries: {}",
+        beacons_sent, total_discovered
+    );
+
+    println!("\n  --- Battery tier in beacons ---");
+    println!(
+        "  beacon_b battery tier: {} (expected LOW)",
+        beacon_b.battery_tier
+    );
+    println!(
+        "  beacon_e battery tier: {} (expected CRITICAL)",
+        beacon_e.battery_tier
+    );
+
+    println!("\n  --- Exchange peer count cap ---");
+    // Populate node-a with many peers and verify exchange cap
+    for i in 0..12u64 {
+        eng_a.peer_table.upsert(discovery::PeerRecord {
+            node_id: format!("{i:016x}"),
+            zone: "zone-alpha".to_string(),
+            last_seen: i,
+            discovery_method: discovery::DiscoveryMethod::DirectBeacon,
+            battery_tier: "FULL".to_string(),
+            zone_vouched: false,
+        });
+    }
+    let big_exchange = eng_a.generate_peer_exchange("newcomer", 30);
+    println!(
+        "  node-a has 12+ peers, exchange sends {} (max=8)",
+        big_exchange.len()
+    );
+
+    println!();
+    println!("  ✅ Session 27 node discovery complete.");
 } // ← this is the closing brace of fn main()

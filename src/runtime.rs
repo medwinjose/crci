@@ -239,7 +239,10 @@ impl NodeRuntime {
         let payload = match serde_json::to_vec(&wire) {
             Ok(bytes) => bytes,
             Err(e) => {
-                println!("  ⚠ [{}] failed to serialize origination message: {}", self.id, e);
+                println!(
+                    "  ⚠ [{}] failed to serialize origination message: {}",
+                    self.id, e
+                );
                 return;
             }
         };
