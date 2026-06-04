@@ -11,6 +11,7 @@
 use std::collections::HashMap;
 
 // Per-origin sequence tracking
+#[derive(Default)]
 pub struct ReplayFilter {
     // origin_id -> highest sequence number seen
     seen_sequences: HashMap<String, u64>,
@@ -20,10 +21,7 @@ pub struct ReplayFilter {
 
 impl ReplayFilter {
     pub fn new() -> ReplayFilter {
-        ReplayFilter {
-            seen_sequences: HashMap::new(),
-            last_wall: HashMap::new(),
-        }
+        ReplayFilter::default()
     }
 
     // Returns true if the message should be accepted, false if it should be dropped.

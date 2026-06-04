@@ -55,6 +55,8 @@ fn bench_ttl_pruning() {
 
     // With pruning
     let mut store_pruned = TtlStore::new();
+    // Allow messages to persist until TTL expiration (50 rounds) rather than being evicted early by default storage cap (200).
+    store_pruned.set_max_stored_messages(30_000);
     let mut store_unpruned_count: u64 = 0;
 
     let t0 = Instant::now();
@@ -69,6 +71,9 @@ fn bench_ttl_pruning() {
     let wall_ms = t0.elapsed().as_millis();
 
     let final_active = store_pruned.active_count() as u64;
+    // Memory saved measures the percentage of historical messages that have been reclaimed
+    // (either pruned due to TTL expiration or evicted due to capacity limits)
+    // and are no longer occupying active memory, relative to the total messages generated.
     let pct_saved = if store_unpruned_count > 0 {
         100.0 - (final_active as f32 / store_unpruned_count as f32 * 100.0)
     } else {

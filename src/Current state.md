@@ -4,7 +4,7 @@
 
 # This is the single source of truth for where the project is right now.
 
-# Last updated: End of Session 29
+# Last updated: End of Session 30
 
 ---
 
@@ -70,6 +70,10 @@ All modules introduced in Session 6. Module split is complete and stable.
 - Zone Registry pipeline integration: rejects unverified normal messages while allowing emergencies (Session 29)
 - Thread-safe validation Rate Limiter via Arc<Mutex> wrapper (Session 29)
 - Docker Compose foundation for 40-node proof loop (Session 29)
+- TCP Gossip Transport layer shim (`src/transport.rs`) (Session 30)
+- Standalone Node Entrypoint binary (`src/bin/node.rs`) exposing Prometheus metrics on port 9090 and running peer severity consensus (Session 30)
+- Fixed Benchmark 6 TTL pruning metrics to naturally expire messages using configurable storage capacity (Session 30)
+
 
 ---
 
@@ -156,18 +160,19 @@ Do not add dependencies without updating this file.
 | 27      | Complete | Node discovery protocol (beacon + exchange)        |
 | 28      | Complete | Extended benchmarks for quantitative paper claims  |
 | 29      | Complete | Zone registry wired + Docker Proof Loop foundation |
-| **30**  | **Next** | **TBD**                                            |
+| 30      | Complete | TCP transport, Docker entrypoint, and Proof Loop   |
+| **31**  | **Next** | **Tokio Async Transport Migration**                |
 
 ## Current Development Priority (Next Session)
 
-**Session 30: TBD**
-Wait for the next set of instructions.
+**Session 31: Tokio Async Transport Migration**
+Migrate the minimal std::net TCP networking transport to full Tokio async networking to improve concurrency and remove the OS thread-per-connection model.
 
 Pre-session checklist:
 
 - [ ] Confirm all existing tests pass
 - [ ] Run `rustfmt` on all files
-- [ ] Commit current state with message format: `session-30: next steps`
+- [ ] Commit current state with message format: `session-31: next steps`
 
 ---
 

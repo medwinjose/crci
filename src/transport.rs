@@ -60,3 +60,115 @@ impl Transport for SimTransport {
         &self.node_id
     }
 }
+
+// ─── TCP Gossip Transport Shim ───────────────────────────────────────────────
+
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::thread;
+
+pub struct TcpGossipNode {
+    pub node_id: String,
+    pub zone: String,
+    pub peers: Vec<String>,
+    pub pipeline: Arc<Mutex<GossipPipeline>>,
+    pub received: Arc<Mutex<Vec<PipelineMessage>>>,
+}
+
+use crate::integration::{GossipPipeline, PipelineMessage, PipelineVerdict};
+
+impl TcpGossipNode {
+    pub fn new(node_id: &str, zone: &str, peers: Vec<String>) -> Self {
+        TcpGossipNode {
+            node_id: node_id.to_string(),
+            zone: zone.to_string(),
+            peers,
+            pipeline: Arc::new(Mutex::new(GossipPipeline::new())),
+            received: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    /// Starts a TCP listener on the configured port.
+    /// Spawns a background thread to accept incoming connections.
+    pub fn start_listener(&self, port: u16) -> thread::JoinHandle<()> {
+        let pipeline = self.pipeline.clone();
+        let peers = self.peers.clone();
+        let local_node_id = self.node_id.clone();
+        let received = self.received.clone();
+
+        thread::spawn(move || {
+            let addr = format!("0.0.0.0:{}", port);
+            let listener = TcpListener::bind(&addr)
+                .unwrap_or_else(|e| panic!("Failed to bind TCP listener on {}: {}", addr, e));
+
+            for mut stream in listener.incoming().flatten() {
+                let pipeline_inner = pipeline.clone();
+                let peers_inner = peers.clone();
+                let local_node_id_inner = local_node_id.clone();
+                let received_inner = received.clone();
+                thread::spawn(move || {
+                    let mut buf = Vec::new();
+                    // Read message until EOF (connection closed by sender)
+                    if stream.read_to_end(&mut buf).is_ok() && !buf.is_empty() {
+                        if let Ok(msg) = serde_json::from_slice::<PipelineMessage>(&buf) {
+                            // Skip messages that originated from ourselves to prevent loops
+                            if msg.origin_node == local_node_id_inner {
+                                return;
+                            }
+
+                            let verdict = {
+                                let mut pipeline_guard = pipeline_inner.lock().unwrap();
+                                pipeline_guard.process(&msg)
+                            };
+
+                            if verdict == PipelineVerdict::Accept {
+                                {
+                                    let mut rec = received_inner.lock().unwrap();
+                                    rec.push(msg.clone());
+                                }
+
+                                // Gossip/forward the message to all other peers
+                                for peer in peers_inner {
+                                    let msg_clone = msg.clone();
+                                    thread::spawn(move || {
+                                        if let Ok(mut out_stream) = TcpStream::connect(&peer) {
+                                            if let Ok(serialized) = serde_json::to_vec(&msg_clone) {
+                                                let _ = out_stream.write_all(&serialized);
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+    }
+
+    /// Originate and broadcast a message from this node.
+    pub fn broadcast(&self, msg: PipelineMessage) {
+        // Log/process locally first
+        {
+            let mut pipeline_guard = self.pipeline.lock().unwrap();
+            let _ = pipeline_guard.process(&msg);
+        }
+        {
+            let mut rec = self.received.lock().unwrap();
+            rec.push(msg.clone());
+        }
+
+        // Send to all peers
+        for peer in &self.peers {
+            let msg_clone = msg.clone();
+            let peer_addr = peer.clone();
+            thread::spawn(move || {
+                if let Ok(mut out_stream) = TcpStream::connect(&peer_addr) {
+                    if let Ok(serialized) = serde_json::to_vec(&msg_clone) {
+                        let _ = out_stream.write_all(&serialized);
+                    }
+                }
+            });
+        }
+    }
+}

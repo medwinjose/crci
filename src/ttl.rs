@@ -73,10 +73,9 @@ impl StoredMessage {
 // ── TTL store ─────────────────────────────────────────────────────
 
 /// Per-node message store with TTL enforcement.
-#[derive(Default)]
 pub struct TtlStore {
     /// Active messages
-    messages: HashMap<String, StoredMessage>,
+    pub messages: HashMap<String, StoredMessage>,
     /// Tombstones list for bounded eviction
     tombstones_queue: VecDeque<String>,
     /// Tombstones set for O(1) lookup
@@ -87,11 +86,32 @@ pub struct TtlStore {
     pub total_pruned: u64,
     /// Total messages evicted due to storage cap
     pub total_evicted: u64,
+    /// Max messages in active storage
+    max_stored_messages: usize,
+}
+
+impl Default for TtlStore {
+    fn default() -> Self {
+        TtlStore {
+            messages: HashMap::new(),
+            tombstones_queue: VecDeque::new(),
+            tombstones_set: HashSet::new(),
+            total_stored: 0,
+            total_pruned: 0,
+            total_evicted: 0,
+            max_stored_messages: MAX_STORED_MESSAGES,
+        }
+    }
 }
 
 impl TtlStore {
     pub fn new() -> Self {
         TtlStore::default()
+    }
+
+    /// Set the max messages limit in active storage.
+    pub fn set_max_stored_messages(&mut self, max: usize) {
+        self.max_stored_messages = max;
     }
 
     /// Store a message. Returns false if already present or tombstoned.
@@ -103,7 +123,7 @@ impl TtlStore {
             return false; // previously pruned — do not re-admit
         }
         // Enforce storage cap: evict oldest non-rescue if full
-        if self.messages.len() >= MAX_STORED_MESSAGES {
+        if self.messages.len() >= self.max_stored_messages {
             self.evict_oldest_normal();
         }
         self.total_stored += 1;
