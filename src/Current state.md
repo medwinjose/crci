@@ -4,7 +4,7 @@
 
 # This is the single source of truth for where the project is right now.
 
-# Last updated: End of Session 28
+# Last updated: End of Session 29
 
 ---
 
@@ -67,6 +67,9 @@ All modules introduced in Session 6. Module split is complete and stable.
 - Node discovery protocol: beaconing, peer exchange, and zone bootstrap (Session 27)
 - Extended quantitative benchmarks (TTL pruning, rate limit, discovery convergence, AEDA latency, queue throughput, pipeline throughput) (Session 28)
 - Debug audit pass: upgraded TTL tombstones to O(1) bounds-checked storage, removed orphaned code, silenced dead code warnings (Session 28)
+- Zone Registry pipeline integration: rejects unverified normal messages while allowing emergencies (Session 29)
+- Thread-safe validation Rate Limiter via Arc<Mutex> wrapper (Session 29)
+- Docker Compose foundation for 40-node proof loop (Session 29)
 
 ---
 
@@ -152,18 +155,19 @@ Do not add dependencies without updating this file.
 | 26      | Complete | Debug audit, logic fixes, & unwrap cleanup         |
 | 27      | Complete | Node discovery protocol (beacon + exchange)        |
 | 28      | Complete | Extended benchmarks for quantitative paper claims  |
-| **29**  | **Next** | **TBD**                                            |
+| 29      | Complete | Zone registry wired + Docker Proof Loop foundation |
+| **30**  | **Next** | **TBD**                                            |
 
 ## Current Development Priority (Next Session)
 
-**Session 29: TBD**
+**Session 30: TBD**
 Wait for the next set of instructions.
 
 Pre-session checklist:
 
 - [ ] Confirm all existing tests pass
 - [ ] Run `rustfmt` on all files
-- [ ] Commit current state with message format: `session-29: next steps`
+- [ ] Commit current state with message format: `session-30: next steps`
 
 ---
 
