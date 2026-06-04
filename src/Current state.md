@@ -4,7 +4,7 @@
 
 # This is the single source of truth for where the project is right now.
 
-# Last updated: End of Session 26
+# Last updated: End of Session 27
 
 ---
 
@@ -63,6 +63,7 @@ All modules introduced in Session 6. Module split is complete and stable.
 - Safety features: GOODBYE signal, priority message queue, rescue resolution (Session 25)
 - Sequence overflow protection actively preventing long-term replay attacks (Session 26)
 - Safe mutex and serialization execution — zero unwrap panics in production logic (Session 26)
+- Node discovery protocol: beaconing, peer exchange, and zone bootstrap (Session 27)
 
 ---
 
@@ -119,6 +120,9 @@ Do not add dependencies without updating this file.
 - **Zone claim vouching.**
   Reason: To prevent zone spoofing, nodes claiming a zone must be vouched for by at least one existing verified member of that zone, unless they are the bootstrap node.
 
+- **Peer exchange limit set to 8 nodes.**
+  Reason: LoRa packet size constraints prevent sharing arbitrarily large peer tables.
+
 ---
 
 ## Session Roadmap
@@ -139,18 +143,19 @@ Do not add dependencies without updating this file.
 | 24      | Complete | Integration pipeline + bug fixes                   |
 | 25      | Complete | STRIDE security hardening + safety features        |
 | 26      | Complete | Debug audit, logic fixes, & unwrap cleanup         |
-| **27**  | **Next** | **TBD**                                            |
+| 27      | Complete | Node discovery protocol (beacon + exchange)        |
+| **28**  | **Next** | **TBD**                                            |
 
 ## Current Development Priority (Next Session)
 
-**Session 27: TBD**
+**Session 28: TBD**
 Wait for the next set of instructions.
 
 Pre-session checklist:
 
 - [ ] Confirm all existing tests pass
 - [ ] Run `rustfmt` on all files
-- [ ] Commit current state with message format: `session-27: next steps`
+- [ ] Commit current state with message format: `session-28: next steps`
 
 ---
 
