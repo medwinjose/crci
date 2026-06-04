@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    networks:
+      - crci-mesh
+
+  honest-node:
+    build: .
+    environment:
+      - NODE_TYPE=honest
+      - RUST_LOG=info
+    deploy:
+      replicas: 30
+    networks:
+      - crci-mesh
+    # No actual node binary wiring needed yet
+    command: ["sleep", "infinity"]
+
+  byzantine-node:
+    build: .
+    environment:
+      - NODE_TYPE=byzantine
+    deploy:
+      replicas: 10
+    networks:
+      - crci-mesh
+    # No actual node binary wiring needed yet
+    command: ["sleep", "infinity"]
+
+networks:
+  crci-mesh:
+    driver: bridge

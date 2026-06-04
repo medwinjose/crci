@@ -14,7 +14,7 @@ use crate::aeda::{AedaEngine, RescueEvent};
 use crate::battery::{BatteryState, BatteryTier};
 use crate::ttl::{StoredMessage, TtlStore};
 use crate::validation::{
-    validate_node_id, validate_payload_size, validate_seq, validate_severity, RateLimiter,
+    validate_node_id, validate_payload_size, validate_seq, validate_severity, ThreadSafeRateLimiter,
 };
 use std::collections::HashMap;
 
@@ -52,11 +52,11 @@ pub enum PipelineVerdict {
 // ── Integrated pipeline ───────────────────────────────────────────
 
 pub struct GossipPipeline {
-    pub rate_limiter: RateLimiter,
+    pub rate_limiter: ThreadSafeRateLimiter,
     pub aeda: AedaEngine,
-    /// Per-node battery state
-    battery_states: HashMap<String, BatteryState>,
+    pub battery_states: HashMap<String, BatteryState>,
     pub ttl_store: TtlStore,
+    pub zone_registry: crate::security::ZoneMembershipRegistry,
     /// rescue_id → count of nodes that have acknowledged holding it
     pub rescue_ack_counts: HashMap<String, usize>,
     current_round: u64,
@@ -69,10 +69,11 @@ pub struct GossipPipeline {
 impl GossipPipeline {
     pub fn new() -> Self {
         GossipPipeline {
-            rate_limiter: RateLimiter::new(),
+            rate_limiter: ThreadSafeRateLimiter::new(),
             aeda: AedaEngine::new(),
             battery_states: HashMap::new(),
             ttl_store: TtlStore::new(),
+            zone_registry: crate::security::ZoneMembershipRegistry::new(),
             rescue_ack_counts: HashMap::new(),
             current_round: 0,
             accepted: 0,
@@ -103,6 +104,14 @@ impl GossipPipeline {
     /// Process an incoming message through the full pipeline.
     /// Returns Accept, Reject, or Throttle with reason.
     pub fn process(&mut self, msg: &PipelineMessage) -> PipelineVerdict {
+        let is_rescue = msg.kind == MessageKind::Rescue || msg.kind == MessageKind::Panic;
+
+        // ── Stage 0: Zone Verification ────────────────────────────
+        // Non-rescue messages are rejected if sender is not verified in the zone.
+        if !is_rescue && !self.zone_registry.is_verified(&msg.origin_node, &msg.zone) {
+            self.rejected += 1;
+            return PipelineVerdict::Reject("zone not verified".to_string());
+        }
         // ── Stage 1: Node ID validation ───────────────────────────
         if let Err(e) = validate_node_id(&msg.origin_node) {
             self.rejected += 1;
@@ -152,7 +161,6 @@ impl GossipPipeline {
         }
 
         // ── Stage 7: Battery-aware forwarding ────────────────────
-        let is_rescue = msg.kind == MessageKind::Rescue || msg.kind == MessageKind::Panic;
         let should_fwd = if let Some(state) = self.battery_states.get_mut(&msg.origin_node) {
             state.should_forward(is_rescue)
         } else {
@@ -220,6 +228,18 @@ impl GossipPipeline {
             self.aeda.count_disinfo(),
         )
     }
+
+    pub fn register_bootstrap(&mut self, zone: &str, node_id: &str) {
+        self.zone_registry.register_bootstrap(node_id, zone);
+    }
+
+    pub fn claim_zone(&mut self, zone: &str, node_id: &str) -> bool {
+        self.zone_registry.claim_zone(node_id, zone)
+    }
+
+    pub fn vouch(&mut self, _zone: &str, voucher_id: &str, new_node_id: &str) -> bool {
+        self.zone_registry.vouch(voucher_id, new_node_id)
+    }
 }
 
 impl Default for GossipPipeline {
@@ -280,7 +300,6 @@ impl SplitBatteryCounter {
 }
 
 // ── BUG FIX 2: O(1) tombstone store ──────────────────────────────
-
 
 // ── Tests ─────────────────────────────────────────────────────────
 
@@ -418,7 +437,6 @@ mod tests {
         assert_eq!(counter.normal_forwarded, 1);
     }
 
-
     #[test]
     fn test_aeda_reputation_weighting() {
         let mut pipe = GossipPipeline::new();
@@ -482,5 +500,33 @@ mod tests {
         pipe.next_round();
         let new_round_msg = make_msg("new-round", "node-x", "zone-1", 3, MessageKind::Normal);
         assert_eq!(pipe.process(&new_round_msg), PipelineVerdict::Accept);
+    }
+
+    #[test]
+    fn test_unverified_node_rejected_by_pipeline() {
+        let mut pipe = GossipPipeline::new();
+        let normal = make_msg("norm1", "unverified", "zone-X", 2, MessageKind::Normal);
+        assert_eq!(
+            pipe.process(&normal),
+            PipelineVerdict::Reject("zone not verified".to_string())
+        );
+    }
+
+    #[test]
+    fn test_rescue_bypasses_zone_check() {
+        let mut pipe = GossipPipeline::new();
+        let rescue = make_msg("res1", "unverified", "zone-X", 5, MessageKind::Rescue);
+        assert_eq!(pipe.process(&rescue), PipelineVerdict::Accept);
+    }
+
+    #[test]
+    fn test_vouched_node_accepted() {
+        let mut pipe = GossipPipeline::new();
+        pipe.register_bootstrap("zone-Y", "boot-node");
+        pipe.claim_zone("zone-Y", "vouched-node");
+        assert!(pipe.vouch("zone-Y", "boot-node", "vouched-node"));
+
+        let msg = make_msg("norm2", "vouched-node", "zone-Y", 2, MessageKind::Normal);
+        assert_eq!(pipe.process(&msg), PipelineVerdict::Accept);
     }
 }

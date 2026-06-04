@@ -10,6 +10,7 @@
 //! per-node counters for the current round only.
 
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -183,6 +184,47 @@ impl RateLimiter {
     /// How many messages has this node sent this round?
     pub fn round_count(&self, node_id: &str) -> usize {
         self.counts.get(node_id).copied().unwrap_or(0)
+    }
+}
+
+// ── Thread-Safe Wrapper ───────────────────────────────────────────
+
+#[derive(Clone, Default)]
+pub struct ThreadSafeRateLimiter {
+    inner: Arc<Mutex<RateLimiter>>,
+}
+
+impl ThreadSafeRateLimiter {
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(RateLimiter::new())),
+        }
+    }
+
+    pub fn reset_round(&self) {
+        if let Ok(mut guard) = self.inner.lock() {
+            guard.reset_round();
+        }
+    }
+
+    pub fn check_and_record(&self, node_id: &str) -> Result<(), ValidationError> {
+        if let Ok(mut guard) = self.inner.lock() {
+            guard.check_and_record(node_id)
+        } else {
+            Ok(()) // Fallback on poisoned lock
+        }
+    }
+
+    pub fn check_panic_cooldown(
+        &self,
+        node_id: &str,
+        current_round: u64,
+    ) -> Result<(), ValidationError> {
+        if let Ok(mut guard) = self.inner.lock() {
+            guard.check_panic_cooldown(node_id, current_round)
+        } else {
+            Ok(())
+        }
     }
 }
 
