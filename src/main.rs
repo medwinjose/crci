@@ -1,6 +1,7 @@
 mod aeda;
 mod battery;
 mod bench;
+mod bench_extended;
 mod chaos;
 mod crisis;
 mod discovery;
@@ -998,4 +999,7 @@ fn main() {
 
     println!();
     println!("  ✅ Session 27 node discovery complete.");
+
+    // ── Session 28: Extended Benchmarks ──────────────────────────
+    bench_extended::run_extended_benchmarks();
 } // ← this is the closing brace of fn main()
