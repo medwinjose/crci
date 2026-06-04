@@ -13,6 +13,7 @@ use crate::runtime::NodeRuntime;
 use crate::transport::SharedInbox;
 use std::collections::{HashMap, HashSet};
 
+#[derive(Default)]
 pub struct MeshSimulator {
     pub nodes: HashMap<String, NodeRuntime>,
     pub declared_mce_zones: HashSet<String>,
@@ -20,10 +21,7 @@ pub struct MeshSimulator {
 
 impl MeshSimulator {
     pub fn new() -> MeshSimulator {
-        MeshSimulator {
-            nodes: HashMap::new(),
-            declared_mce_zones: HashSet::new(),
-        }
+        MeshSimulator::default()
     }
 
     // Create a shared inbox and add a node to the mesh

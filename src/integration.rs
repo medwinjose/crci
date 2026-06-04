@@ -18,16 +18,18 @@ use crate::validation::{
 };
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
 // ── Message types for the integrated pipeline ─────────────────────
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MessageKind {
     Normal,
     Rescue,
     Panic,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PipelineMessage {
     pub id: String,
     pub origin_node: String,
@@ -324,6 +326,7 @@ mod tests {
     #[test]
     fn test_valid_normal_message_accepted() {
         let mut pipe = GossipPipeline::new();
+        pipe.register_bootstrap("zone-1", "node-a");
         let msg = make_msg("m1", "node-a", "zone-1", 3, MessageKind::Normal);
         assert_eq!(pipe.process(&msg), PipelineVerdict::Accept);
         assert_eq!(pipe.accepted, 1);
@@ -332,6 +335,7 @@ mod tests {
     #[test]
     fn test_invalid_severity_rejected() {
         let mut pipe = GossipPipeline::new();
+        pipe.register_bootstrap("zone-1", "node-a");
         let mut msg = make_msg("m2", "node-a", "zone-1", 0, MessageKind::Normal);
         msg.severity = 0; // invalid
         assert!(matches!(pipe.process(&msg), PipelineVerdict::Reject(_)));
@@ -340,6 +344,7 @@ mod tests {
     #[test]
     fn test_oversized_payload_rejected() {
         let mut pipe = GossipPipeline::new();
+        pipe.register_bootstrap("zone-1", "node-a");
         let mut msg = make_msg("m3", "node-a", "zone-1", 3, MessageKind::Normal);
         msg.payload_bytes = 300;
         assert!(matches!(pipe.process(&msg), PipelineVerdict::Reject(_)));
@@ -348,6 +353,7 @@ mod tests {
     #[test]
     fn test_rate_limit_triggers() {
         let mut pipe = GossipPipeline::new();
+        pipe.register_bootstrap("zone-1", "spammer");
         for i in 0..10 {
             let msg = make_msg(
                 &format!("m{i}"),
@@ -365,6 +371,7 @@ mod tests {
     #[test]
     fn test_duplicate_throttled() {
         let mut pipe = GossipPipeline::new();
+        pipe.register_bootstrap("zone-1", "node-a");
         let msg = make_msg("dup", "node-a", "zone-1", 3, MessageKind::Normal);
         assert_eq!(pipe.process(&msg), PipelineVerdict::Accept);
         assert!(matches!(pipe.process(&msg), PipelineVerdict::Throttle(_)));
@@ -381,6 +388,7 @@ mod tests {
     #[test]
     fn test_normal_throttled_in_critical_battery() {
         let mut pipe = GossipPipeline::new();
+        pipe.register_bootstrap("zone-1", "node-c");
         pipe.update_battery("node-c", 2); // critical
         let msg = make_msg("n1", "node-c", "zone-1", 2, MessageKind::Normal);
         assert!(matches!(pipe.process(&msg), PipelineVerdict::Throttle(_)));
@@ -488,6 +496,7 @@ mod tests {
     #[test]
     fn test_next_round_resets_rate_limiter() {
         let mut pipe = GossipPipeline::new();
+        pipe.register_bootstrap("zone-1", "node-x");
         // Fill rate limit
         for i in 0..10 {
             let msg = make_msg(&format!("m{i}"), "node-x", "zone-1", 3, MessageKind::Normal);

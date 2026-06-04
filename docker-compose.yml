@@ -17,8 +17,7 @@ services:
       replicas: 30
     networks:
       - crci-mesh
-    # No actual node binary wiring needed yet
-    command: ["sleep", "infinity"]
+    command: ["/app/target/release/node"]
 
   byzantine-node:
     build: .
@@ -28,8 +27,7 @@ services:
       replicas: 10
     networks:
       - crci-mesh
-    # No actual node binary wiring needed yet
-    command: ["sleep", "infinity"]
+    command: ["/app/target/release/node"]
 
 networks:
   crci-mesh:

@@ -1047,4 +1047,14 @@ fn main() {
     println!("  Vouched node accepted → {:?}", verdict);
 
     println!("\n  docker-compose.yml written — ready for Proof Loop");
+
+    // ── Session 30: Docker Proof Loop ────────────────────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════╗");
+    println!("║  SESSION 30 — DOCKER PROOF LOOP                          ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+    println!("  TCP transport layer: ADDED (src/transport.rs)");
+    println!("  Docker node binary: ADDED (src/bin/node.rs)");
+    println!("  Benchmark 6 pruning fix: increased store capacity in benchmark so messages expire naturally by TTL rather than getting evicted early by the storage capacity cap");
+    println!("  Docker Proof Loop: READY — run `docker compose up` to execute");
 } // ← this is the closing brace of fn main()

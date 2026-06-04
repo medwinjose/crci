@@ -12,6 +12,7 @@ pub struct Observation {
 }
 
 #[allow(dead_code)]
+#[derive(Default)]
 pub struct Network {
     pub nodes: HashMap<String, Node>,
     pub observations: Vec<Observation>,
@@ -21,11 +22,7 @@ pub struct Network {
 #[allow(dead_code)]
 impl Network {
     pub fn new() -> Network {
-        Network {
-            nodes: HashMap::new(),
-            observations: Vec::new(),
-            declared_mce_zones: HashSet::new(),
-        }
+        Network::default()
     }
 
     pub fn add_node(&mut self, node: Node) {
