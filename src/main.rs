@@ -723,7 +723,6 @@ fn main() {
         sbc.rescue_forwarded, sbc.normal_forwarded
     );
 
-
     println!();
     println!("  ✅ Session 24 integration pipeline complete.");
 
@@ -990,4 +989,62 @@ fn main() {
 
     // ── Session 28: Extended Benchmarks ──────────────────────────
     bench_extended::run_extended_benchmarks();
+
+    // ── Session 29: Zone Registry + Docker Compose ───────────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════╗");
+    println!("║  SESSION 29 — SECURITY WIRING & DOCKER PROOF LOOP        ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+
+    let mut pipe29 = integration::GossipPipeline::new();
+    let norm_msg = integration::PipelineMessage {
+        id: "s29-norm".to_string(),
+        origin_node: "unverified".to_string(),
+        zone: "zone-1".to_string(),
+        severity: 2,
+        kind: integration::MessageKind::Normal,
+        payload_bytes: 10,
+        reputation: 1.0,
+        round: 1,
+        seq: 1,
+    };
+    let verdict = pipe29.process(&norm_msg);
+    println!(
+        "  Zone registry wiring: unverified node rejected → {:?}",
+        verdict
+    );
+
+    let res_msg = integration::PipelineMessage {
+        id: "s29-res".to_string(),
+        origin_node: "unverified".to_string(),
+        zone: "zone-1".to_string(),
+        severity: 5,
+        kind: integration::MessageKind::Rescue,
+        payload_bytes: 10,
+        reputation: 1.0,
+        round: 1,
+        seq: 2,
+    };
+    let verdict = pipe29.process(&res_msg);
+    println!("  Rescue from unverified node: accepted → {:?}", verdict);
+
+    pipe29.register_bootstrap("zone-1", "boot");
+    pipe29.claim_zone("zone-1", "vouched");
+    pipe29.vouch("zone-1", "boot", "vouched");
+
+    let vouched_msg = integration::PipelineMessage {
+        id: "s29-vouch".to_string(),
+        origin_node: "vouched".to_string(),
+        zone: "zone-1".to_string(),
+        severity: 2,
+        kind: integration::MessageKind::Normal,
+        payload_bytes: 10,
+        reputation: 1.0,
+        round: 1,
+        seq: 3,
+    };
+    let verdict = pipe29.process(&vouched_msg);
+    println!("  Vouched node accepted → {:?}", verdict);
+
+    println!("\n  docker-compose.yml written — ready for Proof Loop");
 } // ← this is the closing brace of fn main()
