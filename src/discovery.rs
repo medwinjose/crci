@@ -163,7 +163,7 @@ impl PeerTable {
             .map(|p| (p.node_id.as_str(), p.last_seen))
             .collect();
         // Sort by most recently seen
-        candidates.sort_by(|a, b| b.1.cmp(&a.1));
+        candidates.sort_by_key(|b| std::cmp::Reverse(b.1));
         candidates
             .iter()
             .take(MAX_PEERS_PER_EXCHANGE)
@@ -222,7 +222,7 @@ impl DiscoveryEngine {
 
     /// Should this node send a beacon this round?
     pub fn should_beacon(&self, round: u64) -> bool {
-        round % BEACON_INTERVAL_ROUNDS == 0
+        round.is_multiple_of(BEACON_INTERVAL_ROUNDS)
     }
 
     /// Generate this node's beacon for the current round.

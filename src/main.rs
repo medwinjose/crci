@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 mod aeda;
 mod battery;
 mod bench;
@@ -722,19 +723,6 @@ fn main() {
         sbc.rescue_forwarded, sbc.normal_forwarded
     );
 
-    // Fast tombstone store demo (bug fix 2)
-    println!("\n  Fast tombstone O(1) lookup (bug fix):");
-    let mut fts = integration::FastTombstoneStore::new(10);
-    fts.insert("old-msg", 1);
-    fts.prune_before(5);
-    println!(
-        "    'old-msg' tombstoned and found: {} (expected true)",
-        fts.is_known("old-msg")
-    );
-    println!(
-        "    'new-msg' unknown:              {} (expected false)",
-        fts.is_known("new-msg")
-    );
 
     println!();
     println!("  ✅ Session 24 integration pipeline complete.");
