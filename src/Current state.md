@@ -4,7 +4,7 @@
 
 # This is the single source of truth for where the project is right now.
 
-# Last updated: End of Session 27
+# Last updated: End of Session 28
 
 ---
 
@@ -20,6 +20,7 @@ network.rs
 state.rs
 replay.rs         — Lamport sequence, clock drift tolerance
 bench.rs          — Benchmark harness (5 measurements)
+bench_extended.rs — NEW: Extended benchmark harness (Session 28)
 chaos.rs          — Chaos engineering scenarios
 crisis.rs         — Crisis scenarios (flood, earthquake, conflict, hazmat)
 stress.rs         — Stress tests (Byzantine, Sybil, forgery, partition)
@@ -64,6 +65,7 @@ All modules introduced in Session 6. Module split is complete and stable.
 - Sequence overflow protection actively preventing long-term replay attacks (Session 26)
 - Safe mutex and serialization execution — zero unwrap panics in production logic (Session 26)
 - Node discovery protocol: beaconing, peer exchange, and zone bootstrap (Session 27)
+- Extended quantitative benchmarks (TTL pruning, rate limit, discovery convergence, AEDA latency, queue throughput, pipeline throughput) (Session 28)
 
 ---
 
@@ -144,18 +146,19 @@ Do not add dependencies without updating this file.
 | 25      | Complete | STRIDE security hardening + safety features        |
 | 26      | Complete | Debug audit, logic fixes, & unwrap cleanup         |
 | 27      | Complete | Node discovery protocol (beacon + exchange)        |
-| **28**  | **Next** | **TBD**                                            |
+| 28      | Complete | Extended benchmarks for quantitative paper claims  |
+| **29**  | **Next** | **TBD**                                            |
 
 ## Current Development Priority (Next Session)
 
-**Session 28: TBD**
+**Session 29: TBD**
 Wait for the next set of instructions.
 
 Pre-session checklist:
 
 - [ ] Confirm all existing tests pass
 - [ ] Run `rustfmt` on all files
-- [ ] Commit current state with message format: `session-28: next steps`
+- [ ] Commit current state with message format: `session-29: next steps`
 
 ---
 
