@@ -66,6 +66,7 @@ All modules introduced in Session 6. Module split is complete and stable.
 - Safe mutex and serialization execution — zero unwrap panics in production logic (Session 26)
 - Node discovery protocol: beaconing, peer exchange, and zone bootstrap (Session 27)
 - Extended quantitative benchmarks (TTL pruning, rate limit, discovery convergence, AEDA latency, queue throughput, pipeline throughput) (Session 28)
+- Debug audit pass: upgraded TTL tombstones to O(1) bounds-checked storage, removed orphaned code, silenced dead code warnings (Session 28)
 
 ---
 
@@ -93,6 +94,7 @@ Do not add dependencies without updating this file.
 - [ ] No persistent storage yet (planned: Session 10)
 - [ ] Device-agnostic cross-platform support deferred — not addressed yet
 - [x] Broader security pass pending (Completed Session 25 - STRIDE hardening)
+- [x] Performance and bounds-check audit (Completed Session 28 - TTL storage O(1) fix)
 
 ---
 
@@ -124,6 +126,9 @@ Do not add dependencies without updating this file.
 
 - **Peer exchange limit set to 8 nodes.**
   Reason: LoRa packet size constraints prevent sharing arbitrarily large peer tables.
+
+- **Tombstone storage uses bounded VecDeque + HashSet.**
+  Reason: O(N) array shifts caused a performance loophole during massive TTL expirations. This provides O(1) lookups and O(1) bounded evictions.
 
 ---
 
