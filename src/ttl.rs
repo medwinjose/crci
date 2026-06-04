@@ -8,7 +8,7 @@
 //! Storage is bounded: once MAX_STORED_MESSAGES is reached, oldest
 //! non-rescue messages are evicted first.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -77,8 +77,10 @@ impl StoredMessage {
 pub struct TtlStore {
     /// Active messages
     messages: HashMap<String, StoredMessage>,
-    /// Tombstones: message IDs that have been pruned (for dedup)
-    tombstones: Vec<String>,
+    /// Tombstones list for bounded eviction
+    tombstones_queue: VecDeque<String>,
+    /// Tombstones set for O(1) lookup
+    tombstones_set: HashSet<String>,
     /// Total messages ever stored
     pub total_stored: u64,
     /// Total messages pruned by TTL
@@ -97,7 +99,7 @@ impl TtlStore {
         if self.messages.contains_key(&msg.id) {
             return false;
         }
-        if self.tombstones.contains(&msg.id) {
+        if self.tombstones_set.contains(&msg.id) {
             return false; // previously pruned — do not re-admit
         }
         // Enforce storage cap: evict oldest non-rescue if full
@@ -129,18 +131,20 @@ impl TtlStore {
         for id in &expired {
             self.messages.remove(id);
             // Add tombstone
-            if self.tombstones.len() >= MAX_TOMBSTONES {
-                self.tombstones.remove(0); // drop oldest tombstone
+            if self.tombstones_queue.len() >= MAX_TOMBSTONES {
+                if let Some(dropped) = self.tombstones_queue.pop_front() {
+                    self.tombstones_set.remove(&dropped);
+                }
             }
-            self.tombstones.push(id.clone());
+            self.tombstones_queue.push_back(id.clone());
+            self.tombstones_set.insert(id.clone());
         }
         self.total_pruned += count as u64;
         count
     }
 
-    /// Is a message ID known (active or tombstoned)?
     pub fn is_known(&self, id: &str) -> bool {
-        self.messages.contains_key(id) || self.tombstones.contains(&id.to_string())
+        self.messages.contains_key(id) || self.tombstones_set.contains(id)
     }
 
     pub fn active_count(&self) -> usize {
@@ -155,7 +159,7 @@ impl TtlStore {
     }
 
     pub fn tombstone_count(&self) -> usize {
-        self.tombstones.len()
+        self.tombstones_set.len()
     }
 
     fn evict_oldest_normal(&mut self) {

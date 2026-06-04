@@ -16,7 +16,7 @@ use crate::ttl::{StoredMessage, TtlStore};
 use crate::validation::{
     validate_node_id, validate_payload_size, validate_seq, validate_severity, RateLimiter,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 // ── Message types for the integrated pipeline ─────────────────────
 
@@ -281,71 +281,6 @@ impl SplitBatteryCounter {
 
 // ── BUG FIX 2: O(1) tombstone store ──────────────────────────────
 
-pub struct FastTombstoneStore {
-    active: HashMap<String, u64>, // id → created_round
-    tombstones: HashSet<String>,  // O(1) lookup
-    pub total_pruned: u64,
-    max_active: usize,
-}
-
-impl FastTombstoneStore {
-    pub fn new(max_active: usize) -> Self {
-        FastTombstoneStore {
-            active: HashMap::new(),
-            tombstones: HashSet::new(),
-            total_pruned: 0,
-            max_active,
-        }
-    }
-
-    pub fn is_known(&self, id: &str) -> bool {
-        self.active.contains_key(id) || self.tombstones.contains(id)
-    }
-
-    pub fn insert(&mut self, id: &str, round: u64) -> bool {
-        if self.is_known(id) {
-            return false;
-        }
-        if self.active.len() >= self.max_active {
-            // Evict oldest
-            if let Some(oldest) = self
-                .active
-                .iter()
-                .min_by_key(|(_, &r)| r)
-                .map(|(k, _)| k.clone())
-            {
-                self.active.remove(&oldest);
-                self.tombstones.insert(oldest);
-                self.total_pruned += 1;
-            }
-        }
-        self.active.insert(id.to_string(), round);
-        true
-    }
-
-    pub fn prune_before(&mut self, min_round: u64) -> usize {
-        let expired: Vec<String> = self
-            .active
-            .iter()
-            .filter(|(_, &r)| r < min_round)
-            .map(|(k, _)| k.clone())
-            .collect();
-        let count = expired.len();
-        for id in expired {
-            self.active.remove(&id);
-            self.tombstones.insert(id);
-            self.total_pruned += 1;
-        }
-        count
-    }
-
-    pub fn active_count(&self) -> usize {
-        self.active.len()
-    }
-    pub fn tombstone_count(&self) -> usize {
-        self.tombstones.len()
-    }
-}
 
 // ── Tests ─────────────────────────────────────────────────────────
 
@@ -483,15 +418,6 @@ mod tests {
         assert_eq!(counter.normal_forwarded, 1);
     }
 
-    #[test]
-    fn test_fast_tombstone_o1_lookup() {
-        let mut store = FastTombstoneStore::new(100);
-        store.insert("msg-a", 1);
-        store.prune_before(2); // tombstones msg-a
-                               // O(1) HashSet lookup — msg-a is tombstoned
-        assert!(store.is_known("msg-a"));
-        assert!(!store.is_known("msg-z"));
-    }
 
     #[test]
     fn test_aeda_reputation_weighting() {
