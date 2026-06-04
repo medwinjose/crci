@@ -13,7 +13,9 @@
 use crate::aeda::{AedaEngine, RescueEvent};
 use crate::battery::{BatteryState, BatteryTier};
 use crate::ttl::{StoredMessage, TtlStore};
-use crate::validation::{validate_node_id, validate_payload_size, validate_severity, validate_seq, RateLimiter};
+use crate::validation::{
+    validate_node_id, validate_payload_size, validate_seq, validate_severity, RateLimiter,
+};
 use std::collections::{HashMap, HashSet};
 
 // ── Message types for the integrated pipeline ─────────────────────
