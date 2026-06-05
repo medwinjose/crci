@@ -1,0 +1,39 @@
+graph LR
+    subgraph Network Layer
+        Transport[transport.rs]
+        Discovery[discovery.rs]
+    end
+
+    subgraph Validation Layer
+        Validation[validation.rs]
+        Crypto[identity.rs]
+        Replay[replay.rs]
+    end
+
+    subgraph Core Routing
+        Mesh[mesh.rs]
+        Storage[storage.rs]
+    end
+
+    subgraph Consensus Layer
+        Consensus[integration.rs]
+        AEDA[aeda.rs]
+        Reputation[node.rs]
+    end
+
+    subgraph Observability
+        Metrics[metrics.rs]
+    end
+
+    %% Message Flow
+    Transport -->|Inbound TCP| Validation
+    Validation -->|Signature Check| Crypto
+    Crypto -->|Min Seq Check| Replay
+    Replay -->|Valid Message| Storage
+    Storage -->|New State| Consensus
+    Consensus -->|Median Calculation| AEDA
+    AEDA -->|Escalate| Metrics
+
+    %% Byzantine Feedback Loop
+    Consensus -.->|Anomaly Detected| Reputation
+    Reputation -.->|Penalty Applied| Consensus

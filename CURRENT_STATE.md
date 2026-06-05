@@ -8,6 +8,7 @@
 - Session 32: Real Multi-process Proof Loop & Protocol Documentation
 - Session 33: Metrics, Dashboard, Wasm, Interview
 - Session 34: CI/CD (GitHub Actions), SECURITY.md, issue templates, PR template, README badges
+- Session 35: README rewrite, architecture diagram, benchmark docs
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -25,7 +26,5 @@
 - 100-node discovery convergence: 10 rounds (<70 ms).
 - Distributed real proof loop: Confirmed Byzantine node detection and uninterrupted propagation of critical Rescue events across partitioned zones.
 
-## Next Steps (Session 35+)
-- **Cryptographic Enclaves**: Moving Ed25519 signing keys into an OS-level enclave or simulated hardware security module (HSM) boundary.
-- **Physical Layer Integration**: Porting `AsyncTransport` to interface with physical LoRa modules via UART/Serial interfaces for real-world field testing.
-- **Gateway Node implementation**: Developing a bridge node that connects the isolated local mesh to a wider geographic MQTT broker or cloud backend when internet access is sparsely available.
+## Next Steps
+- Session 36 — TLA+ Formal Specification (docs/spec/crci_consensus.tla, MC.cfg, docs/spec/README.md).
