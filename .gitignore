@@ -6,3 +6,6 @@ walkthrough.md
 bench_output.txt
 full_prompt.txt
 src/Project rules.md
+
+docs/dashboard/node_modules/
+docs/dashboard/dist/

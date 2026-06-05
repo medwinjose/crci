@@ -11,22 +11,20 @@
 - Session 35: README rewrite, architecture diagram, benchmark docs
 - Session 36: TLA+ Formal Specification for reputation-weighted consensus
 - Session 37: REST API and WebSocket backend via Axum
+- Session 38: React Web Dashboard (Vite + React + Tailwind + Recharts)
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
-2. **Multi-process Execution**: Nodes run as autonomous binaries (`node.exe`), managing their own listening ports, peer resolution, and asynchronous gossip handling.
-3. **Byzantine Fault Tolerance**: Implemented Reputation-Weighted Quorum over PBFT, handling selective gossip poisoning and conflicting severity injection attacks robustly.
-4. **Documentation**:
-   - Technical paper (`docs/paper.md`) drafted, integrating real metrics from local benchmarks and the distributed proof loop.
-   - Comprehensive Threat and Fault Model (`docs/fault_model.md`).
-   - Architectural Decision Records (`docs/adr/`) validating our novel approaches (Custom Transport over libp2p, Reputation Quorum over PBFT, Merkle-Chained state over CRDTs).
+2. **Docker Multi-node Proof Loop**: Scripts and binaries exist to spin up isolated nodes with actual asynchronous communication, verifying the pipeline.
+3. **Advanced Features Embedded**: Reputation, AEDA scoring, battery management, message pruning, and Byzantine discovery (K-bucket) are fully integrated into `src/integration.rs` and the Docker proof loop.
+4. **Wasm Edge Compute**: Priority computation can be executed dynamically via Wasmtime (`src/wasm.rs`).
+5. **Security**: Auditing (`src/security.rs`), validations, payload constraints, API telemetry, and a proper `SECURITY.md` are documented.
+6. **Live Dashboard**: A fully standalone web dashboard at `docs/dashboard/` visually tracks live messages, peer status, and SEV distribution over an Axum WebSocket.
 
-## Metrics & Validations
-- 73/73 tests passing.
-- 0 warnings, 0 clippy errors.
-- End-to-end pipeline throughput: 90,000+ msg/s.
-- 100-node discovery convergence: 10 rounds (<70 ms).
+## Verification
+- Clean compilation, `cargo fmt`, `cargo clippy`.
+- Over 80 tests passing (`cargo test --all`), covering unit testing, integration testing, API tests, and specific edge case mitigations.
 - Distributed real proof loop: Confirmed Byzantine node detection and uninterrupted propagation of critical Rescue events across partitioned zones.
 
 ## Next Steps
-- Session 38 — React Web Dashboard (Vite + React, connects to ws://localhost:8080/ws, displays live peer list, message feed, and node status panel).
+- Session 39 — arXiv Research Paper polish: revise docs/paper.md to incorporate all benchmark data from Sessions 18/25/28, add TLA+ spec reference from Session 36, add API/dashboard architecture section, finalize abstract and conclusion for submission.
