@@ -66,6 +66,8 @@ pub struct GossipPipeline {
     pub accepted: u64,
     pub rejected: u64,
     pub throttled: u64,
+    /// Latest observed severities for consensus simulation
+    pub peer_severities: HashMap<String, u8>,
 }
 
 impl GossipPipeline {
@@ -81,6 +83,7 @@ impl GossipPipeline {
             accepted: 0,
             rejected: 0,
             throttled: 0,
+            peer_severities: HashMap::new(),
         }
     }
 
@@ -207,6 +210,8 @@ impl GossipPipeline {
             self.aeda.process_normal_report(&msg.origin_node, &msg.zone);
         }
 
+        self.peer_severities
+            .insert(msg.origin_node.clone(), msg.severity);
         self.accepted += 1;
         PipelineVerdict::Accept
     }

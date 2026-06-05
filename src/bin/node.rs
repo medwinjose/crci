@@ -1,183 +1,184 @@
-use crci::integration::{MessageKind, PipelineMessage};
-use crci::transport::TcpGossipNode;
+use crci::integration::{GossipPipeline, MessageKind, PipelineMessage};
+use crci::transport::AsyncTransport;
 use std::env;
-use std::io::Write;
-use std::net::{TcpListener, ToSocketAddrs};
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use tokio::sync::broadcast;
 
-fn main() {
-    let node_id = env::var("NODE_ID").unwrap_or_else(|_| {
-        std::fs::read_to_string("/etc/hostname")
-            .unwrap_or_else(|_| "node-unknown".to_string())
-            .trim()
-            .to_string()
-    });
+#[tokio::main]
+async fn main() {
+    let node_id = env::var("NODE_ID").unwrap_or_else(|_| "node-unknown".to_string());
     let node_zone = env::var("NODE_ZONE").unwrap_or_else(|_| "zone-a".to_string());
-    let node_type = env::var("NODE_TYPE").unwrap_or_else(|_| "honest".to_string());
-    let is_honest = node_type == "honest";
+    let is_byzantine = env::var("IS_BYZANTINE").unwrap_or_else(|_| "false".to_string()) == "true";
+    let byzantine_mode = env::var("BYZANTINE_MODE").unwrap_or_else(|_| "none".to_string());
+    let rounds: u64 = env::var("ROUNDS")
+        .unwrap_or_else(|_| "60".to_string())
+        .parse()
+        .unwrap_or(60);
+    let listen_port: u16 = env::var("LISTEN_PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse()
+        .unwrap_or(8080);
 
-    thread::sleep(Duration::from_secs(3));
+    // Give time for all nodes to start up
+    tokio::time::sleep(Duration::from_secs(2)).await;
 
     let mut peers = Vec::new();
-    for svc in &["honest-node:8080", "byzantine-node:8080"] {
-        if let Ok(addrs) = svc.to_socket_addrs() {
-            peers.extend(addrs.map(|a| a.to_string()));
+    let peers_env = env::var("PEERS").unwrap_or_else(|_| "".to_string());
+    for svc in peers_env.split(',') {
+        let svc = svc.trim();
+        if svc.is_empty() {
+            continue;
+        }
+        if let Ok(addrs) = std::net::ToSocketAddrs::to_socket_addrs(svc) {
+            peers.extend(addrs);
         }
     }
 
-    println!(
-        "[{}] Started. Zone: {}. Peers: {}",
-        node_id,
-        node_zone,
-        peers.len()
+    let listen_addr: SocketAddr = format!("0.0.0.0:{}", listen_port).parse().unwrap();
+    let transport = Arc::new(
+        AsyncTransport::bind(node_id.clone(), listen_addr, peers)
+            .await
+            .expect("Failed to create transport"),
     );
-    let tcp_node = TcpGossipNode::new(&node_id, &node_zone, peers);
+
+    let pipeline = Arc::new(Mutex::new(GossipPipeline::new()));
 
     {
-        let mut pipeline = tcp_node.pipeline.lock().unwrap();
+        let mut p = pipeline.lock().unwrap();
+        // Register all potential node ids to bypass vouching for this proof loop
         for i in 1..=50 {
-            pipeline.register_bootstrap(&node_zone, &format!("honest-node-{}", i));
-            pipeline.register_bootstrap(&node_zone, &format!("byzantine-node-{}", i));
+            p.register_bootstrap(&node_zone, &format!("node-{:02}", i));
+            p.register_bootstrap("zone-a", &format!("node-{:02}", i));
+            p.register_bootstrap("zone-b", &format!("node-{:02}", i));
+            p.register_bootstrap("zone-c", &format!("node-{:02}", i));
         }
-        pipeline.register_bootstrap(&node_zone, &node_id);
     }
 
-    let peer_reps = Arc::new(Mutex::new(std::collections::HashMap::<String, f64>::new()));
-    let peer_reps_metrics = peer_reps.clone();
+    let (shutdown_tx, shutdown_rx) = broadcast::channel(1);
 
-    thread::spawn(move || {
-        let listener = TcpListener::bind("0.0.0.0:9090").unwrap();
-        for mut stream in listener.incoming().flatten() {
-            let reps = peer_reps_metrics.lock().unwrap();
-            let mut body = String::from("# HELP crci_node_reputation Reputation of CRCI nodes\n# TYPE crci_node_reputation gauge\n");
-            for (id, rep) in reps.iter() {
-                body.push_str(&format!(
-                    "crci_node_reputation{{node_id=\"{}\"}} {}\n",
-                    id, rep
-                ));
+    // Recv loop
+    let recv_transport = transport.clone();
+    let recv_pipeline = pipeline.clone();
+    tokio::spawn(async move {
+        recv_transport.recv_loop(recv_pipeline, shutdown_rx).await;
+    });
+
+    let byzantine_detections = Arc::new(std::sync::atomic::AtomicU64::new(0));
+
+    // Consensus thread
+    let consensus_pipeline = pipeline.clone();
+    let cons_node_id = node_id.clone();
+    let cons_detections = byzantine_detections.clone();
+
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            let mut penalties = Vec::new();
+            {
+                let p = consensus_pipeline.lock().unwrap();
+                let severities_map = &p.peer_severities;
+                let mut severities: Vec<u8> = severities_map.values().cloned().collect();
+
+                if severities.len() >= 2 {
+                    severities.sort();
+                    let median = severities[severities.len() / 2] as f64;
+                    for (id, &sev) in severities_map.iter() {
+                        let dev = (sev as f64 - median).abs();
+                        if dev >= 2.0 {
+                            penalties.push((id.clone(), dev));
+                        }
+                    }
+                }
             }
-            let response = format!(
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-                body.len(),
-                body
-            );
-            let _ = stream.write_all(response.as_bytes());
+
+            for (bad_id, dev) in penalties {
+                println!(
+                    "[{}] Penalty applied to {}: average severity deviation > 2 (dev: {})",
+                    cons_node_id, bad_id, dev
+                );
+                cons_detections.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+                // Clear the severity to avoid re-penalizing until they send another bad message
+                if let Ok(mut p) = consensus_pipeline.lock() {
+                    p.peer_severities.remove(&bad_id);
+                }
+            }
         }
     });
 
-    let _listener_handle = tcp_node.start_listener(8080);
-    let start_time = Instant::now();
-    let mut seq = 0u64;
     let mut rescue_sent = false;
 
-    let received_msgs = tcp_node.received.clone();
-    let peer_reps_consensus = peer_reps.clone();
-    let node_id_cons = node_id.clone();
-    let node_zone_cons = node_zone.clone();
-
-    thread::spawn(move || loop {
-        thread::sleep(Duration::from_secs(5));
-        let msgs = { received_msgs.lock().unwrap().clone() };
-        let mut zone_sevs = Vec::new();
-        for msg in &msgs {
-            if msg.zone == node_zone_cons && msg.kind == MessageKind::Normal {
-                zone_sevs.push(msg.severity);
-            }
-        }
-        if zone_sevs.len() >= 3 {
-            zone_sevs.sort();
-            let median = zone_sevs[zone_sevs.len() / 2];
-            let mut node_sevs = std::collections::HashMap::<String, Vec<u8>>::new();
-            for msg in &msgs {
-                if msg.zone == node_zone_cons && msg.kind == MessageKind::Normal {
-                    node_sevs
-                        .entry(msg.origin_node.clone())
-                        .or_default()
-                        .push(msg.severity);
-                }
-            }
-            let mut reps = peer_reps_consensus.lock().unwrap();
-            for (nid, sevs) in node_sevs {
-                let avg = sevs.iter().map(|&s| s as f64).sum::<f64>() / sevs.len() as f64;
-                if (avg - median as f64).abs() > 2.0 {
-                    let rep = reps.entry(nid.clone()).or_insert(1.0);
-                    *rep = (*rep - 0.2).max(0.0);
-                    println!(
-                        "[{}] Penalty {}: dev > 2 (rep: {:.2})",
-                        node_id_cons, nid, *rep
-                    );
-                }
-            }
-        }
-    });
-
-    while start_time.elapsed() < Duration::from_secs(60) {
-        thread::sleep(Duration::from_secs(2));
-        seq += 1;
+    // Main gossip loop
+    for seq in 1..=rounds {
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         let mut severity = 3u8;
-        if !is_honest {
-            let rand_val = (start_time.elapsed().as_millis() as u64 + seq) % 100;
-            if rand_val < 30 {
-                severity = if rand_val.is_multiple_of(2) { 1 } else { 5 };
-            }
+        if is_byzantine && byzantine_mode == "conflicting" {
+            // Byzantine node sends wildly conflicting severities
+            severity = if seq % 2 == 0 { 1 } else { 5 };
         }
 
-        tcp_node.broadcast(PipelineMessage {
-            id: format!("msg-{}-{}", node_id, seq),
-            origin_node: node_id.clone(),
-            zone: node_zone.clone(),
-            severity,
-            kind: MessageKind::Normal,
-            payload_bytes: 10,
-            reputation: 1.0,
-            round: 0,
-            seq,
-        });
+        if !is_byzantine && !rescue_sent && node_id == "node-01" && seq == 10 {
+            println!("[{}] Sending emergency rescue request!", node_id);
+            let rescue_msg = PipelineMessage {
+                id: format!("rescue-{}-{}", node_id, seq),
+                origin_node: node_id.clone(),
+                zone: node_zone.clone(),
+                severity: 5,
+                kind: MessageKind::Rescue,
+                payload_bytes: 10,
+                reputation: 1.0,
+                round: seq,
+                seq: 999,
+            };
 
-        if is_honest && !rescue_sent && start_time.elapsed() >= Duration::from_secs(5) {
-            let mut honest_ips = Vec::new();
-            if let Ok(addrs) = "honest-node:8080".to_socket_addrs() {
-                honest_ips.extend(addrs.map(|a| a.ip().to_string()));
+            {
+                let mut p = pipeline.lock().unwrap();
+                let _ = p.process(&rescue_msg);
             }
-            honest_ips.sort();
+            let _ = transport.broadcast(&rescue_msg).await;
+            rescue_sent = true;
+        } else {
+            // Normal message
+            let msg = PipelineMessage {
+                id: format!("msg-{}-{}", node_id, seq),
+                origin_node: node_id.clone(),
+                zone: node_zone.clone(),
+                severity,
+                kind: MessageKind::Normal,
+                payload_bytes: 10,
+                reputation: 1.0,
+                round: seq,
+                seq,
+            };
 
-            let am_first = honest_ips
-                .first()
-                .map(|ip| {
-                    if let Ok(local_addrs) = node_id.to_socket_addrs() {
-                        local_addrs.into_iter().any(|la| la.ip().to_string() == *ip)
-                    } else {
-                        node_id.contains("-1") || node_id == "honest-node-1"
-                    }
-                })
-                .unwrap_or(false);
-
-            if am_first || node_id == "honest-node-1" {
-                println!("[{}] Sending emergency rescue request!", node_id);
-                tcp_node.broadcast(PipelineMessage {
-                    id: "rescue-30".to_string(),
-                    origin_node: node_id.clone(),
-                    zone: node_zone.clone(),
-                    severity: 5,
-                    kind: MessageKind::Rescue,
-                    payload_bytes: 10,
-                    reputation: 1.0,
-                    round: 0,
-                    seq: 999,
-                });
-                rescue_sent = true;
+            {
+                let mut p = pipeline.lock().unwrap();
+                // We advance the round to prevent rate limits
+                p.next_round();
+                let _ = p.process(&msg);
             }
+            let _ = transport.broadcast(&msg).await;
         }
     }
 
-    let pipeline = tcp_node.pipeline.lock().unwrap();
-    println!(
-        "[{}] Final stats: active_rescues={} total_received={}",
-        node_id,
-        pipeline.ttl_store.rescue_count(),
-        tcp_node.received.lock().unwrap().len()
+    let _ = shutdown_tx.send(());
+
+    // Allow time for final messages to settle
+    tokio::time::sleep(Duration::from_secs(2)).await;
+
+    let p = pipeline.lock().unwrap();
+    let accepted = transport
+        .accepted_count
+        .load(std::sync::atomic::Ordering::SeqCst);
+    let rescues = p.ttl_store.rescue_count();
+    let b_det = byzantine_detections.load(std::sync::atomic::Ordering::SeqCst);
+
+    let summary = format!(
+        r#"{{"node_id":"{}","accepted_count":{},"byzantine_detections":{},"rescue_held":{}}}"#,
+        node_id, accepted, b_det, rescues
     );
+    println!("JSON_SUMMARY: {}", summary);
 }

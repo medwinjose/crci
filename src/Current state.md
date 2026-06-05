@@ -73,6 +73,8 @@ All modules introduced in Session 6. Module split is complete and stable.
 - TCP Gossip Transport layer shim (`src/transport.rs`) (Session 30)
 - Standalone Node Entrypoint binary (`src/bin/node.rs`) exposing Prometheus metrics on port 9090 and running peer severity consensus (Session 30)
 - Fixed Benchmark 6 TTL pruning metrics to naturally expire messages using configurable storage capacity (Session 30)
+- Tokio Async Transport migration: zero thread-per-connection, async TCP payload framing (Session 31)
+- K-bucket XOR distance accelerator for discovery peer exchange (Session 31)
 
 
 ---
@@ -161,12 +163,13 @@ Do not add dependencies without updating this file.
 | 28      | Complete | Extended benchmarks for quantitative paper claims  |
 | 29      | Complete | Zone registry wired + Docker Proof Loop foundation |
 | 30      | Complete | TCP transport, Docker entrypoint, and Proof Loop   |
-| **31**  | **Next** | **Tokio Async Transport Migration**                |
+| 31      | Complete | Tokio Async Transport Migration                    |
+| **32**  | **Next** | **Distributed Network Simulation & Visualization** |
 
 ## Current Development Priority (Next Session)
 
-**Session 31: Tokio Async Transport Migration**
-Migrate the minimal std::net TCP networking transport to full Tokio async networking to improve concurrency and remove the OS thread-per-connection model.
+**Session 32: Distributed Network Simulation & Visualization**
+Build visualization or expanded metrics to analyze the distributed Async Transport mesh under load.
 
 Pre-session checklist:
 

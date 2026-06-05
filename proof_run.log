@@ -1,0 +1,5 @@
+﻿{"node_id":"node-01","accepted_count":46,"byzantine_detections":1,"rescue_held":1}
+{"node_id":"node-02","accepted_count":46,"byzantine_detections":1,"rescue_held":1}
+{"node_id":"node-03","accepted_count":45,"byzantine_detections":1,"rescue_held":1}
+{"node_id":"node-04","accepted_count":47,"byzantine_detections":2,"rescue_held":1}
+{"node_id":"node-05","accepted_count":48,"byzantine_detections":2,"rescue_held":1}
