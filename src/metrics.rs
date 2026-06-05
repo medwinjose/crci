@@ -20,6 +20,7 @@ pub struct CrciMetrics {
     pub reputation_penalties: AtomicU64,
     pub peer_count: AtomicU64,
     pub consensus_rounds: AtomicU64,
+    pub chain_divergences_total: AtomicU64,
     pub peers: Mutex<HashMap<String, PeerState>>,
 }
 
@@ -40,6 +41,7 @@ impl CrciMetrics {
             reputation_penalties: AtomicU64::new(0),
             peer_count: AtomicU64::new(0),
             consensus_rounds: AtomicU64::new(0),
+            chain_divergences_total: AtomicU64::new(0),
             peers: Mutex::new(HashMap::new()),
         }
     }
@@ -101,6 +103,13 @@ impl CrciMetrics {
         out.push_str(&format!(
             "crci_consensus_rounds {}\n",
             self.consensus_rounds.load(Ordering::Relaxed)
+        ));
+
+        out.push_str("# HELP crci_chain_divergences_total Total chain divergences detected\n");
+        out.push_str("# TYPE crci_chain_divergences_total counter\n");
+        out.push_str(&format!(
+            "crci_chain_divergences_total {}\n",
+            self.chain_divergences_total.load(Ordering::Relaxed)
         ));
 
         if let Ok(peers) = self.peers.lock() {

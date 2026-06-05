@@ -44,11 +44,14 @@ impl WireMessage {
                 Visibility::Unknown => "unknown".to_string(),
             },
             note: msg.note.clone(),
-            message_type: match msg.message_type {
+            message_type: match &msg.message_type {
                 MessageType::Normal => "normal".to_string(),
                 MessageType::RescueRequest => "rescue".to_string(),
                 MessageType::MassCasualtyEvent => "mce".to_string(),
                 MessageType::Panic => "panic".to_string(),
+                MessageType::ChainHeadAnnouncement { .. } => {
+                    serde_json::to_string(&msg.message_type).unwrap()
+                }
             },
             origin_active: msg.origin_active,
             signature_bytes: sig.to_bytes().to_vec(),
@@ -102,7 +105,9 @@ impl WireMessage {
             message_type: match self.message_type.as_str() {
                 "rescue" => MessageType::RescueRequest,
                 "mce" => MessageType::MassCasualtyEvent,
-                _ => MessageType::Normal,
+                "panic" => MessageType::Panic,
+                "normal" => MessageType::Normal,
+                other => serde_json::from_str(other).unwrap_or(MessageType::Normal),
             },
             origin_active: self.origin_active,
             signature: None,
@@ -129,6 +134,7 @@ pub struct NodeRuntime {
     pub messages_handled: u64,
     pub byzantine_events: u64,
     pub merkle: crate::merkle::MerkleChain,
+    pub divergence_log: Vec<crate::merkle::DivergenceAlert>,
     pub router: crate::routing::TemporalRouter,
 }
 
@@ -157,6 +163,7 @@ impl NodeRuntime {
             messages_handled: 0,
             byzantine_events: 0,
             merkle: crate::merkle::MerkleChain::new(),
+            divergence_log: Vec::new(),
             router: crate::routing::TemporalRouter::new(),
         }
     }
@@ -303,6 +310,7 @@ impl NodeRuntime {
             };
             inbox.remove(&self.id).unwrap_or_default()
         };
+        let has_messages = !messages.is_empty();
         for raw in messages {
             let wire: WireMessage = match serde_json::from_slice(&raw) {
                 Ok(w) => w,
@@ -373,10 +381,20 @@ impl NodeRuntime {
             }
             self.seen_messages.insert(wire.id.clone());
 
+            let mut is_chain_head = false;
             let type_label = match wire.message_type.as_str() {
                 "rescue" => "🆘 RESCUE",
                 "mce" => "🚨 MCE",
-                _ => "normal",
+                "panic" => "🚨 PANIC",
+                "normal" => "normal",
+                _ => {
+                    if wire.message_type.contains("ChainHeadAnnouncement") {
+                        is_chain_head = true;
+                        "🔗 CHAIN_HEAD"
+                    } else {
+                        "normal"
+                    }
+                }
             };
             println!(
                 "  [{}][{}] {} | sev:{} conf:{} vis:{} | note: {}",
@@ -388,6 +406,17 @@ impl NodeRuntime {
                 wire.visibility,
                 wire.note.as_deref().unwrap_or("—")
             );
+
+            if is_chain_head {
+                if let Ok(MessageType::ChainHeadAnnouncement { head_hash, head_seq }) = serde_json::from_str(&wire.message_type) {
+                    if let Some(alert) = self.merkle.build_divergence_alert(&wire.origin, head_hash, head_seq) {
+                        println!("  ⚠ [{}] DIVERGENCE detected with peer {} at seq {}", self.id, wire.origin, alert.divergence_seq);
+                        self.divergence_log.push(alert);
+                        self.byzantine_events += 1;
+                    }
+                }
+                continue; // Do not append to persistent_messages, do not re-gossip
+            }
 
             if wire.message_type == "rescue" || wire.message_type == "mce" {
                 self.persistent_messages
@@ -443,6 +472,26 @@ impl NodeRuntime {
                 byzantine_events: self.byzantine_events,
                 timestamp_ms: crate::message::now_ts(),
             });
+        }
+
+        // Periodic broadcast of chain head
+        if has_messages {
+            let (head_hash, head_seq) = self.chain_head();
+            let announcement = Message {
+                id: format!("head-{}-{}", self.id, self.seq_counter + 1),
+                origin: self.id.clone(),
+                signal: Signal::new(1, false, false, false, 1, Visibility::Direct),
+                note: None,
+                message_type: MessageType::ChainHeadAnnouncement { head_hash, head_seq },
+                origin_active: true,
+                signature: None,
+                created_at: crate::message::now_ts(),
+                ttl_seconds: 30,
+                priority: crate::message::MessagePriority::Normal,
+                hop_count: 0,
+                seq: 0,
+            };
+            self.originate(announcement);
         }
     }
 

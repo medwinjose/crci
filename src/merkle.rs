@@ -125,6 +125,38 @@ impl MerkleChain {
 
         self.blocks[idx].block_hash != other_head
     }
+
+    pub fn build_divergence_alert(&self, peer_id: &str, their_head_hash: [u8; 32], their_head_seq: u64) -> Option<DivergenceAlert> {
+        if their_head_seq > self.head_sequence() {
+            return None;
+        }
+
+        if self.diverges_from(their_head_hash, their_head_seq) {
+            let idx = their_head_seq as usize;
+            if idx < self.blocks.len() {
+                let our_hash = self.blocks[idx].block_hash;
+                let expected_head_hash = our_hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                let actual_head_hash = their_head_hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                return Some(DivergenceAlert {
+                    peer_id: peer_id.to_string(),
+                    expected_head_hash,
+                    actual_head_hash,
+                    divergence_seq: their_head_seq,
+                    detected_at_ms: crate::message::now_ts(),
+                });
+            }
+        }
+        None
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DivergenceAlert {
+    pub peer_id: String,
+    pub expected_head_hash: String,
+    pub actual_head_hash: String,
+    pub divergence_seq: u64,
+    pub detected_at_ms: u64,
 }
 
 impl Default for MerkleChain {
