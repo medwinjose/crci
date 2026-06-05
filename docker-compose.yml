@@ -2,11 +2,28 @@ version: '3.8'
 
 services:
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.52.0
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
     networks:
       - crci-mesh
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=crci
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - crci-mesh
+
 
   honest-node:
     build: .

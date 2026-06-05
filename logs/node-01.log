@@ -1,0 +1,3 @@
+[node-01] Penalty applied to node-04: average severity deviation > 2 (dev: 2)
+[node-01] Sending emergency rescue request!
+JSON_SUMMARY: {"node_id":"node-01","accepted_count":46,"byzantine_detections":1,"rescue_held":1}

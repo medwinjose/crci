@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 5s
+scrape_configs:
+  - job_name: crci
+    dns_sd_configs:
+      - names:
+          - honest-node
+          - byzantine-node
+        type: 'A'
+        port: 8080
