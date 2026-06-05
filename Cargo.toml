@@ -12,3 +12,9 @@ serde_json = "1"
 aes-gcm = "0.10"
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
+axum = { version = "0.7", features = ["ws"] }
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["cors"] }
+
+[dev-dependencies]
+http-body-util = "0.1"
