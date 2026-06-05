@@ -1,2 +1,8 @@
-/target
+/target/
+**/*.rs.bk
+docs/interview_script.md
+task.md
+walkthrough.md
+bench_output.txt
 full_prompt.txt
+src/Project rules.md
