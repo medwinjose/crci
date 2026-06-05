@@ -164,12 +164,18 @@ Do not add dependencies without updating this file.
 | 29      | Complete | Zone registry wired + Docker Proof Loop foundation |
 | 30      | Complete | TCP transport, Docker entrypoint, and Proof Loop   |
 | 31      | Complete | Tokio Async Transport Migration                    |
-| **32**  | **Next** | **Distributed Network Simulation & Visualization** |
+| 32      | Complete | Distributed Network Simulation & Visualization     |
+| 33      | Complete | Metrics, Live Dashboard, Wasm Stub, Interview Plan |
+| **34**  | **Next** | **Formal TLA+ Spec & Physical Hardware Prep**      |
 
 ## Current Development Priority (Next Session)
 
-**Session 32: Distributed Network Simulation & Visualization**
-Build visualization or expanded metrics to analyze the distributed Async Transport mesh under load.
+**Session 34: Formal TLA+ Spec & Physical Hardware Prep**
+Remaining gaps to truly elite tier:
+- TLA+ formal spec stub (`docs/spec.tla`) to mathematically model the CRCI state machine and 1/3 threshold.
+- 40-node Docker cluster run (if Docker daemon is available).
+- Physical Raspberry Pi validation.
+- README polish for GitHub front page.
 
 Pre-session checklist:
 

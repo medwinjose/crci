@@ -1076,4 +1076,27 @@ fn main() {
     println!("  Research Paper: COMPLETED (docs/paper.md)");
     println!("  Fault Model: COMPLETED (docs/fault_model.md)");
     println!("  Architecture Decision Records: COMPLETED (docs/adr/)");
+
+    // ── Session 33: Metrics, Dashboard, Wasm, Interview ──────────
+    println!();
+    println!("╔══════════════════════════════════════════════════════════╗");
+    println!("║  SESSION 33 — METRICS, DASHBOARD, WASM, INTERVIEW        ║");
+    println!("╚══════════════════════════════════════════════════════════╝");
+    println!("  Prometheus metrics: src/metrics.rs wired to node binary");
+    println!("  Live dashboard: docs/dashboard.html (open in browser)");
+
+    let mut runtime = crci::wasm::WasmRuntime::new(10 * 1024 * 1024, 100);
+    runtime.register(Box::new(crci::wasm::PriorityScorer));
+    println!("  Wasmtime stub: WasmRuntime registered 1 module (priority_scorer)");
+
+    let input = [4, 0, 0, 0, 0];
+    if let Ok(result) = runtime.execute("priority_scorer", &input) {
+        println!(
+            "  Edge computation: input={} bytes → score={}",
+            input.len(),
+            result[0]
+        );
+    }
+
+    println!("  Interview script: docs/interview_script.md");
 }

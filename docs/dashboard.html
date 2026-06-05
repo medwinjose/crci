@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRCI Live Dashboard</title>
+    <style>
+        :root {
+            --bg-dark: #0f1117;
+            --text-light: #e2e8f0;
+            --green: #4ade80;
+            --amber: #fbbf24;
+            --red: #ef4444;
+            --border: #334155;
+            --panel-bg: #1e293b;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 5px;
+        }
+        .status-connected .status-dot { background-color: var(--green); }
+        .status-offline .status-dot { background-color: var(--red); }
+        .main-content {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            overflow: hidden;
+        }
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        h2 { margin-top: 0; font-size: 1.2rem; }
+        
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        th { color: #94a3b8; font-weight: normal; }
+        .rep-green { color: var(--green); }
+        .rep-amber { color: var(--amber); }
+        .rep-red { color: var(--red); }
+        
+        /* Event Log Styles */
+        .log-container {
+            flex: 1;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+            background: var(--bg-dark);
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .log-entry { margin-bottom: 4px; }
+        .log-time { color: #94a3b8; margin-right: 10px; }
+        .highlight-byzantine { color: var(--amber); }
+        .highlight-rescue { color: var(--red); }
+    </style>
+</head>
+<body>
+
+    <header id="header" class="status-offline">
+        <div>
+            <strong style="font-size: 1.5rem;">CRCI Live Dashboard</strong>
+            <span id="conn-status" style="margin-left: 15px;">Offline <span class="status-dot"></span></span>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.9rem;">
+            Last updated: <span id="last-updated">Never</span>
+        </div>
+    </header>
+
+    <div class="main-content">
+        <!-- Left Column: Node Table -->
+        <div class="panel">
+            <h2>Active Nodes</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Node ID</th>
+                        <th>Zone</th>
+                        <th>Reputation</th>
+                        <th>Status</th>
+                        <th>Messages</th>
+                        <th>Rescues</th>
+                    </tr>
+                </thead>
+                <tbody id="node-table-body">
+                    <!-- Populated via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Right Column: Event Log -->
+        <div class="panel">
+            <h2>Event Log (Rolling)</h2>
+            <div class="log-container" id="event-log">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const LOG_MAX_LINES = 50;
+        let lastMetrics = {};
+        
+        function appendLog(metricName, oldVal, newVal) {
+            const logContainer = document.getElementById('event-log');
+            const now = new Date();
+            const timeStr = `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}]`;
+            
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            
+            let lineHtml = `<span class="log-time">${timeStr}</span> ${metricName}: ${oldVal} &rarr; ${newVal}`;
+            
+            if (metricName.toLowerCase().includes('byzantine')) {
+                div.classList.add('highlight-byzantine');
+            } else if (metricName.toLowerCase().includes('rescue')) {
+                div.classList.add('highlight-rescue');
+            }
+            
+            div.innerHTML = lineHtml;
+            logContainer.prepend(div);
+            
+            if (logContainer.children.length > LOG_MAX_LINES) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        function getRepColorClass(rep) {
+            if (rep >= 0.9) return 'rep-green';
+            if (rep >= 0.5) return 'rep-amber';
+            return 'rep-red';
+        }
+
+        function updateNodeTable(peers) {
+            const tbody = document.getElementById('node-table-body');
+            tbody.innerHTML = '';
+            
+            // Sort by node ID
+            const sortedIds = Object.keys(peers).sort();
+            
+            for (const id of sortedIds) {
+                const p = peers[id];
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${id}</td>
+                    <td>${p.zone || '-'}</td>
+                    <td class="${getRepColorClass(p.reputation)}">${p.reputation !== undefined ? p.reputation.toFixed(2) : '-'}</td>
+                    <td class="${p.status === 'online' ? 'rep-green' : 'rep-red'}">${p.status || 'unknown'}</td>
+                    <td>${p.messages || 0}</td>
+                    <td>${p.rescues || 0}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        async function fetchMetrics() {
+            try {
+                const response = await fetch('http://localhost:9090/metrics');
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const text = await response.text();
+                
+                document.getElementById('header').className = 'status-connected';
+                document.getElementById('conn-status').innerHTML = 'Connected <span class="status-dot"></span>';
+                document.getElementById('last-updated').innerText = new Date().toLocaleTimeString();
+
+                const lines = text.split('\n');
+                const peers = {};
+                
+                for (const line of lines) {
+                    if (!line || line.startsWith('#')) continue;
+                    
+                    const parts = line.split(' ');
+                    if (parts.length < 2) continue;
+                    
+                    const fullKey = parts[0];
+                    const val = parseFloat(parts[1]);
+                    
+                    // Parse scalar metrics
+                    if (!fullKey.includes('{')) {
+                        if (lastMetrics[fullKey] !== undefined && lastMetrics[fullKey] !== val) {
+                            appendLog(fullKey, lastMetrics[fullKey], val);
+                        }
+                        lastMetrics[fullKey] = val;
+                        continue;
+                    }
+                    
+                    // Parse peer metrics
+                    const metricName = fullKey.split('{')[0];
+                    const labelsStr = fullKey.split('{')[1].replace('}', '');
+                    const labels = {};
+                    labelsStr.split(',').forEach(l => {
+                        const [k, v] = l.split('=');
+                        if (k && v) labels[k] = v.replace(/"/g, '');
+                    });
+                    
+                    const nodeId = labels.node_id;
+                    if (!nodeId) continue;
+                    
+                    if (!peers[nodeId]) peers[nodeId] = { zone: labels.zone, status: labels.status };
+                    
+                    if (metricName === 'crci_peer_reputation') peers[nodeId].reputation = val;
+                    if (metricName === 'crci_peer_messages') peers[nodeId].messages = val;
+                    if (metricName === 'crci_peer_rescues') peers[nodeId].rescues = val;
+                }
+                
+                updateNodeTable(peers);
+
+            } catch (error) {
+                document.getElementById('header').className = 'status-offline';
+                document.getElementById('conn-status').innerHTML = 'Offline <span class="status-dot"></span>';
+                document.getElementById('last-updated').innerText = 'Connection Error';
+            }
+        }
+
+        setInterval(fetchMetrics, 2000);
+        fetchMetrics();
+    </script>
+</body>
+</html>
