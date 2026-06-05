@@ -23,7 +23,7 @@ const MAX_PEERS_PER_EXCHANGE: usize = 8;
 const ZONE_BOOTSTRAP_ROUNDS: u64 = 30;
 
 /// Max peers a node tracks in its peer table.
-const MAX_PEER_TABLE_SIZE: usize = 50;
+const MAX_PEER_TABLE_SIZE: usize = 200;
 
 // ── Beacon ────────────────────────────────────────────────────────
 
@@ -153,17 +153,19 @@ impl PeerTable {
             .collect()
     }
 
-    /// Select up to MAX_PEERS_PER_EXCHANGE peers to share with a newcomer.
-    /// Prefers recently-seen peers and avoids the requesting node itself.
     pub fn peers_for_exchange(&self, exclude: &str, current_round: u64) -> Vec<String> {
+        // XOR distance K-bucket accelerator:
+        // We want to share peers that are "closest" to the requesting node in XOR space.
+        // This accelerates discovery across the network.
+        let exclude_hash = Self::hash_id(exclude);
         let mut candidates: Vec<(&str, u64)> = self
             .peers
             .values()
             .filter(|p| p.node_id != exclude)
-            .map(|p| (p.node_id.as_str(), p.last_seen))
+            .map(|p| (p.node_id.as_str(), Self::hash_id(&p.node_id) ^ exclude_hash))
             .collect();
-        // Sort by most recently seen
-        candidates.sort_by_key(|b| std::cmp::Reverse(b.1));
+        // Sort by XOR distance (closest first)
+        candidates.sort_by_key(|b| b.1);
         candidates
             .iter()
             .take(MAX_PEERS_PER_EXCHANGE)
@@ -182,6 +184,16 @@ impl PeerTable {
 
     pub fn all_peers(&self) -> impl Iterator<Item = &PeerRecord> {
         self.peers.values()
+    }
+
+    /// Helper to hash a node ID into a u64 for XOR distance
+    fn hash_id(id: &str) -> u64 {
+        let mut h = 0xcbf29ce484222325;
+        for b in id.bytes() {
+            h ^= b as u64;
+            h = h.wrapping_mul(0x00000100000001b3);
+        }
+        h
     }
 }
 

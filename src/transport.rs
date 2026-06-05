@@ -61,114 +61,124 @@ impl Transport for SimTransport {
     }
 }
 
-// ─── TCP Gossip Transport Shim ───────────────────────────────────────────────
+// ─── Tokio Async Gossip Transport Shim ─────────────────────────────────────────
 
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::thread;
-
-pub struct TcpGossipNode {
-    pub node_id: String,
-    pub zone: String,
-    pub peers: Vec<String>,
-    pub pipeline: Arc<Mutex<GossipPipeline>>,
-    pub received: Arc<Mutex<Vec<PipelineMessage>>>,
-}
+use std::net::SocketAddr;
+use std::sync::atomic::{AtomicU64, Ordering};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::broadcast;
 
 use crate::integration::{GossipPipeline, PipelineMessage, PipelineVerdict};
 
-impl TcpGossipNode {
-    pub fn new(node_id: &str, zone: &str, peers: Vec<String>) -> Self {
-        TcpGossipNode {
-            node_id: node_id.to_string(),
-            zone: zone.to_string(),
+pub struct AsyncTransport {
+    pub node_id: String,
+    pub listen_addr: SocketAddr,
+    pub peers: Vec<SocketAddr>,
+    pub accepted_count: Arc<AtomicU64>,
+    pub rejected_count: Arc<AtomicU64>,
+    pub rescue_held: Arc<AtomicU64>,
+}
+
+impl AsyncTransport {
+    pub async fn bind(
+        node_id: String,
+        addr: SocketAddr,
+        peers: Vec<SocketAddr>,
+    ) -> std::io::Result<Self> {
+        Ok(Self {
+            node_id,
+            listen_addr: addr,
             peers,
-            pipeline: Arc::new(Mutex::new(GossipPipeline::new())),
-            received: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-
-    /// Starts a TCP listener on the configured port.
-    /// Spawns a background thread to accept incoming connections.
-    pub fn start_listener(&self, port: u16) -> thread::JoinHandle<()> {
-        let pipeline = self.pipeline.clone();
-        let peers = self.peers.clone();
-        let local_node_id = self.node_id.clone();
-        let received = self.received.clone();
-
-        thread::spawn(move || {
-            let addr = format!("0.0.0.0:{}", port);
-            let listener = TcpListener::bind(&addr)
-                .unwrap_or_else(|e| panic!("Failed to bind TCP listener on {}: {}", addr, e));
-
-            for mut stream in listener.incoming().flatten() {
-                let pipeline_inner = pipeline.clone();
-                let peers_inner = peers.clone();
-                let local_node_id_inner = local_node_id.clone();
-                let received_inner = received.clone();
-                thread::spawn(move || {
-                    let mut buf = Vec::new();
-                    // Read message until EOF (connection closed by sender)
-                    if stream.read_to_end(&mut buf).is_ok() && !buf.is_empty() {
-                        if let Ok(msg) = serde_json::from_slice::<PipelineMessage>(&buf) {
-                            // Skip messages that originated from ourselves to prevent loops
-                            if msg.origin_node == local_node_id_inner {
-                                return;
-                            }
-
-                            let verdict = {
-                                let mut pipeline_guard = pipeline_inner.lock().unwrap();
-                                pipeline_guard.process(&msg)
-                            };
-
-                            if verdict == PipelineVerdict::Accept {
-                                {
-                                    let mut rec = received_inner.lock().unwrap();
-                                    rec.push(msg.clone());
-                                }
-
-                                // Gossip/forward the message to all other peers
-                                for peer in peers_inner {
-                                    let msg_clone = msg.clone();
-                                    thread::spawn(move || {
-                                        if let Ok(mut out_stream) = TcpStream::connect(&peer) {
-                                            if let Ok(serialized) = serde_json::to_vec(&msg_clone) {
-                                                let _ = out_stream.write_all(&serialized);
-                                            }
-                                        }
-                                    });
-                                }
-                            }
-                        }
-                    }
-                });
-            }
+            accepted_count: Arc::new(AtomicU64::new(0)),
+            rejected_count: Arc::new(AtomicU64::new(0)),
+            rescue_held: Arc::new(AtomicU64::new(0)),
         })
     }
 
-    /// Originate and broadcast a message from this node.
-    pub fn broadcast(&self, msg: PipelineMessage) {
-        // Log/process locally first
-        {
-            let mut pipeline_guard = self.pipeline.lock().unwrap();
-            let _ = pipeline_guard.process(&msg);
-        }
-        {
-            let mut rec = self.received.lock().unwrap();
-            rec.push(msg.clone());
-        }
+    pub async fn send_msg(&self, peer: SocketAddr, msg: &PipelineMessage) -> std::io::Result<()> {
+        let mut stream = TcpStream::connect(peer).await?;
+        let payload = serde_json::to_vec(msg)?;
+        stream.write_u32(payload.len() as u32).await?;
+        stream.write_all(&payload).await?;
+        Ok(())
+    }
 
-        // Send to all peers
+    pub async fn broadcast(&self, msg: &PipelineMessage) -> Vec<std::io::Result<()>> {
+        let mut results = Vec::new();
         for peer in &self.peers {
-            let msg_clone = msg.clone();
-            let peer_addr = peer.clone();
-            thread::spawn(move || {
-                if let Ok(mut out_stream) = TcpStream::connect(&peer_addr) {
-                    if let Ok(serialized) = serde_json::to_vec(&msg_clone) {
-                        let _ = out_stream.write_all(&serialized);
-                    }
+            let res = self.send_msg(*peer, msg).await;
+            results.push(res);
+        }
+        results
+    }
+
+    pub async fn recv_loop(
+        self: Arc<Self>,
+        pipeline: Arc<Mutex<GossipPipeline>>,
+        mut shutdown: broadcast::Receiver<()>,
+    ) {
+        let listener = match TcpListener::bind(self.listen_addr).await {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!(
+                    "[{}] Failed to bind TCP listener on {}: {}",
+                    self.node_id, self.listen_addr, e
+                );
+                return;
+            }
+        };
+
+        loop {
+            tokio::select! {
+                Ok((mut stream, _addr)) = listener.accept() => {
+                    let pipeline_inner = pipeline.clone();
+                    let transport_inner = self.clone();
+                    let local_node_id = self.node_id.clone();
+
+                    tokio::spawn(async move {
+                        while let Ok(len) = stream.read_u32().await {
+                            // Prevent allocating huge memory on garbage length
+                            if len > 1024 * 1024 {
+                                break;
+                            }
+
+                            let mut buf = vec![0u8; len as usize];
+                            if stream.read_exact(&mut buf).await.is_err() {
+                                break;
+                            }
+
+                            if let Ok(msg) = serde_json::from_slice::<PipelineMessage>(&buf) {
+                                // Skip messages that originated from ourselves to prevent loops
+                                if msg.origin_node == local_node_id {
+                                    continue;
+                                }
+
+                                let verdict = {
+                                    let mut pipeline_guard = pipeline_inner.lock().unwrap();
+                                    pipeline_guard.process(&msg)
+                                };
+
+                                match verdict {
+                                    PipelineVerdict::Accept => {
+                                        transport_inner.accepted_count.fetch_add(1, Ordering::SeqCst);
+                                        // Forward the accepted message to all our peers
+                                        let _ = transport_inner.broadcast(&msg).await;
+                                    }
+                                    PipelineVerdict::Reject(_) | PipelineVerdict::Throttle(_) => {
+                                        transport_inner.rejected_count.fetch_add(1, Ordering::SeqCst);
+                                    }
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                    });
                 }
-            });
+                _ = shutdown.recv() => {
+                    break;
+                }
+            }
         }
     }
 }
