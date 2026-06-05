@@ -9,6 +9,7 @@
 - Session 33: Metrics, Dashboard, Wasm, Interview
 - Session 34: CI/CD (GitHub Actions), SECURITY.md, issue templates, PR template, README badges
 - Session 35: README rewrite, architecture diagram, benchmark docs
+- Session 36: TLA+ Formal Specification for reputation-weighted consensus
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -27,4 +28,4 @@
 - Distributed real proof loop: Confirmed Byzantine node detection and uninterrupted propagation of critical Rescue events across partitioned zones.
 
 ## Next Steps
-- Session 36 — TLA+ Formal Specification (docs/spec/crci_consensus.tla, MC.cfg, docs/spec/README.md).
+- Session 37 — REST API + WebSocket backend (src/api.rs, Axum or Warp, /status /peers /messages endpoints, WebSocket broadcast channel).
