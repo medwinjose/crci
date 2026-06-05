@@ -126,6 +126,10 @@ pub struct NodeRuntime {
     pub known_keys: HashMap<String, Vec<u8>>,
     pub replay_filter: crate::replay::ReplayFilter,
     pub seq_counter: u64,
+    pub messages_handled: u64,
+    pub byzantine_events: u64,
+    pub merkle: crate::merkle::MerkleChain,
+    pub router: crate::routing::TemporalRouter,
 }
 
 impl NodeRuntime {
@@ -150,7 +154,19 @@ impl NodeRuntime {
             known_keys: HashMap::new(),
             replay_filter: crate::replay::ReplayFilter::new(),
             seq_counter: 0,
+            messages_handled: 0,
+            byzantine_events: 0,
+            merkle: crate::merkle::MerkleChain::new(),
+            router: crate::routing::TemporalRouter::new(),
         }
+    }
+
+    pub fn chain_head(&self) -> ([u8; 32], u64) {
+        (self.merkle.head_hash(), self.merkle.head_sequence())
+    }
+
+    pub fn reputation_floor(&self) -> f64 {
+        self.reputation // For now, just use node's own reputation or a simple aggregate
     }
 
     pub fn save_state(&self) {
@@ -256,9 +272,18 @@ impl NodeRuntime {
             "  ✍  [{}] originating '{}' → sig: {}...",
             self.id, wire.id, sig_preview
         );
-        for peer in &self.peers.clone() {
-            self.transport.send(peer, &payload);
+
+        let now_ms = crate::message::now_ts();
+        self.router.evict_stale(now_ms);
+
+        if let Some(best) = self.router.best_next_hop(&[], now_ms) {
+            self.transport.send(&best.peer_id, &payload);
+        } else {
+            for peer in &self.peers.clone() {
+                self.transport.send(peer, &payload);
+            }
         }
+
         self.observations.push((
             self.id.clone(),
             wire.severity,
@@ -293,6 +318,7 @@ impl NodeRuntime {
                     "  ⚠ [{}] INVALID SIGNATURE on '{}' — dropped!",
                     self.id, wire.id
                 );
+                self.byzantine_events += 1;
                 continue;
             }
 
@@ -304,6 +330,7 @@ impl NodeRuntime {
                             "  ⚠ [{}] PUBKEY MISMATCH on '{}' — impersonation dropped!",
                             self.id, wire.id
                         );
+                        self.byzantine_events += 1;
                         continue;
                     }
                 } else {
@@ -319,6 +346,7 @@ impl NodeRuntime {
                 crate::message::now_ts(),
             );
             if !verdict.is_accept() {
+                self.byzantine_events += 1;
                 match &verdict {
                     crate::replay::ReplayVerdict::Replayed {
                         received_seq,
@@ -378,13 +406,43 @@ impl NodeRuntime {
                 wire.visibility == "unknown",
             ));
 
+            let now_ms = crate::message::now_ts();
+            self.router.upsert(crate::routing::RoutingEntry {
+                peer_id: wire.origin.clone(), // assume direct connection for hop_count 1
+                last_seen_ms: now_ms,
+                hop_count: 1,
+                freshness_ms: 30_000,
+            });
+
+            self.messages_handled += 1;
+
             let payload = match serde_json::to_vec(&wire) {
                 Ok(bytes) => bytes,
                 Err(_) => continue,
             };
-            for peer in &self.peers.clone() {
-                self.transport.send(peer, &payload);
+            
+            self.router.evict_stale(now_ms);
+            
+            if let Some(best) = self.router.best_next_hop(&[&wire.origin], now_ms) {
+                self.transport.send(&best.peer_id, &payload);
+            } else {
+                for peer in &self.peers.clone() {
+                    if *peer != wire.origin {
+                        self.transport.send(peer, &payload);
+                    }
+                }
             }
+        }
+
+        let current_handled = self.messages_handled;
+        if current_handled > 0 && current_handled.is_multiple_of(50) {
+            self.merkle.append(crate::merkle::StateSnapshot {
+                peer_count: self.peers.len(),
+                reputation_floor: self.reputation_floor(),
+                messages_handled: self.messages_handled,
+                byzantine_events: self.byzantine_events,
+                timestamp_ms: crate::message::now_ts(),
+            });
         }
     }
 

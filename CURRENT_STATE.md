@@ -13,11 +13,12 @@
 - Session 37: REST API and WebSocket backend via Axum
 - Session 38: React Web Dashboard (Vite + React + Tailwind + Recharts)
 - Session 39: Grafana Dashboard + Byzantine Agent Binary
+- Session 40: Merkle-chained state + temporal-aware routing
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
 2. **Docker Multi-node Proof Loop**: Scripts and binaries exist to spin up isolated nodes with actual asynchronous communication, verifying the pipeline.
-3. **Advanced Features Embedded**: Reputation, AEDA scoring, battery management, message pruning, and Byzantine discovery (K-bucket) are fully integrated into `src/integration.rs` and the Docker proof loop.
+3. **Advanced Features Embedded**: Reputation, AEDA scoring, battery management, message pruning, Byzantine discovery (K-bucket), Temporal routing, and Merkle chaining are fully integrated into `src/integration.rs` and the `NodeRuntime`.
 4. **Wasm Edge Compute**: Priority computation can be executed dynamically via Wasmtime (`src/wasm.rs`).
 5. **Security**: Auditing (`src/security.rs`), validations, payload constraints, API telemetry, and a proper `SECURITY.md` are documented.
 6. **Live Dashboard**: A fully standalone web dashboard at `docs/dashboard/` visually tracks live messages, peer status, and SEV distribution over an Axum WebSocket.
@@ -31,4 +32,4 @@
 - Docker compose validation.
 
 ## Next Steps
-- Session 40 — Merkle-chained state + temporal-aware routing
+- Session 41 — Chain-head gossip protocol + divergence alerting
