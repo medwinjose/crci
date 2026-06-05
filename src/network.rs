@@ -180,6 +180,7 @@ impl Network {
                     MessageType::RescueRequest => "🆘 RESCUE",
                     MessageType::MassCasualtyEvent => "🚨 MCE",
                     MessageType::Panic => "🆘 PANIC",
+                    MessageType::ChainHeadAnnouncement { .. } => "🔗 CHAIN_HEAD",
                 };
 
                 let vis_label = match msg.signal.visibility {

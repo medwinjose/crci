@@ -23,6 +23,10 @@ pub enum MessageType {
     RescueRequest,
     MassCasualtyEvent,
     Panic,
+    ChainHeadAnnouncement {
+        head_hash: [u8; 32],
+        head_seq: u64,
+    },
 }
 
 impl MessageType {
@@ -33,6 +37,7 @@ impl MessageType {
             MessageType::RescueRequest => "rescue",
             MessageType::MassCasualtyEvent => "mce",
             MessageType::Panic => "panic",
+            MessageType::ChainHeadAnnouncement { .. } => "chain_head",
         }
     }
 }

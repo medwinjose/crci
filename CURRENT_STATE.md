@@ -25,6 +25,16 @@
 7. **Grafana & Prometheus**: Metrics collected and visualized in Grafana (available at `http://localhost:3001`). Prometheus available at `http://localhost:9090`.
 8. **Byzantine Agent**: `byzantine_agent` binary available to inject adversarial traffic into the cluster. Run `cargo run --bin byzantine_agent -- --help` for details.
 
+## Current Session Status: SESSION 41 COMPLETE
+
+**Recent Accomplishments (Session 41):**
+- Added `ChainHeadAnnouncement` message type and wire serialization.
+- Implemented `DivergenceAlert` for chain head mismatch detection.
+- Updated `NodeRuntime` to periodically broadcast chain heads and handle incoming announcements without re-gossiping.
+- Added `divergence_log` and `byzantine_events` tracking for divergences.
+- Exported `crci_chain_divergences_total` Prometheus metric.
+- Added 5 unit tests verifying chain head gossip and divergence detection.
+
 ## Verification
 - Clean compilation, `cargo fmt`, `cargo clippy`.
 - Over 80 tests passing (`cargo test --all`), covering unit testing, integration testing, API tests, and specific edge case mitigations.
@@ -32,4 +42,4 @@
 - Docker compose validation.
 
 ## Next Steps
-- Session 41 — Chain-head gossip protocol + divergence alerting
+- Session 42 — TBD
