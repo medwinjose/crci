@@ -4,8 +4,8 @@ use std::collections::{HashMap, HashSet};
 
 use crate::identity::Identity;
 use crate::message::{Message, MessageType, Signal, Visibility};
-use crate::storage::{NodeStorage, PersistedRescue, PersistedState};
-use crate::transport::{SharedInbox, SimTransport, Transport};
+use crate::storage::{PersistedRescue, PersistedState};
+use crate::transport::{LegacyTransport, SharedInbox, SimTransport};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WireMessage {
@@ -126,7 +126,8 @@ pub struct NodeRuntime {
     pub persistent_messages: HashMap<String, WireMessage>,
     pub transport: SimTransport,
     pub inbox: SharedInbox,
-    pub storage: NodeStorage,
+    pub storage: crate::storage::legacy::NodeStorage,
+    pub storage_backend: Option<std::sync::Arc<dyn crate::storage::StorageBackend>>,
     pub observations: Vec<(String, u8, u8, bool)>,
     pub known_keys: HashMap<String, Vec<u8>>,
     pub replay_filter: crate::replay::ReplayFilter,
@@ -135,6 +136,7 @@ pub struct NodeRuntime {
     pub byzantine_events: u64,
     pub merkle: crate::merkle::MerkleChain,
     pub divergence_log: Vec<crate::merkle::DivergenceAlert>,
+    pub divergence_tx: Option<tokio::sync::broadcast::Sender<crate::merkle::DivergenceAlert>>,
     pub router: crate::routing::TemporalRouter,
 }
 
@@ -143,7 +145,7 @@ impl NodeRuntime {
         let transport = SimTransport::new(id, inbox.clone());
         let identity = Identity::new(id);
         let key_bytes = identity.signing_key.to_bytes();
-        let storage = NodeStorage::new(id, &key_bytes);
+        let storage = crate::storage::legacy::NodeStorage::new(id, &key_bytes);
         NodeRuntime {
             id: id.to_string(),
             identity,
@@ -157,6 +159,7 @@ impl NodeRuntime {
             inbox,
             observations: Vec::new(),
             storage,
+            storage_backend: None,
             known_keys: HashMap::new(),
             replay_filter: crate::replay::ReplayFilter::new(),
             seq_counter: 0,
@@ -164,8 +167,16 @@ impl NodeRuntime {
             byzantine_events: 0,
             merkle: crate::merkle::MerkleChain::new(),
             divergence_log: Vec::new(),
+            divergence_tx: None,
             router: crate::routing::TemporalRouter::new(),
         }
+    }
+
+    pub fn set_divergence_tx(
+        &mut self,
+        tx: tokio::sync::broadcast::Sender<crate::merkle::DivergenceAlert>,
+    ) {
+        self.divergence_tx = Some(tx);
     }
 
     pub fn chain_head(&self) -> ([u8; 32], u64) {
@@ -408,10 +419,23 @@ impl NodeRuntime {
             );
 
             if is_chain_head {
-                if let Ok(MessageType::ChainHeadAnnouncement { head_hash, head_seq }) = serde_json::from_str(&wire.message_type) {
-                    if let Some(alert) = self.merkle.build_divergence_alert(&wire.origin, head_hash, head_seq) {
-                        println!("  ⚠ [{}] DIVERGENCE detected with peer {} at seq {}", self.id, wire.origin, alert.divergence_seq);
-                        self.divergence_log.push(alert);
+                if let Ok(MessageType::ChainHeadAnnouncement {
+                    head_hash,
+                    head_seq,
+                }) = serde_json::from_str(&wire.message_type)
+                {
+                    if let Some(alert) =
+                        self.merkle
+                            .build_divergence_alert(&wire.origin, head_hash, head_seq)
+                    {
+                        println!(
+                            "  ⚠ [{}] DIVERGENCE detected with peer {} at seq {}",
+                            self.id, wire.origin, alert.divergence_seq
+                        );
+                        self.divergence_log.push(alert.clone());
+                        if let Some(tx) = &self.divergence_tx {
+                            let _ = tx.send(alert);
+                        }
                         self.byzantine_events += 1;
                     }
                 }
@@ -449,9 +473,9 @@ impl NodeRuntime {
                 Ok(bytes) => bytes,
                 Err(_) => continue,
             };
-            
+
             self.router.evict_stale(now_ms);
-            
+
             if let Some(best) = self.router.best_next_hop(&[&wire.origin], now_ms) {
                 self.transport.send(&best.peer_id, &payload);
             } else {
@@ -459,6 +483,15 @@ impl NodeRuntime {
                     if *peer != wire.origin {
                         self.transport.send(peer, &payload);
                     }
+                }
+            }
+            if let Some(backend) = &self.storage_backend {
+                let key = format!("msg:{}", wire.id);
+                if let Ok(value) = serde_json::to_vec(&wire) {
+                    let backend_clone = backend.clone();
+                    tokio::spawn(async move {
+                        let _ = backend_clone.write(&key, &value).await;
+                    });
                 }
             }
         }
@@ -482,7 +515,10 @@ impl NodeRuntime {
                 origin: self.id.clone(),
                 signal: Signal::new(1, false, false, false, 1, Visibility::Direct),
                 note: None,
-                message_type: MessageType::ChainHeadAnnouncement { head_hash, head_seq },
+                message_type: MessageType::ChainHeadAnnouncement {
+                    head_hash,
+                    head_seq,
+                },
                 origin_active: true,
                 signature: None,
                 created_at: crate::message::now_ts(),

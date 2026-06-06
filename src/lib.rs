@@ -1,4 +1,5 @@
 pub mod aeda;
+pub mod api;
 pub mod battery;
 pub mod bench;
 pub mod bench_extended;

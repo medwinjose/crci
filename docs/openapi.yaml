@@ -1,0 +1,267 @@
+openapi: "3.1.0"
+info:
+  title: CRCI Node API
+  version: "0.1.0"
+  description: >
+    REST and WebSocket API for a CRCI mesh node.
+    Exposes node health, Merkle chain state, and divergence alerts.
+
+servers:
+  - url: http://localhost:8080
+    description: Local node
+
+paths:
+  /health:
+    get:
+      summary: Get node health status
+      operationId: getHealth
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /divergences:
+    get:
+      summary: List all divergence alerts
+      operationId: listDivergences
+      responses:
+        "200":
+          description: Array of divergence alerts (newest first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DivergenceAlert"
+
+  /divergences/{peer_id}:
+    get:
+      summary: List divergence alerts for a specific peer
+      operationId: listDivergencesByPeer
+      parameters:
+        - name: peer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Array of divergence alerts for the peer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DivergenceAlert"
+        "404":
+          description: Peer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chain/head:
+    get:
+      summary: Get current Merkle chain head
+      operationId: getChainHead
+      responses:
+        "200":
+          description: Chain head hash and sequence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChainHead"
+
+  /ws/divergences:
+    get:
+      summary: WebSocket stream of divergence alerts
+      operationId: wsDivergences
+      description: Connect to receive real-time divergence alerts. Upon connection, sends all current alerts, followed by live updates.
+      responses:
+        "101":
+          description: Switching Protocols to WebSocket
+
+  /status:
+    get:
+      summary: Get system status
+      operationId: getStatus
+      responses:
+        "200":
+          description: System status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  node_id:
+                    type: string
+                  uptime_secs:
+                    type: integer
+                  node_count:
+                    type: integer
+                  version:
+                    type: string
+
+  /peers:
+    get:
+      summary: List known peers
+      operationId: listPeers
+      responses:
+        "200":
+          description: List of peers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  peers:
+                    type: array
+                    items:
+                      type: string
+                  count:
+                    type: integer
+
+  /messages:
+    get:
+      summary: List recent messages
+      operationId: listMessages
+      responses:
+        "200":
+          description: Recent API messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from:
+                          type: string
+                        severity:
+                          type: integer
+                        content:
+                          type: string
+                        timestamp_ms:
+                          type: integer
+                  count:
+                    type: integer
+
+  /simulate/panic:
+    post:
+      summary: Simulate a panic event
+      operationId: simulatePanic
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Panic simulation queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queued:
+                    type: boolean
+        "413":
+          description: Payload too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Unsupported media type (must be application/json)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ws:
+    get:
+      summary: General WebSocket stream
+      operationId: wsGeneral
+      description: General WebSocket stream for recent messages.
+      responses:
+        "101":
+          description: Switching Protocols to WebSocket
+
+components:
+  schemas:
+    DivergenceAlert:
+      type: object
+      required:
+        - id
+        - detected_at_ms
+        - peer_id
+        - divergence_seq
+        - expected_hash
+        - received_hash
+      properties:
+        id:
+          type: string
+        detected_at_ms:
+          type: integer
+        peer_id:
+          type: string
+        divergence_seq:
+          type: integer
+        expected_hash:
+          type: string
+        received_hash:
+          type: string
+
+    ChainHead:
+      type: object
+      required:
+        - head_hash
+        - head_seq
+      properties:
+        head_hash:
+          type: string
+        head_seq:
+          type: integer
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - node_id
+        - uptime_secs
+        - byzantine_events
+        - divergence_alerts
+      properties:
+        status:
+          type: string
+        node_id:
+          type: string
+        uptime_secs:
+          type: integer
+        byzantine_events:
+          type: integer
+        divergence_alerts:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - code
+      properties:
+        error:
+          type: string
+        code:
+          type: string

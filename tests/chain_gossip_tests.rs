@@ -26,7 +26,10 @@ fn test_no_peers_safe_broadcast() {
         origin: node.id.clone(),
         signal: Signal::new(1, false, false, false, 1, Visibility::Direct),
         note: None,
-        message_type: MessageType::ChainHeadAnnouncement { head_hash, head_seq },
+        message_type: MessageType::ChainHeadAnnouncement {
+            head_hash,
+            head_seq,
+        },
         origin_active: true,
         signature: None,
         created_at: crci::message::now_ts(),
@@ -49,7 +52,10 @@ fn test_matching_head_no_divergence() {
         origin: "peer-b".to_string(),
         signal: Signal::new(1, false, false, false, 1, Visibility::Direct),
         note: None,
-        message_type: MessageType::ChainHeadAnnouncement { head_hash, head_seq },
+        message_type: MessageType::ChainHeadAnnouncement {
+            head_hash,
+            head_seq,
+        },
         origin_active: true,
         signature: None,
         created_at: crci::message::now_ts(),
@@ -58,16 +64,16 @@ fn test_matching_head_no_divergence() {
         hop_count: 0,
         seq: 1,
     };
-    
+
     // Simulate receiving it
     let wire = crci::runtime::WireMessage::from_message(&msg, &node.identity);
     let bytes = serde_json::to_vec(&wire).unwrap();
-    
+
     {
         let mut inbox = node.inbox.lock().unwrap();
         inbox.entry(node.id.clone()).or_default().push(bytes);
     }
-    
+
     node.process_inbox();
     assert_eq!(node.divergence_log.len(), 0);
     assert_eq!(node.byzantine_events, 0);
@@ -78,13 +84,16 @@ fn test_peer_ahead_no_divergence() {
     let mut node = create_node("node-a");
     let (mut head_hash, head_seq) = node.chain_head();
     head_hash[0] ^= 0xFF; // Change hash arbitrarily
-    
+
     let msg = Message {
         id: "test-head-3".to_string(),
         origin: "peer-b".to_string(),
         signal: Signal::new(1, false, false, false, 1, Visibility::Direct),
         note: None,
-        message_type: MessageType::ChainHeadAnnouncement { head_hash, head_seq: head_seq + 5 },
+        message_type: MessageType::ChainHeadAnnouncement {
+            head_hash,
+            head_seq: head_seq + 5,
+        },
         origin_active: true,
         signature: None,
         created_at: crci::message::now_ts(),
@@ -93,15 +102,15 @@ fn test_peer_ahead_no_divergence() {
         hop_count: 0,
         seq: 1,
     };
-    
+
     let wire = crci::runtime::WireMessage::from_message(&msg, &node.identity);
     let bytes = serde_json::to_vec(&wire).unwrap();
-    
+
     {
         let mut inbox = node.inbox.lock().unwrap();
         inbox.entry(node.id.clone()).or_default().push(bytes);
     }
-    
+
     node.process_inbox();
     assert_eq!(node.divergence_log.len(), 0);
     assert_eq!(node.byzantine_events, 0);
@@ -112,13 +121,16 @@ fn test_mismatched_head_divergence_alert() {
     let mut node = create_node("node-a");
     let (mut head_hash, head_seq) = node.chain_head();
     head_hash[0] ^= 0xFF; // Mismatch the hash
-    
+
     let msg = Message {
         id: "test-head-4".to_string(),
         origin: "peer-b".to_string(),
         signal: Signal::new(1, false, false, false, 1, Visibility::Direct),
         note: None,
-        message_type: MessageType::ChainHeadAnnouncement { head_hash, head_seq },
+        message_type: MessageType::ChainHeadAnnouncement {
+            head_hash,
+            head_seq,
+        },
         origin_active: true,
         signature: None,
         created_at: crci::message::now_ts(),
@@ -127,9 +139,9 @@ fn test_mismatched_head_divergence_alert() {
         hop_count: 0,
         seq: 1,
     };
-    
-    // We use a different identity for the peer to pass signature verify if needed, 
-    // but MCE bypasses it, and for normal messages we sign it with node-a's identity 
+
+    // We use a different identity for the peer to pass signature verify if needed,
+    // but MCE bypasses it, and for normal messages we sign it with node-a's identity
     // which fails pubkey check if origin != node-a unless known_keys matches.
     // Wait, WireMessage::from_message uses node.identity, so pubkey matches.
     // Wait, if origin is "peer-b", verify_signature checks "peer-b".
@@ -137,21 +149,21 @@ fn test_mismatched_head_divergence_alert() {
     // So the origin is "peer-b", pubkey is node.identity.
     // It will pass verify_signature because verify_signature checks payload using origin_pubkey.
     // And it will pass pubkey consistency if known_keys is empty for "peer-b".
-    
+
     let wire = crci::runtime::WireMessage::from_message(&msg, &node.identity);
     let bytes = serde_json::to_vec(&wire).unwrap();
-    
+
     {
         let mut inbox = node.inbox.lock().unwrap();
         inbox.entry(node.id.clone()).or_default().push(bytes);
     }
-    
+
     let events_before = node.byzantine_events;
     node.process_inbox();
-    
+
     assert_eq!(node.divergence_log.len(), 1);
     assert_eq!(node.byzantine_events, events_before + 1);
-    
+
     let alert = &node.divergence_log[0];
     assert_eq!(alert.peer_id, "peer-b");
     assert_eq!(alert.divergence_seq, head_seq);
@@ -167,20 +179,23 @@ fn test_divergence_increments_byzantine_events() {
         byzantine_events: 0,
         timestamp_ms: 1000,
     });
-    
+
     let (_our_hash, our_seq) = node.chain_head();
     assert_eq!(our_seq, 1);
-    
+
     // Send a message with seq = 0 (which is the genesis block) but with a tampered hash
     let mut bad_genesis = [0u8; 32];
     bad_genesis[0] = 0x42; // arbitrary mismatch
-    
+
     let msg = Message {
         id: "test-head-5".to_string(),
         origin: "peer-bad".to_string(),
         signal: Signal::new(1, false, false, false, 1, Visibility::Direct),
         note: None,
-        message_type: MessageType::ChainHeadAnnouncement { head_hash: bad_genesis, head_seq: 0 },
+        message_type: MessageType::ChainHeadAnnouncement {
+            head_hash: bad_genesis,
+            head_seq: 0,
+        },
         origin_active: true,
         signature: None,
         created_at: crci::message::now_ts(),
@@ -189,18 +204,18 @@ fn test_divergence_increments_byzantine_events() {
         hop_count: 0,
         seq: 1,
     };
-    
+
     let wire = crci::runtime::WireMessage::from_message(&msg, &node.identity);
     let bytes = serde_json::to_vec(&wire).unwrap();
-    
+
     {
         let mut inbox = node.inbox.lock().unwrap();
         inbox.entry(node.id.clone()).or_default().push(bytes);
     }
-    
+
     let events_before = node.byzantine_events;
     node.process_inbox();
-    
+
     assert_eq!(node.divergence_log.len(), 1);
     assert_eq!(node.byzantine_events, events_before + 1);
     assert_eq!(node.divergence_log[0].divergence_seq, 0);
