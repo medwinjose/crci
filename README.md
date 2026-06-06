@@ -52,7 +52,7 @@ Plus: `docker compose up` for the multi-node proof loop.
 | BLE transport | 🔧 Stub | Under architectural review |
 | React web app | 🗓 Planned | Session 40+ |
 | Mobile app | 🗓 Planned | React Native integration |
-| TLA+ formal spec | 🗓 Planned | Session 36 |
+| TLA+ formal spec | ✅ Complete | Session 43 |
 
 ## Benchmark Results
 
@@ -80,7 +80,16 @@ Plus: `docker compose up` for the multi-node proof loop.
 - **Sybil resistance is partial**: Vouching exists, but a global bloom filter or proof-of-work is not yet deployed (planned Session 47).
 - **LoRa/BLE transports are stubs**: The hardware HAL is defined, but physical radio calls are currently mocked (planned Session 43).
 - **Key Storage**: Ed25519 keys are currently stored in memory, not in a secure HSM enclave (planned Session 33+).
-- **Formal Verification**: The TLA+ specification is pending (planned Session 36).
+
+## Formal Verification
+
+CRCI's core safety and liveness properties are formally verified using TLA+. The specification proves that our protocol is resilient to Byzantine attacks and guarantees emergency rescue message propagation. 
+To run the TLC model checker on the specification:
+```bash
+cd docs/tla
+java -jar /path/to/tla2tools.jar CRCI.tla
+# or use the VS Code TLA+ extension (alygin.vscode-tlaplus)
+```
 
 ## Roadmap
 
