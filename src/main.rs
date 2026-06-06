@@ -1,31 +1,6 @@
 #![allow(dead_code)]
-mod aeda;
-pub mod api;
-pub mod api_types;
-mod battery;
-mod bench;
-mod bench_extended;
-mod chaos;
+use crci_core::*;
 mod cli;
-mod crisis;
-mod discovery;
-mod identity;
-mod integration;
-mod merkle;
-mod mesh;
-mod message;
-mod network;
-mod node;
-mod replay;
-mod routing;
-mod runtime;
-mod security;
-mod storage;
-mod stress;
-mod sybil;
-mod transport;
-mod ttl;
-mod validation;
 
 use mesh::MeshSimulator;
 use message::{Message, Signal, Visibility};
@@ -46,7 +21,7 @@ async fn main() {
 
     let (ws_tx, _) = tokio::sync::broadcast::channel(100);
     let (divergence_tx, _) = tokio::sync::broadcast::channel(100);
-    let state = Arc::new(crate::api::ApiState {
+    let state = Arc::new(crci_core::api::ApiState {
         node_count: Arc::new(std::sync::RwLock::new(9)),
         peer_list: Arc::new(std::sync::RwLock::new(vec![
             "node-001".to_string(),
@@ -75,7 +50,7 @@ async fn main() {
     let sim_task = tokio::spawn(async move {
         // Shared inbox — a single locked map that all SimTransports write into
         // and each NodeRuntime reads from. This simulates the radio layer.
-        let inbox: crate::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+        let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
 
         let mut sim = MeshSimulator::new();
 
@@ -319,8 +294,8 @@ async fn main() {
         }
 
         println!("\n=== node-001 restarts — loading saved state ===");
-        let fresh_inbox: crate::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
-        let mut restarted = crate::runtime::NodeRuntime::new("node-001", "zone-a", fresh_inbox);
+        let fresh_inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+        let mut restarted = crci_core::runtime::NodeRuntime::new("node-001", "zone-a", fresh_inbox);
         restarted.load_state();
         restarted.status();
 
@@ -333,24 +308,24 @@ async fn main() {
         }
 
         // ── Sessions 11-13: Adversarial Stress Tests ─────────────────────────────
-        crate::stress::test_large_network();
-        crate::stress::test_sybil_attack();
-        crate::stress::test_signature_forgery();
-        crate::stress::test_network_partition();
+        crci_core::stress::test_large_network();
+        crci_core::stress::test_sybil_attack();
+        crci_core::stress::test_signature_forgery();
+        crci_core::stress::test_network_partition();
 
         // ── Crisis Scenarios ──────────────────────────────────────────────────────
-        crate::crisis::scenario_flood();
-        crate::crisis::scenario_earthquake();
-        crate::crisis::scenario_conflict();
-        crate::crisis::scenario_hazmat();
+        crci_core::crisis::scenario_flood();
+        crci_core::crisis::scenario_earthquake();
+        crci_core::crisis::scenario_conflict();
+        crci_core::crisis::scenario_hazmat();
 
         // ── Session 17: Replay protection test ───────────────────────────────────
         println!("\n╔══════════════════════════════════════════════╗");
         println!("║  SESSION 17 — Replay Attack Protection       ║");
         println!("╚══════════════════════════════════════════════╝");
 
-        let replay_inbox: crate::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
-        let mut replay_sim = crate::mesh::MeshSimulator::new();
+        let replay_inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+        let mut replay_sim = crci_core::mesh::MeshSimulator::new();
         replay_sim.add_node("honest", "zone-r", replay_inbox.clone());
         replay_sim.add_node("attacker", "zone-r", replay_inbox.clone());
         replay_sim.add_node("victim", "zone-r", replay_inbox.clone());
@@ -360,16 +335,16 @@ async fn main() {
         // Honest node sends seq=1
         replay_sim.originate(
             "honest",
-            crate::message::Message::new(
+            crci_core::message::Message::new(
                 "legit-001",
                 "honest",
-                crate::message::Signal::new(
+                crci_core::message::Signal::new(
                     4,
                     false,
                     true,
                     true,
                     5,
-                    crate::message::Visibility::Direct,
+                    crci_core::message::Visibility::Direct,
                 ),
                 Some("legitimate report"),
             ),
@@ -384,16 +359,16 @@ async fn main() {
         // filter catches duplicate seq numbers from the same origin
         replay_sim.originate(
             "honest",
-            crate::message::Message::new(
+            crci_core::message::Message::new(
                 "legit-001-replay",
                 "honest",
-                crate::message::Signal::new(
+                crci_core::message::Signal::new(
                     4,
                     false,
                     true,
                     true,
                     5,
-                    crate::message::Visibility::Direct,
+                    crci_core::message::Visibility::Direct,
                 ),
                 Some("REPLAYED report"),
             ),
@@ -1131,8 +1106,8 @@ async fn main() {
         println!("  Prometheus metrics: src/metrics.rs wired to node binary");
         println!("  Live dashboard: docs/dashboard.html (open in browser)");
 
-        let mut runtime = crci::wasm::WasmRuntime::new(10 * 1024 * 1024, 100);
-        runtime.register(Box::new(crci::wasm::PriorityScorer));
+        let mut runtime = crci_core::wasm::WasmRuntime::new(10 * 1024 * 1024, 100);
+        runtime.register(Box::new(crci_core::wasm::PriorityScorer));
         println!("  Wasmtime stub: WasmRuntime registered 1 module (priority_scorer)");
 
         let input = [4, 0, 0, 0, 0];
@@ -1150,7 +1125,7 @@ async fn main() {
     let api_task = tokio::spawn(async move {
         let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
         println!("API server listening on 0.0.0.0:8080");
-        axum::serve(listener, crate::api::build_router(state_clone))
+        axum::serve(listener, crci_core::api::build_router(state_clone))
             .await
             .unwrap();
     });
