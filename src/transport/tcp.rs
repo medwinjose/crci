@@ -54,11 +54,11 @@ impl TcpTransport {
                                 }
 
                                 // We assume the peer's NodeId is the SocketAddr for incoming connections,
-                                // or we can use msg.origin_node as the NodeId, but for routing, 
+                                // or we can use msg.origin_node as the NodeId, but for routing,
                                 // we need the actual address if we are to respond.
                                 // The prompt doesn't specify, but let's use the origin_node.
                                 let sender_id = msg.origin_node.clone();
-                                
+
                                 if tx_clone.send((sender_id, msg)).await.is_err() {
                                     break;
                                 }
@@ -78,9 +78,9 @@ impl TcpTransport {
 #[async_trait::async_trait]
 impl Transport for TcpTransport {
     async fn send(&self, peer: &NodeId, message: &NetworkMessage) -> Result<(), TransportError> {
-        let addr: SocketAddr = peer
-            .parse()
-            .map_err(|_| TransportError::ConnectionFailed(format!("Invalid SocketAddr: {}", peer)))?;
+        let addr: SocketAddr = peer.parse().map_err(|_| {
+            TransportError::ConnectionFailed(format!("Invalid SocketAddr: {}", peer))
+        })?;
 
         let mut stream = TcpStream::connect(addr)
             .await

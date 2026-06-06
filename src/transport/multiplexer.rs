@@ -60,11 +60,13 @@ impl Transport for TransportMultiplexer {
             }
         }
 
-        Err(TransportError::ConnectionFailed("All transports failed to receive".into()))
+        Err(TransportError::ConnectionFailed(
+            "All transports failed to receive".into(),
+        ))
     }
 
     fn transport_type(&self) -> TransportType {
-        // Return Tcp as a dummy or proxy? 
+        // Return Tcp as a dummy or proxy?
         // The trait requires returning a type. Since multiplexer aggregates them, we can return the first available.
         for t in &self.transports {
             if t.is_available() {

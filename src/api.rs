@@ -17,7 +17,20 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
+use crate::api_types::*;
 use crate::merkle::DivergenceAlert;
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        let status = StatusCode::from_u16(self.code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        let mut res = (status, Json(self)).into_response();
+        res.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/json"),
+        );
+        res
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ApiMessage {
@@ -73,14 +86,14 @@ pub struct ErrorResponse {
     pub code: String,
 }
 
-pub struct ApiError {
+pub struct LegacyApiError {
     pub status: StatusCode,
     pub message: String,
     pub code: String,
     pub retry_after: Option<u64>,
 }
 
-impl IntoResponse for ApiError {
+impl IntoResponse for LegacyApiError {
     fn into_response(self) -> Response {
         let body = Json(ErrorResponse {
             error: self.message,
@@ -113,25 +126,28 @@ pub struct ChainHeadResponse {
 }
 
 async fn hardening_middleware(req: Request, next: Next) -> Response {
-    if req.method() == Method::POST || req.method() == Method::PUT {
+    let is_post = req.method() == Method::POST || req.method() == Method::PUT;
+    let node_id = if let Some(state) = req.extensions().get::<Arc<ApiState>>() {
+        state.node_id.clone()
+    } else {
+        "unknown".to_string()
+    };
+
+    if is_post {
         if let Some(ct) = req.headers().get(header::CONTENT_TYPE) {
             if ct != "application/json" {
-                return ApiError {
-                    status: StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                let err = ApiError {
+                    code: 415,
                     message: "Content-Type must be application/json".to_string(),
-                    code: "UNSUPPORTED_MEDIA_TYPE".to_string(),
-                    retry_after: None,
-                }
-                .into_response();
+                };
+                return err.into_response();
             }
         } else {
-            return ApiError {
-                status: StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            let err = ApiError {
+                code: 415,
                 message: "Content-Type must be application/json".to_string(),
-                code: "UNSUPPORTED_MEDIA_TYPE".to_string(),
-                retry_after: None,
-            }
-            .into_response();
+            };
+            return err.into_response();
         }
     }
 
@@ -142,15 +158,24 @@ async fn hardening_middleware(req: Request, next: Next) -> Response {
         .insert("X-Request-Id", HeaderValue::from_str(&req_id).unwrap());
     res.headers_mut()
         .insert("X-CRCI-Version", HeaderValue::from_static("0.1.0"));
+    if is_post {
+        res.headers_mut()
+            .insert("X-CRCI-Node-Id", HeaderValue::from_str(&node_id).unwrap());
+    }
 
     if res.status() == StatusCode::PAYLOAD_TOO_LARGE {
-        let error = ApiError {
+        let error = LegacyApiError {
             status: StatusCode::PAYLOAD_TOO_LARGE,
             message: "Payload too large".to_string(),
             code: "PAYLOAD_TOO_LARGE".to_string(),
             retry_after: None,
         };
         let mut new_res = error.into_response();
+        if is_post {
+            new_res
+                .headers_mut()
+                .insert("X-CRCI-Node-Id", HeaderValue::from_str(&node_id).unwrap());
+        }
         new_res
             .headers_mut()
             .insert("X-Request-Id", HeaderValue::from_str(&req_id).unwrap());
@@ -161,7 +186,7 @@ async fn hardening_middleware(req: Request, next: Next) -> Response {
     }
 
     if res.status() == StatusCode::NOT_FOUND && res.headers().get(header::CONTENT_TYPE).is_none() {
-        let error = ApiError {
+        let error = LegacyApiError {
             status: StatusCode::NOT_FOUND,
             message: "Not Found".to_string(),
             code: "NOT_FOUND".to_string(),
@@ -174,6 +199,11 @@ async fn hardening_middleware(req: Request, next: Next) -> Response {
         new_res
             .headers_mut()
             .insert("X-CRCI-Version", HeaderValue::from_static("0.1.0"));
+        if is_post {
+            new_res
+                .headers_mut()
+                .insert("X-CRCI-Node-Id", HeaderValue::from_str(&node_id).unwrap());
+        }
         return new_res;
     }
 
@@ -212,7 +242,7 @@ async fn rate_limit_middleware(req: Request, next: Next) -> Response {
     }; // MutexGuard dropped here
 
     if let Some(retry) = rate_limit_error {
-        return ApiError {
+        return LegacyApiError {
             status: StatusCode::TOO_MANY_REQUESTS,
             message: "Rate limit exceeded".to_string(),
             code: "RATE_LIMIT_EXCEEDED".to_string(),
@@ -236,6 +266,13 @@ pub fn build_router(state: Arc<ApiState>) -> Router {
         .route("/divergences/:peer_id", get(divergences_peer_handler))
         .route("/chain/head", get(chain_head_handler))
         .route("/ws/divergences", get(ws_divergences_handler))
+        .route("/api/v1/status", get(status_v1_handler))
+        .route("/api/v1/peers", get(peers_v1_handler))
+        .route(
+            "/api/v1/inject",
+            post(inject_v1_handler).layer(DefaultBodyLimit::max(8192)),
+        )
+        .route("/api/v1/openapi.json", get(openapi_handler))
         .with_state(state.clone());
 
     app.layer(middleware::from_fn(rate_limit_middleware))
@@ -339,7 +376,7 @@ async fn divergences_handler(State(state): State<Arc<ApiState>>) -> Json<Vec<Div
 async fn divergences_peer_handler(
     State(state): State<Arc<ApiState>>,
     Path(peer_id): Path<String>,
-) -> Result<Json<Vec<DivergenceAlert>>, ApiError> {
+) -> Result<Json<Vec<DivergenceAlert>>, LegacyApiError> {
     let alerts: Vec<_> = state
         .divergence_alerts
         .read()
@@ -350,7 +387,7 @@ async fn divergences_peer_handler(
         .collect();
 
     if alerts.is_empty() {
-        return Err(ApiError {
+        return Err(LegacyApiError {
             status: StatusCode::NOT_FOUND,
             message: format!("No alerts found for peer: {}", peer_id),
             code: "PEER_NOT_FOUND".to_string(),
@@ -446,5 +483,88 @@ mod tests {
 
         assert_eq!(status.version, "0.1.0");
         assert_eq!(status.node_count, 5);
+    }
+}
+
+async fn status_v1_handler(State(state): State<Arc<ApiState>>) -> Json<NodeStatusResponse> {
+    let peer_count = state.peer_list.read().unwrap().len();
+    let uptime_secs = state.start_time.elapsed().as_secs();
+    let message_count = state.recent_messages.read().unwrap().len() as u64;
+    let head = *state.merkle_head.read().unwrap();
+    let chain_head = head.0.iter().map(|b| format!("{:02x}", b)).collect();
+
+    Json(NodeStatusResponse {
+        node_id: state.node_id.clone(),
+        peer_count,
+        uptime_secs,
+        message_count,
+        chain_head,
+    })
+}
+
+async fn peers_v1_handler(State(state): State<Arc<ApiState>>) -> Json<PeerListResponse> {
+    let peers: Vec<PeerInfo> = state
+        .peer_list
+        .read()
+        .unwrap()
+        .iter()
+        .map(|p| PeerInfo {
+            peer_id: p.clone(),
+            addr: "unknown".to_string(),
+            last_seen_secs: state.start_time.elapsed().as_secs(),
+            reputation: 1.0,
+        })
+        .collect();
+
+    Json(PeerListResponse { peers })
+}
+
+async fn inject_v1_handler(
+    State(_state): State<Arc<ApiState>>,
+    Json(payload): Json<InjectRequest>,
+) -> Result<(StatusCode, Json<InjectResponse>), ApiError> {
+    if payload.payload.len() > 4096 {
+        return Err(ApiError {
+            code: 400,
+            message: "Payload exceeds 4096 bytes".to_string(),
+        });
+    }
+    if payload.priority > 3 {
+        return Err(ApiError {
+            code: 400,
+            message: "Priority must be 0-3".to_string(),
+        });
+    }
+
+    let message_id = uuid::Uuid::new_v4().to_string();
+    let queued_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(InjectResponse {
+            message_id,
+            queued_at,
+        }),
+    ))
+}
+
+async fn openapi_handler(
+) -> Result<(header::HeaderMap, String), (StatusCode, Json<serde_json::Value>)> {
+    match std::fs::read_to_string("docs/openapi.json") {
+        Ok(content) => {
+            let mut headers = header::HeaderMap::new();
+            headers.insert(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("application/json"),
+            );
+            Ok((headers, content))
+        }
+        Err(_) => {
+            let err_body = serde_json::json!({"error": "spec unavailable"});
+            Err((StatusCode::SERVICE_UNAVAILABLE, Json(err_body)))
+        }
     }
 }

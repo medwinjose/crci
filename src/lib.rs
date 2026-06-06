@@ -1,5 +1,6 @@
 pub mod aeda;
 pub mod api;
+pub mod api_types;
 pub mod battery;
 pub mod bench;
 pub mod bench_extended;
@@ -20,8 +21,8 @@ pub mod runtime;
 pub mod security;
 pub mod storage;
 pub mod stress;
+pub mod sybil;
 pub mod transport;
 pub mod ttl;
 pub mod validation;
 pub mod wasm;
-pub mod sybil;

@@ -1,5 +1,8 @@
 use crci::integration::{GossipPipeline, MessageKind, PipelineMessage};
-use crci::transport::{BleConfig, BleTransport, LoraConfig, LoraTransport, TcpTransport, Transport, TransportMultiplexer};
+use crci::transport::{
+    BleConfig, BleTransport, LoraConfig, LoraTransport, TcpTransport, Transport,
+    TransportMultiplexer,
+};
 use std::env;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};

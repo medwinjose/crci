@@ -1,11 +1,12 @@
 #![allow(dead_code)]
 mod aeda;
 pub mod api;
-mod cli;
+pub mod api_types;
 mod battery;
 mod bench;
 mod bench_extended;
 mod chaos;
+mod cli;
 mod crisis;
 mod discovery;
 mod identity;
@@ -21,18 +22,18 @@ mod runtime;
 mod security;
 mod storage;
 mod stress;
+mod sybil;
 mod transport;
 mod ttl;
 mod validation;
-mod sybil;
 
 use mesh::MeshSimulator;
 use message::{Message, Signal, Visibility};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use cli::Cli;
 use clap::Parser;
+use cli::Cli;
 
 #[tokio::main]
 async fn main() {

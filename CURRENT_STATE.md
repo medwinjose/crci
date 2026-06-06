@@ -23,6 +23,7 @@
 - Session 47: Sybil Resistance Layer
 - Session 48: Raspberry Pi Cross-Compilation & CI Target
 - Session 49: CLI Hardening (clap)
+- Session 50: REST API Hardening & OpenAPI Spec
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -37,13 +38,13 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 49 COMPLETE
+## Current Session Status: SESSION 50 COMPLETE
 
-**Recent Accomplishments (Session 49):**
-- **CLI Hardening**: Introduced a formal `clap`-driven command-line interface (`src/cli.rs`) replacing any loose argument handling.
-- **Operational Flags**: Added robust arguments for `--listen`, `--config`, `--argon2-memory`, `--verbose`, and `--identity-seed` to allow deployment configurations without recompiling.
-- **Version Awareness**: Enabled dynamic `--version` printing from `Cargo.toml`.
-- **Clean Integration**: Safely integrated the parsed flags into `main.rs` with `Cli::parse()`, avoiding disruptions to the existing async simulator or core testing paths.
+**Recent Accomplishments (Session 50):**
+- **REST API Hardening**: Added typed JSON REST endpoints (`/api/v1/status`, `/api/v1/peers`, `/api/v1/inject`) mirroring internal `ApiState`.
+- **Validation Middleware**: Added global payload caps, explicit `application/json` enforcement, and node ID tracking via headers (`X-CRCI-Node-Id`).
+- **OpenAPI 3.1 Spec**: Crafted a static OpenAPI specification (`docs/openapi.json`) properly defining all requests, responses, and errors.
+- **Spec Serving**: Hosted the OpenAPI document directly via `/api/v1/openapi.json` to enable automated integrations and tooling.
 
 ## Verification
 - Clean compilation, `cargo fmt`, `cargo clippy -- -D warnings`.
@@ -54,4 +55,4 @@
 - Fixed Linux CI pipeline (`ubuntu-latest`) by strictly enforcing workspace-wide formatting `cargo fmt --all`.
 
 ## Next Steps
-- Session 50 — (Pending User Prompt)
+- Session 51 — (Pending User Prompt)

@@ -29,7 +29,7 @@ impl EncryptedStore {
             rand::thread_rng().fill_bytes(&mut salt_bytes);
 
             let argon2 = Argon2::default();
-            // We use the salt bytes directly. Argon2id requires salt. 
+            // We use the salt bytes directly. Argon2id requires salt.
             // We can use hash_password but we need a raw key.
             // Let's use `argon2.hash_password_into(passphrase.as_bytes(), &salt_bytes, &mut key)`
             // Wait, does Argon2 expose hash_password_into?
@@ -95,8 +95,8 @@ impl EncryptedStore {
     }
 
     fn append_record(&self, record: &StorageRecord) -> Result<(), StorageError> {
-        let serialized = bincode::serialize(record)
-            .map_err(|e| StorageError::Serialisation(e.to_string()))?;
+        let serialized =
+            bincode::serialize(record).map_err(|e| StorageError::Serialisation(e.to_string()))?;
         let len = serialized.len() as u64;
 
         let mut f = OpenOptions::new().append(true).open(&self.path)?;
@@ -136,7 +136,9 @@ impl StorageBackend for EncryptedStore {
         let _guard = self.file_mutex.lock().await;
 
         let frames = self.read_all_frames()?;
-        let record = frames.get(id).ok_or_else(|| StorageError::NotFound(id.to_string()))?;
+        let record = frames
+            .get(id)
+            .ok_or_else(|| StorageError::NotFound(id.to_string()))?;
 
         if record.ciphertext.is_empty() && record.nonce == [0; 12] {
             return Err(StorageError::NotFound(id.to_string()));

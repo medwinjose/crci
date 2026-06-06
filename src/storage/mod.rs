@@ -1,5 +1,5 @@
-pub mod legacy;
 pub mod encrypted;
+pub mod legacy;
 pub mod record;
 
 pub use legacy::{PersistedRescue, PersistedState};
