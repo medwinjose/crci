@@ -45,7 +45,7 @@ SSH into your Raspberry Pi and confirm the binary is executable and matches the 
 ```bash
 ssh pi@raspberrypi.local
 file crci
-./crci
+./crci --version
 ```
 
 > [!IMPORTANT]

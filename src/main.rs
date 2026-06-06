@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 mod aeda;
 pub mod api;
+mod cli;
 mod battery;
 mod bench;
 mod bench_extended;
@@ -30,8 +31,18 @@ use message::{Message, Signal, Visibility};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use cli::Cli;
+use clap::Parser;
+
 #[tokio::main]
 async fn main() {
+    let args = Cli::parse();
+
+    if args.verbose {
+        println!("Verbose mode enabled.");
+    }
+    // TODO: Wire args.argon2_memory and args.config to EncryptedStore / Configuration when integrated.
+
     let (ws_tx, _) = tokio::sync::broadcast::channel(100);
     let (divergence_tx, _) = tokio::sync::broadcast::channel(100);
     let state = Arc::new(crate::api::ApiState {

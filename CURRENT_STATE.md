@@ -22,6 +22,7 @@
 - Session 46: Encrypted Local Storage (AES-256-GCM)
 - Session 47: Sybil Resistance Layer
 - Session 48: Raspberry Pi Cross-Compilation & CI Target
+- Session 49: CLI Hardening (clap)
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -36,13 +37,13 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 48 COMPLETE
+## Current Session Status: SESSION 49 COMPLETE
 
-**Recent Accomplishments (Session 48):**
-- **Cross-Compilation Pipeline**: Added `.cargo/config.toml` configuring custom `arm-linux-gnueabihf-gcc` and `aarch64-linux-gnu-gcc` linkers for Raspberry Pi.
-- **Helper Scripts**: Added a `scripts/cross_build.sh` utility to automate `rustup target add` and binary compilation for `armv7` and `aarch64`.
-- **CI Artifacts**: Configured `.github/workflows/ci.yml` to automatically cross-compile for Raspberry Pi 32-bit and 64-bit on every push, emitting downloadable `actions/upload-artifact` binaries.
-- **Documentation**: Drafted `docs/cross_compilation.md` detailing cross-build steps, `systemd` daemon creation, and the necessary `--argon2-memory 32768` constraints for low-memory RPi 2 devices.
+**Recent Accomplishments (Session 49):**
+- **CLI Hardening**: Introduced a formal `clap`-driven command-line interface (`src/cli.rs`) replacing any loose argument handling.
+- **Operational Flags**: Added robust arguments for `--listen`, `--config`, `--argon2-memory`, `--verbose`, and `--identity-seed` to allow deployment configurations without recompiling.
+- **Version Awareness**: Enabled dynamic `--version` printing from `Cargo.toml`.
+- **Clean Integration**: Safely integrated the parsed flags into `main.rs` with `Cli::parse()`, avoiding disruptions to the existing async simulator or core testing paths.
 
 ## Verification
 - Clean compilation, `cargo fmt`, `cargo clippy -- -D warnings`.
@@ -53,4 +54,4 @@
 - Fixed Linux CI pipeline (`ubuntu-latest`) by strictly enforcing workspace-wide formatting `cargo fmt --all`.
 
 ## Next Steps
-- Session 49 — (Pending User Prompt)
+- Session 50 — (Pending User Prompt)
