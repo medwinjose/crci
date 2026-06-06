@@ -14,6 +14,9 @@
 - Session 38: React Web Dashboard (Vite + React + Tailwind + Recharts)
 - Session 39: Grafana Dashboard + Byzantine Agent Binary
 - Session 40: Merkle-chained state + temporal-aware routing
+- Session 41: Chain-Head Gossip + Divergence Alerting
+- Session 42: REST/WebSocket API Hardening + OpenAPI Spec
+- Session 43: TLA+ Formal Specification
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -24,22 +27,24 @@
 6. **Live Dashboard**: A fully standalone web dashboard at `docs/dashboard/` visually tracks live messages, peer status, and SEV distribution over an Axum WebSocket.
 7. **Grafana & Prometheus**: Metrics collected and visualized in Grafana (available at `http://localhost:3001`). Prometheus available at `http://localhost:9090`.
 8. **Byzantine Agent**: `byzantine_agent` binary available to inject adversarial traffic into the cluster. Run `cargo run --bin byzantine_agent -- --help` for details.
+9. **API Hardening**: Rate limits (60 req/min/IP), strict Content-Type checks, 64KB payload limits, and telemetry headers (`X-Request-Id`, `X-CRCI-Version`) enforce production-grade security on the node API.
+10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 
-## Current Session Status: SESSION 41 COMPLETE
+## Current Session Status: SESSION 43 COMPLETE
 
-**Recent Accomplishments (Session 41):**
-- Added `ChainHeadAnnouncement` message type and wire serialization.
-- Implemented `DivergenceAlert` for chain head mismatch detection.
-- Updated `NodeRuntime` to periodically broadcast chain heads and handle incoming announcements without re-gossiping.
-- Added `divergence_log` and `byzantine_events` tracking for divergences.
-- Exported `crci_chain_divergences_total` Prometheus metric.
-- Added 5 unit tests verifying chain head gossip and divergence detection.
+**Recent Accomplishments (Session 43):**
+- **TLA+ Spec**: Added `docs/tla/CRCI.tla` capturing the abstracted state machine and validating 4 key invariants (NoForgedOrigin, ReplayNeverDeliveredTwice, ByzantineContainment, RescueNeverDropped) and 2 properties (RescueLiveness, GossipProgress).
+- **TLA+ Config**: Added `docs/tla/CRCI.cfg` to set up the TLC small-model bounds (5 nodes, 2 Byzantine).
+- **TLA+ Types**: Extracted `docs/tla/CRCITypes.tla`.
+- **Paper Update**: Drafted a new section `docs/tla/formal_verification.md` for inclusion in the final research paper.
+- **README Update**: Added formal verification documentation to the `README.md`.
 
 ## Verification
-- Clean compilation, `cargo fmt`, `cargo clippy`.
-- Over 80 tests passing (`cargo test --all`), covering unit testing, integration testing, API tests, and specific edge case mitigations.
+- Clean compilation, `cargo fmt`, `cargo clippy -- -D warnings`.
+- Over 90 tests passing (`cargo test --all`), covering unit testing, integration testing, API tests, and specific edge case mitigations.
 - Distributed real proof loop: Confirmed Byzantine node detection and uninterrupted propagation of critical Rescue events across partitioned zones.
 - Docker compose validation.
+- Formal verification artifacts correctly configured for TLC.
 
 ## Next Steps
-- Session 42 — TBD
+- Session 44 — Research paper final draft + submission prep
