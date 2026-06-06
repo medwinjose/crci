@@ -1,33 +1,37 @@
 # CRCI Live Dashboard
 
-A standalone React + Vite dashboard to monitor the live mesh state of the CRCI network.
+A standalone React/Vite dashboard for monitoring a CRCI mesh node in real-time.
 
-## Prerequisites
-- Node.js 20 (LTS)
-- Running CRCI backend on `localhost:8080`
+![CRCI Dashboard Screenshot Placeholder](./screenshot.png)
 
-## How to Run
+## Quickstart
 
-1. Navigate to the dashboard directory:
-   ```bash
-   cd docs/dashboard
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the dev server:
-   ```bash
-   npm run dev
-   ```
-4. Open [http://localhost:5173](http://localhost:5173) in your browser.
+Run this one-liner to start the dashboard on port 5173:
 
-## Production Build
-
-To compile for production:
 ```bash
-npm run build
+npm install && npm run dev
 ```
-The optimized bundle will be generated in `docs/dashboard/dist/`.
 
-> **Note**: The Axum backend handles CORS dynamically, allowing local dashboard testing from any origin.
+## Configuration
+
+By default, the dashboard connects to a local CRCI node on `http://localhost:8080`.
+To connect to a different node or production deployment, copy `.env.example` to `.env` and configure the URL:
+
+```bash
+cp .env.example .env
+```
+
+`.env`:
+```
+VITE_NODE_URL=http://your-node-ip:8080
+```
+
+The WebSocket URL will automatically be derived from this base URL.
+
+## Panels
+
+1. **Mesh Topology**: Live view of connected peers using `/api/v1/peers`.
+2. **Chain Status**: Local node's Merkle chain head index and hash, with divergence tracking using `/chain/head` and `/health`.
+3. **Message Throughput**: Real-time events/sec charted with Recharts, powered by the live WebSocket feed.
+4. **Byzantine Alerts**: Real-time alerts over `/ws/divergences` for any detected state drifts or bad actors.
+5. **Message Feed**: The latest 50 gossip events, colour-coded by severity.

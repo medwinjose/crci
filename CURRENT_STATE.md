@@ -39,21 +39,22 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 51 COMPLETE
+## Current Session Status: SESSION 52 COMPLETE
 
-**Recent Accomplishments (Session 51):**
-- **Workspace Restructuring**: Extracted all core logic (mesh protocol, API, cryptography, Sybil guard, storage) into a reusable `crci-core` library crate.
-- **Clean Binary Wrapper**: Stripped the main `crci` crate down to a thin execution wrapper consisting only of `main.rs` and `cli.rs`.
-- **Decoupling for Mobile/Web**: The `crci-core` crate now compiles as a standalone dependency, ready to be embedded into future Android or iOS applications without dragging in the CLI or simulator boilerplate.
-- **Zero Disruptions**: All 212 tests pass cleanly under the new `crci_core::` namespaces with zero warnings and no behavioral changes.
+**Recent Accomplishments (Session 52):**
+- **Live Web Dashboard Wireup**: Fully connected the React/Vite dashboard to the live CRCI Axum node API (`/api/v1/peers`, `/api/v1/status`, `/chain/head`).
+- **Real-time Panels**:
+  - `MeshTopology`: Renders active peers.
+  - `ChainStatus`: Displays the Merkle chain head and flags active divergences.
+  - `ByzantineAlerts`: Subscribes to `/ws/divergences` and alerts on Byzantine faults.
+  - `MessageThroughput`: Calculates and charts messages per second in real-time over a 60-second rolling window via Recharts.
+- **Environment Driven**: Dashboard respects `VITE_NODE_URL` injected via `.env`.
+- **Zero Rust Disruptions**: All 212 tests continue to pass with no changes required in the core node library.
 
 ## Verification
 - Clean compilation, `cargo fmt`, `cargo clippy -- -D warnings`.
 - Over 90 tests passing (`cargo test --all`), covering unit testing, integration testing, API tests, transport integration, and specific edge case mitigations.
-- Distributed real proof loop: Confirmed Byzantine node detection and uninterrupted propagation of critical Rescue events across partitioned zones.
-- Docker compose validation.
-- Formal verification artifacts correctly configured for TLC.
-- Fixed Linux CI pipeline (`ubuntu-latest`) by strictly enforcing workspace-wide formatting `cargo fmt --all`.
+- Dashboard builds cleanly with 0 strict TypeScript errors (`tsc --noEmit`).
 
 ## Next Steps
-- Session 52 — (Pending User Prompt)
+- Session 53 — (Pending User Prompt)

@@ -1,36 +1,14 @@
-import React, { useEffect, useState } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
+import React from "react";
 import { useWebSocket } from "./hooks/useWebSocket";
-import { fetchPeers, triggerPanic } from "./api";
+import { triggerPanic } from "./api";
+import { MeshTopology } from "./panels/MeshTopology";
+import { ChainStatus } from "./panels/ChainStatus";
+import { ByzantineAlerts } from "./panels/ByzantineAlerts";
+import { MessageThroughput } from "./panels/MessageThroughput";
 
 function App() {
-  const { messages, connectionStatus } = useWebSocket();
-  const [peers, setPeers] = useState<string[]>([]);
-  const [peerCount, setPeerCount] = useState(0);
-  const [panicStatus, setPanicStatus] = useState<"idle" | "sent">("idle");
-
-  useEffect(() => {
-    const loadPeers = async () => {
-      try {
-        const data = await fetchPeers();
-        setPeers(data.peers);
-        setPeerCount(data.count);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    loadPeers();
-    const interval = setInterval(loadPeers, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const { messages, connectionStatus, totalMessagesRef } = useWebSocket();
+  const [panicStatus, setPanicStatus] = React.useState<"idle" | "sent">("idle");
 
   const handlePanic = async () => {
     try {
@@ -48,12 +26,6 @@ function App() {
     if (severity === 3) return "#eab308"; // yellow-500
     return "#22c55e"; // green-500
   };
-
-  const chartData = [1, 2, 3, 4, 5].map((level) => ({
-    name: `Sev ${level}`,
-    level,
-    count: messages.filter((m) => m.severity === level).length,
-  }));
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col p-6 space-y-6">
@@ -78,105 +50,76 @@ function App() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-        {/* Node Status */}
-        <div className="bg-gray-800 rounded-lg p-4 flex flex-col">
-          <h2 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">
-            Node Status
-          </h2>
-          <div className="text-sm text-gray-400 mb-4">{peerCount} peers</div>
-          <div className="flex-1 overflow-y-auto space-y-2">
-            {peers.map((peer, idx) => (
-              <div
-                key={peer}
-                className="bg-gray-700 p-3 rounded text-sm font-mono flex justify-between items-center"
-              >
-                <span>{peer.substring(0, 12)}...</span>
-                <span className="text-gray-400">#{idx}</span>
-              </div>
-            ))}
-            {peers.length === 0 && (
-              <div className="text-gray-500 italic">No peers found...</div>
-            )}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1">
+        
+        {/* Left Column (Topology & Chain Status) */}
+        <div className="col-span-1 flex flex-col space-y-6">
+          <div className="flex-1">
+            <MeshTopology />
+          </div>
+          <div className="flex-none">
+            <ChainStatus />
           </div>
         </div>
 
-        {/* Message Feed */}
-        <div className="bg-gray-800 rounded-lg p-4 flex flex-col">
-          <h2 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">
-            Message Feed
-          </h2>
-          <div className="flex-1 overflow-y-auto space-y-3">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className="bg-gray-700 p-3 rounded flex flex-col space-y-2"
-              >
-                <div className="flex justify-between items-start">
-                  <span className="font-mono text-xs text-blue-300">
-                    {msg.from.substring(0, 12)}...
-                  </span>
-                  <span
-                    className="text-xs px-2 py-0.5 rounded font-bold"
-                    style={{
-                      backgroundColor: getSeverityColor(msg.severity) + "40",
-                      color: getSeverityColor(msg.severity),
-                    }}
-                  >
-                    SEV {msg.severity}
-                  </span>
+        {/* Center Column (Message Throughput & Message Feed) */}
+        <div className="col-span-1 lg:col-span-2 flex flex-col space-y-6">
+          <div className="h-64 flex-none">
+            <MessageThroughput totalMessagesRef={totalMessagesRef} />
+          </div>
+          <div className="bg-gray-800 rounded-lg p-4 flex flex-col flex-1 min-h-[300px]">
+            <h2 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2 flex justify-between">
+              <span>Live Message Stream</span>
+              <span className="text-sm font-normal text-gray-400 bg-gray-700 px-2 py-1 rounded">
+                  Latest 50
+              </span>
+            </h2>
+            <div className="flex-1 overflow-y-auto space-y-3">
+              {messages.map((msg, idx) => (
+                <div
+                  key={`${msg.timestamp_ms}-${idx}`}
+                  className="bg-gray-700 p-3 rounded flex flex-col space-y-2"
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="font-mono text-xs text-blue-300">
+                      {msg.from.substring(0, 12)}...
+                    </span>
+                    <span
+                      className="text-xs px-2 py-0.5 rounded font-bold"
+                      style={{
+                        backgroundColor: getSeverityColor(msg.severity) + "40",
+                        color: getSeverityColor(msg.severity),
+                      }}
+                    >
+                      SEV {msg.severity}
+                    </span>
+                  </div>
+                  <div className="text-sm truncate" title={msg.content}>
+                    {msg.content.length > 80
+                      ? msg.content.substring(0, 80) + "..."
+                      : msg.content}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {new Date(msg.timestamp_ms).toLocaleTimeString()}
+                  </div>
                 </div>
-                <div className="text-sm truncate" title={msg.content}>
-                  {msg.content.length > 60
-                    ? msg.content.substring(0, 60) + "..."
-                    : msg.content}
+              ))}
+              {messages.length === 0 && (
+                <div className="text-gray-500 italic text-center mt-8">
+                  Waiting for messages...
                 </div>
-                <div className="text-xs text-gray-400">
-                  {new Date(msg.timestamp_ms).toLocaleTimeString()}
-                </div>
-              </div>
-            ))}
-            {messages.length === 0 && (
-              <div className="text-gray-500 italic">
-                Waiting for messages...
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Severity Chart */}
-        <div className="bg-gray-800 rounded-lg p-4 flex flex-col">
-          <h2 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">
-            Severity Distribution
-          </h2>
-          <div className="flex-1 min-h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
-              >
-                <XAxis dataKey="name" stroke="#9ca3af" />
-                <YAxis stroke="#9ca3af" allowDecimals={false} />
-                <Tooltip
-                  cursor={{ fill: "#374151" }}
-                  contentStyle={{
-                    backgroundColor: "#1f2937",
-                    border: "none",
-                    color: "#fff",
-                  }}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {chartData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={getSeverityColor(entry.level)}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        {/* Right Column (Byzantine Alerts) */}
+        <div className="col-span-1 flex flex-col space-y-6">
+          <div className="flex-1">
+            <ByzantineAlerts />
           </div>
         </div>
+
       </div>
     </div>
   );
