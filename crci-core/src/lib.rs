@@ -7,6 +7,7 @@ pub mod bench_extended;
 pub mod chaos;
 pub mod crisis;
 pub mod discovery;
+pub mod ffi;
 pub mod identity;
 pub mod integration;
 pub mod merkle;
@@ -26,3 +27,5 @@ pub mod transport;
 pub mod ttl;
 pub mod validation;
 pub mod wasm;
+
+uniffi::setup_scaffolding!("crci_core");

@@ -6,6 +6,7 @@ edition = "2021"
 [lib]
 name = "crci_core"
 path = "src/lib.rs"
+crate-type = ["cdylib", "lib"]
 
 [dependencies]
 ed25519-dalek = { version = "2", features = ["rand_core"] }
@@ -27,6 +28,10 @@ log = "0.4.32"
 thiserror = "2.0.18"
 argon2 = "0.5.3"
 bincode = "1"
+uniffi = { version = "0.28", features = ["build", "cli"] }
+
+[build-dependencies]
+uniffi = { version = "0.28", features = ["build"] }
 
 [dev-dependencies]
 http-body-util = "0.1"

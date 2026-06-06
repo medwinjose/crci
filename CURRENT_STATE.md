@@ -39,22 +39,20 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 52 COMPLETE
+## Current Session Status: SESSION 53 COMPLETE
 
-**Recent Accomplishments (Session 52):**
-- **Live Web Dashboard Wireup**: Fully connected the React/Vite dashboard to the live CRCI Axum node API (`/api/v1/peers`, `/api/v1/status`, `/chain/head`).
-- **Real-time Panels**:
-  - `MeshTopology`: Renders active peers.
-  - `ChainStatus`: Displays the Merkle chain head and flags active divergences.
-  - `ByzantineAlerts`: Subscribes to `/ws/divergences` and alerts on Byzantine faults.
-  - `MessageThroughput`: Calculates and charts messages per second in real-time over a 60-second rolling window via Recharts.
-- **Environment Driven**: Dashboard respects `VITE_NODE_URL` injected via `.env`.
-- **Zero Rust Disruptions**: All 212 tests continue to pass with no changes required in the core node library.
+**Recent Accomplishments (Session 53):**
+- **UniFFI Integration**: Successfully integrated `uniffi` (0.28) into the `crci-core` library to generate Kotlin bindings.
+- **Kotlin Bindings**: Created `bindings/kotlin/generate.sh` and generated `crci_core.kt` (and cdylib output).
+- **FFI Surface**: Exposes `FfiNodeConfig`, `FfiPeerInfo`, `crci_version()`, `validate_node_config()`, and `list_peers_stub()` directly to Kotlin without JNI boilerplate.
+- **Testing**: Added `tests/ffi_smoke_test.rs` covering 6 validation and version endpoints. All 218 Rust tests are fully green.
+- **Zero Disruptions**: Maintained 0 clippy warnings and clean `cdylib` compilation without breaking the native simulation features.
 
 ## Verification
-- Clean compilation, `cargo fmt`, `cargo clippy -- -D warnings`.
-- Over 90 tests passing (`cargo test --all`), covering unit testing, integration testing, API tests, transport integration, and specific edge case mitigations.
+- Clean compilation, `cargo fmt`, `cargo clippy --all-targets -- -D warnings`.
+- Over 218 tests passing (`cargo test --all`), including the new FFI boundary smoke tests.
 - Dashboard builds cleanly with 0 strict TypeScript errors (`tsc --noEmit`).
+- `.kt` bindings structurally generated under `bindings/kotlin/`.
 
 ## Next Steps
-- Session 53 — (Pending User Prompt)
+- Session 54 — (Pending User Prompt)
