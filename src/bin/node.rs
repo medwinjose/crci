@@ -1,5 +1,5 @@
-use crci::integration::{GossipPipeline, MessageKind, PipelineMessage};
-use crci::transport::{
+use crci_core::integration::{GossipPipeline, MessageKind, PipelineMessage};
+use crci_core::transport::{
     BleConfig, BleTransport, LoraConfig, LoraTransport, TcpTransport, Transport,
     TransportMultiplexer,
 };
@@ -67,7 +67,7 @@ async fn main() {
 
     let pipeline = Arc::new(Mutex::new(GossipPipeline::new()));
 
-    let metrics = Arc::new(crci::metrics::CrciMetrics::new());
+    let metrics = Arc::new(crci_core::metrics::CrciMetrics::new());
     let server_metrics = metrics.clone();
     tokio::spawn(async move {
         if let Ok(listener) = tokio::net::TcpListener::bind("0.0.0.0:9090").await {
@@ -111,7 +111,7 @@ async fn main() {
                             pipeline_guard.process(&msg)
                         };
 
-                        if let crci::integration::PipelineVerdict::Accept = verdict {
+                        if let crci_core::integration::PipelineVerdict::Accept = verdict {
                             // Forward the accepted message to all our peers
                             for p in &recv_peers {
                                 let _ = recv_transport.send(&p.to_string(), &msg).await;
@@ -210,22 +210,23 @@ async fn main() {
                     for i in 1..=5 {
                         let pid = format!("node-{:02}", i);
                         let is_byz = i == 4;
-                        let state = peers
-                            .entry(pid.clone())
-                            .or_insert(crci::metrics::PeerState {
-                                zone: if i <= 2 {
-                                    "zone-a"
-                                } else if i <= 4 {
-                                    "zone-b"
-                                } else {
-                                    "zone-c"
-                                }
-                                .to_string(),
-                                reputation: 1.0,
-                                messages: 0,
-                                rescues: 0,
-                                is_online: true,
-                            });
+                        let state =
+                            peers
+                                .entry(pid.clone())
+                                .or_insert(crci_core::metrics::PeerState {
+                                    zone: if i <= 2 {
+                                        "zone-a"
+                                    } else if i <= 4 {
+                                        "zone-b"
+                                    } else {
+                                        "zone-c"
+                                    }
+                                    .to_string(),
+                                    reputation: 1.0,
+                                    messages: 0,
+                                    rescues: 0,
+                                    is_online: true,
+                                });
                         // Simulate incoming messages based on pipeline accepted count to look "live"
                         state.messages = p.accepted / 5;
                         if is_byz {

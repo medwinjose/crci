@@ -1,18 +1,13 @@
-[workspace]
-members = [".", "crci-core"]
-resolver = "2"
-
 [package]
-name = "crci"
+name = "crci-core"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "crci"
-path = "src/main.rs"
+[lib]
+name = "crci_core"
+path = "src/lib.rs"
 
 [dependencies]
-crci-core = { path = "crci-core" }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 rand = "0.8"
 sha2 = "0.10"

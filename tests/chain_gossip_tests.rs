@@ -1,10 +1,10 @@
-use crci::merkle::StateSnapshot;
-use crci::message::{Message, MessageType, Signal, Visibility};
-use crci::runtime::NodeRuntime;
+use crci_core::merkle::StateSnapshot;
+use crci_core::message::{Message, MessageType, Signal, Visibility};
+use crci_core::runtime::NodeRuntime;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-fn create_test_inbox() -> crci::transport::SharedInbox {
+fn create_test_inbox() -> crci_core::transport::SharedInbox {
     Arc::new(Mutex::new(HashMap::new()))
 }
 
@@ -32,9 +32,9 @@ fn test_no_peers_safe_broadcast() {
         },
         origin_active: true,
         signature: None,
-        created_at: crci::message::now_ts(),
+        created_at: crci_core::message::now_ts(),
         ttl_seconds: 30,
-        priority: crci::message::MessagePriority::Normal,
+        priority: crci_core::message::MessagePriority::Normal,
         hop_count: 0,
         seq: 0,
     };
@@ -58,15 +58,15 @@ fn test_matching_head_no_divergence() {
         },
         origin_active: true,
         signature: None,
-        created_at: crci::message::now_ts(),
+        created_at: crci_core::message::now_ts(),
         ttl_seconds: 30,
-        priority: crci::message::MessagePriority::Normal,
+        priority: crci_core::message::MessagePriority::Normal,
         hop_count: 0,
         seq: 1,
     };
 
     // Simulate receiving it
-    let wire = crci::runtime::WireMessage::from_message(&msg, &node.identity);
+    let wire = crci_core::runtime::WireMessage::from_message(&msg, &node.identity);
     let bytes = serde_json::to_vec(&wire).unwrap();
 
     {
@@ -96,14 +96,14 @@ fn test_peer_ahead_no_divergence() {
         },
         origin_active: true,
         signature: None,
-        created_at: crci::message::now_ts(),
+        created_at: crci_core::message::now_ts(),
         ttl_seconds: 30,
-        priority: crci::message::MessagePriority::Normal,
+        priority: crci_core::message::MessagePriority::Normal,
         hop_count: 0,
         seq: 1,
     };
 
-    let wire = crci::runtime::WireMessage::from_message(&msg, &node.identity);
+    let wire = crci_core::runtime::WireMessage::from_message(&msg, &node.identity);
     let bytes = serde_json::to_vec(&wire).unwrap();
 
     {
@@ -133,9 +133,9 @@ fn test_mismatched_head_divergence_alert() {
         },
         origin_active: true,
         signature: None,
-        created_at: crci::message::now_ts(),
+        created_at: crci_core::message::now_ts(),
         ttl_seconds: 30,
-        priority: crci::message::MessagePriority::Normal,
+        priority: crci_core::message::MessagePriority::Normal,
         hop_count: 0,
         seq: 1,
     };
@@ -150,7 +150,7 @@ fn test_mismatched_head_divergence_alert() {
     // It will pass verify_signature because verify_signature checks payload using origin_pubkey.
     // And it will pass pubkey consistency if known_keys is empty for "peer-b".
 
-    let wire = crci::runtime::WireMessage::from_message(&msg, &node.identity);
+    let wire = crci_core::runtime::WireMessage::from_message(&msg, &node.identity);
     let bytes = serde_json::to_vec(&wire).unwrap();
 
     {
@@ -198,14 +198,14 @@ fn test_divergence_increments_byzantine_events() {
         },
         origin_active: true,
         signature: None,
-        created_at: crci::message::now_ts(),
+        created_at: crci_core::message::now_ts(),
         ttl_seconds: 30,
-        priority: crci::message::MessagePriority::Normal,
+        priority: crci_core::message::MessagePriority::Normal,
         hop_count: 0,
         seq: 1,
     };
 
-    let wire = crci::runtime::WireMessage::from_message(&msg, &node.identity);
+    let wire = crci_core::runtime::WireMessage::from_message(&msg, &node.identity);
     let bytes = serde_json::to_vec(&wire).unwrap();
 
     {

@@ -9,7 +9,7 @@ use std::time::Instant;
 use tokio::sync::broadcast;
 use tower::ServiceExt;
 
-use crci::api::{build_router, ApiMessage, ApiState};
+use crci_core::api::{build_router, ApiMessage, ApiState};
 
 fn setup_state() -> Arc<ApiState> {
     let (ws_tx, _) = broadcast::channel(100);
@@ -171,7 +171,7 @@ async fn test_status_returns_200() {
 
     assert_eq!(res.status(), StatusCode::OK);
     let body = res.into_body().collect().await.unwrap().to_bytes();
-    let _: crci::api_types::NodeStatusResponse = serde_json::from_slice(&body).unwrap();
+    let _: crci_core::api_types::NodeStatusResponse = serde_json::from_slice(&body).unwrap();
 }
 
 #[tokio::test]
@@ -185,13 +185,13 @@ async fn test_peers_returns_200() {
 
     assert_eq!(res.status(), StatusCode::OK);
     let body = res.into_body().collect().await.unwrap().to_bytes();
-    let _: crci::api_types::PeerListResponse = serde_json::from_slice(&body).unwrap();
+    let _: crci_core::api_types::PeerListResponse = serde_json::from_slice(&body).unwrap();
 }
 
 #[tokio::test]
 async fn test_inject_valid() {
     let app = build_router(setup_state());
-    let req_body = crci::api_types::InjectRequest {
+    let req_body = crci_core::api_types::InjectRequest {
         payload: "hello world".to_string(),
         priority: 1,
     };
@@ -211,7 +211,7 @@ async fn test_inject_valid() {
 async fn test_inject_payload_too_large() {
     let app = build_router(setup_state());
     let big_payload = "x".repeat(9000);
-    let req_body = crci::api_types::InjectRequest {
+    let req_body = crci_core::api_types::InjectRequest {
         payload: big_payload,
         priority: 1,
     };
@@ -232,7 +232,7 @@ async fn test_inject_payload_too_large() {
 #[tokio::test]
 async fn test_inject_invalid_priority() {
     let app = build_router(setup_state());
-    let req_body = crci::api_types::InjectRequest {
+    let req_body = crci_core::api_types::InjectRequest {
         payload: "hi".to_string(),
         priority: 9,
     };

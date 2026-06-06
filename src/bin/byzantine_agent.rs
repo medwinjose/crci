@@ -1,5 +1,5 @@
 use clap::Parser;
-use crci::integration::{MessageKind, PipelineMessage};
+use crci_core::integration::{MessageKind, PipelineMessage};
 use rand::Rng;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;

@@ -24,6 +24,7 @@
 - Session 48: Raspberry Pi Cross-Compilation & CI Target
 - Session 49: CLI Hardening (clap)
 - Session 50: REST API Hardening & OpenAPI Spec
+- Session 51: Extract Simulation Core into Library Crate
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -38,13 +39,13 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 50 COMPLETE
+## Current Session Status: SESSION 51 COMPLETE
 
-**Recent Accomplishments (Session 50):**
-- **REST API Hardening**: Added typed JSON REST endpoints (`/api/v1/status`, `/api/v1/peers`, `/api/v1/inject`) mirroring internal `ApiState`.
-- **Validation Middleware**: Added global payload caps, explicit `application/json` enforcement, and node ID tracking via headers (`X-CRCI-Node-Id`).
-- **OpenAPI 3.1 Spec**: Crafted a static OpenAPI specification (`docs/openapi.json`) properly defining all requests, responses, and errors.
-- **Spec Serving**: Hosted the OpenAPI document directly via `/api/v1/openapi.json` to enable automated integrations and tooling.
+**Recent Accomplishments (Session 51):**
+- **Workspace Restructuring**: Extracted all core logic (mesh protocol, API, cryptography, Sybil guard, storage) into a reusable `crci-core` library crate.
+- **Clean Binary Wrapper**: Stripped the main `crci` crate down to a thin execution wrapper consisting only of `main.rs` and `cli.rs`.
+- **Decoupling for Mobile/Web**: The `crci-core` crate now compiles as a standalone dependency, ready to be embedded into future Android or iOS applications without dragging in the CLI or simulator boilerplate.
+- **Zero Disruptions**: All 212 tests pass cleanly under the new `crci_core::` namespaces with zero warnings and no behavioral changes.
 
 ## Verification
 - Clean compilation, `cargo fmt`, `cargo clippy -- -D warnings`.
@@ -55,4 +56,4 @@
 - Fixed Linux CI pipeline (`ubuntu-latest`) by strictly enforcing workspace-wide formatting `cargo fmt --all`.
 
 ## Next Steps
-- Session 51 — (Pending User Prompt)
+- Session 52 — (Pending User Prompt)

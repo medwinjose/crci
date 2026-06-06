@@ -1,5 +1,5 @@
-use crci::integration::{MessageKind, PipelineMessage};
-use crci::transport::{
+use crci_core::integration::{MessageKind, PipelineMessage};
+use crci_core::transport::{
     BleConfig, BleTransport, LoraConfig, LoraTransport, TcpTransport, Transport, TransportError,
     TransportMultiplexer,
 };

@@ -1,4 +1,4 @@
-use crci::sybil::{PowChallenge, SybilError, SybilGuard, TokenBucket};
+use crci_core::sybil::{PowChallenge, SybilError, SybilGuard, TokenBucket};
 use sha2::{Digest, Sha256};
 use std::time::Duration;
 
@@ -8,7 +8,7 @@ fn test_sybil_new_peer_starts_at_half_reputation() {
     let peer = "node_a".to_string();
 
     assert!(guard.check(&peer).is_ok());
-    assert_eq!(guard.reputation(&peer), 0.5);
+    assert!((guard.reputation(&peer) - 0.5).abs() < 1e-6);
 }
 
 #[test]

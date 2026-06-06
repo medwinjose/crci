@@ -1,5 +1,5 @@
-use crci::storage::encrypted::EncryptedStore;
-use crci::storage::{StorageBackend, StorageError};
+use crci_core::storage::encrypted::EncryptedStore;
+use crci_core::storage::{StorageBackend, StorageError};
 
 use tempfile::tempdir;
 
