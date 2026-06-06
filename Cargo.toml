@@ -16,6 +16,14 @@ axum = { version = "0.7", features = ["ws"] }
 tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5", features = ["cors"] }
 clap = { version = "4", features = ["derive"] }
+uuid = { version = "1.23.2", features = ["v4"] }
+async-trait = "0.1.89"
+futures = "0.3.32"
+log = "0.4.32"
+thiserror = "2.0.18"
+argon2 = "0.5.3"
+bincode = "1"
 
 [dev-dependencies]
 http-body-util = "0.1"
+tempfile = "3.27.0"

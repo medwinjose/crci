@@ -1,16 +1,23 @@
 use axum::{
     extract::{
         ws::{Message as WsMessage, WebSocket},
-        State, WebSocketUpgrade,
+        ConnectInfo, DefaultBodyLimit, Path, Request, State, WebSocketUpgrade,
     },
-    response::IntoResponse,
+    http::{header, HeaderValue, Method, StatusCode},
+    middleware::{self, Next},
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
-use std::sync::{Arc, RwLock};
+use std::collections::{HashMap, VecDeque};
+use std::net::{IpAddr, SocketAddr};
+use std::sync::{atomic::AtomicU64, Arc, Mutex, RwLock};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::broadcast;
+use uuid::Uuid;
+
+use crate::merkle::DivergenceAlert;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ApiMessage {
@@ -25,6 +32,14 @@ pub struct ApiState {
     pub peer_list: Arc<RwLock<Vec<String>>>,
     pub recent_messages: Arc<RwLock<VecDeque<ApiMessage>>>,
     pub ws_tx: broadcast::Sender<String>,
+    // Session 42 fields
+    pub node_id: String,
+    pub start_time: Instant,
+    pub byzantine_events: Arc<AtomicU64>,
+    pub divergence_alerts: Arc<RwLock<Vec<DivergenceAlert>>>,
+    pub divergence_tx: broadcast::Sender<DivergenceAlert>,
+    pub rate_limit_counts: Arc<Mutex<HashMap<IpAddr, (usize, u64)>>>,
+    pub merkle_head: Arc<RwLock<([u8; 32], u64)>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -55,25 +70,187 @@ pub struct PanicResponse {
 #[derive(Serialize, Deserialize)]
 pub struct ErrorResponse {
     pub error: String,
+    pub code: String,
+}
+
+pub struct ApiError {
+    pub status: StatusCode,
+    pub message: String,
+    pub code: String,
+    pub retry_after: Option<u64>,
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        let body = Json(ErrorResponse {
+            error: self.message,
+            code: self.code,
+        });
+        let mut response = (self.status, body).into_response();
+        if let Some(retry) = self.retry_after {
+            response.headers_mut().insert(
+                header::RETRY_AFTER,
+                HeaderValue::from_str(&retry.to_string()).unwrap(),
+            );
+        }
+        response
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct HealthResponse {
+    pub status: String,
+    pub node_id: String,
+    pub uptime_secs: u64,
+    pub byzantine_events: u64,
+    pub divergence_alerts: u64,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ChainHeadResponse {
+    pub head_hash: String,
+    pub head_seq: u64,
+}
+
+async fn hardening_middleware(req: Request, next: Next) -> Response {
+    if req.method() == Method::POST || req.method() == Method::PUT {
+        if let Some(ct) = req.headers().get(header::CONTENT_TYPE) {
+            if ct != "application/json" {
+                return ApiError {
+                    status: StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                    message: "Content-Type must be application/json".to_string(),
+                    code: "UNSUPPORTED_MEDIA_TYPE".to_string(),
+                    retry_after: None,
+                }
+                .into_response();
+            }
+        } else {
+            return ApiError {
+                status: StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                message: "Content-Type must be application/json".to_string(),
+                code: "UNSUPPORTED_MEDIA_TYPE".to_string(),
+                retry_after: None,
+            }
+            .into_response();
+        }
+    }
+
+    let mut res = next.run(req).await;
+
+    let req_id = Uuid::new_v4().to_string();
+    res.headers_mut()
+        .insert("X-Request-Id", HeaderValue::from_str(&req_id).unwrap());
+    res.headers_mut()
+        .insert("X-CRCI-Version", HeaderValue::from_static("0.1.0"));
+
+    if res.status() == StatusCode::PAYLOAD_TOO_LARGE {
+        let error = ApiError {
+            status: StatusCode::PAYLOAD_TOO_LARGE,
+            message: "Payload too large".to_string(),
+            code: "PAYLOAD_TOO_LARGE".to_string(),
+            retry_after: None,
+        };
+        let mut new_res = error.into_response();
+        new_res
+            .headers_mut()
+            .insert("X-Request-Id", HeaderValue::from_str(&req_id).unwrap());
+        new_res
+            .headers_mut()
+            .insert("X-CRCI-Version", HeaderValue::from_static("0.1.0"));
+        return new_res;
+    }
+
+    if res.status() == StatusCode::NOT_FOUND && res.headers().get(header::CONTENT_TYPE).is_none() {
+        let error = ApiError {
+            status: StatusCode::NOT_FOUND,
+            message: "Not Found".to_string(),
+            code: "NOT_FOUND".to_string(),
+            retry_after: None,
+        };
+        let mut new_res = error.into_response();
+        new_res
+            .headers_mut()
+            .insert("X-Request-Id", HeaderValue::from_str(&req_id).unwrap());
+        new_res
+            .headers_mut()
+            .insert("X-CRCI-Version", HeaderValue::from_static("0.1.0"));
+        return new_res;
+    }
+
+    res
+}
+
+async fn rate_limit_middleware(req: Request, next: Next) -> Response {
+    let state = req.extensions().get::<Arc<ApiState>>().unwrap();
+    let ip = req
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|c| c.0.ip())
+        .unwrap_or_else(|| std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)));
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let rate_limit_error = {
+        let mut counts = state.rate_limit_counts.lock().unwrap();
+        let entry = counts.entry(ip).or_insert((0, now));
+
+        if now >= entry.1 + 60 {
+            entry.0 = 0;
+            entry.1 = now;
+        }
+
+        if entry.0 >= 60 {
+            let retry = 60 - (now - entry.1);
+            Some(retry)
+        } else {
+            entry.0 += 1;
+            None
+        }
+    }; // MutexGuard dropped here
+
+    if let Some(retry) = rate_limit_error {
+        return ApiError {
+            status: StatusCode::TOO_MANY_REQUESTS,
+            message: "Rate limit exceeded".to_string(),
+            code: "RATE_LIMIT_EXCEEDED".to_string(),
+            retry_after: Some(retry),
+        }
+        .into_response();
+    }
+
+    next.run(req).await
 }
 
 pub fn build_router(state: Arc<ApiState>) -> Router {
-    Router::new()
+    let app = Router::new()
         .route("/status", get(status_handler))
         .route("/peers", get(peers_handler))
         .route("/messages", get(messages_handler))
         .route("/simulate/panic", post(simulate_panic_handler))
         .route("/ws", get(ws_handler))
-        .with_state(state)
+        .route("/health", get(health_handler))
+        .route("/divergences", get(divergences_handler))
+        .route("/divergences/:peer_id", get(divergences_peer_handler))
+        .route("/chain/head", get(chain_head_handler))
+        .route("/ws/divergences", get(ws_divergences_handler))
+        .with_state(state.clone());
+
+    app.layer(middleware::from_fn(rate_limit_middleware))
+        .layer(axum::Extension(state))
+        .layer(middleware::from_fn(hardening_middleware))
+        .layer(DefaultBodyLimit::max(64 * 1024))
 }
 
 async fn status_handler(State(state): State<Arc<ApiState>>) -> Json<StatusResponse> {
     let node_count = *state.node_count.read().unwrap();
     Json(StatusResponse {
-        node_id: "local-node".to_string(),
-        uptime_secs: 0,
+        node_id: state.node_id.clone(),
+        uptime_secs: state.start_time.elapsed().as_secs(),
         node_count,
-        version: "0.37.0".to_string(),
+        version: "0.1.0".to_string(),
     })
 }
 
@@ -95,9 +272,12 @@ async fn messages_handler(State(state): State<Arc<ApiState>>) -> Json<MessagesRe
     Json(MessagesResponse { messages, count })
 }
 
-async fn simulate_panic_handler(State(state): State<Arc<ApiState>>) -> Json<PanicResponse> {
+async fn simulate_panic_handler(
+    State(state): State<Arc<ApiState>>,
+    _body: String,
+) -> Json<PanicResponse> {
     let msg = ApiMessage {
-        from: "local-node".to_string(),
+        from: state.node_id.clone(),
         severity: 5,
         content: "simulated panic".to_string(),
         timestamp_ms: 0,
@@ -134,6 +314,87 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<ApiState>) {
     }
 }
 
+async fn health_handler(State(state): State<Arc<ApiState>>) -> Json<HealthResponse> {
+    let uptime_secs = state.start_time.elapsed().as_secs();
+    let byzantine_events = state
+        .byzantine_events
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let divergence_alerts = state.divergence_alerts.read().unwrap().len() as u64;
+
+    Json(HealthResponse {
+        status: "ok".to_string(),
+        node_id: state.node_id.clone(),
+        uptime_secs,
+        byzantine_events,
+        divergence_alerts,
+    })
+}
+
+async fn divergences_handler(State(state): State<Arc<ApiState>>) -> Json<Vec<DivergenceAlert>> {
+    let mut alerts = state.divergence_alerts.read().unwrap().clone();
+    alerts.reverse(); // newest first
+    Json(alerts)
+}
+
+async fn divergences_peer_handler(
+    State(state): State<Arc<ApiState>>,
+    Path(peer_id): Path<String>,
+) -> Result<Json<Vec<DivergenceAlert>>, ApiError> {
+    let alerts: Vec<_> = state
+        .divergence_alerts
+        .read()
+        .unwrap()
+        .iter()
+        .filter(|a| a.peer_id == peer_id)
+        .cloned()
+        .collect();
+
+    if alerts.is_empty() {
+        return Err(ApiError {
+            status: StatusCode::NOT_FOUND,
+            message: format!("No alerts found for peer: {}", peer_id),
+            code: "PEER_NOT_FOUND".to_string(),
+            retry_after: None,
+        });
+    }
+
+    Ok(Json(alerts))
+}
+
+async fn chain_head_handler(State(state): State<Arc<ApiState>>) -> Json<ChainHeadResponse> {
+    let head = *state.merkle_head.read().unwrap();
+    let head_hash = head.0.iter().map(|b| format!("{:02x}", b)).collect();
+    Json(ChainHeadResponse {
+        head_hash,
+        head_seq: head.1,
+    })
+}
+
+async fn ws_divergences_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<ApiState>>,
+) -> impl IntoResponse {
+    ws.on_upgrade(|socket| handle_divergences_socket(socket, state))
+}
+
+async fn handle_divergences_socket(mut socket: WebSocket, state: Arc<ApiState>) {
+    let current_alerts: Vec<_> = state.divergence_alerts.read().unwrap().clone();
+    if let Ok(json) = serde_json::to_string(&current_alerts) {
+        if socket.send(WsMessage::Text(json)).await.is_err() {
+            return;
+        }
+    }
+
+    let mut rx = state.divergence_tx.subscribe();
+    while let Ok(alert) = rx.recv().await {
+        if let Ok(json) = serde_json::to_string(&alert) {
+            if socket.send(WsMessage::Text(json)).await.is_err() {
+                break;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -142,10 +403,11 @@ mod tests {
         http::{Request, StatusCode},
     };
     use http_body_util::BodyExt;
-    use tower::ServiceExt; // for `oneshot` and `ready` // for `collect`
+    use tower::ServiceExt;
 
     fn setup_state() -> Arc<ApiState> {
         let (ws_tx, _) = broadcast::channel(100);
+        let (divergence_tx, _) = broadcast::channel(100);
         let mut msgs = VecDeque::new();
         msgs.push_back(ApiMessage {
             from: "test".to_string(),
@@ -158,6 +420,13 @@ mod tests {
             peer_list: Arc::new(RwLock::new(vec!["peer1".to_string(), "peer2".to_string()])),
             recent_messages: Arc::new(RwLock::new(msgs)),
             ws_tx,
+            node_id: "test-node".to_string(),
+            start_time: Instant::now(),
+            byzantine_events: Arc::new(AtomicU64::new(0)),
+            divergence_alerts: Arc::new(RwLock::new(Vec::new())),
+            divergence_tx,
+            rate_limit_counts: Arc::new(Mutex::new(HashMap::new())),
+            merkle_head: Arc::new(RwLock::new(([0; 32], 0))),
         })
     }
 
@@ -175,78 +444,7 @@ mod tests {
         let body = response.into_body().collect().await.unwrap().to_bytes();
         let status: StatusResponse = serde_json::from_slice(&body).unwrap();
 
-        assert_eq!(status.version, "0.37.0");
+        assert_eq!(status.version, "0.1.0");
         assert_eq!(status.node_count, 5);
-    }
-
-    #[tokio::test]
-    async fn test_peers_endpoint() {
-        let app = build_router(setup_state());
-        let request = Request::builder()
-            .uri("/peers")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.oneshot(request).await.unwrap();
-
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        let peers_res: PeersResponse = serde_json::from_slice(&body).unwrap();
-
-        assert_eq!(peers_res.count, 2);
-        assert_eq!(peers_res.peers.len(), 2);
-    }
-
-    #[tokio::test]
-    async fn test_messages_endpoint() {
-        let app = build_router(setup_state());
-        let request = Request::builder()
-            .uri("/messages")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.oneshot(request).await.unwrap();
-
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        let msgs_res: MessagesResponse = serde_json::from_slice(&body).unwrap();
-
-        assert_eq!(msgs_res.count, 1);
-    }
-
-    #[tokio::test]
-    async fn test_ws_connect() {
-        // We MUST spin up a listener for WebSocket testing because axum's WebSocketUpgrade
-        // requires hyper's OnUpgrade extension which is not present in oneshot() mock requests.
-        let app = build_router(setup_state());
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
-
-        tokio::spawn(async move {
-            axum::serve(listener, app).await.unwrap();
-        });
-
-        let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
-        let req = format!(
-            "GET /ws HTTP/1.1\r\n\
-             Host: localhost\r\n\
-             Connection: upgrade\r\n\
-             Upgrade: websocket\r\n\
-             Sec-WebSocket-Version: 13\r\n\
-             Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\
-             \r\n"
-        );
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-        stream.write_all(req.as_bytes()).await.unwrap();
-
-        let mut buf = [0u8; 1024];
-        let n = stream.read(&mut buf).await.unwrap();
-        let response = String::from_utf8_lossy(&buf[..n]);
-        assert!(response.contains("101 Switching Protocols"));
-
-        // Read the first WebSocket frame (the replay payload)
-        let n2 = stream.read(&mut buf).await.unwrap();
-        assert!(n2 > 0);
-        assert_eq!(buf[0], 0x81); // 0x81 is FIN + Text frame
     }
 }

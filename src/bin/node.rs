@@ -1,5 +1,5 @@
 use crci::integration::{GossipPipeline, MessageKind, PipelineMessage};
-use crci::transport::AsyncTransport;
+use crci::transport::{BleConfig, BleTransport, LoraConfig, LoraTransport, TcpTransport, Transport, TransportMultiplexer};
 use std::env;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -37,11 +37,30 @@ async fn main() {
     }
 
     let listen_addr: SocketAddr = format!("0.0.0.0:{}", listen_port).parse().unwrap();
-    let transport = Arc::new(
-        AsyncTransport::bind(node_id.clone(), listen_addr, peers)
-            .await
-            .expect("Failed to create transport"),
-    );
+    let tcp_transport = TcpTransport::bind(node_id.clone(), listen_addr)
+        .await
+        .expect("Failed to create TCP transport");
+
+    let lora_transport = LoraTransport::new(LoraConfig {
+        frequency_hz: 915_000_000,
+        spreading_factor: 7,
+        bandwidth_khz: 125,
+        coding_rate: 5,
+    });
+
+    let ble_transport = BleTransport::new(BleConfig {
+        device_name: format!("CRCI-{}!", node_id),
+        service_uuid: "0000180F-0000-1000-8000-00805F9B34FB".to_string(),
+        mtu: 512,
+    });
+
+    let multiplexer = TransportMultiplexer::new(vec![
+        Box::new(tcp_transport),
+        Box::new(lora_transport),
+        Box::new(ble_transport),
+    ]);
+
+    let transport = Arc::new(multiplexer);
 
     let pipeline = Arc::new(Mutex::new(GossipPipeline::new()));
 
@@ -73,13 +92,37 @@ async fn main() {
         }
     }
 
-    let (shutdown_tx, shutdown_rx) = broadcast::channel(1);
+    let (shutdown_tx, mut shutdown_rx) = broadcast::channel(1);
 
     // Recv loop
     let recv_transport = transport.clone();
     let recv_pipeline = pipeline.clone();
+    let recv_peers = peers.clone();
     tokio::spawn(async move {
-        recv_transport.recv_loop(recv_pipeline, shutdown_rx).await;
+        loop {
+            tokio::select! {
+                res = recv_transport.receive() => {
+                    if let Ok((_peer, msg)) = res {
+                        let verdict = {
+                            let mut pipeline_guard = recv_pipeline.lock().unwrap();
+                            pipeline_guard.process(&msg)
+                        };
+
+                        if let crci::integration::PipelineVerdict::Accept = verdict {
+                            // Forward the accepted message to all our peers
+                            for p in &recv_peers {
+                                let _ = recv_transport.send(&p.to_string(), &msg).await;
+                            }
+                        }
+                    } else {
+                        tokio::time::sleep(Duration::from_millis(100)).await;
+                    }
+                }
+                _ = shutdown_rx.recv() => {
+                    break;
+                }
+            }
+        }
     });
 
     let byzantine_detections = Arc::new(std::sync::atomic::AtomicU64::new(0));
@@ -140,7 +183,7 @@ async fn main() {
     // Periodic sync thread for other metrics from pipeline/transport
     let sync_metrics = metrics.clone();
     let sync_pipeline = pipeline.clone();
-    let sync_transport = transport.clone();
+    let sync_peers = peers.clone();
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_millis(500)).await;
@@ -194,7 +237,7 @@ async fn main() {
                 }
             }
             sync_metrics.peer_count.store(
-                sync_transport.peers.len() as u64,
+                sync_peers.len() as u64,
                 std::sync::atomic::Ordering::Relaxed,
             );
         }
@@ -228,7 +271,9 @@ async fn main() {
                 let mut p = pipeline.lock().unwrap();
                 let _ = p.process(&rescue_msg);
             }
-            let _ = transport.broadcast(&rescue_msg).await;
+            for p in &peers {
+                let _ = transport.send(&p.to_string(), &rescue_msg).await;
+            }
             rescue_sent = true;
         } else {
             // Normal message
@@ -250,7 +295,9 @@ async fn main() {
                 p.next_round();
                 let _ = p.process(&msg);
             }
-            let _ = transport.broadcast(&msg).await;
+            for p in &peers {
+                let _ = transport.send(&p.to_string(), &msg).await;
+            }
         }
     }
 
@@ -260,9 +307,7 @@ async fn main() {
     tokio::time::sleep(Duration::from_secs(2)).await;
 
     let p = pipeline.lock().unwrap();
-    let accepted = transport
-        .accepted_count
-        .load(std::sync::atomic::Ordering::SeqCst);
+    let accepted = p.accepted;
     let rescues = p.ttl_store.rescue_count();
     let b_det = byzantine_detections.load(std::sync::atomic::Ordering::SeqCst);
 

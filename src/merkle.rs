@@ -126,7 +126,12 @@ impl MerkleChain {
         self.blocks[idx].block_hash != other_head
     }
 
-    pub fn build_divergence_alert(&self, peer_id: &str, their_head_hash: [u8; 32], their_head_seq: u64) -> Option<DivergenceAlert> {
+    pub fn build_divergence_alert(
+        &self,
+        peer_id: &str,
+        their_head_hash: [u8; 32],
+        their_head_seq: u64,
+    ) -> Option<DivergenceAlert> {
         if their_head_seq > self.head_sequence() {
             return None;
         }
@@ -135,8 +140,14 @@ impl MerkleChain {
             let idx = their_head_seq as usize;
             if idx < self.blocks.len() {
                 let our_hash = self.blocks[idx].block_hash;
-                let expected_head_hash = our_hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
-                let actual_head_hash = their_head_hash.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                let expected_head_hash = our_hash
+                    .iter()
+                    .map(|b| format!("{:02x}", b))
+                    .collect::<String>();
+                let actual_head_hash = their_head_hash
+                    .iter()
+                    .map(|b| format!("{:02x}", b))
+                    .collect::<String>();
                 return Some(DivergenceAlert {
                     peer_id: peer_id.to_string(),
                     expected_head_hash,
@@ -242,10 +253,10 @@ mod tests {
         chain_a.append(snapshot_a);
 
         let snapshot_b = StateSnapshot {
-            peer_count: 1, // Different
+            peer_count: 1,         // Different
             reputation_floor: 0.5, // Different
-            messages_handled: 21, // Different
-            byzantine_events: 1, // Different
+            messages_handled: 21,  // Different
+            byzantine_events: 1,   // Different
             timestamp_ms: 1003,
         };
         chain_b.append(snapshot_b);

@@ -32,6 +32,7 @@ use std::sync::{Arc, Mutex};
 #[tokio::main]
 async fn main() {
     let (ws_tx, _) = tokio::sync::broadcast::channel(100);
+    let (divergence_tx, _) = tokio::sync::broadcast::channel(100);
     let state = Arc::new(crate::api::ApiState {
         node_count: Arc::new(std::sync::RwLock::new(9)),
         peer_list: Arc::new(std::sync::RwLock::new(vec![
@@ -47,6 +48,13 @@ async fn main() {
         ])),
         recent_messages: Arc::new(std::sync::RwLock::new(std::collections::VecDeque::new())),
         ws_tx,
+        node_id: "local-node".to_string(),
+        start_time: std::time::Instant::now(),
+        byzantine_events: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        divergence_alerts: Arc::new(std::sync::RwLock::new(Vec::new())),
+        divergence_tx,
+        rate_limit_counts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        merkle_head: Arc::new(std::sync::RwLock::new(([0; 32], 0))),
     });
 
     let state_clone = state.clone();

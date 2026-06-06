@@ -101,7 +101,10 @@ async fn main() {
                 };
                 match send_msg(&args.target, &msg).await {
                     Ok(_) => {
-                        println!("[byzantine-agent][false_allclear] injected at {} seq={}", ts, seq);
+                        println!(
+                            "[byzantine-agent][false_allclear] injected at {} seq={}",
+                            ts, seq
+                        );
                         injections += 1;
                     }
                     Err(_) => {
@@ -130,7 +133,10 @@ async fn main() {
                         failures += 1;
                     }
                 }
-                println!("[byzantine-agent][sybil] injected {} messages at {} seq={}", sybil_injections, ts, seq);
+                println!(
+                    "[byzantine-agent][sybil] injected {} messages at {} seq={}",
+                    sybil_injections, ts, seq
+                );
                 injections += sybil_injections;
                 sleep(Duration::from_millis(args.interval)).await;
             }
@@ -173,7 +179,10 @@ async fn main() {
                         failures += 1;
                     }
                 }
-                println!("[byzantine-agent][partition_heal] injected {} messages at {} seq={}", part_injections, ts, seq);
+                println!(
+                    "[byzantine-agent][partition_heal] injected {} messages at {} seq={}",
+                    part_injections, ts, seq
+                );
                 injections += part_injections;
                 sleep(Duration::from_millis(args.interval)).await;
             }
@@ -184,5 +193,9 @@ async fn main() {
         }
     }
 
-    println!("[byzantine-agent] Done. Total injections attempted: {}, Total rejected/failed: {}", injections + failures, failures);
+    println!(
+        "[byzantine-agent] Done. Total injections attempted: {}, Total rejected/failed: {}",
+        injections + failures,
+        failures
+    );
 }

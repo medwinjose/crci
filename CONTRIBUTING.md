@@ -117,7 +117,7 @@ cargo build
 
 To run all validations (highly recommended before submitting a PR):
 ```bash
-cargo fmt
-cargo clippy -- -D warnings
-cargo test
+cargo fmt --all
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all
 ```
