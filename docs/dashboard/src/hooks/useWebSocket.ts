@@ -11,13 +11,16 @@ export function useWebSocket() {
   const [messages, setMessages] = useState<ApiMessage[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const wsRef = useRef<WebSocket | null>(null);
+  const totalMessagesRef = useRef(0);
 
   useEffect(() => {
     let timeoutId: number;
 
     const connect = () => {
       setConnectionStatus('connecting');
-      const ws = new WebSocket('ws://localhost:8080/ws');
+      const base = import.meta.env.VITE_NODE_URL || 'http://localhost:8080';
+      const wsUrl = base.replace(/^http/, 'ws') + '/ws';
+      const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -28,6 +31,7 @@ export function useWebSocket() {
         try {
           const msg: ApiMessage = JSON.parse(event.data);
           setMessages(prev => [msg, ...prev].slice(0, 50));
+          totalMessagesRef.current += 1;
         } catch (e) {
           console.error('Failed to parse WebSocket message', e);
         }
@@ -54,5 +58,5 @@ export function useWebSocket() {
     };
   }, []);
 
-  return { messages, connectionStatus };
+  return { messages, connectionStatus, totalMessagesRef };
 }
