@@ -1,0 +1,246 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CRCI API",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "paths": {
+    "/api/v1/status": {
+      "get": {
+        "summary": "Get node status",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/peers": {
+      "get": {
+        "summary": "Get peer list",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inject": {
+      "post": {
+        "summary": "Inject a message into the mesh",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InjectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Message queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InjectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/openapi.json": {
+      "get": {
+        "summary": "Get OpenAPI spec",
+        "responses": {
+          "200": {
+            "description": "OpenAPI Specification document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "NodeStatusResponse": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "peer_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "uptime_secs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "message_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "chain_head": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "peer_count",
+          "uptime_secs",
+          "message_count",
+          "chain_head"
+        ]
+      },
+      "PeerListResponse": {
+        "type": "object",
+        "properties": {
+          "peers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeerInfo"
+            }
+          }
+        },
+        "required": [
+          "peers"
+        ]
+      },
+      "PeerInfo": {
+        "type": "object",
+        "properties": {
+          "peer_id": {
+            "type": "string"
+          },
+          "addr": {
+            "type": "string"
+          },
+          "last_seen_secs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reputation": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "peer_id",
+          "addr",
+          "last_seen_secs",
+          "reputation"
+        ]
+      },
+      "InjectRequest": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          }
+        },
+        "required": [
+          "payload",
+          "priority"
+        ]
+      },
+      "InjectResponse": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "queued_at": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "message_id",
+          "queued_at"
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      }
+    }
+  }
+}

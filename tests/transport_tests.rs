@@ -56,7 +56,7 @@ async fn ble_transport_returns_not_available() {
         service_uuid: "000".to_string(),
         mtu: 512,
     });
-    
+
     assert!(!ble.is_available());
 
     let msg = dummy_message("node-1");
@@ -72,7 +72,7 @@ async fn lora_transport_returns_not_available() {
         bandwidth_khz: 125,
         coding_rate: 5,
     });
-    
+
     assert!(!lora.is_available());
 
     let msg = dummy_message("node-1");
@@ -85,8 +85,12 @@ async fn multiplexer_falls_through_to_tcp() {
     let addr1: SocketAddr = "127.0.0.1:0".parse().unwrap();
     let addr2: SocketAddr = "127.0.0.1:0".parse().unwrap();
 
-    let tcp1 = TcpTransport::bind("node-1".to_string(), addr1).await.unwrap();
-    let tcp2 = TcpTransport::bind("node-2".to_string(), addr2).await.unwrap();
+    let tcp1 = TcpTransport::bind("node-1".to_string(), addr1)
+        .await
+        .unwrap();
+    let tcp2 = TcpTransport::bind("node-2".to_string(), addr2)
+        .await
+        .unwrap();
 
     let lora = LoraTransport::new(LoraConfig {
         frequency_hz: 915_000_000,

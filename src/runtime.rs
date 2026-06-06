@@ -344,17 +344,26 @@ impl NodeRuntime {
                 Ok(()) => { /* proceed */ }
                 Err(crate::sybil::SybilError::Banned(peer)) => {
                     self.sybil_banned_events += 1;
-                    println!("  ⚠ [{}] SYBIL GUARD DROP: peer {} is banned", self.id, peer);
+                    println!(
+                        "  ⚠ [{}] SYBIL GUARD DROP: peer {} is banned",
+                        self.id, peer
+                    );
                     continue;
                 }
                 Err(crate::sybil::SybilError::RateLimited(peer)) => {
                     self.sybil_rate_limited_events += 1;
-                    println!("  ⚠ [{}] SYBIL GUARD DROP: peer {} exceeded rate limit", self.id, peer);
+                    println!(
+                        "  ⚠ [{}] SYBIL GUARD DROP: peer {} exceeded rate limit",
+                        self.id, peer
+                    );
                     continue;
                 }
                 Err(crate::sybil::SybilError::PowFailed(peer)) => {
                     self.sybil_pow_failed_events += 1;
-                    println!("  ⚠ [{}] SYBIL GUARD DROP: peer {} PoW failed", self.id, peer);
+                    println!(
+                        "  ⚠ [{}] SYBIL GUARD DROP: peer {} PoW failed",
+                        self.id, peer
+                    );
                     continue;
                 }
             }

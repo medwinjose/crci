@@ -70,7 +70,7 @@ impl PeerReputation {
     pub fn decay_recover(&mut self) {
         let now = Instant::now();
         let elapsed = now.duration_since(self.last_updated).as_secs_f32();
-        
+
         if elapsed > 0.0 {
             let recovery = elapsed * 0.01;
             self.score += recovery;
@@ -160,7 +160,10 @@ impl SybilGuard {
             return Err(SybilError::Banned(peer.clone()));
         }
 
-        let bucket = self.buckets.entry(peer.clone()).or_insert_with(|| TokenBucket::new(20.0, 5.0));
+        let bucket = self
+            .buckets
+            .entry(peer.clone())
+            .or_insert_with(|| TokenBucket::new(20.0, 5.0));
         if !bucket.try_consume() {
             return Err(SybilError::RateLimited(peer.clone()));
         }
