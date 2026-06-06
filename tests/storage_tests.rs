@@ -1,5 +1,6 @@
-use crci::storage::{EncryptedStore, StorageBackend, StorageError};
-use std::fs;
+use crci::storage::encrypted::EncryptedStore;
+use crci::storage::{StorageBackend, StorageError};
+
 use tempfile::tempdir;
 
 #[tokio::test]

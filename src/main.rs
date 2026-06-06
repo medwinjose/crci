@@ -23,6 +23,7 @@ mod stress;
 mod transport;
 mod ttl;
 mod validation;
+mod sybil;
 
 use mesh::MeshSimulator;
 use message::{Message, Signal, Visibility};

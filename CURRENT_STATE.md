@@ -20,6 +20,7 @@
 - Session 44: Research Paper Final Draft + arXiv Submission Prep
 - Session 45: Transport Abstraction Layer (BLE Stub + LoRa Stub + Multiplexer)
 - Session 46: Encrypted Local Storage (AES-256-GCM)
+- Session 47: Sybil Resistance Layer
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -34,13 +35,14 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 46 COMPLETE
+## Current Session Status: SESSION 47 COMPLETE
 
-**Recent Accomplishments (Session 46):**
-- **EncryptedStore**: Implemented a tamper-evident, encrypted persistence layer (`src/storage/encrypted.rs`) using AES-256-GCM to prevent plaintext leaks.
-- **Argon2id KDF**: Secured storage derivation from user passphrase and an OS-generated 16-byte random salt.
-- **Append-only Framing**: Devised an efficient append-only `bincode` frame layout for crash-safe state updates.
-- **Seamless Integration**: Wired `StorageBackend` into `NodeRuntime`, offloading storage writes to asynchronous `tokio::spawn` tasks so the hot gossip path remains unblocked.
+**Recent Accomplishments (Session 47):**
+- **SybilGuard**: Developed `src/sybil.rs` featuring statless admission checking, mitigating network flooding by cheap identities.
+- **Proof of Work Admission**: Added `PowChallenge` allowing new identities to solve a configurable SHA-256 partial-hash collision before transmission.
+- **Peer Reputation Scoring**: Established linear temporal recovery and steep threshold penalties for byzantine-acting identities.
+- **Token Bucket Rate Limiting**: Capped inbound burst activity independently for each peer using time-refilling virtual token buckets.
+- **Gossip Loop Hooking**: Embedded Sybil checks immediately after message deserialization within `NodeRuntime` without blocking async executors.
 
 ## Verification
 - Clean compilation, `cargo fmt`, `cargo clippy -- -D warnings`.
@@ -51,4 +53,4 @@
 - Fixed Linux CI pipeline (`ubuntu-latest`) by strictly enforcing workspace-wide formatting `cargo fmt --all`.
 
 ## Next Steps
-- Session 47 — Sybil resistance
+- Session 48 — RPi cross-compilation

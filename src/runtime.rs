@@ -138,6 +138,10 @@ pub struct NodeRuntime {
     pub divergence_log: Vec<crate::merkle::DivergenceAlert>,
     pub divergence_tx: Option<tokio::sync::broadcast::Sender<crate::merkle::DivergenceAlert>>,
     pub router: crate::routing::TemporalRouter,
+    pub sybil_guard: crate::sybil::SybilGuard,
+    pub sybil_banned_events: u64,
+    pub sybil_rate_limited_events: u64,
+    pub sybil_pow_failed_events: u64,
 }
 
 impl NodeRuntime {
@@ -169,6 +173,10 @@ impl NodeRuntime {
             divergence_log: Vec::new(),
             divergence_tx: None,
             router: crate::routing::TemporalRouter::new(),
+            sybil_guard: crate::sybil::SybilGuard::new(4),
+            sybil_banned_events: 0,
+            sybil_rate_limited_events: 0,
+            sybil_pow_failed_events: 0,
         }
     }
 
@@ -331,6 +339,26 @@ impl NodeRuntime {
                 }
             };
 
+            // Sybil admission check
+            match self.sybil_guard.check(&wire.origin) {
+                Ok(()) => { /* proceed */ }
+                Err(crate::sybil::SybilError::Banned(peer)) => {
+                    self.sybil_banned_events += 1;
+                    println!("  ⚠ [{}] SYBIL GUARD DROP: peer {} is banned", self.id, peer);
+                    continue;
+                }
+                Err(crate::sybil::SybilError::RateLimited(peer)) => {
+                    self.sybil_rate_limited_events += 1;
+                    println!("  ⚠ [{}] SYBIL GUARD DROP: peer {} exceeded rate limit", self.id, peer);
+                    continue;
+                }
+                Err(crate::sybil::SybilError::PowFailed(peer)) => {
+                    self.sybil_pow_failed_events += 1;
+                    println!("  ⚠ [{}] SYBIL GUARD DROP: peer {} PoW failed", self.id, peer);
+                    continue;
+                }
+            }
+
             // Step 1: verify cryptographic signature
             if wire.message_type != "mce" && !wire.verify_signature() {
                 println!(
@@ -338,6 +366,7 @@ impl NodeRuntime {
                     self.id, wire.id
                 );
                 self.byzantine_events += 1;
+                self.sybil_guard.report_violation(&wire.origin);
                 continue;
             }
 
@@ -350,6 +379,7 @@ impl NodeRuntime {
                             self.id, wire.id
                         );
                         self.byzantine_events += 1;
+                        self.sybil_guard.report_violation(&wire.origin);
                         continue;
                     }
                 } else {
@@ -358,7 +388,6 @@ impl NodeRuntime {
                 }
             }
 
-            // Replay check
             let verdict = self.replay_filter.check_and_record(
                 &wire.origin,
                 wire.seq,
@@ -366,6 +395,7 @@ impl NodeRuntime {
             );
             if !verdict.is_accept() {
                 self.byzantine_events += 1;
+                self.sybil_guard.report_violation(&wire.origin);
                 match &verdict {
                     crate::replay::ReplayVerdict::Replayed {
                         received_seq,

@@ -21,6 +21,9 @@ pub struct CrciMetrics {
     pub peer_count: AtomicU64,
     pub consensus_rounds: AtomicU64,
     pub chain_divergences_total: AtomicU64,
+    pub sybil_banned_total: AtomicU64,
+    pub sybil_rate_limited_total: AtomicU64,
+    pub sybil_pow_failed_total: AtomicU64,
     pub peers: Mutex<HashMap<String, PeerState>>,
 }
 
@@ -42,6 +45,9 @@ impl CrciMetrics {
             peer_count: AtomicU64::new(0),
             consensus_rounds: AtomicU64::new(0),
             chain_divergences_total: AtomicU64::new(0),
+            sybil_banned_total: AtomicU64::new(0),
+            sybil_rate_limited_total: AtomicU64::new(0),
+            sybil_pow_failed_total: AtomicU64::new(0),
             peers: Mutex::new(HashMap::new()),
         }
     }
@@ -110,6 +116,27 @@ impl CrciMetrics {
         out.push_str(&format!(
             "crci_chain_divergences_total {}\n",
             self.chain_divergences_total.load(Ordering::Relaxed)
+        ));
+
+        out.push_str("# HELP crci_sybil_banned_total Total nodes banned by SybilGuard\n");
+        out.push_str("# TYPE crci_sybil_banned_total counter\n");
+        out.push_str(&format!(
+            "crci_sybil_banned_total {}\n",
+            self.sybil_banned_total.load(Ordering::Relaxed)
+        ));
+
+        out.push_str("# HELP crci_sybil_rate_limited_total Total rate limit drops by SybilGuard\n");
+        out.push_str("# TYPE crci_sybil_rate_limited_total counter\n");
+        out.push_str(&format!(
+            "crci_sybil_rate_limited_total {}\n",
+            self.sybil_rate_limited_total.load(Ordering::Relaxed)
+        ));
+
+        out.push_str("# HELP crci_sybil_pow_failed_total Total PoW challenge failures\n");
+        out.push_str("# TYPE crci_sybil_pow_failed_total counter\n");
+        out.push_str(&format!(
+            "crci_sybil_pow_failed_total {}\n",
+            self.sybil_pow_failed_total.load(Ordering::Relaxed)
         ));
 
         if let Ok(peers) = self.peers.lock() {

@@ -2,9 +2,7 @@ pub mod legacy;
 pub mod encrypted;
 pub mod record;
 
-pub use legacy::{NodeStorage, PersistedRescue, PersistedState};
-pub use encrypted::EncryptedStore;
-pub use record::StorageRecord;
+pub use legacy::{PersistedRescue, PersistedState};
 
 #[async_trait::async_trait]
 pub trait StorageBackend: Send + Sync {
