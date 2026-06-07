@@ -1,14 +1,19 @@
 # CRCI Current State
 
 ## Sessions Completed
-- Sessions 1-28: Core networking, simulation, PBFT, Merkle states, benchmarking, AEDA, TTL, Battery, Integration, STRIDE security.
+- Sessions 1-5: Cryptographic Identities (`ed25519-dalek`), Message Signatures, Wire Structs
+- Sessions 6-10: In-Memory Node Simulation, Ad-Hoc Peer Exchange, Protocol Handshakes
+- Sessions 11-15: Distributed Byzantine Consensus (PBFT abstractions), Zone-based Trust Modeling
+- Sessions 16-20: Battery Drain Emulation, Message Pruning, Time-To-Live (TTL) Storage Enforcement
+- Sessions 21-25: Automated Escalation & Delegation Algorithm (AEDA), Temporal Sequence Routing
+- Sessions 26-28: Centralized Integration Test Harness, STRIDE Threat Modeling, Security Constraints
 - Session 29: Security Wiring + Docker Proof Loop Foundation
-- Session 30: Basic TCP Transport (std::net)
+- Session 30: Basic TCP Transport (`std::net`)
 - Session 31: Tokio Async Transport + K-bucket discovery
 - Session 32: Real Multi-process Proof Loop & Protocol Documentation
 - Session 33: Metrics, Dashboard, Wasm, Interview
-- Session 34: CI/CD (GitHub Actions), SECURITY.md, issue templates, PR template, README badges
-- Session 35: README rewrite, architecture diagram, benchmark docs
+- Session 34: CI/CD (GitHub Actions), `SECURITY.md`, Issue Templates, PR Template, README Badges
+- Session 35: README rewrite, Architecture Diagram, Benchmark Docs
 - Session 36: TLA+ Formal Specification for reputation-weighted consensus
 - Session 37: REST API and WebSocket backend via Axum
 - Session 38: React Web Dashboard (Vite + React + Tailwind + Recharts)
@@ -16,15 +21,21 @@
 - Session 40: Merkle-chained state + temporal-aware routing
 - Session 41: Chain-Head Gossip + Divergence Alerting
 - Session 42: REST/WebSocket API Hardening + OpenAPI Spec
-- Session 43: TLA+ Formal Specification
+- Session 43: TLA+ Formal Specification (Refinement)
 - Session 44: Research Paper Final Draft + arXiv Submission Prep
 - Session 45: Transport Abstraction Layer (BLE Stub + LoRa Stub + Multiplexer)
 - Session 46: Encrypted Local Storage (AES-256-GCM)
 - Session 47: Sybil Resistance Layer
 - Session 48: Raspberry Pi Cross-Compilation & CI Target
-- Session 49: CLI Hardening (clap)
-- Session 50: REST API Hardening & OpenAPI Spec
-- Session 51: Extract Simulation Core into Library Crate
+- Session 49: CLI Hardening (`clap` refactor)
+- Session 50: REST API Hardening & OpenAPI Spec (Finalization)
+- Session 51: Extract Simulation Core into Library Crate (`crci-core`)
+- Session 52: Web Dashboard Polish + Live API Integration
+- Session 53: UniFFI Bindings for `crci-core` (Kotlin/Android FFI Layer)
+- Session 54: Android App Scaffolding (Jetpack Compose + FFI `crci-android`)
+- Session 55: Live Node Startup + Peer Polling via FFI
+- Session 56: Real Tokio Runtime Behind FFI + Peer Table Round-Trip
+- Session 57: Live Peer Handshake End-to-End (Emulator ↔ Host) FFI Wiring
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
