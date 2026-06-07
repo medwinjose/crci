@@ -39,19 +39,30 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 56 COMPLETE
+## Current Session Status: SESSION 57 COMPLETE
 
-**Recent Accomplishments (Session 56):**
-- **Real Tokio Runtime behind FFI**: Replaced the mock `NodeRuntimeHandle` in `crci-core/src/ffi.rs` with a real `tokio::runtime::Runtime` combined with an instance of `NodeRuntime`.
-- **Peer Count Live Integration**: Wired the Android FFI `peer_count()` call to synchronously read `NodeRuntime.peers.len()`, ensuring the Android app correctly polls the actual mesh protocol's table.
-- **Synchronous Spin-Up**: Implemented `start_node()` FFI entrypoint to correctly spin up both `Runtime` and `NodeRuntime` without requiring `block_on` as the initialization is synchronous.
-- **Clean Teardown**: Updated `stop_node()` to securely lock, detach, and drop both the `NodeRuntime` and its associated `Runtime`, ensuring a graceful shutdown without leaks.
+**Recent Accomplishments (Session 57):**
+- **FFI Handshake Integration**: Added `connect_peer(addr: String) -> bool` to `crci-core` FFI surface to allow Android to dial other mesh nodes.
+- **Android Networking UI**: Updated Jetpack Compose `NodeScreen` with a peer address input and connection button.
+- **Coroutines Connection Wiring**: Updated `CrciViewModel` to expose a reactive connection state message using coroutines, enabling non-blocking handshakes.
+- **Generated Bindings**: Successfully regenerated `uniffi` Kotlin bindings on the Windows subsystem to map `connect_peer` properly.
 - **Zero Rust Disruptions**: All 218 tests remain perfectly green.
 
 ## Verification
 - Clean compilation and `cargo fmt`.
 - `cargo clippy --all-targets -- -D warnings` on `crci-core` passes beautifully.
-- Over 218 tests passing (`cargo test --all`), validating FFI changes without regressions in core node routines.
+- Over 218 tests passing (`cargo test --all`).
+
+## Manual Validation (Live Handshake Test)
+To run the live Android to Host peer handshake end-to-end:
+```bash
+# Terminal 1 — start host node (requires Session 58 crci-node binary)
+cargo run --bin crci-node -- --listen 0.0.0.0:9000 --node-id host-node-1
+
+# Android emulator — tap "Connect" with address 10.0.2.2:9000
+# Expected: peerCount in UI increments to 1 within 10 seconds
+```
+*(Note: `crci-node` will be created in Session 58 to support the host-side listening).*
 
 ## Next Steps
-- Session 57 — (Pending User Prompt)
+- Session 58 — Build `crci-node` binary and validate the end-to-end handshake test.

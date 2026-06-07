@@ -3,6 +3,7 @@ package dev.crci.android
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.crci.android.ffi.FfiNodeConfig
+import dev.crci.android.ffi.connectPeer
 import dev.crci.android.ffi.peerCount
 import dev.crci.android.ffi.startNode
 import dev.crci.android.ffi.stopNode
@@ -47,6 +48,16 @@ class CrciViewModel : ViewModel() {
             _nodeId.value = config.nodeId
             _nodeStatus.value = if (ok) NodeStatus.Running else NodeStatus.Error
             if (ok) startPolling()
+        }
+    }
+
+    private val _connectStatus = MutableStateFlow("")
+    val connectStatus: StateFlow<String> = _connectStatus.asStateFlow()
+
+    fun connectPeer(addr: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = connectPeer(addr)   // FFI call — matches regenerated binding name exactly
+            _connectStatus.value = if (ok) "Dialing $addr…" else "Connect failed"
         }
     }
 

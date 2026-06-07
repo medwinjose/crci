@@ -15,6 +15,7 @@ fun NodeScreen(viewModel: CrciViewModel) {
     val nodeId by viewModel.nodeId.collectAsState()
     val peerCount by viewModel.peerCount.collectAsState()
     val nodeStatus by viewModel.nodeStatus.collectAsState()
+    val connectStatus by viewModel.connectStatus.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -71,6 +72,29 @@ fun NodeScreen(viewModel: CrciViewModel) {
                     Text("Peers connected: $peerCount")
                 }
             }
+
+            var peerAddr by remember { mutableStateOf("10.0.2.2:9000") }
+
+            OutlinedTextField(
+                value = peerAddr,
+                onValueChange = { peerAddr = it },
+                label = { Text("Peer address") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Button(
+                onClick = { viewModel.connectPeer(peerAddr) },
+                enabled = nodeStatus == CrciViewModel.NodeStatus.Running,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Connect")
+            }
+
+            Text(
+                text = connectStatus,
+                style = MaterialTheme.typography.bodySmall
+            )
 
             Button(
                 onClick = { viewModel.stopNode() },
