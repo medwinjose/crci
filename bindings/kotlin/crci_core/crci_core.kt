@@ -717,6 +717,12 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -736,6 +742,12 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_crci_core_fn_func_list_peers_stub(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_crci_core_fn_func_peer_count(uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    fun uniffi_crci_core_fn_func_start_node(`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_crci_core_fn_func_stop_node(uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     fun uniffi_crci_core_fn_func_validate_node_config(`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
     fun ffi_crci_core_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -854,6 +866,12 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_crci_core_checksum_func_list_peers_stub(
     ): Short
+    fun uniffi_crci_core_checksum_func_peer_count(
+    ): Short
+    fun uniffi_crci_core_checksum_func_start_node(
+    ): Short
+    fun uniffi_crci_core_checksum_func_stop_node(
+    ): Short
     fun uniffi_crci_core_checksum_func_validate_node_config(
     ): Short
     fun ffi_crci_core_uniffi_contract_version(
@@ -877,6 +895,15 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_crci_core_checksum_func_list_peers_stub() != 35826.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_crci_core_checksum_func_peer_count() != 46318.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_crci_core_checksum_func_start_node() != 59446.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_crci_core_checksum_func_stop_node() != 45886.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_crci_core_checksum_func_validate_node_config() != 12017.toShort()) {
@@ -1189,6 +1216,33 @@ public object FfiConverterSequenceTypeFfiPeerInfo: FfiConverterRustBuffer<List<F
             return FfiConverterSequenceTypeFfiPeerInfo.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_crci_core_fn_func_list_peers_stub(
+        _status)
+}
+    )
+    }
+    
+ fun `peerCount`(): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_crci_core_fn_func_peer_count(
+        _status)
+}
+    )
+    }
+    
+ fun `startNode`(`config`: FfiNodeConfig): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_crci_core_fn_func_start_node(
+        FfiConverterTypeFfiNodeConfig.lower(`config`),_status)
+}
+    )
+    }
+    
+ fun `stopNode`(): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_crci_core_fn_func_stop_node(
         _status)
 }
     )
