@@ -38,11 +38,13 @@ pub fn list_peers_stub() -> Vec<FfiPeerInfo> {
     Vec::new()
 }
 
-use std::sync::{Mutex, OnceLock};
+use crate::runtime::NodeRuntime;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
 
 pub struct NodeRuntimeHandle {
-    peer_count: u32,
-    max_peers: u32,
+    _runtime: tokio::runtime::Runtime,
+    node: NodeRuntime,
 }
 
 static NODE_HANDLE: OnceLock<Mutex<Option<NodeRuntimeHandle>>> = OnceLock::new();
@@ -60,9 +62,18 @@ pub fn start_node(config: FfiNodeConfig) -> bool {
         if handle.is_some() {
             return false;
         }
+
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(r) => r,
+            Err(_) => return false,
+        };
+
+        let inbox: crate::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+        let node = NodeRuntime::new(&config.node_id, "zone-ffi", inbox);
+
         *handle = Some(NodeRuntimeHandle {
-            peer_count: 0,
-            max_peers: config.max_peers,
+            _runtime: rt,
+            node,
         });
         true
     } else {
@@ -86,12 +97,9 @@ pub fn stop_node() -> bool {
 
 #[uniffi::export]
 pub fn peer_count() -> u32 {
-    if let Ok(mut handle) = get_node_handle().lock() {
-        if let Some(runtime) = handle.as_mut() {
-            if runtime.peer_count < runtime.max_peers {
-                runtime.peer_count += 1;
-            }
-            return runtime.peer_count;
+    if let Ok(handle) = get_node_handle().lock() {
+        if let Some(runtime_handle) = handle.as_ref() {
+            return runtime_handle.node.peers.len() as u32;
         }
     }
     0

@@ -39,19 +39,19 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 55 COMPLETE
+## Current Session Status: SESSION 56 COMPLETE
 
-**Recent Accomplishments (Session 55):**
-- **Live Node FFI Methods**: Added `start_node()`, `stop_node()`, and `peer_count()` to `crci-core` FFI surface with thread-safe mocked runtime handles (`NodeRuntimeHandle`).
-- **Foreground Service**: Created `CrciService` to hold the mesh networking runtime alive while the app is actively functioning.
-- **Coroutines & Real-time UI**: Rewrote `CrciViewModel` with Kotlin coroutines to invoke FFI methods and poll the peer count every 5 seconds, accurately reflecting node statuses (`Starting`, `Running`, `Stopped`, `Error`) with Material3 color schemes.
-- **Node Screen Control**: Wired the UI with interactive "Stop Node" capabilities.
-- **Zero Rust Disruptions**: Clippy warnings in older binary files were fixed via modular imports. All 218 Rust tests are fully green.
+**Recent Accomplishments (Session 56):**
+- **Real Tokio Runtime behind FFI**: Replaced the mock `NodeRuntimeHandle` in `crci-core/src/ffi.rs` with a real `tokio::runtime::Runtime` combined with an instance of `NodeRuntime`.
+- **Peer Count Live Integration**: Wired the Android FFI `peer_count()` call to synchronously read `NodeRuntime.peers.len()`, ensuring the Android app correctly polls the actual mesh protocol's table.
+- **Synchronous Spin-Up**: Implemented `start_node()` FFI entrypoint to correctly spin up both `Runtime` and `NodeRuntime` without requiring `block_on` as the initialization is synchronous.
+- **Clean Teardown**: Updated `stop_node()` to securely lock, detach, and drop both the `NodeRuntime` and its associated `Runtime`, ensuring a graceful shutdown without leaks.
+- **Zero Rust Disruptions**: All 218 tests remain perfectly green.
 
 ## Verification
-- Clean compilation, `cargo fmt`, `cargo clippy --all-targets -- -D warnings`.
-- Over 218 tests passing (`cargo test --all`), including the FFI tests.
-- `crci-android` successfully incorporates the newly regenerated Kotlin UniFFI bindings.
+- Clean compilation and `cargo fmt`.
+- `cargo clippy --all-targets -- -D warnings` on `crci-core` passes beautifully.
+- Over 218 tests passing (`cargo test --all`), validating FFI changes without regressions in core node routines.
 
 ## Next Steps
-- Session 56 — (Pending User Prompt)
+- Session 57 — (Pending User Prompt)
