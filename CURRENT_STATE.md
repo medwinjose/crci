@@ -1,12 +1,34 @@
 # CRCI Current State
 
 ## Sessions Completed
-- Sessions 1-5: Cryptographic Identities (`ed25519-dalek`), Message Signatures, Wire Structs
-- Sessions 6-10: In-Memory Node Simulation, Ad-Hoc Peer Exchange, Protocol Handshakes
-- Sessions 11-15: Distributed Byzantine Consensus (PBFT abstractions), Zone-based Trust Modeling
-- Sessions 16-20: Battery Drain Emulation, Message Pruning, Time-To-Live (TTL) Storage Enforcement
-- Sessions 21-25: Automated Escalation & Delegation Algorithm (AEDA), Temporal Sequence Routing
-- Sessions 26-28: Centralized Integration Test Harness, STRIDE Threat Modeling, Security Constraints
+- Session 1: Project Initialization & Cargo Setup
+- Session 2: Cryptographic Identities (`ed25519-dalek`)
+- Session 3: Core Message Wire Structs & Types
+- Session 4: Message Digital Signatures & Validation
+- Session 5: Node Struct & Basic In-Memory State
+- Session 6: In-Memory Node Simulation Environment
+- Session 7: Ad-Hoc Peer Exchange Logic
+- Session 8: Protocol Handshakes & Node Connection
+- Session 9: Naive Gossiping Algorithm
+- Session 10: Zone-based Trust Modeling Initialization
+- Session 11: Distributed Byzantine Consensus Foundations
+- Session 12: PBFT Abstractions for Node Agreement
+- Session 13: Reputation Penalties & Bad Actor Isolation
+- Session 14: Mass Casualty Event (MCE) Consensus Rules
+- Session 15: Mocked Transport Layer Integration
+- Session 16: Battery Drain Emulation Models
+- Session 17: Active/Idle/Scanning Power States
+- Session 18: Message Pruning & Storage Limits
+- Session 19: Time-To-Live (TTL) Enforcement
+- Session 20: Persistent Message Handling for Critical Alerts
+- Session 21: Automated Escalation & Delegation Algorithm (AEDA)
+- Session 22: Severity Weighting & Confidence Thresholds
+- Session 23: Temporal Sequence Routing Setup
+- Session 24: Hop Count Evaluation & Optimization
+- Session 25: Stale Entry Eviction in Routing Tables
+- Session 26: Centralized Integration Test Harness
+- Session 27: STRIDE Threat Modeling Application
+- Session 28: Protocol Security Constraints & Payload Auditing
 - Session 29: Security Wiring + Docker Proof Loop Foundation
 - Session 30: Basic TCP Transport (`std::net`)
 - Session 31: Tokio Async Transport + K-bucket discovery
