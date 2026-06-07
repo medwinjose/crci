@@ -71,10 +71,7 @@ pub fn start_node(config: FfiNodeConfig) -> bool {
         let inbox: crate::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
         let node = NodeRuntime::new(&config.node_id, "zone-ffi", inbox);
 
-        *handle = Some(NodeRuntimeHandle {
-            _runtime: rt,
-            node,
-        });
+        *handle = Some(NodeRuntimeHandle { _runtime: rt, node });
         true
     } else {
         false
@@ -103,4 +100,19 @@ pub fn peer_count() -> u32 {
         }
     }
     0
+}
+
+#[uniffi::export]
+pub fn connect_peer(addr: String) -> bool {
+    let mut guard = match get_node_handle().lock() {
+        Ok(g) => g,
+        Err(_) => return false,
+    };
+    match guard.as_mut() {
+        Some(h) => {
+            h.node.add_peer(&addr);
+            true
+        }
+        None => false,
+    }
 }

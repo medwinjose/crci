@@ -723,6 +723,8 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -738,6 +740,8 @@ internal interface UniffiLib : Library {
         
     }
 
+    fun uniffi_crci_core_fn_func_connect_peer(`addr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     fun uniffi_crci_core_fn_func_crci_version(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_crci_core_fn_func_list_peers_stub(uniffi_out_err: UniffiRustCallStatus, 
@@ -862,6 +866,8 @@ internal interface UniffiLib : Library {
     ): Unit
     fun ffi_crci_core_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_crci_core_checksum_func_connect_peer(
+    ): Short
     fun uniffi_crci_core_checksum_func_crci_version(
     ): Short
     fun uniffi_crci_core_checksum_func_list_peers_stub(
@@ -891,6 +897,9 @@ private fun uniffiCheckContractApiVersion(lib: UniffiLib) {
 
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: UniffiLib) {
+    if (lib.uniffi_crci_core_checksum_func_connect_peer() != 2030.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_crci_core_checksum_func_crci_version() != 4411.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1203,7 +1212,16 @@ public object FfiConverterSequenceTypeFfiPeerInfo: FfiConverterRustBuffer<List<F
             FfiConverterTypeFfiPeerInfo.write(it, buf)
         }
     }
-} fun `crciVersion`(): kotlin.String {
+} fun `connectPeer`(`addr`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_crci_core_fn_func_connect_peer(
+        FfiConverterString.lower(`addr`),_status)
+}
+    )
+    }
+    
+ fun `crciVersion`(): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_crci_core_fn_func_crci_version(
