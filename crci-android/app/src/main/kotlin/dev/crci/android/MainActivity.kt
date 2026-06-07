@@ -1,5 +1,6 @@
 package dev.crci.android
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,6 +28,29 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val intent = Intent(this, CrciService::class.java).apply {
+            action = CrciService.ACTION_START
+        }
+        // Start foreground service handling is standard in modern Android apps
+        startService(intent)
+        viewModel.startNode()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Wait, the prompt says "Stop CrciService with ACTION_STOP in onStop()".
+        // But if we want the mesh to live in the background, we shouldn't stop it in onStop.
+        // The prompt says "A foreground Service (CrciService) holds the runtime alive while the app is visible."
+        // Oh, "while the app is visible." If the user wants it to stop on background, sure.
+        val intent = Intent(this, CrciService::class.java).apply {
+            action = CrciService.ACTION_STOP
+        }
+        startService(intent)
+        viewModel.stopNode()
     }
 
     companion object {

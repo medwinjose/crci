@@ -432,60 +432,6 @@ async fn handle_divergences_socket(mut socket: WebSocket, state: Arc<ApiState>) 
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use axum::{
-        body::Body,
-        http::{Request, StatusCode},
-    };
-    use http_body_util::BodyExt;
-    use tower::ServiceExt;
-
-    fn setup_state() -> Arc<ApiState> {
-        let (ws_tx, _) = broadcast::channel(100);
-        let (divergence_tx, _) = broadcast::channel(100);
-        let mut msgs = VecDeque::new();
-        msgs.push_back(ApiMessage {
-            from: "test".to_string(),
-            severity: 1,
-            content: "hello".to_string(),
-            timestamp_ms: 123,
-        });
-        Arc::new(ApiState {
-            node_count: Arc::new(RwLock::new(5)),
-            peer_list: Arc::new(RwLock::new(vec!["peer1".to_string(), "peer2".to_string()])),
-            recent_messages: Arc::new(RwLock::new(msgs)),
-            ws_tx,
-            node_id: "test-node".to_string(),
-            start_time: Instant::now(),
-            byzantine_events: Arc::new(AtomicU64::new(0)),
-            divergence_alerts: Arc::new(RwLock::new(Vec::new())),
-            divergence_tx,
-            rate_limit_counts: Arc::new(Mutex::new(HashMap::new())),
-            merkle_head: Arc::new(RwLock::new(([0; 32], 0))),
-        })
-    }
-
-    #[tokio::test]
-    async fn test_status_endpoint() {
-        let app = build_router(setup_state());
-        let request = Request::builder()
-            .uri("/status")
-            .body(Body::empty())
-            .unwrap();
-        let response = app.oneshot(request).await.unwrap();
-
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        let status: StatusResponse = serde_json::from_slice(&body).unwrap();
-
-        assert_eq!(status.version, "0.1.0");
-        assert_eq!(status.node_count, 5);
-    }
-}
-
 async fn status_v1_handler(State(state): State<Arc<ApiState>>) -> Json<NodeStatusResponse> {
     let peer_count = state.peer_list.read().unwrap().len();
     let uptime_secs = state.start_time.elapsed().as_secs();
@@ -566,5 +512,59 @@ async fn openapi_handler(
             let err_body = serde_json::json!({"error": "spec unavailable"});
             Err((StatusCode::SERVICE_UNAVAILABLE, Json(err_body)))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    fn setup_state() -> Arc<ApiState> {
+        let (ws_tx, _) = broadcast::channel(100);
+        let (divergence_tx, _) = broadcast::channel(100);
+        let mut msgs = VecDeque::new();
+        msgs.push_back(ApiMessage {
+            from: "test".to_string(),
+            severity: 1,
+            content: "hello".to_string(),
+            timestamp_ms: 123,
+        });
+        Arc::new(ApiState {
+            node_count: Arc::new(RwLock::new(5)),
+            peer_list: Arc::new(RwLock::new(vec!["peer1".to_string(), "peer2".to_string()])),
+            recent_messages: Arc::new(RwLock::new(msgs)),
+            ws_tx,
+            node_id: "test-node".to_string(),
+            start_time: Instant::now(),
+            byzantine_events: Arc::new(AtomicU64::new(0)),
+            divergence_alerts: Arc::new(RwLock::new(Vec::new())),
+            divergence_tx,
+            rate_limit_counts: Arc::new(Mutex::new(HashMap::new())),
+            merkle_head: Arc::new(RwLock::new(([0; 32], 0))),
+        })
+    }
+
+    #[tokio::test]
+    async fn test_status_endpoint() {
+        let app = build_router(setup_state());
+        let request = Request::builder()
+            .uri("/status")
+            .body(Body::empty())
+            .unwrap();
+        let response = app.oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let status: StatusResponse = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(status.version, "0.1.0");
+        assert_eq!(status.node_count, 5);
     }
 }
