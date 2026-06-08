@@ -62,6 +62,7 @@
 - Session 59: Two-Node Handshake Integration Test
 - Session 60: Byzantine Fault Injection Test
 - Session 61: Byzantine Eviction Benchmarks + README Results Table
+- Session 62: mdBook Documentation Site
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -76,14 +77,14 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 61 COMPLETE
+## Current Session Status: SESSION 62 COMPLETE
 
-**Recent Accomplishments (Session 61):**
-- **Byzantine Eviction Benchmark**: Developed `benches/byzantine_bench.rs` that loops the adversary test scenario 20 times seamlessly inside a `#[tokio::test]`.
-- **Latency Instrumentation**: Profiled real, OS-level loopback transport times tracking both legitimate connection and adversarial eviction intervals.
-- **Results CSV Export**: Logged the detailed results of all 20 runs to `benches/results/byzantine_eviction.csv`. 
-- **README Tables**: Synthesized the p95 and mean validation numbers and added the summarized Byzantine tolerance results to `README.md`.
-- **Zero Rust Disruptions**: Maintained zero Clippy warnings and all 221 tests (inclusive of the benchmark harness) passing cleanly.
+**Recent Accomplishments (Session 62):**
+- **mdBook Site Generation**: Configured `docs/book/book.toml` and established the structure for an auto-generated HTML manual.
+- **Introduction & Context**: Drafted a public-facing pitch outlining CRCI's purpose, architecture, and current milestone progress.
+- **Architecture Spec**: Documented the abstraction boundaries spanning the Application layer, `NodeRuntime`, and `TransportMultiplexer`, incorporating an ASCII model.
+- **BFT Fundamentals**: Explained the `< n/3` threshold, gossip mechanics, adversarial connection eviction behaviors, and STRIDE mitigation strategies.
+- **Benchmarks Integration**: Embedded the raw `benches/results/byzantine_eviction.csv` data and loopback test harness methodology directly into the documentation.
 
 ## Verification
 - Clean compilation and `cargo fmt`.
@@ -105,5 +106,11 @@ To run the automated Byzantine eviction benchmark:
 cargo test --test byzantine_bench -- --nocapture
 ```
 
+To build the documentation site locally:
+```bash
+cd docs/book
+mdbook build
+```
+
 ## Next Steps
-- Session 62 — Develop the mdBook documentation site (`docs/book/`), incorporating the architecture overview, protocol spec, and benchmark results to establish a comprehensive living reference.
+- Session 63 — Add a GitHub Actions CI workflow to validate the `mdBook` build alongside the Rust tests on every push, fully closing the reproducibility loop.
