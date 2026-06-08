@@ -64,6 +64,7 @@
 - Session 61: Byzantine Eviction Benchmarks + README Results Table
 - Session 62: mdBook Documentation Site
 - Session 63: GitHub Actions CI for mdBook
+- Session 64: README + Docs Accuracy Pass
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -78,18 +79,19 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 63 COMPLETE
+## Current Session Status: SESSION 64 COMPLETE
 
-**Recent Accomplishments (Session 63):**
-- **mdBook CI Workflow**: Implemented `.github/workflows/docs.yml` to automatically execute `mdbook build` on all pushes and pull requests to the `main` branch.
-- **Reproducible Verification**: Secured build determinism by forcing `cargo install mdbook --locked` within the Ubuntu CI runner.
-- **Strict Success Gate**: Added a hard shell `test -f` validation against `docs/book/book/index.html` to ensure the job explicitly fails if the HTML generation step aborts silently.
-- **Preserved Existing Coverage**: Maintained the legacy `.github/workflows/ci.yml` matrix (tests, clippy, formatting) untouched, ensuring two parallel, fully independent validation pipelines now govern the repository.
+**Recent Accomplishments (Session 64):**
+- **Feature Matrix Sync**: Updated `README.md` to accurately reflect the completion of the React Web App (Session 52) and the Android Mobile App FFI (Sessions 53–57).
+- **Docs & CI Integration**: Added the `mdBook` documentation site and the GitHub Actions Docs CI pipeline to the completed features matrix.
+- **Roadmap Verification**: Updated the roadmap checklist in `README.md`, marking all recently completed infrastructure additions as `[x]`.
+- **Known Limitations Sync**: Rewrote the Key Storage limitation to accurately reflect the deployment of AES-256-GCM encrypted local storage while correctly keeping HSM enclave integration as pending.
+- **Session/Test Counts Updated**: Synchronized inline text in `CURRENT_STATE.md` and `docs/book/src/introduction.md` to display exactly 63 complete sessions and 221 passing tests.
 
 ## Verification
 - Clean compilation and `cargo fmt`.
 - `cargo clippy --all-targets -- -D warnings` on `crci-core` passes beautifully.
-- Over 218 tests passing (`cargo test --all`).
+- 221 tests passing (`cargo test --all`).
 
 ## Manual Validation (Live Handshake Test)
 To run the live Android to Host peer handshake end-to-end:
@@ -113,4 +115,4 @@ mdbook build
 ```
 
 ## Next Steps
-- Session 64 — arXiv paper submission preparation: execute a final review on `docs/paper/crci_paper.md`, tighten the technical abstract, and complete the final pre-submission checklist.
+- Session 65 — arXiv paper submission preparation: execute a final review on `docs/paper/crci_paper.md`, tighten the technical abstract, and complete the final pre-submission checklist.
