@@ -50,8 +50,11 @@ Plus: `docker compose up` for the multi-node proof loop.
 | Docker multi-node proof loop | ✅ Complete | 5-node distributed testbed |
 | LoRa transport | 🔧 Stub | Hardware HAL defined, calls mocked |
 | BLE transport | 🔧 Stub | Under architectural review |
-| React web app | 🗓 Planned | Session 40+ |
-| Mobile app | 🗓 Planned | React Native integration |
+| React web app | ✅ Complete | Session 52 — Vite + React + TypeScript dashboard |
+| Mobile app | ✅ Complete | Session 53–57 — Kotlin/Jetpack Compose + UniFFI FFI |
+| mdBook documentation site | ✅ Complete | Session 62 — docs/book/ |
+| Benchmark harness | ✅ Complete | Session 61 — 20-trial loopback CSV |
+| GitHub Actions docs CI | ✅ Complete | Session 63 — mdBook build validated on every push |
 | TLA+ formal spec | ✅ Complete | Session 43 |
 
 ## Benchmark Results
@@ -92,9 +95,9 @@ Byzantine fault injection across 20 trials on loopback (single machine, no netwo
 
 ## Known Limitations
 
-- **Sybil resistance is partial**: Vouching exists, but a global bloom filter or proof-of-work is not yet deployed (planned Session 47).
-- **LoRa/BLE transports are stubs**: The hardware HAL is defined, but physical radio calls are currently mocked (planned Session 43).
-- **Key Storage**: Ed25519 keys are currently stored in memory, not in a secure HSM enclave (planned Session 33+).
+- **Sybil resistance is partial**: Vouching exists, but a global bloom filter or proof-of-work is not yet deployed.
+- **LoRa/BLE transports are stubs**: The hardware HAL is defined, but physical radio calls are currently mocked.
+- **Key Storage**: Ed25519 keys are currently stored using AES-256-GCM encrypted local storage; HSM enclave integration is not yet implemented.
 
 ## Formal Verification
 
@@ -108,15 +111,15 @@ java -jar /path/to/tla2tools.jar CRCI.tla
 
 ## Roadmap
 
-- REST API + WebSocket backend
-- React web dashboard
-- React Native mobile app
-- 10-node Docker proof loop
-- LoRa hardware integration
-- Raspberry Pi cross-compilation
-- Sybil resistance layer
-- mdBook documentation site
-- Release 1.0.0
+- [x] REST API + WebSocket backend
+- [x] React web dashboard  
+- [x] Android mobile app (Kotlin + UniFFI FFI)
+- [x] 10-node Docker proof loop
+- [x] Raspberry Pi cross-compilation
+- [x] Sybil resistance layer
+- [x] mdBook documentation site
+- [ ] Release 1.0.0
+- [ ] LoRa hardware integration
 
 ## Documentation
 
