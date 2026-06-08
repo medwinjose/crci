@@ -1,0 +1,23 @@
+name: Docs
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  mdbook:
+    name: Build mdBook
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mdBook
+        run: cargo install mdbook --locked
+
+      - name: Build docs
+        run: cd docs/book && mdbook build
+
+      - name: Verify output
+        run: test -f docs/book/book/index.html
