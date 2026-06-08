@@ -60,6 +60,7 @@
 - Session 57: Live Peer Handshake End-to-End (Emulator ↔ Host) FFI Wiring
 - Session 58: `crci-node` CLI Binary + Two-Node Handshake Test
 - Session 59: Two-Node Handshake Integration Test
+- Session 60: Byzantine Fault Injection Test
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -74,13 +75,13 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 59 COMPLETE
+## Current Session Status: SESSION 60 COMPLETE
 
-**Recent Accomplishments (Session 59):**
-- **Integration Test**: Created `tests/handshake_integration.rs` to automatically spin up and dial nodes without manual intervention.
-- **In-process TcpTransport**: Successfully composed `TcpTransport` and `NodeRuntime` locally to prove the handshake flow natively on `127.0.0.1` via OS-assigned ports.
-- **Peer Count Validation**: Asserted that `peer_count` (i.e. `peers.len()`) reaches exactly 1 on both the listener (Node A) and the dialer (Node B).
-- **Zero Rust Disruptions**: Maintained zero Clippy warnings and all 219 tests (including the new integration test) passing.
+**Recent Accomplishments (Session 60):**
+- **Byzantine Integration Test**: Added `tests/byzantine_integration.rs` to simulate an adversary connecting via raw TCP stream and transmitting unparseable garbage bytes.
+- **Resilience Validation**: Demonstrated that honest nodes (`NodeRuntime`) gracefully drop the invalid connection without panic or memory leak, avoiding peer table corruption.
+- **Honest Connection Preservation**: Asserted that a legitimate peer (`Node B`) stays actively connected and `peer_count` accurately remains at `1` despite the concurrent attack.
+- **Zero Rust Disruptions**: Maintained zero Clippy warnings and all 220 tests (including the new Byzantine integration test) passing cleanly.
 
 ## Verification
 - Clean compilation and `cargo fmt`.
@@ -99,8 +100,8 @@ cargo run --bin crci-node -- --listen 0.0.0.0:9000 --node-id host-node-1
 
 To run the automated integration test:
 ```bash
-cargo test --test handshake_integration
+cargo test --test byzantine_integration
 ```
 
 ## Next Steps
-- Session 60 — Introduce a `ByzantineAgent` binary (or test harness) that connects to a running node and sends malformed/conflicting messages, asserting honest nodes drop the peer.
+- Session 61 — Export benchmark metrics: run the two-node + Byzantine scenario N times, collect detection/eviction timing, write results to `benches/results/byzantine_eviction.csv`, and add a summary table to `README.md`.
