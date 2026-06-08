@@ -37,3 +37,6 @@ bincode = "1"
 http-body-util = "0.1"
 tempfile = "3.27.0"
 
+[[test]]
+name = "byzantine_bench"
+path = "benches/byzantine_bench.rs"
