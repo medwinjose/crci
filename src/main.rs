@@ -17,6 +17,25 @@ async fn main() {
     if args.verbose {
         println!("Verbose mode enabled.");
     }
+
+    if let (Some(listen), Some(node_id)) = (args.listen, args.node_id) {
+        let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+        let mut node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
+
+        // Bind TCP transport so the port is actually opened for incoming connections
+        if let Ok(addr) = listen.parse::<std::net::SocketAddr>() {
+            let _tcp = crci_core::transport::TcpTransport::bind(node_id.clone(), addr).await;
+        }
+
+        if let Some(peer_addr) = args.dial {
+            node.add_peer(&peer_addr);
+        }
+
+        println!("Node {} listening on {}", node_id, listen);
+        tokio::signal::ctrl_c().await.unwrap_or(());
+        println!("Shutting down.");
+        return;
+    }
     // TODO: Wire args.argon2_memory and args.config to EncryptedStore / Configuration when integrated.
 
     let (ws_tx, _) = tokio::sync::broadcast::channel(100);

@@ -58,6 +58,8 @@
 - Session 55: Live Node Startup + Peer Polling via FFI
 - Session 56: Real Tokio Runtime Behind FFI + Peer Table Round-Trip
 - Session 57: Live Peer Handshake End-to-End (Emulator ↔ Host) FFI Wiring
+- Session 58: `crci-node` CLI Binary + Two-Node Handshake Test
+- Session 59: Two-Node Handshake Integration Test
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -72,14 +74,13 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 57 COMPLETE
+## Current Session Status: SESSION 59 COMPLETE
 
-**Recent Accomplishments (Session 57):**
-- **FFI Handshake Integration**: Added `connect_peer(addr: String) -> bool` to `crci-core` FFI surface to allow Android to dial other mesh nodes.
-- **Android Networking UI**: Updated Jetpack Compose `NodeScreen` with a peer address input and connection button.
-- **Coroutines Connection Wiring**: Updated `CrciViewModel` to expose a reactive connection state message using coroutines, enabling non-blocking handshakes.
-- **Generated Bindings**: Successfully regenerated `uniffi` Kotlin bindings on the Windows subsystem to map `connect_peer` properly.
-- **Zero Rust Disruptions**: All 218 tests remain perfectly green.
+**Recent Accomplishments (Session 59):**
+- **Integration Test**: Created `tests/handshake_integration.rs` to automatically spin up and dial nodes without manual intervention.
+- **In-process TcpTransport**: Successfully composed `TcpTransport` and `NodeRuntime` locally to prove the handshake flow natively on `127.0.0.1` via OS-assigned ports.
+- **Peer Count Validation**: Asserted that `peer_count` (i.e. `peers.len()`) reaches exactly 1 on both the listener (Node A) and the dialer (Node B).
+- **Zero Rust Disruptions**: Maintained zero Clippy warnings and all 219 tests (including the new integration test) passing.
 
 ## Verification
 - Clean compilation and `cargo fmt`.
@@ -89,13 +90,17 @@
 ## Manual Validation (Live Handshake Test)
 To run the live Android to Host peer handshake end-to-end:
 ```bash
-# Terminal 1 — start host node (requires Session 58 crci-node binary)
+# Terminal 1 — start host node
 cargo run --bin crci-node -- --listen 0.0.0.0:9000 --node-id host-node-1
 
 # Android emulator — tap "Connect" with address 10.0.2.2:9000
 # Expected: peerCount in UI increments to 1 within 10 seconds
 ```
-*(Note: `crci-node` will be created in Session 58 to support the host-side listening).*
+
+To run the automated integration test:
+```bash
+cargo test --test handshake_integration
+```
 
 ## Next Steps
-- Session 58 — Build `crci-node` binary and validate the end-to-end handshake test.
+- Session 60 — Introduce a `ByzantineAgent` binary (or test harness) that connects to a running node and sends malformed/conflicting messages, asserting honest nodes drop the peer.
