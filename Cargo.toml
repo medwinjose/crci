@@ -8,7 +8,7 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "crci"
+name = "crci-node"
 path = "src/main.rs"
 
 [dependencies]

@@ -7,9 +7,17 @@ use clap::Parser;
     about = "Crisis Response Communication Infrastructure — decentralised mesh node"
 )]
 pub struct Cli {
-    /// Node listening address
-    #[arg(long, default_value = "0.0.0.0:9000")]
-    pub listen: String,
+    /// Start a mesh node on the given listen address.
+    #[arg(long)]
+    pub listen: Option<String>,
+
+    /// Human-readable node identifier.
+    #[arg(long)]
+    pub node_id: Option<String>,
+
+    /// Optional peer address to dial immediately after startup.
+    #[arg(long)]
+    pub dial: Option<String>,
 
     /// Path to config file (TOML)
     #[arg(long, default_value = "crci.toml")]
