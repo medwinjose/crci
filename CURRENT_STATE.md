@@ -63,6 +63,7 @@
 - Session 60: Byzantine Fault Injection Test
 - Session 61: Byzantine Eviction Benchmarks + README Results Table
 - Session 62: mdBook Documentation Site
+- Session 63: GitHub Actions CI for mdBook
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -77,14 +78,13 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 62 COMPLETE
+## Current Session Status: SESSION 63 COMPLETE
 
-**Recent Accomplishments (Session 62):**
-- **mdBook Site Generation**: Configured `docs/book/book.toml` and established the structure for an auto-generated HTML manual.
-- **Introduction & Context**: Drafted a public-facing pitch outlining CRCI's purpose, architecture, and current milestone progress.
-- **Architecture Spec**: Documented the abstraction boundaries spanning the Application layer, `NodeRuntime`, and `TransportMultiplexer`, incorporating an ASCII model.
-- **BFT Fundamentals**: Explained the `< n/3` threshold, gossip mechanics, adversarial connection eviction behaviors, and STRIDE mitigation strategies.
-- **Benchmarks Integration**: Embedded the raw `benches/results/byzantine_eviction.csv` data and loopback test harness methodology directly into the documentation.
+**Recent Accomplishments (Session 63):**
+- **mdBook CI Workflow**: Implemented `.github/workflows/docs.yml` to automatically execute `mdbook build` on all pushes and pull requests to the `main` branch.
+- **Reproducible Verification**: Secured build determinism by forcing `cargo install mdbook --locked` within the Ubuntu CI runner.
+- **Strict Success Gate**: Added a hard shell `test -f` validation against `docs/book/book/index.html` to ensure the job explicitly fails if the HTML generation step aborts silently.
+- **Preserved Existing Coverage**: Maintained the legacy `.github/workflows/ci.yml` matrix (tests, clippy, formatting) untouched, ensuring two parallel, fully independent validation pipelines now govern the repository.
 
 ## Verification
 - Clean compilation and `cargo fmt`.
@@ -113,4 +113,4 @@ mdbook build
 ```
 
 ## Next Steps
-- Session 63 — Add a GitHub Actions CI workflow to validate the `mdBook` build alongside the Rust tests on every push, fully closing the reproducibility loop.
+- Session 64 — arXiv paper submission preparation: execute a final review on `docs/paper/crci_paper.md`, tighten the technical abstract, and complete the final pre-submission checklist.
