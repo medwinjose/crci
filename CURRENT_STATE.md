@@ -65,6 +65,7 @@
 - Session 62: mdBook Documentation Site
 - Session 63: GitHub Actions CI for mdBook
 - Session 64: README + Docs Accuracy Pass
+- Session 65: arXiv Paper Final Pass
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -79,14 +80,14 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 64 COMPLETE
+## Current Session Status: SESSION 65 COMPLETE
 
-**Recent Accomplishments (Session 64):**
-- **Feature Matrix Sync**: Updated `README.md` to accurately reflect the completion of the React Web App (Session 52) and the Android Mobile App FFI (Sessions 53–57).
-- **Docs & CI Integration**: Added the `mdBook` documentation site and the GitHub Actions Docs CI pipeline to the completed features matrix.
-- **Roadmap Verification**: Updated the roadmap checklist in `README.md`, marking all recently completed infrastructure additions as `[x]`.
-- **Known Limitations Sync**: Rewrote the Key Storage limitation to accurately reflect the deployment of AES-256-GCM encrypted local storage while correctly keeping HSM enclave integration as pending.
-- **Session/Test Counts Updated**: Synchronized inline text in `CURRENT_STATE.md` and `docs/book/src/introduction.md` to display exactly 63 complete sessions and 221 passing tests.
+**Recent Accomplishments (Session 65):**
+- **arXiv Paper Submission Ready**: Rewrote the research paper draft (`docs/paper/crci_paper.md`) to a professional, systems conference level (1800-2800 words equivalent) using accurate project metrics.
+- **Quantitative Embedding**: Directly embedded the exact Byzantine eviction benchmarks (20 trials, p95 512ms latency, 100% peer survival) directly into the Evaluation section.
+- **Formal Verification Alignment**: Properly contextualized the TLA+ specifications (`docs/tla/`) reflecting guaranteed Byzantine containment and rescue message propagation properties.
+- **Honest Limitations**: Documented true system gaps, including partial Sybil resistance, AES-based key storage (no HSM), and single-machine simulation bounds, reinforcing academic credibility.
+- **Related Work Accuracy**: Anchored the approach against recognized standards such as Meshtastic, PBFT, and Delay-Tolerant Networking (DTN).
 
 ## Verification
 - Clean compilation and `cargo fmt`.
@@ -115,4 +116,4 @@ mdbook build
 ```
 
 ## Next Steps
-- Session 65 — arXiv paper submission preparation: execute a final review on `docs/paper/crci_paper.md`, tighten the technical abstract, and complete the final pre-submission checklist.
+- Session 66 — v0.1.0 release tag preparation: compile the changelog, finalize the GitHub release notes, and complete the portfolio packaging step.
