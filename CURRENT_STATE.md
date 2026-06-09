@@ -115,5 +115,11 @@ cd docs/book
 mdbook build
 ```
 
+To run the multi-node Docker mesh:
+```bash
+docker compose up --build
+```
+> **Gap Documentation:** The CLI currently lacks subcommands (`send`) and flags (`--byzantine`, `--peers`) to originate messages interactively or enable Byzantine features natively from the terminal. The internal pipeline and consensus loops are fully implemented in `crci-core`, and automated tests verify isolation, but the user-facing CLI binary (`crci-node`) currently only exposes TCP port binding (`--listen`) and single peer handshaking (`--dial`). The Docker mesh demonstrates what is currently supported by the CLI: multi-container TCP connections and isolation.
+
 ## Next Steps
-- Session 67 — Multi-node Docker Compose setup (highest recruiter-visible gap).
+- Session 68 — Chaos engineering / network partition tests.
