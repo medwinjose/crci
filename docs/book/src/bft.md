@@ -4,7 +4,7 @@ In crisis scenarios, networks are susceptible not only to physical partition and
 
 ## The PBFT Threshold
 
-CRCI employs a localized, reputation-weighted variant of Practical Byzantine Fault Tolerance (PBFT). For the network to reach consensus on the state of a crisis (e.g., escalating a severe event into an automated Major Crisis Event via AEDA), the network must satisfy the Byzantine threshold of `f < n/3`. This means that as long as strictly less than one-third of the participating peer nodes in a localized zone are actively malicious or compromised, the network will correctly converge on the legitimate state and isolate the bad actors.
+CRCI employs a localized, reputation-weighted variant of Practical Byzantine Fault Tolerance (PBFT). For the network to reach consensus on the state of a crisis (e.g., escalating a severe event into an automated Major Crisis Event via AEDA), the network must satisfy the Byzantine threshold of `f < n/3`. This means that as long as strictly less than one-third of the participating peer nodes in a localized zone are actively malicious or compromised, the network will correctly converge on the legitimate state and isolate the bad actors. The core safety and liveness properties of this consensus mechanism are formally specified in TLA+. Running the TLC model checker on a bounded model (N=4, F=1) verified these properties across 81 distinct states with zero errors.
 
 ## Gossip Mechanics and State Propagation
 
