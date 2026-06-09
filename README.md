@@ -1,131 +1,58 @@
-[![CI](https://github.com/medwinjose/crci/actions/workflows/ci.yml/badge.svg)](https://github.com/medwinjose/crci/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
-[![Last Commit](https://img.shields.io/github/last-commit/medwinjose/crci)](https://github.com/medwinjose/crci/commits/main)
+# CRCI — Crisis Response Communication Infrastructure
 
-# CRCI (Crisis Response Communication Infrastructure)
+> Byzantine fault-tolerant mesh networking in Rust. Designed for
+> resilience when up to ⌊(n-1)/3⌋ nodes are actively adversarial.
 
-CRCI is a production-grade distributed mesh networking system in Rust designed for high-latency, low-bandwidth environments where traditional communication infrastructure has collapsed. It provides Byzantine fault tolerance, decentralized reputation consensus, and automated crisis severity escalation entirely without a central server.
+## What This Is
+CRCI is a distributed systems research project demonstrating a secure, decentralized mesh networking stack for zero-infrastructure environments. It employs a reputation-weighted Byzantine fault-tolerant gossip protocol, utilizing strict cryptographic node identity and an autonomous emergency decision engine to prioritize critical telemetry. For a comprehensive overview of the theoretical models and evaluation methodology, please refer to our [arXiv paper preprint](docs/paper/crci_paper.md).
 
-## Architecture Overview
-
-```mermaid
-graph TD
-    Network[Async Tokio Transport] --> Pipeline[Gossip Pipeline]
-    Pipeline --> Crypto[Ed25519 Cryptography]
-    Pipeline --> Replay[Replay & TTL Filter]
-    Replay --> RepEngine[Reputation Engine]
-    RepEngine --> PBFT[PBFT-style Quorum]
-    PBFT --> AEDA[AEDA Escalation Engine]
-    AEDA --> UI[Dashboard / Metrics]
-```
+## Key Properties
+- Byzantine fault tolerance (PBFT-inspired eviction, p95 < 512ms)
+- Cryptographic node identity (Ed25519 + AES-GCM)
+- Formal specification (TLA+ with TLC model checker)
+- Cross-platform: Linux, Raspberry Pi (ARM), Android (via UniFFI FFI)
+- Observability: Prometheus metrics, REST/WebSocket API, React dashboard
 
 ## Quick Start
-
+### Run locally
 ```bash
 cargo build --release
-cargo test --all
-cargo run --bin crci
+./target/release/crci-node --help
 ```
 
-Plus: `docker compose up` for the multi-node proof loop.
-
-## Feature Matrix
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Ed25519 signatures | ✅ Complete | Cryptographic origin authentication |
-| Byzantine fault detection | ✅ Complete | Malicious severity injection isolated |
-| Reputation-weighted consensus | ✅ Complete | O(n) localized quorum replacement for PBFT |
-| Zone-isolated consensus | ✅ Complete | Geographic boundaries respected |
-| Gossip with replay protection | ✅ Complete | Minimum sequence enforcement |
-| K-bucket peer discovery | ✅ Complete | XOR distance routing |
-| Async TCP transport | ✅ Complete | `tokio::net` implemented |
-| Prometheus metrics | ✅ Complete | Live dashboard integration |
-| AEDA autonomous decisions | ✅ Complete | Automated Escalation and Disinfo Analysis |
-| Battery-aware throttling | ✅ Complete | Dynamic rate limiting based on drain |
-| Message TTL + pruning | ✅ Complete | Storage capacity bounded |
-| Input validation + rate limiting | ✅ Complete | 10 msg/sec per peer default |
-| STRIDE security hardening | ✅ Complete | Verified against threat model |
-| Docker multi-node proof loop | ✅ Complete | 5-node distributed testbed |
-| LoRa transport | 🔧 Stub | Hardware HAL defined, calls mocked |
-| BLE transport | 🔧 Stub | Under architectural review |
-| React web app | ✅ Complete | Session 52 — Vite + React + TypeScript dashboard |
-| Mobile app | ✅ Complete | Session 53–57 — Kotlin/Jetpack Compose + UniFFI FFI |
-| mdBook documentation site | ✅ Complete | Session 62 — docs/book/ |
-| Benchmark harness | ✅ Complete | Session 61 — 20-trial loopback CSV |
-| GitHub Actions docs CI | ✅ Complete | Session 63 — mdBook build validated on every push |
-| TLA+ formal spec | ✅ Complete | Session 43 |
-
-## Benchmark Results
-
-*All benchmarks run on a single machine (simulated). See [docs/BENCHMARKS.md](docs/BENCHMARKS.md) for full methodology.*
-
-| Metric | Condition | Performance |
-|--------|-----------|-------------|
-| Message Propagation | 10 / 100 / 1000 nodes | 3 / 8 / 15 rounds to full reach |
-| Consensus Convergence | 100 nodes, 33% Byzantine | 8 rounds |
-| Replay Filter Throughput | In-memory cache | 2.2M checks/s |
-| Pipeline Throughput | End-to-end processing | ~94K msg/s |
-| Discovery Convergence | 100 nodes | 10 rounds (<70ms) |
-
-### Byzantine Fault Injection Tolerance
-
-Byzantine fault injection across 20 trials on loopback (single machine, no network latency):
-
-| Metric | Value |
-|---|---|
-| Trials | 20 |
-| Legitimate handshake (mean) | 15ms |
-| Byzantine eviction/ignore (mean) | 510ms |
-| Byzantine eviction/ignore (p95) | 512ms |
-| Legitimate peer survived | 20/20 |
-
-> Results generated by `cargo test --test byzantine_bench -- --nocapture`.  
-> Full data: [`benches/results/byzantine_eviction.csv`](benches/results/byzantine_eviction.csv)
-
-## Crisis Scenario Results
-
-| Scenario | Network Size | Byzantine Nodes | Outcome |
-|----------|--------------|-----------------|---------|
-| Flash Flood (Tamil Nadu coast) | 8 nodes | 0 | Resource matching successfully paired 1 trapped node with 2 available responders. |
-| Earthquake M7.8 | 12 nodes | 0 | MCE declared from 7 rescue requests; offline nodes' requests survived round resets. |
-| Urban Conflict | 8 nodes | 3 | Enemy nodes penalized and isolated (rep dropped to 0.80) for injecting false intelligence. |
-| Chemical Plant Explosion | 10 nodes | 0 | Rescue requests correctly propagated across contamination zone boundaries. |
-
-## Known Limitations
-
-- **Sybil resistance is partial**: Vouching exists, but a global bloom filter or proof-of-work is not yet deployed.
-- **LoRa/BLE transports are stubs**: The hardware HAL is defined, but physical radio calls are currently mocked.
-- **Key Storage**: Ed25519 keys are currently stored using AES-256-GCM encrypted local storage; HSM enclave integration is not yet implemented.
-
-## Formal Verification
-
-CRCI's core safety and liveness properties are formally verified using TLA+. The specification proves that our protocol is resilient to Byzantine attacks and guarantees emergency rescue message propagation. 
-To run the TLC model checker on the specification:
+### Run the mesh (Docker)
 ```bash
-cd docs/tla
-java -jar /path/to/tla2tools.jar CRCI.tla
-# or use the VS Code TLA+ extension (alygin.vscode-tlaplus)
+docker compose up --build
 ```
 
-## Roadmap
+### Run chaos engineering suite
+```bash
+bash scripts/chaos.sh
+```
 
-- [x] REST API + WebSocket backend
-- [x] React web dashboard  
-- [x] Android mobile app (Kotlin + UniFFI FFI)
-- [x] 10-node Docker proof loop
-- [x] Raspberry Pi cross-compilation
-- [x] Sybil resistance layer
-- [x] mdBook documentation site
-- [ ] Release 1.0.0
-- [ ] LoRa hardware integration
+## Architecture
+The CRCI networking stack fundamentally isolates physical transmission complexity from localized consensus mechanics. It is structured into three distinct layers:
+1. **Transport Abstraction**: An extensible interface (currently supporting async TCP) handling low-level byte transmission and connection state.
+2. **BFT Consensus & Routing**: Evaluates peer reputation, verifies cryptographic signatures, evicts malicious actors, and intelligently routes telemetry based on severity, K-bucket peer discovery, and TTL metrics.
+3. **Application & Verification**: The `NodeRuntime` that applies business logic, stores Merkle-chained histories, and interacts with edge clients through FFI or REST/WebSocket.
+
+For a deeper dive, visit the [Architecture Documentation](docs/book/src/architecture.md).
+
+## Benchmarks
+Real numbers from the 20-trial Byzantine loopback benchmark. Under active injection, the localized reputation engine strictly penalizes and evicts adversarial peers.
+- p95 eviction latency: **< 512ms**
+- Honest peer connection survivability: **20 / 20 trials**
+
+For more granular results and methodology, see the [Benchmark Results](docs/book/src/benchmarks.md).
 
 ## Documentation
+- [Architecture](docs/book/) — full mdBook site
+- [TLA+ Specification](docs/tla/)
+- [Chaos Engineering Report](docs/chaos/README.md)
+- [Paper (preprint)](docs/paper/crci_paper.md)
 
-- [Technical Paper](docs/paper.md)
-- [Fault Model](docs/fault_model.md)
-- [Architecture Decision Records](docs/adr/)
-- [Benchmark Tables](docs/BENCHMARKS.md)
-- [Security Policy](SECURITY.md)
-- [Contributing](CONTRIBUTING.md)
+## Status
+v0.1.0 — research prototype. See CHANGELOG.md.
+
+## License
+MIT

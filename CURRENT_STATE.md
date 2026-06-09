@@ -81,18 +81,19 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 68 COMPLETE
+## Current Session Status: SESSION 69 COMPLETE
 
-**Recent Accomplishments (Session 68):**
-- **Chaos Engineering Suite**: Developed `scripts/chaos.sh` designed to run four adversarial chaos scenarios against the multi-node Docker mesh (Link Partition, Node Crash, Packet Delay, Byzantine + Partition).
-- **Environment Documentation**: Honestly recorded the host's constraint (unavailability of the Docker Engine) into a permanent `docs/chaos/README.md` and `docs/book/src/chaos.md` document, adhering strictly to the principle of "do not fabricate log output."
-- **Runtime Dependency Identification**: Scenario C explicitly identified the requirement for the `iproute2` package (specifically `tc`) for traffic shaping `netem` delays, which is intentionally excluded from the minimal production `debian:bookworm-slim` image, prompting the need for a dedicated chaos-testing runtime image.
-- **mdBook & Paper Updates**: Wired `chaos.md` into the documentation `SUMMARY.md` and appended the methodology and environment limitations directly into Section 5.3 of the arXiv paper draft.
+**Recent Accomplishments (Session 69):**
+- **Public Launch & Tagging**: Officially tagged the workspace as `v0.1.0`, marking the transition from an active development prototype to a stable, citable research artifact.
+- **README Rewrite**: Restructured the project's landing page (`README.md`) to surface the core value propositions (BFT mesh, formal specs, cross-platform Android support) precisely for systems engineering reviewers.
+- **Changelog Introduction**: Created a comprehensive `CHANGELOG.md` following the Keep a Changelog standard, explicitly logging the massive feature accumulation across the previous 68 sessions.
+- **Version Alignment**: Verified `Cargo.toml` and `crci-core/Cargo.toml` point to `0.1.0`.
 
 ## Verification
 - Clean compilation and `cargo fmt`.
 - `cargo clippy --all-targets -- -D warnings` on `crci-core` passes beautifully.
 - 221 tests passing (`cargo test --all`).
+- mdBook docs compile without warnings.
 
 ## Manual Validation (Live Handshake Test)
 To run the live Android to Host peer handshake end-to-end:
@@ -128,4 +129,4 @@ bash scripts/chaos.sh
 > **Gap Documentation:** The CLI currently lacks subcommands (`send`) and flags (`--byzantine`, `--peers`) to originate messages interactively or enable Byzantine features natively from the terminal. The internal pipeline and consensus loops are fully implemented in `crci-core`, and automated tests verify isolation, but the user-facing CLI binary (`crci-node`) currently only exposes TCP port binding (`--listen`) and single peer handshaking (`--dial`). The Docker mesh demonstrates what is currently supported by the CLI: multi-container TCP connections and isolation.
 
 ## Next Steps
-- Session 69 — v0.1.0 release tag, changelog, and final README polish for public launch.
+- Session 70 — Next feature development.
