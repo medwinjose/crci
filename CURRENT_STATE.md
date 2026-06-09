@@ -81,13 +81,13 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 66 COMPLETE
+## Current Session Status: SESSION 68 COMPLETE
 
-**Recent Accomplishments (Session 66):**
-- **Formal Verification Executed**: Ran the TLC model checker against the formal TLA+ specification (`docs/tla/CRCI.tla`), officially transforming the paper's theoretical mathematical claim into a cryptographically verified result.
-- **Spec Syntactical Corrections**: Adjusted standard TLA+ temporal properties and invariant containment to resolve liveness interleaving checks under TLC parsing semantics.
-- **Quantitative Proof Recorded**: Bounded simulation (N=4, F=1) executed flawlessly with zero invariant violations across 81 distinct reachable states.
-- **Documentation Updated**: Directly embedded the TLC output result and distinct state counts into the `docs/paper/crci_paper.md` evaluation section and the `mdBook` docs site (`docs/book/src/bft.md`).
+**Recent Accomplishments (Session 68):**
+- **Chaos Engineering Suite**: Developed `scripts/chaos.sh` designed to run four adversarial chaos scenarios against the multi-node Docker mesh (Link Partition, Node Crash, Packet Delay, Byzantine + Partition).
+- **Environment Documentation**: Honestly recorded the host's constraint (unavailability of the Docker Engine) into a permanent `docs/chaos/README.md` and `docs/book/src/chaos.md` document, adhering strictly to the principle of "do not fabricate log output."
+- **Runtime Dependency Identification**: Scenario C explicitly identified the requirement for the `iproute2` package (specifically `tc`) for traffic shaping `netem` delays, which is intentionally excluded from the minimal production `debian:bookworm-slim` image, prompting the need for a dedicated chaos-testing runtime image.
+- **mdBook & Paper Updates**: Wired `chaos.md` into the documentation `SUMMARY.md` and appended the methodology and environment limitations directly into Section 5.3 of the arXiv paper draft.
 
 ## Verification
 - Clean compilation and `cargo fmt`.
@@ -119,7 +119,13 @@ To run the multi-node Docker mesh:
 ```bash
 docker compose up --build
 ```
+
+To execute the chaos engineering suite:
+```bash
+bash scripts/chaos.sh
+```
+
 > **Gap Documentation:** The CLI currently lacks subcommands (`send`) and flags (`--byzantine`, `--peers`) to originate messages interactively or enable Byzantine features natively from the terminal. The internal pipeline and consensus loops are fully implemented in `crci-core`, and automated tests verify isolation, but the user-facing CLI binary (`crci-node`) currently only exposes TCP port binding (`--listen`) and single peer handshaking (`--dial`). The Docker mesh demonstrates what is currently supported by the CLI: multi-container TCP connections and isolation.
 
 ## Next Steps
-- Session 68 — Chaos engineering / network partition tests.
+- Session 69 — v0.1.0 release tag, changelog, and final README polish for public launch.
