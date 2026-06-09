@@ -6,16 +6,16 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::io::AsyncWriteExt;
 
-#[tokio::test]
-async fn byzantine_eviction_benchmark() -> Result<(), Box<dyn std::error::Error>> {
-    const TRIALS: usize = 20;
-
+async fn run_trials(
+    trials: usize,
+    apply_jitter: bool,
+    csv_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut rows: Vec<(usize, u128, u128, bool)> = Vec::new();
 
-    for trial in 0..TRIALS {
-        let base_port = 19005 + trial * 2;
-        let addr_a_req: SocketAddr = format!("127.0.0.1:{}", base_port).parse()?;
-        let addr_b_req: SocketAddr = format!("127.0.0.1:{}", base_port + 1).parse()?;
+    for trial in 0..trials {
+        let addr_a_req: SocketAddr = "127.0.0.1:0".parse()?;
+        let addr_b_req: SocketAddr = "127.0.0.1:0".parse()?;
 
         // Node A — honest listener
         let inbox_a = Arc::new(Mutex::new(HashMap::new()));
@@ -42,7 +42,7 @@ async fn byzantine_eviction_benchmark() -> Result<(), Box<dyn std::error::Error>
 
         // Node B dials Node A
         {
-            let mut nb = node_b.lock().unwrap();
+            let mut nb = node_b.lock().unwrap_or_else(|e| e.into_inner());
             nb.add_peer(&addr_a.to_string());
         }
 
@@ -59,17 +59,22 @@ async fn byzantine_eviction_benchmark() -> Result<(), Box<dyn std::error::Error>
             round: 1,
             seq: 1,
         };
+
+        if apply_jitter {
+            tokio::time::sleep(Duration::from_millis(15)).await;
+        }
+
         tcp_b.send(&addr_a.to_string(), &handshake_msg).await?;
 
         // Wait for legitimate handshake
         let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
         loop {
-            let count_a = node_a.lock().unwrap().peers.len();
+            let count_a = node_a.lock().unwrap_or_else(|e| e.into_inner()).peers.len();
             if count_a > 0 {
                 break;
             }
             if tokio::time::Instant::now() > deadline {
-                panic!("Legitimate handshake did not complete");
+                return Err("Legitimate handshake did not complete".into());
             }
             tokio::time::sleep(Duration::from_millis(10)).await;
         }
@@ -77,11 +82,12 @@ async fn byzantine_eviction_benchmark() -> Result<(), Box<dyn std::error::Error>
 
         // Inject Byzantine peer, time until peer_count stabilizes
         let t1 = Instant::now();
-        let mut byz = tokio::net::TcpStream::connect(&addr_a)
-            .await
-            .expect("Byzantine connect failed");
+        let mut byz = tokio::net::TcpStream::connect(&addr_a).await?;
         for _ in 0..10 {
             let garbage = b"BYZANTINE_GARBAGE\n";
+            if apply_jitter {
+                tokio::time::sleep(Duration::from_millis(2)).await;
+            }
             byz.write_u32(garbage.len() as u32).await.ok();
             byz.write_all(garbage).await.ok();
         }
@@ -89,38 +95,54 @@ async fn byzantine_eviction_benchmark() -> Result<(), Box<dyn std::error::Error>
         tokio::time::sleep(Duration::from_millis(500)).await;
         let eviction_ms = t1.elapsed().as_millis();
 
-        let survived = !node_a.lock().unwrap().peers.is_empty();
+        let survived = !node_a
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .peers
+            .is_empty();
         rows.push((trial + 1, handshake_ms, eviction_ms, survived));
 
         handle_a.abort(); // Clean up listener to free socket for next iteration if reused
     }
 
     // Write CSV
-    std::fs::create_dir_all("benches/results").expect("create results dir");
+    std::fs::create_dir_all("benches/results")?;
     let mut csv = String::from(
         "trial,legitimate_handshake_ms,byzantine_eviction_ms,legitimate_peer_survived\n",
     );
     for (t, h, e, s) in &rows {
         csv.push_str(&format!("{},{},{},{}\n", t, h, e, s));
     }
-    std::fs::write("benches/results/byzantine_eviction.csv", &csv).expect("write CSV");
+    std::fs::write(format!("benches/results/{}", csv_name), &csv)?;
 
     // Summary
-    let mean_eviction: u128 = rows.iter().map(|r| r.2).sum::<u128>() / TRIALS as u128;
+    let mean_eviction: u128 = rows.iter().map(|r| r.2).sum::<u128>() / trials as u128;
     let mut evictions: Vec<u128> = rows.iter().map(|r| r.2).collect();
     evictions.sort_unstable();
-    let p95 = evictions[(TRIALS as f64 * 0.95) as usize - 1];
+    let p95 = evictions[(trials as f64 * 0.95) as usize - 1];
     let all_survived = rows.iter().all(|r| r.3);
 
-    println!("\n=== Byzantine Eviction Benchmark ===");
-    println!("Trials: {}", TRIALS);
+    println!(
+        "\n=== Byzantine Eviction Benchmark (Jitter: {}) ===",
+        apply_jitter
+    );
+    println!("Trials: {}", trials);
     println!("Mean eviction/ignore latency: {}ms", mean_eviction);
     println!("p95 eviction/ignore latency:  {}ms", p95);
     println!("Legitimate peer survived all trials: {}", all_survived);
 
-    assert!(
-        all_survived,
-        "Legitimate peer was lost in at least one trial"
-    );
+    if !all_survived {
+        return Err("Legitimate peer was lost in at least one trial".into());
+    }
     Ok(())
+}
+
+#[tokio::test]
+async fn byzantine_eviction_benchmark() -> Result<(), Box<dyn std::error::Error>> {
+    run_trials(50, false, "byzantine_eviction.csv").await
+}
+
+#[tokio::test]
+async fn byzantine_eviction_with_jitter_benchmark() -> Result<(), Box<dyn std::error::Error>> {
+    run_trials(50, true, "byzantine_eviction_jitter.csv").await
 }

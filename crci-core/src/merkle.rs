@@ -54,13 +54,13 @@ impl MerkleChain {
         let mut hasher = Sha256::new();
         hasher.update(sequence.to_le_bytes());
         hasher.update(prev_hash);
-        let snapshot_bytes = serde_json::to_vec(snapshot).unwrap();
+        let snapshot_bytes = serde_json::to_vec(snapshot).unwrap_or_default();
         hasher.update(snapshot_bytes);
         hasher.finalize().into()
     }
 
-    pub fn append(&mut self, snapshot: StateSnapshot) -> &MerkleBlock {
-        let prev_block = self.blocks.last().unwrap();
+    pub fn append(&mut self, snapshot: StateSnapshot) -> Option<&MerkleBlock> {
+        let prev_block = self.blocks.last()?;
         let sequence = prev_block.sequence + 1;
         let prev_hash = prev_block.block_hash;
         let block_hash = Self::hash_block(sequence, &prev_hash, &snapshot);
@@ -73,15 +73,15 @@ impl MerkleChain {
         };
 
         self.blocks.push(block);
-        self.blocks.last().unwrap()
+        self.blocks.last()
     }
 
     pub fn head_hash(&self) -> [u8; 32] {
-        self.blocks.last().unwrap().block_hash
+        self.blocks.last().map(|b| b.block_hash).unwrap_or([0; 32])
     }
 
     pub fn head_sequence(&self) -> u64 {
-        self.blocks.last().unwrap().sequence
+        self.blocks.last().map(|b| b.sequence).unwrap_or(0)
     }
 
     pub fn len(&self) -> usize {

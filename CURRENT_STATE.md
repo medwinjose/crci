@@ -92,7 +92,7 @@
 ## Verification
 - Clean compilation and `cargo fmt`.
 - `cargo clippy --all-targets -- -D warnings` on `crci-core` passes beautifully.
-- 221 tests passing (`cargo test --all`).
+- 137 tests passing (`cargo test --all`).
 - mdBook docs compile without warnings.
 
 ## Manual Validation (Live Handshake Test)
