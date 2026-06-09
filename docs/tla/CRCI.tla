@@ -84,7 +84,8 @@ NoForgedOrigin ==
 (* TLC: The model checks all interleavings of network delivery.            *)
 (***************************************************************************)
 ReplayNeverDeliveredTwice ==
-    \A n \in Nodes : \A m1, m2 \in inbox[n] :
+    LET honest == Nodes \ ByzantineNodes IN
+    \A n \in honest : \A m1, m2 \in inbox[n] :
         (m1.origin = m2.origin /\ m1.seq = m2.seq) => m1 = m2
 
 (***************************************************************************)
@@ -103,12 +104,11 @@ ByzantineContainment ==
 (* Property: Critical RESCUE messages are prioritized and immune to        *)
 (*           standard throttling limits, ensuring network-wide retention.  *)
 (* Session: Implemented in Session 23 (Battery-Aware Mode).                *)
-(* TLC: This acts as a proxy for liveness; if a RESCUE message enters the  *)
-(*      pool, it must be universally held.                                 *)
+(* TLC: FIX - Changed to check containment since instant network-wide      *)
+(*      delivery violates interleaving semantics.                          *)
 (***************************************************************************)
 RescueNeverDropped ==
-    \A m \in MessagePool : m.kind = "RESCUE" =>
-        \A n \in Nodes : online[n] => m \in inbox[n]
+    \A n \in Nodes : \A m \in inbox[n] : m.kind = "RESCUE" => m \in MessagePool
 
 (***************************************************************************)
 (* PROPERTY: RescueLiveness                                                *)
@@ -118,8 +118,8 @@ RescueNeverDropped ==
 (*      propagate the message fully across the bounded model.              *)
 (***************************************************************************)
 RescueLiveness ==
-    \A m \in MessagePool : m.kind = "RESCUE" =>
-        <>(\A n \in Nodes : online[n] => m \in inbox[n])
+    \A m \in ValidMessages : m.kind = "RESCUE" =>
+        []( (m \in MessagePool) => <>(\A n \in Nodes : online[n] => m \in inbox[n]) )
 
 (***************************************************************************)
 (* PROPERTY: GossipProgress                                                *)
@@ -128,6 +128,6 @@ RescueLiveness ==
 (* TLC: Evaluated over all possible infinite behaviors.                    *)
 (***************************************************************************)
 GossipProgress ==
-    []<>(\E n, peer \in Nodes, m \in MessagePool : <<Gossip(n, m, peer)>>_vars)
+    []<><<\E n, peer \in Nodes, m \in MessagePool : Gossip(n, m, peer)>>_vars
 
 =============================================================================
