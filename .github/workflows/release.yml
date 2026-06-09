@@ -3,6 +3,9 @@ on:
   push:
     tags: ["v*"]
 
+permissions:
+  contents: write
+
 jobs:
   release:
     strategy:
@@ -32,4 +35,7 @@ jobs:
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: target/${{ matrix.target }}/release/crci*
+          fail_on_unmatched_files: false
+          files: |
+            target/${{ matrix.target }}/release/crci-node
+            target/${{ matrix.target }}/release/crci-node.exe
