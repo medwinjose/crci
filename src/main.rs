@@ -1142,11 +1142,13 @@ async fn main() {
     });
 
     let api_task = tokio::spawn(async move {
-        let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
-        println!("API server listening on 0.0.0.0:8080");
-        axum::serve(listener, crci_core::api::build_router(state_clone))
+        let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
             .await
-            .unwrap();
+            .unwrap_or_else(|_| panic!("Failed to bind 8080"));
+        println!("API server listening on 0.0.0.0:8080");
+        if let Err(e) = axum::serve(listener, crci_core::api::build_router(state_clone)).await {
+            eprintln!("API server error: {}", e);
+        }
     });
 
     let _ = tokio::join!(sim_task, api_task);

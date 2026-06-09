@@ -50,7 +50,7 @@ impl WireMessage {
                 MessageType::MassCasualtyEvent => "mce".to_string(),
                 MessageType::Panic => "panic".to_string(),
                 MessageType::ChainHeadAnnouncement { .. } => {
-                    serde_json::to_string(&msg.message_type).unwrap()
+                    serde_json::to_string(&msg.message_type).unwrap_or_default()
                 }
             },
             origin_active: msg.origin_active,

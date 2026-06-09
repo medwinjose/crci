@@ -35,4 +35,4 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Research
 - arXiv paper draft: system design, formal properties, benchmark methodology
-- 221 passing unit and integration tests, zero Clippy warnings
+- 137 passing unit and integration tests, zero Clippy warnings

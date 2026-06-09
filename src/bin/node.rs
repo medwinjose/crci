@@ -10,7 +10,7 @@ use std::time::Duration;
 use tokio::sync::broadcast;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let node_id = env::var("NODE_ID").unwrap_or_else(|_| "node-unknown".to_string());
     let node_zone = env::var("NODE_ZONE").unwrap_or_else(|_| "zone-a".to_string());
     let is_byzantine = env::var("IS_BYZANTINE").unwrap_or_else(|_| "false".to_string()) == "true";
@@ -39,10 +39,8 @@ async fn main() {
         }
     }
 
-    let listen_addr: SocketAddr = format!("0.0.0.0:{}", listen_port).parse().unwrap();
-    let tcp_transport = TcpTransport::bind(node_id.clone(), listen_addr)
-        .await
-        .expect("Failed to create TCP transport");
+    let listen_addr: SocketAddr = format!("0.0.0.0:{}", listen_port).parse()?;
+    let tcp_transport = TcpTransport::bind(node_id.clone(), listen_addr).await?;
 
     let lora_transport = LoraTransport::new(LoraConfig {
         frequency_hz: 915_000_000,
@@ -85,7 +83,7 @@ async fn main() {
     });
 
     {
-        let mut p = pipeline.lock().unwrap();
+        let mut p = pipeline.lock().unwrap_or_else(|e| e.into_inner());
         // Register all potential node ids to bypass vouching for this proof loop
         for i in 1..=50 {
             p.register_bootstrap(&node_zone, &format!("node-{:02}", i));
@@ -107,7 +105,7 @@ async fn main() {
                 res = recv_transport.receive() => {
                     if let Ok((_peer, msg)) = res {
                         let verdict = {
-                            let mut pipeline_guard = recv_pipeline.lock().unwrap();
+                            let mut pipeline_guard = recv_pipeline.lock().unwrap_or_else(|e| e.into_inner());
                             pipeline_guard.process(&msg)
                         };
 
@@ -141,7 +139,7 @@ async fn main() {
             tokio::time::sleep(Duration::from_secs(5)).await;
             let mut penalties = Vec::new();
             {
-                let p = consensus_pipeline.lock().unwrap();
+                let p = consensus_pipeline.lock().unwrap_or_else(|e| e.into_inner());
                 let severities_map = &p.peer_severities;
                 let mut severities: Vec<u8> = severities_map.values().cloned().collect();
 
@@ -272,7 +270,7 @@ async fn main() {
             };
 
             {
-                let mut p = pipeline.lock().unwrap();
+                let mut p = pipeline.lock().unwrap_or_else(|e| e.into_inner());
                 let _ = p.process(&rescue_msg);
             }
             for p in &peers {
@@ -294,7 +292,7 @@ async fn main() {
             };
 
             {
-                let mut p = pipeline.lock().unwrap();
+                let mut p = pipeline.lock().unwrap_or_else(|e| e.into_inner());
                 // We advance the round to prevent rate limits
                 p.next_round();
                 let _ = p.process(&msg);
@@ -310,7 +308,7 @@ async fn main() {
     // Allow time for final messages to settle
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    let p = pipeline.lock().unwrap();
+    let p = pipeline.lock().unwrap_or_else(|e| e.into_inner());
     let accepted = p.accepted;
     let rescues = p.ttl_store.rescue_count();
     let b_det = byzantine_detections.load(std::sync::atomic::Ordering::SeqCst);
@@ -320,4 +318,5 @@ async fn main() {
         node_id, accepted, b_det, rescues
     );
     println!("JSON_SUMMARY: {}", summary);
+    Ok(())
 }

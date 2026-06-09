@@ -103,7 +103,7 @@ impl IntoResponse for LegacyApiError {
         if let Some(retry) = self.retry_after {
             response.headers_mut().insert(
                 header::RETRY_AFTER,
-                HeaderValue::from_str(&retry.to_string()).unwrap(),
+                HeaderValue::from_str(&retry.to_string()).unwrap_or(HeaderValue::from_static("60")),
             );
         }
         response
@@ -154,13 +154,17 @@ async fn hardening_middleware(req: Request, next: Next) -> Response {
     let mut res = next.run(req).await;
 
     let req_id = Uuid::new_v4().to_string();
-    res.headers_mut()
-        .insert("X-Request-Id", HeaderValue::from_str(&req_id).unwrap());
+    res.headers_mut().insert(
+        "X-Request-Id",
+        HeaderValue::from_str(&req_id).unwrap_or(HeaderValue::from_static("invalid-uuid")),
+    );
     res.headers_mut()
         .insert("X-CRCI-Version", HeaderValue::from_static("0.1.0"));
     if is_post {
-        res.headers_mut()
-            .insert("X-CRCI-Node-Id", HeaderValue::from_str(&node_id).unwrap());
+        res.headers_mut().insert(
+            "X-CRCI-Node-Id",
+            HeaderValue::from_str(&node_id).unwrap_or(HeaderValue::from_static("unknown")),
+        );
     }
 
     if res.status() == StatusCode::PAYLOAD_TOO_LARGE {
@@ -172,13 +176,15 @@ async fn hardening_middleware(req: Request, next: Next) -> Response {
         };
         let mut new_res = error.into_response();
         if is_post {
-            new_res
-                .headers_mut()
-                .insert("X-CRCI-Node-Id", HeaderValue::from_str(&node_id).unwrap());
+            new_res.headers_mut().insert(
+                "X-CRCI-Node-Id",
+                HeaderValue::from_str(&node_id).unwrap_or(HeaderValue::from_static("unknown")),
+            );
         }
-        new_res
-            .headers_mut()
-            .insert("X-Request-Id", HeaderValue::from_str(&req_id).unwrap());
+        new_res.headers_mut().insert(
+            "X-Request-Id",
+            HeaderValue::from_str(&req_id).unwrap_or(HeaderValue::from_static("invalid-uuid")),
+        );
         new_res
             .headers_mut()
             .insert("X-CRCI-Version", HeaderValue::from_static("0.1.0"));
@@ -193,16 +199,18 @@ async fn hardening_middleware(req: Request, next: Next) -> Response {
             retry_after: None,
         };
         let mut new_res = error.into_response();
-        new_res
-            .headers_mut()
-            .insert("X-Request-Id", HeaderValue::from_str(&req_id).unwrap());
+        new_res.headers_mut().insert(
+            "X-Request-Id",
+            HeaderValue::from_str(&req_id).unwrap_or(HeaderValue::from_static("invalid-uuid")),
+        );
         new_res
             .headers_mut()
             .insert("X-CRCI-Version", HeaderValue::from_static("0.1.0"));
         if is_post {
-            new_res
-                .headers_mut()
-                .insert("X-CRCI-Node-Id", HeaderValue::from_str(&node_id).unwrap());
+            new_res.headers_mut().insert(
+                "X-CRCI-Node-Id",
+                HeaderValue::from_str(&node_id).unwrap_or(HeaderValue::from_static("unknown")),
+            );
         }
         return new_res;
     }
@@ -211,7 +219,18 @@ async fn hardening_middleware(req: Request, next: Next) -> Response {
 }
 
 async fn rate_limit_middleware(req: Request, next: Next) -> Response {
-    let state = req.extensions().get::<Arc<ApiState>>().unwrap();
+    let state = match req.extensions().get::<Arc<ApiState>>() {
+        Some(s) => s.clone(),
+        None => {
+            return LegacyApiError {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: "Missing ApiState".to_string(),
+                code: "INTERNAL_ERROR".to_string(),
+                retry_after: None,
+            }
+            .into_response()
+        }
+    };
     let ip = req
         .extensions()
         .get::<ConnectInfo<SocketAddr>>()
@@ -220,11 +239,14 @@ async fn rate_limit_middleware(req: Request, next: Next) -> Response {
 
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
 
     let rate_limit_error = {
-        let mut counts = state.rate_limit_counts.lock().unwrap();
+        let mut counts = state
+            .rate_limit_counts
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let entry = counts.entry(ip).or_insert((0, now));
 
         if now >= entry.1 + 60 {
@@ -282,7 +304,7 @@ pub fn build_router(state: Arc<ApiState>) -> Router {
 }
 
 async fn status_handler(State(state): State<Arc<ApiState>>) -> Json<StatusResponse> {
-    let node_count = *state.node_count.read().unwrap();
+    let node_count = *state.node_count.read().unwrap_or_else(|e| e.into_inner());
     Json(StatusResponse {
         node_id: state.node_id.clone(),
         uptime_secs: state.start_time.elapsed().as_secs(),
@@ -292,7 +314,11 @@ async fn status_handler(State(state): State<Arc<ApiState>>) -> Json<StatusRespon
 }
 
 async fn peers_handler(State(state): State<Arc<ApiState>>) -> Json<PeersResponse> {
-    let peers = state.peer_list.read().unwrap().clone();
+    let peers = state
+        .peer_list
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
     let count = peers.len();
     Json(PeersResponse { peers, count })
 }
@@ -301,10 +327,8 @@ async fn messages_handler(State(state): State<Arc<ApiState>>) -> Json<MessagesRe
     let messages: Vec<_> = state
         .recent_messages
         .read()
-        .unwrap()
-        .iter()
-        .cloned()
-        .collect();
+        .map(|m| m.iter().cloned().collect())
+        .unwrap_or_default();
     let count = messages.len();
     Json(MessagesResponse { messages, count })
 }
@@ -331,7 +355,10 @@ async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<ApiState>>) ->
 
 async fn handle_socket(mut socket: WebSocket, state: Arc<ApiState>) {
     let initial_msgs: Vec<_> = {
-        let msgs = state.recent_messages.read().unwrap();
+        let msgs = state
+            .recent_messages
+            .read()
+            .unwrap_or_else(|e| e.into_inner());
         msgs.iter().rev().take(10).rev().cloned().collect()
     };
 
@@ -356,7 +383,11 @@ async fn health_handler(State(state): State<Arc<ApiState>>) -> Json<HealthRespon
     let byzantine_events = state
         .byzantine_events
         .load(std::sync::atomic::Ordering::Relaxed);
-    let divergence_alerts = state.divergence_alerts.read().unwrap().len() as u64;
+    let divergence_alerts = state
+        .divergence_alerts
+        .read()
+        .map(|a| a.len() as u64)
+        .unwrap_or(0);
 
     Json(HealthResponse {
         status: "ok".to_string(),
@@ -368,7 +399,11 @@ async fn health_handler(State(state): State<Arc<ApiState>>) -> Json<HealthRespon
 }
 
 async fn divergences_handler(State(state): State<Arc<ApiState>>) -> Json<Vec<DivergenceAlert>> {
-    let mut alerts = state.divergence_alerts.read().unwrap().clone();
+    let mut alerts = state
+        .divergence_alerts
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
     alerts.reverse(); // newest first
     Json(alerts)
 }
@@ -380,11 +415,8 @@ async fn divergences_peer_handler(
     let alerts: Vec<_> = state
         .divergence_alerts
         .read()
-        .unwrap()
-        .iter()
-        .filter(|a| a.peer_id == peer_id)
-        .cloned()
-        .collect();
+        .map(|a| a.iter().filter(|a| a.peer_id == peer_id).cloned().collect())
+        .unwrap_or_default();
 
     if alerts.is_empty() {
         return Err(LegacyApiError {
@@ -399,7 +431,7 @@ async fn divergences_peer_handler(
 }
 
 async fn chain_head_handler(State(state): State<Arc<ApiState>>) -> Json<ChainHeadResponse> {
-    let head = *state.merkle_head.read().unwrap();
+    let head = *state.merkle_head.read().unwrap_or_else(|e| e.into_inner());
     let head_hash = head.0.iter().map(|b| format!("{:02x}", b)).collect();
     Json(ChainHeadResponse {
         head_hash,
@@ -415,7 +447,11 @@ async fn ws_divergences_handler(
 }
 
 async fn handle_divergences_socket(mut socket: WebSocket, state: Arc<ApiState>) {
-    let current_alerts: Vec<_> = state.divergence_alerts.read().unwrap().clone();
+    let current_alerts: Vec<_> = state
+        .divergence_alerts
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
     if let Ok(json) = serde_json::to_string(&current_alerts) {
         if socket.send(WsMessage::Text(json)).await.is_err() {
             return;
@@ -433,10 +469,18 @@ async fn handle_divergences_socket(mut socket: WebSocket, state: Arc<ApiState>) 
 }
 
 async fn status_v1_handler(State(state): State<Arc<ApiState>>) -> Json<NodeStatusResponse> {
-    let peer_count = state.peer_list.read().unwrap().len();
+    let peer_count = state
+        .peer_list
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .len();
     let uptime_secs = state.start_time.elapsed().as_secs();
-    let message_count = state.recent_messages.read().unwrap().len() as u64;
-    let head = *state.merkle_head.read().unwrap();
+    let message_count = state
+        .recent_messages
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .len() as u64;
+    let head = *state.merkle_head.read().unwrap_or_else(|e| e.into_inner());
     let chain_head = head.0.iter().map(|b| format!("{:02x}", b)).collect();
 
     Json(NodeStatusResponse {
@@ -452,7 +496,7 @@ async fn peers_v1_handler(State(state): State<Arc<ApiState>>) -> Json<PeerListRe
     let peers: Vec<PeerInfo> = state
         .peer_list
         .read()
-        .unwrap()
+        .unwrap_or_else(|e| e.into_inner())
         .iter()
         .map(|p| PeerInfo {
             peer_id: p.clone(),
@@ -485,8 +529,8 @@ async fn inject_v1_handler(
     let message_id = uuid::Uuid::new_v4().to_string();
     let queued_at = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
 
     Ok((
         StatusCode::ACCEPTED,

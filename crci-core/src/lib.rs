@@ -7,6 +7,7 @@ pub mod bench_extended;
 pub mod chaos;
 pub mod crisis;
 pub mod discovery;
+pub mod error;
 pub mod ffi;
 pub mod identity;
 pub mod integration;

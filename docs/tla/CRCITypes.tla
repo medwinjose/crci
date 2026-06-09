@@ -9,7 +9,7 @@ CONSTANTS
 
 ASSUME ByzantineNodes \subseteq Nodes
 
-MessageKind == {"RESCUE", "NORMAL"}
+MessageKind == {"RESCUE", "NORMAL", "PANIC", "HAZARD", "GOODBYE", "RESCUERESOLUTION"}
 BatteryTier == {"FULL", "LOW", "CRITICAL"}
 RepRange    == 0..10
 MsgIds      == {"m1", "m2", "m3", "m4", "m5"}

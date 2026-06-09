@@ -6,6 +6,7 @@ use aes_gcm::{
 };
 use argon2::Argon2;
 use bincode;
+use rand::rngs::OsRng;
 use rand::RngCore;
 use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
@@ -26,7 +27,7 @@ impl EncryptedStore {
 
         if !path.exists() {
             let mut salt_bytes = [0u8; 16];
-            rand::thread_rng().fill_bytes(&mut salt_bytes);
+            OsRng.fill_bytes(&mut salt_bytes);
 
             let argon2 = Argon2::default();
             // We use the salt bytes directly. Argon2id requires salt.
@@ -112,7 +113,7 @@ impl StorageBackend for EncryptedStore {
         let _guard = self.file_mutex.lock().await;
 
         let mut nonce_bytes = [0u8; 12];
-        rand::thread_rng().fill_bytes(&mut nonce_bytes);
+        OsRng.fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
 
         let aes_key = Key::<Aes256Gcm>::from_slice(&self.key);

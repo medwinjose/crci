@@ -10,7 +10,7 @@ fn test_crci_version_non_empty() {
 fn test_validate_node_config_valid() {
     let config = FfiNodeConfig {
         node_id: "node-1".to_string(),
-        listen_addr: "127.0.0.1:9000".to_string(),
+        listen_addr: "127.0.0.1:0".to_string(),
         max_peers: 8,
     };
     assert!(validate_node_config(config));
@@ -20,7 +20,7 @@ fn test_validate_node_config_valid() {
 fn test_validate_node_config_rejects_empty_id() {
     let config = FfiNodeConfig {
         node_id: "".to_string(),
-        listen_addr: "127.0.0.1:9000".to_string(),
+        listen_addr: "127.0.0.1:0".to_string(),
         max_peers: 8,
     };
     assert!(!validate_node_config(config));
@@ -40,7 +40,7 @@ fn test_validate_node_config_rejects_bad_addr() {
 fn test_validate_node_config_rejects_zero_peers() {
     let config = FfiNodeConfig {
         node_id: "node-1".to_string(),
-        listen_addr: "127.0.0.1:9000".to_string(),
+        listen_addr: "127.0.0.1:0".to_string(),
         max_peers: 0,
     };
     assert!(!validate_node_config(config));
