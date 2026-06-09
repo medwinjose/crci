@@ -1,50 +1,37 @@
 version: '3.8'
 
 services:
-  prometheus:
-    image: prom/prometheus:v2.52.0
-    volumes:
-      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  node-alpha:
+    build: .
+    command: ["--listen", "0.0.0.0:7001", "--node-id", "node-alpha"]
     ports:
-      - "9090:9090"
+      - "7001:7001"
     networks:
       - crci-mesh
+    restart: on-failure
 
-  grafana:
-    image: grafana/grafana:10.4.2
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=crci
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+  node-beta:
+    build: .
+    command: ["--listen", "0.0.0.0:7002", "--node-id", "node-beta", "--dial", "node-alpha:7001"]
     ports:
-      - "3001:3000"
+      - "7002:7002"
     depends_on:
-      - prometheus
+      - node-alpha
     networks:
       - crci-mesh
+    restart: on-failure
 
-
-  honest-node:
+  node-byzantine:
     build: .
-    environment:
-      - NODE_TYPE=honest
-      - RUST_LOG=info
-    deploy:
-      replicas: 30
+    # The crci-node CLI currently lacks a --byzantine flag, so we use the byzantine_agent binary directly
+    # to inject invalid payloads into node-alpha, proving the raw TCP isolation works across containers.
+    entrypoint: ["byzantine_agent"]
+    command: ["--target", "node-alpha:7001", "--mode", "flood", "--interval", "100"]
+    depends_on:
+      - node-alpha
     networks:
       - crci-mesh
-    command: ["/app/target/release/node"]
-
-  byzantine-node:
-    build: .
-    environment:
-      - NODE_TYPE=byzantine
-    deploy:
-      replicas: 10
-    networks:
-      - crci-mesh
-    command: ["/app/target/release/node"]
+    restart: on-failure
 
 networks:
   crci-mesh:
