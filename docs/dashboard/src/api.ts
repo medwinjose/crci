@@ -1,7 +1,7 @@
 const BASE = import.meta.env.VITE_NODE_URL || 'http://localhost:8080';
 
 export async function fetchPeers(): Promise<{ peers: string[]; count: number }> {
-    const res = await fetch(`${BASE}/api/v1/peers`);
+    const res = await fetch(`${BASE}/peers`);
     if (!res.ok) throw new Error('Failed to fetch peers');
     return res.json();
 }

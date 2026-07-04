@@ -6,6 +6,7 @@ services:
     command: ["--listen", "0.0.0.0:7001", "--node-id", "node-alpha"]
     ports:
       - "7001:7001"
+      - "8080:8080"
     networks:
       - crci-mesh
     restart: on-failure
@@ -23,15 +24,23 @@ services:
 
   node-byzantine:
     build: .
-    # The crci-node CLI currently lacks a --byzantine flag, so we use the byzantine_agent binary directly
-    # to inject invalid payloads into node-alpha, proving the raw TCP isolation works across containers.
-    entrypoint: ["byzantine_agent"]
-    command: ["--target", "node-alpha:7001", "--mode", "flood", "--interval", "100"]
+    command: ["--byzantine", "false_allclear", "--to", "node-alpha:7001", "--interval", "500"]
     depends_on:
       - node-alpha
     networks:
       - crci-mesh
     restart: on-failure
+
+  dashboard:
+    build:
+      context: ./docs/dashboard
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_NODE_URL=http://localhost:8080
+    networks:
+      - crci-mesh
+    restart: always
 
 networks:
   crci-mesh:
