@@ -4,6 +4,7 @@ pub mod api_types;
 pub mod battery;
 pub mod bench;
 pub mod bench_extended;
+pub mod byzantine_behavior;
 pub mod chaos;
 pub mod crisis;
 pub mod discovery;

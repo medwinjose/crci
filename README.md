@@ -14,11 +14,62 @@ CRCI is a distributed systems research project demonstrating a secure, decentral
 - Observability: Prometheus metrics, REST/WebSocket API, React dashboard
 
 ## Quick Start
+### See It Work (One-Command Live Mesh & Dashboard Demo)
+To launch the full multi-node mesh (node-alpha, node-beta, node-byzantine) along with the containerized React live dashboard in a single command, run the following:
+
+- **Linux / macOS**:
+  ```bash
+  ./scripts/demo.sh
+  ```
+- **Windows (PowerShell)**:
+  ```powershell
+  ./scripts/demo.ps1
+  ```
+
+This script will start the mesh, wait for healthiness, automatically open your default browser to `http://localhost:5173`, and inject normal telemetry followed by a Byzantine attacker. Watch as the Byzantine node gets penalized and evicted dynamically in real time. Press `Ctrl+C` in the terminal to tear down all containers cleanly.
+
 ### Run locally
 ```bash
 cargo build --release
 ./target/release/crci-node --help
 ```
+
+### Gossip CLI Quick Start (Two-Node Communication Demo)
+To demonstrate real-time async communication and message origination via the CLI:
+
+1. **Start Node A** (listener):
+   ```bash
+   ./target/release/crci-node --listen 127.0.0.1:7001 --node-id node-a
+   ```
+   *Expected Output:*
+   ```text
+   Node node-a listening on 127.0.0.1:7001
+   ```
+
+2. **Start Node B** and peer it with Node A:
+   ```bash
+   ./target/release/crci-node --listen 127.0.0.1:7002 --node-id node-b --peers 127.0.0.1:7001
+   ```
+   *Expected Output:*
+   ```text
+   Successfully dialed peer: 127.0.0.1:7001
+   Node node-b listening on 127.0.0.1:7002
+   ```
+
+3. **Originate a message from A to B**:
+   In a new terminal window, send an emergency rescue message from A targeting B's listen address:
+   ```bash
+   ./target/release/crci-node --send "trapped under debris" --to 127.0.0.1:7002 --severity rescue --node-id node-a
+   ```
+   *Expected Output (Sender):*
+   ```text
+   SUCCESS: Message originated and sent to 127.0.0.1:7002
+   ```
+
+   *Expected Output (Node B's Terminal):*
+   ```text
+   Node node-b received message from node-a: kind=Rescue, payload_bytes=20
+   ```
 
 ### Run the mesh (Docker)
 ```bash

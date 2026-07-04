@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use crci_core::transport::Transport;
 use crci_core::*;
 mod cli;
 
@@ -18,22 +19,383 @@ async fn main() {
         println!("Verbose mode enabled.");
     }
 
-    if let (Some(listen), Some(node_id)) = (args.listen, args.node_id) {
+    if let Some(byz_mode) = args.byzantine.clone() {
+        let target = args
+            .to
+            .clone()
+            .expect("Byzantine mode requires a target peer via --to");
+        let node_id = args.node_id.clone().unwrap_or_else(|| {
+            let mut rng = rand::thread_rng();
+            use rand::Rng;
+            format!("byz-cli-{:04x}", rng.gen::<u16>())
+        });
+        println!(
+            "Running as Byzantine node in mode: {} targeting: {}",
+            byz_mode, target
+        );
+        match crci_core::byzantine_behavior::run_byzantine_behavior(
+            &target,
+            &node_id,
+            &byz_mode,
+            args.interval,
+            args.duration,
+        )
+        .await
+        {
+            Ok((inj, fail)) => {
+                println!("[byzantine-agent] Done. Total injections attempted: {}, Total rejected/failed: {}", inj + fail, fail);
+            }
+            Err(e) => {
+                eprintln!("Byzantine agent error: {}", e);
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
+    if let (Some(send_text), Some(to_addr)) = (args.send.clone(), args.to.clone()) {
+        let node_id = args
+            .node_id
+            .clone()
+            .unwrap_or_else(|| "cli-sender".to_string());
+
+        let (kind, severity_val) = match args.severity.to_lowercase().as_str() {
+            "normal" => (crci_core::integration::MessageKind::Normal, 3),
+            "rescue" => (crci_core::integration::MessageKind::Rescue, 5),
+            "panic" => (crci_core::integration::MessageKind::Panic, 5),
+            _ => {
+                eprintln!(
+                    "Invalid severity: {}. Must be normal, rescue, or panic.",
+                    args.severity
+                );
+                std::process::exit(1);
+            }
+        };
+
+        let listen_addr = args
+            .listen
+            .clone()
+            .unwrap_or_else(|| "127.0.0.1:0".to_string());
+        let listen_socket: std::net::SocketAddr =
+            listen_addr.parse().expect("Invalid listen/bind address");
+
+        let tcp = crci_core::transport::TcpTransport::bind(node_id.clone(), listen_socket)
+            .await
+            .expect("Failed to bind TcpTransport");
+
         let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
         let mut node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
 
-        // Bind TCP transport so the port is actually opened for incoming connections
-        if let Ok(addr) = listen.parse::<std::net::SocketAddr>() {
-            let _tcp = crci_core::transport::TcpTransport::bind(node_id.clone(), addr).await;
+        let mut target_peers = Vec::new();
+        if let Some(dial) = args.dial.clone() {
+            target_peers.push(dial);
+        }
+        if let Some(peers_str) = args.peers.clone() {
+            for p in peers_str.split(',') {
+                let p = p.trim();
+                if !p.is_empty() {
+                    target_peers.push(p.to_string());
+                }
+            }
         }
 
-        if let Some(peer_addr) = args.dial {
-            node.add_peer(&peer_addr);
+        for peer in target_peers {
+            match tokio::net::TcpStream::connect(&peer).await {
+                Ok(_) => {
+                    node.add_peer(&peer);
+                    println!("Successfully dialed peer: {}", peer);
+                }
+                Err(e) => {
+                    println!("Warning: Failed to connect to peer {}: {}", peer, e);
+                }
+            }
         }
 
-        println!("Node {} listening on {}", node_id, listen);
-        tokio::signal::ctrl_c().await.unwrap_or(());
-        println!("Shutting down.");
+        let msg = crci_core::integration::PipelineMessage {
+            id: uuid::Uuid::new_v4().to_string(),
+            origin_node: node_id.clone(),
+            zone: "zone-host".to_string(),
+            severity: severity_val,
+            kind,
+            payload_bytes: send_text.len(),
+            reputation: 1.0,
+            round: 1,
+            seq: 1,
+        };
+
+        use crci_core::transport::Transport;
+        match tcp.send(&to_addr, &msg).await {
+            Ok(_) => {
+                println!("SUCCESS: Message originated and sent to {}", to_addr);
+            }
+            Err(e) => {
+                println!("FAILURE: Failed to send message to {}: {:?}", to_addr, e);
+            }
+        }
+
+        if args.listen.is_some() {
+            println!("Node {} listening on {}", node_id, tcp.listen_addr);
+            let tcp_arc = Arc::new(tcp);
+            let node_arc = Arc::new(Mutex::new(node));
+            tokio::spawn(async move {
+                while let Ok((sender_id, msg)) = tcp_arc.receive().await {
+                    println!(
+                        "Node {} received message from {}: kind={:?}, payload_bytes={}",
+                        node_id, sender_id, msg.kind, msg.payload_bytes
+                    );
+                    if let Ok(mut n) = node_arc.lock() {
+                        n.add_peer(&sender_id);
+                    }
+                }
+            });
+            tokio::signal::ctrl_c().await.unwrap_or(());
+            println!("Shutting down.");
+        }
+        return;
+    }
+
+    if args.node_id.is_some() || args.listen.is_some() {
+        let node_id = args
+            .node_id
+            .clone()
+            .unwrap_or_else(|| "cli-node".to_string());
+        let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+        let node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
+
+        let node_arc = Arc::new(Mutex::new(node));
+        let pipeline = Arc::new(Mutex::new(crci_core::integration::GossipPipeline::new()));
+        if let Ok(mut p) = pipeline.lock() {
+            p.register_bootstrap("zone-host", &node_id);
+        }
+
+        let (ws_tx, _) = tokio::sync::broadcast::channel(100);
+        let (divergence_tx, _) = tokio::sync::broadcast::channel(100);
+
+        let api_state = Arc::new(crci_core::api::ApiState {
+            node_count: Arc::new(std::sync::RwLock::new(0)),
+            peer_list: Arc::new(std::sync::RwLock::new(Vec::new())),
+            recent_messages: Arc::new(std::sync::RwLock::new(std::collections::VecDeque::new())),
+            ws_tx: ws_tx.clone(),
+            node_id: node_id.clone(),
+            start_time: std::time::Instant::now(),
+            byzantine_events: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            divergence_alerts: Arc::new(std::sync::RwLock::new(Vec::new())),
+            divergence_tx: divergence_tx.clone(),
+            rate_limit_counts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            merkle_head: Arc::new(std::sync::RwLock::new(([0; 32], 0))),
+        });
+
+        // Spawn Axum REST/WebSocket API Server on 8080
+        let api_state_clone = api_state.clone();
+        tokio::spawn(async move {
+            if let Ok(listener) = tokio::net::TcpListener::bind("0.0.0.0:8080").await {
+                println!("Axum API server listening on 0.0.0.0:8080");
+                let _ = axum::serve(listener, crci_core::api::build_router(api_state_clone)).await;
+            }
+        });
+
+        let tcp_arc = if let Some(ref listen) = args.listen {
+            let addr = listen
+                .parse::<std::net::SocketAddr>()
+                .expect("Invalid listen address");
+            let tcp = crci_core::transport::TcpTransport::bind(node_id.clone(), addr)
+                .await
+                .expect("Failed to bind TcpTransport");
+            let tcp_arc = Arc::new(tcp);
+
+            let node_arc_clone = node_arc.clone();
+            let tcp_arc_clone = tcp_arc.clone();
+            let node_id_clone = node_id.clone();
+            let api_state_clone = api_state.clone();
+            let pipeline_clone = pipeline.clone();
+
+            tokio::spawn(async move {
+                while let Ok((sender_id, msg)) = tcp_arc_clone.receive().await {
+                    println!(
+                        "Node {} received message from {}: kind={:?}, payload_bytes={}",
+                        node_id_clone, sender_id, msg.kind, msg.payload_bytes
+                    );
+
+                    // Register sender in zone registry to bypass zone claim rejection for normal gossip
+                    if let Ok(mut p) = pipeline_clone.lock() {
+                        p.register_bootstrap(&msg.zone, &sender_id);
+                    }
+
+                    // Process message via GossipPipeline
+                    let verdict = {
+                        let mut pipeline_guard =
+                            pipeline_clone.lock().unwrap_or_else(|e| e.into_inner());
+                        pipeline_guard.process(&msg)
+                    };
+                    println!(
+                        "Node {} pipeline verdict for message from {}: {:?}",
+                        node_id_clone, sender_id, verdict
+                    );
+
+                    // Add peer to PeerTable
+                    if let Ok(mut na) = node_arc_clone.lock() {
+                        na.add_peer(&sender_id);
+                        if let Ok(mut peer_list) = api_state_clone.peer_list.write() {
+                            if !peer_list.contains(&sender_id) {
+                                peer_list.push(sender_id.clone());
+                            }
+                        }
+                        if let Ok(mut node_count) = api_state_clone.node_count.write() {
+                            *node_count = api_state_clone
+                                .peer_list
+                                .read()
+                                .map(|l| l.len())
+                                .unwrap_or(0);
+                        }
+                    }
+
+                    // Update Merkle head hash
+                    if let Ok(mut head) = api_state_clone.merkle_head.write() {
+                        let mut h = [0u8; 32];
+                        let bytes = msg.id.as_bytes();
+                        let len = bytes.len().min(32);
+                        h[..len].copy_from_slice(&bytes[..len]);
+                        *head = (h, msg.seq);
+                    }
+
+                    // Broadcast message over REST/WebSocket
+                    let api_msg = crci_core::api::ApiMessage {
+                        from: sender_id.clone(),
+                        severity: msg.severity,
+                        content: format!(
+                            "Gossip: kind={:?}, seq={}, verdict={:?}",
+                            msg.kind, msg.seq, verdict
+                        ),
+                        timestamp_ms: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis() as u64,
+                    };
+
+                    if let Ok(mut recent) = api_state_clone.recent_messages.write() {
+                        recent.push_back(api_msg.clone());
+                        if recent.len() > 50 {
+                            recent.pop_front();
+                        }
+                    }
+
+                    if let Ok(json) = serde_json::to_string(&api_msg) {
+                        let _ = api_state_clone.ws_tx.send(json);
+                    }
+                }
+            });
+            Some(tcp_arc)
+        } else {
+            None
+        };
+
+        // Spawn consensus thread for Byzantine detection
+        let cons_pipeline = pipeline.clone();
+        let cons_node_id = node_id.clone();
+        let api_state_clone = api_state.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                let mut penalties = Vec::new();
+                {
+                    let p = cons_pipeline.lock().unwrap_or_else(|e| e.into_inner());
+                    let severities_map = &p.peer_severities;
+                    let mut severities: Vec<u8> = severities_map.values().cloned().collect();
+                    // Anchor median calculation to honest baseline severity (3)
+                    severities.push(3);
+
+                    if severities.len() >= 2 {
+                        severities.sort();
+                        let median = severities[severities.len() / 2] as f64;
+                        for (id, &sev) in severities_map.iter() {
+                            let dev = (sev as f64 - median).abs();
+                            if dev >= 2.0 {
+                                penalties.push((id.clone(), dev));
+                            }
+                        }
+                    }
+                }
+
+                for (bad_id, dev) in penalties {
+                    println!(
+                        "[{}] Penalty applied to {}: average severity deviation > 2 (dev: {})",
+                        cons_node_id, bad_id, dev
+                    );
+
+                    api_state_clone
+                        .byzantine_events
+                        .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+                    let alert = crci_core::merkle::DivergenceAlert {
+                        peer_id: bad_id.clone(),
+                        expected_head_hash:
+                            "0000000000000000000000000000000000000000000000000000000000000000"
+                                .to_string(),
+                        actual_head_hash:
+                            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+                                .to_string(),
+                        divergence_seq: 1,
+                        detected_at_ms: std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis() as u64,
+                    };
+
+                    if let Ok(mut alerts) = api_state_clone.divergence_alerts.write() {
+                        alerts.push(alert.clone());
+                    }
+                    let _ = api_state_clone.divergence_tx.send(alert);
+
+                    if let Ok(mut p) = cons_pipeline.lock() {
+                        p.peer_severities.remove(&bad_id);
+                    }
+                }
+            }
+        });
+
+        let mut target_peers = Vec::new();
+        if let Some(dial) = args.dial.clone() {
+            target_peers.push(dial);
+        }
+        if let Some(peers_str) = args.peers.clone() {
+            for p in peers_str.split(',') {
+                let p = p.trim();
+                if !p.is_empty() {
+                    target_peers.push(p.to_string());
+                }
+            }
+        }
+
+        for peer in target_peers {
+            match tokio::net::TcpStream::connect(&peer).await {
+                Ok(_) => {
+                    if let Ok(mut n) = node_arc.lock() {
+                        n.add_peer(&peer);
+                    }
+                    if let Ok(mut peer_list) = api_state.peer_list.write() {
+                        if !peer_list.contains(&peer) {
+                            peer_list.push(peer.clone());
+                        }
+                    }
+                    if let Ok(mut node_count) = api_state.node_count.write() {
+                        *node_count = api_state.peer_list.read().map(|l| l.len()).unwrap_or(0);
+                    }
+                    if let Ok(mut p) = pipeline.lock() {
+                        p.register_bootstrap("zone-host", &peer);
+                    }
+                    println!("Successfully dialed peer: {}", peer);
+                }
+                Err(e) => {
+                    println!("Warning: Failed to connect to peer {}: {}", peer, e);
+                }
+            }
+        }
+
+        if let Some(tcp) = tcp_arc {
+            println!("Node {} listening on {}", node_id, tcp.listen_addr);
+            tokio::signal::ctrl_c().await.unwrap_or(());
+            println!("Shutting down.");
+        }
         return;
     }
     // TODO: Wire args.argon2_memory and args.config to EncryptedStore / Configuration when integrated.

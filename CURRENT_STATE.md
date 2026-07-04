@@ -67,6 +67,12 @@
 - Session 64: README + Docs Accuracy Pass
 - Session 65: arXiv Paper Final Pass
 - Session 66: TLC Model Checker Run + Formal Verification Results
+- Session 67: Multi-node Docker Compose Mesh, Gap Docs & Paper Updates
+- Session 68: Chaos Engineering Suite with 4 Adversarial Network Scenarios
+- Session 69: v0.1.0 Release — README Polish, Changelog & Version Bump
+- Session 70: Final Audit — Hardened Error Handling, Expanded Benchmarks, arXiv Package & Complete Documentation
+- Session 71: CLI Send / Byzantine / Peers Integration & Quickstart Walkthrough
+- Session 72: Clone-to-Wow Live Demo Path (Orchestrated Live Mesh & Dashboard)
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -81,18 +87,19 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 69 COMPLETE
+## Current Session Status: SESSION 72 COMPLETE
 
-**Recent Accomplishments (Session 69):**
-- **Public Launch & Tagging**: Officially tagged the workspace as `v0.1.0`, marking the transition from an active development prototype to a stable, citable research artifact.
-- **README Rewrite**: Restructured the project's landing page (`README.md`) to surface the core value propositions (BFT mesh, formal specs, cross-platform Android support) precisely for systems engineering reviewers.
-- **Changelog Introduction**: Created a comprehensive `CHANGELOG.md` following the Keep a Changelog standard, explicitly logging the massive feature accumulation across the previous 68 sessions.
-- **Version Alignment**: Verified `Cargo.toml` and `crci-core/Cargo.toml` point to `0.1.0`.
+**Recent Accomplishments (Session 72):**
+- **Dashboard Containerization**: Packaged the React live dashboard into `docs/dashboard/Dockerfile` and integrated it as a service (`dashboard`) in `docker-compose.yml`, exposing port 5173.
+- **Active Node Pipeline Integration**: Hardened the daemon entrypoint in [main.rs](file:///c:/Users/medwi/src/main.rs) to initialize the `GossipPipeline` consensus loop and spawn the Axum REST/WebSocket server on port 8080.
+- **Real Telemetry Mapping**: Wired TCP receive loops to process incoming telemetry and alert the REST/WebSocket API state, enabling live peer counts, message feeds, and block sequences on the dashboard.
+- **One-Command Orchestration**: Overwrote [demo.sh](file:///c:/Users/medwi/scripts/demo.sh) (and created a native Windows equivalent [demo.ps1](file:///c:/Users/medwi/scripts/demo.ps1)) to stand up the mesh, verify health, open the default browser, inject telemetry, deploy a Byzantine node, and clean up on Ctrl+C.
+- **CI Validation Checks**: Added a validation check script [test_demo.ps1](file:///c:/Users/medwi/scripts/test_demo.ps1) to confirm Docker Compose syntax validity and demo script structure.
 
 ## Verification
 - Clean compilation and `cargo fmt`.
-- `cargo clippy --all-targets -- -D warnings` on `crci-core` passes beautifully.
-- 137 tests passing (`cargo test --all`).
+- `cargo clippy --all-targets -- -D warnings` on the entire workspace passes cleanly.
+- 140 tests passing (`cargo test --all`).
 - mdBook docs compile without warnings.
 
 ## Manual Validation (Live Handshake Test)
@@ -126,7 +133,5 @@ To execute the chaos engineering suite:
 bash scripts/chaos.sh
 ```
 
-> **Gap Documentation:** The CLI currently lacks subcommands (`send`) and flags (`--byzantine`, `--peers`) to originate messages interactively or enable Byzantine features natively from the terminal. The internal pipeline and consensus loops are fully implemented in `crci-core`, and automated tests verify isolation, but the user-facing CLI binary (`crci-node`) currently only exposes TCP port binding (`--listen`) and single peer handshaking (`--dial`). The Docker mesh demonstrates what is currently supported by the CLI: multi-container TCP connections and isolation.
-
 ## Next Steps
-- Session 70 — Next feature development.
+- Session 73 — Next roadmap development.
