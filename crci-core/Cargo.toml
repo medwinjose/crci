@@ -29,6 +29,7 @@ thiserror = "2.0.18"
 argon2 = "0.5.3"
 bincode = "1"
 uniffi = { version = "0.28", features = ["build", "cli"] }
+socket2 = "0.5"
 
 [build-dependencies]
 uniffi = { version = "0.28", features = ["build"] }

@@ -139,3 +139,100 @@ async fn multiplexer_all_fail_returns_error() {
     let res = multiplexer.send(&"peer".to_string(), &msg).await;
     assert!(matches!(res, Err(TransportError::NotAvailable)));
 }
+
+#[tokio::test]
+async fn test_tcp_transport_cancellation() {
+    let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+    let tcp = TcpTransport::bind("node-1".to_string(), addr)
+        .await
+        .unwrap();
+    let bound_addr = tcp.listen_addr;
+
+    // Drop the transport
+    drop(tcp);
+
+    // Give a brief moment for cleanup tasks to process
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    // Attempt to bind to the same exact port again. If port was freed, it should succeed!
+    let tcp2 = TcpTransport::bind("node-2".to_string(), bound_addr).await;
+    assert!(
+        tcp2.is_ok(),
+        "Failed to re-bind to freed port: {:?}",
+        tcp2.err()
+    );
+}
+
+#[tokio::test]
+async fn test_tcp_transport_connection_limit() {
+    let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+    let tcp = TcpTransport::bind("node-alpha".to_string(), addr)
+        .await
+        .unwrap();
+    let target_addr = tcp.listen_addr;
+
+    // Dial the listener 101 times
+    let mut streams = Vec::new();
+    for _ in 0..101 {
+        if let Ok(stream) = tokio::net::TcpStream::connect(target_addr).await {
+            streams.push(stream);
+        }
+        tokio::time::sleep(Duration::from_millis(2)).await;
+    }
+
+    // Give the listener time to accept
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    // Assert that rejected count is >= 1, and accepted count is >= 100
+    let rejected = tcp.rejected_count.load(std::sync::atomic::Ordering::SeqCst);
+    let accepted = tcp.accepted_count.load(std::sync::atomic::Ordering::SeqCst);
+
+    assert!(
+        accepted >= 100,
+        "Accepted connections should be 100, got {}",
+        accepted
+    );
+    assert!(
+        rejected >= 1,
+        "Rejected connections should be >= 1, got {}",
+        rejected
+    );
+}
+
+#[tokio::test]
+async fn test_tcp_transport_handshake_timeout() {
+    use tokio::io::AsyncReadExt;
+    let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+    let tcp = TcpTransport::bind("node-alpha".to_string(), addr)
+        .await
+        .unwrap();
+    let target_addr = tcp.listen_addr;
+
+    // Connect to the transport but send absolutely nothing
+    let mut stream = tokio::net::TcpStream::connect(target_addr).await.unwrap();
+
+    // Give a small delay to make sure acceptor increments the active count
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    // Verify connection remains open initially
+    assert_eq!(
+        tcp.active_connections
+            .load(std::sync::atomic::Ordering::SeqCst),
+        1
+    );
+
+    // Wait for the 5-second timeout plus some buffer
+    tokio::time::sleep(Duration::from_millis(5500)).await;
+
+    // The reader task should have timed out and closed the connection, decrementing active connections
+    assert_eq!(
+        tcp.active_connections
+            .load(std::sync::atomic::Ordering::SeqCst),
+        0
+    );
+
+    // Assert that the stream was closed (read returns 0/EOF)
+    let mut buf = [0u8; 10];
+    let read_bytes = stream.read(&mut buf).await.unwrap_or(0);
+    assert_eq!(read_bytes, 0, "Stream should be closed by remote timeout");
+}
