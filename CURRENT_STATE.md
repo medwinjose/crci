@@ -73,6 +73,7 @@
 - Session 70: Final Audit — Hardened Error Handling, Expanded Benchmarks, arXiv Package & Complete Documentation
 - Session 71: CLI Send / Byzantine / Peers Integration & Quickstart Walkthrough
 - Session 72: Clone-to-Wow Live Demo Path (Orchestrated Live Mesh & Dashboard)
+- Session 73: Harden TcpTransport Socket Lifecycle (ASYNC-001–015)
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -87,19 +88,19 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 72 COMPLETE
+## Current Session Status: SESSION 73 COMPLETE
 
-**Recent Accomplishments (Session 72):**
-- **Dashboard Containerization**: Packaged the React live dashboard into `docs/dashboard/Dockerfile` and integrated it as a service (`dashboard`) in `docker-compose.yml`, exposing port 5173.
-- **Active Node Pipeline Integration**: Hardened the daemon entrypoint in [main.rs](file:///c:/Users/medwi/src/main.rs) to initialize the `GossipPipeline` consensus loop and spawn the Axum REST/WebSocket server on port 8080.
-- **Real Telemetry Mapping**: Wired TCP receive loops to process incoming telemetry and alert the REST/WebSocket API state, enabling live peer counts, message feeds, and block sequences on the dashboard.
-- **One-Command Orchestration**: Overwrote [demo.sh](file:///c:/Users/medwi/scripts/demo.sh) (and created a native Windows equivalent [demo.ps1](file:///c:/Users/medwi/scripts/demo.ps1)) to stand up the mesh, verify health, open the default browser, inject telemetry, deploy a Byzantine node, and clean up on Ctrl+C.
-- **CI Validation Checks**: Added a validation check script [test_demo.ps1](file:///c:/Users/medwi/scripts/test_demo.ps1) to confirm Docker Compose syntax validity and demo script structure.
+**Recent Accomplishments (Session 73):**
+- **Transport Hardening (ASYNC-001 to ASYNC-015)**: Audited and fully addressed all 15 error boundaries and resource vectors in the `TcpTransport` engine:
+  - *Already Handled*: `WouldBlock` spin-loop mitigation (**ASYNC-004**).
+  - *Newly Implemented*: Catching `ConnectionReset` (**ASYNC-001**), `NotConnected` (**ASYNC-002**), `BrokenPipe` (**ASYNC-003**), `ENOBUFS` (**ASYNC-007**), enabling `SO_KEEPALIVE` (**ASYNC-008**), custom keepalive timeouts via `socket2` (**ASYNC-009**), low-latency Nagle-disabled `TCP_NODELAY` (**ASYNC-010**), strict 5-second handshake timeouts (**ASYNC-011**), connection counter bounds (**ASYNC-012**), immediate `shutdown` execution (**ASYNC-013**), thread cancellation on Multiplexer drop (**ASYNC-014**), and TcpListener clean-drops (**ASYNC-015**).
+  - *Accept Backoff*: Fixed tight CPU loops during transient socket errors by adding exponentially bounded delay backoffs (10ms to 1s) for `EMFILE` (**ASYNC-005**) and `ENFILE` (**ASYNC-006**) conditions.
+- **Automated Mock Coverage**: Added 3 new unit tests in `tests/transport_tests.rs` asserting socket cancellation, connection limit enforcement, and handshake timeouts.
 
 ## Verification
 - Clean compilation and `cargo fmt`.
 - `cargo clippy --all-targets -- -D warnings` on the entire workspace passes cleanly.
-- 140 tests passing (`cargo test --all`).
+- 143 tests passing (`cargo test --all`).
 - mdBook docs compile without warnings.
 
 ## Manual Validation (Live Handshake Test)
