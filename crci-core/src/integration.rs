@@ -20,6 +20,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+pub const MIN_TRUSTED_REP: f32 = 0.41;
+
 // ── Message types for the integrated pipeline ─────────────────────
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -189,17 +191,19 @@ impl GossipPipeline {
 
         // ── Stage 9: AEDA ─────────────────────────────────────────
         if is_rescue {
-            // BUG FIX 3: weight rescue by reputation before AEDA escalation
-            // Only process as full rescue event if reputation >= 0.5
-            // Below 0.5: still stored, but counts as 0.5 rescues for escalation
-            // We model this by using reputation in the RescueEvent
+            // BFT-009 / BFT-030: Sandbox unvouched/untrusted nodes (<MIN_TRUSTED_REP reputation) in AEDA decision loops
+            let rep_weight = if msg.reputation < MIN_TRUSTED_REP {
+                0.0
+            } else {
+                msg.reputation
+            };
             self.aeda.process(
                 RescueEvent {
                     node_id: msg.origin_node.clone(),
                     zone: msg.zone.clone(),
                     severity: msg.severity,
                     round: self.current_round,
-                    reputation: msg.reputation,
+                    reputation: rep_weight,
                 },
                 self.current_round,
             );
@@ -210,8 +214,13 @@ impl GossipPipeline {
             self.aeda.process_normal_report(&msg.origin_node, &msg.zone);
         }
 
-        self.peer_severities
-            .insert(msg.origin_node.clone(), msg.severity);
+        // BFT-002 / BFT-010: Protect denominator (n) from phantom/unvouched node announcements
+        if self.zone_registry.is_verified(&msg.origin_node, &msg.zone)
+            || msg.reputation >= MIN_TRUSTED_REP
+        {
+            self.peer_severities
+                .insert(msg.origin_node.clone(), msg.severity);
+        }
         self.accepted += 1;
         PipelineVerdict::Accept
     }

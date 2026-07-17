@@ -21,6 +21,12 @@ pub struct Node {
     pub known_keys: HashMap<String, ed25519_dalek::VerifyingKey>,
 }
 
+pub const MIN_TRUSTED_REP: f64 = 0.41;
+
+fn round_to_3_dec(val: f64) -> f64 {
+    (val * 1000.0).round() / 1000.0
+}
+
 #[allow(dead_code)]
 impl Node {
     pub fn new(id: &str, is_honest: bool, zone: &str) -> Node {
@@ -29,7 +35,7 @@ impl Node {
             id: id.to_string(),
             identity,
             is_honest,
-            reputation: 1.0,
+            reputation: round_to_3_dec(1.0),
             zone: zone.to_string(),
             peers: Vec::new(),
             seen_messages: HashSet::new(),
@@ -46,14 +52,14 @@ impl Node {
     }
 
     pub fn penalize(&mut self) {
-        self.reputation -= 0.2;
-        if self.reputation < 0.0 {
-            self.reputation = 0.0;
-        }
+        let new_rep = self.reputation - 0.2;
+        // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
+        self.reputation = round_to_3_dec(new_rep.clamp(0.0, 1.0));
     }
 
     pub fn is_trusted(&self) -> bool {
-        self.reputation > 0.41
+        // BFT-014: non-zero MinTrustedRep floor enforced via MIN_TRUSTED_REP constant
+        self.reputation > MIN_TRUSTED_REP
     }
 
     pub fn go_offline(&mut self) {

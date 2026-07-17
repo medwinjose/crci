@@ -51,6 +51,10 @@ impl Default for PeerReputation {
     }
 }
 
+fn round_to_3_dec_f32(val: f32) -> f32 {
+    (val * 1000.0).round() / 1000.0
+}
+
 impl PeerReputation {
     pub fn new() -> Self {
         Self {
@@ -60,10 +64,9 @@ impl PeerReputation {
     }
 
     pub fn penalise(&mut self, amount: f32) {
-        self.score -= amount;
-        if self.score < 0.0 {
-            self.score = 0.0;
-        }
+        let new_score = self.score - amount;
+        // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
+        self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
         self.last_updated = Instant::now();
     }
 
@@ -71,12 +74,12 @@ impl PeerReputation {
         let now = Instant::now();
         let elapsed = now.duration_since(self.last_updated).as_secs_f32();
 
-        if elapsed > 0.0 {
-            let recovery = elapsed * 0.01;
-            self.score += recovery;
-            if self.score > 1.0 {
-                self.score = 1.0;
-            }
+        if elapsed >= 0.01 {
+            // BFT-013: Sub-linear recovery curve using square root of elapsed time to prevent immediate re-attacks after recovery
+            let recovery = elapsed.sqrt() * 0.005;
+            let new_score = self.score + recovery;
+            // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
+            self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
             self.last_updated = now;
         }
     }
@@ -158,6 +161,11 @@ impl SybilGuard {
 
         if rep.is_banned() {
             return Err(SybilError::Banned(peer.clone()));
+        }
+
+        // BFT-015: Prune low/zero reputation records when reputations map exceeds 1000 to prevent memory exhaustion
+        if self.reputations.len() > 1000 {
+            self.reputations.retain(|_, r| !r.is_banned());
         }
 
         let bucket = self

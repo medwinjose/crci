@@ -139,11 +139,16 @@ impl AedaEngine {
     }
 
     fn check_escalation(&mut self, event: &RescueEvent, current_round: u64) {
+        if event.reputation < 0.41 {
+            return; // BFT-009 / BFT-030: Sandboxed unvouched/untrusted nodes cannot trigger zone auto-escalations
+        }
         let rescues = self.zone_rescues.entry(event.zone.clone()).or_default();
 
         let recent = rescues
             .iter()
-            .filter(|r| current_round.saturating_sub(r.round) <= ESCALATION_WINDOW)
+            .filter(|r| {
+                r.reputation >= 0.41 && current_round.saturating_sub(r.round) <= ESCALATION_WINDOW
+            })
             .count()
             + 1; // +1 for current event not yet stored
 

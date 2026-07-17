@@ -44,7 +44,7 @@ class CrciViewModel : ViewModel() {
                 listenAddr = "0.0.0.0:9000",
                 maxPeers = 8u
             )
-            val ok = startNode(config)   // FFI call
+            val ok = dev.crci.android.ffi.startNode(config)   // FFI call
             _nodeId.value = config.nodeId
             _nodeStatus.value = if (ok) NodeStatus.Running else NodeStatus.Error
             if (ok) startPolling()
@@ -56,7 +56,7 @@ class CrciViewModel : ViewModel() {
 
     fun connectPeer(addr: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val ok = connectPeer(addr)   // FFI call — matches regenerated binding name exactly
+            val ok = dev.crci.android.ffi.connectPeer(addr)   // FFI call
             _connectStatus.value = if (ok) "Dialing $addr…" else "Connect failed"
         }
     }
@@ -64,7 +64,7 @@ class CrciViewModel : ViewModel() {
     fun stopNode() {
         pollingJob?.cancel()
         viewModelScope.launch(Dispatchers.IO) {
-            stopNode()   // FFI call
+            dev.crci.android.ffi.stopNode()   // FFI call
             _nodeStatus.value = NodeStatus.Stopped
             _peerCount.value = 0
         }
@@ -75,7 +75,7 @@ class CrciViewModel : ViewModel() {
     private fun startPolling() {
         pollingJob = viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
-                _peerCount.value = peerCount().toInt()   // FFI call
+                _peerCount.value = dev.crci.android.ffi.peerCount().toInt()   // FFI call
                 delay(5_000)
             }
         }

@@ -88,19 +88,27 @@
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
 11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
-## Current Session Status: SESSION 73 COMPLETE
+## Current Session Status: SESSION 74 COMPLETE
 
-**Recent Accomplishments (Session 73):**
-- **Transport Hardening (ASYNC-001 to ASYNC-015)**: Audited and fully addressed all 15 error boundaries and resource vectors in the `TcpTransport` engine:
-  - *Already Handled*: `WouldBlock` spin-loop mitigation (**ASYNC-004**).
-  - *Newly Implemented*: Catching `ConnectionReset` (**ASYNC-001**), `NotConnected` (**ASYNC-002**), `BrokenPipe` (**ASYNC-003**), `ENOBUFS` (**ASYNC-007**), enabling `SO_KEEPALIVE` (**ASYNC-008**), custom keepalive timeouts via `socket2` (**ASYNC-009**), low-latency Nagle-disabled `TCP_NODELAY` (**ASYNC-010**), strict 5-second handshake timeouts (**ASYNC-011**), connection counter bounds (**ASYNC-012**), immediate `shutdown` execution (**ASYNC-013**), thread cancellation on Multiplexer drop (**ASYNC-014**), and TcpListener clean-drops (**ASYNC-015**).
-  - *Accept Backoff*: Fixed tight CPU loops during transient socket errors by adding exponentially bounded delay backoffs (10ms to 1s) for `EMFILE` (**ASYNC-005**) and `ENFILE` (**ASYNC-006**) conditions.
-- **Automated Mock Coverage**: Added 3 new unit tests in `tests/transport_tests.rs` asserting socket cancellation, connection limit enforcement, and handshake timeouts.
+**Recent Accomplishments (Session 74):**
+- **BFT Consensus & Reputation Hardening (Batch 1)**: Audited, implemented, and verified 22 consensus/reputation security vectors:
+  - *Consensus Limits*: Strictly enforced strict quorum inequality $f < n/3$ (**BFT-001**, **BFT-005**), zero-peer safety (**BFT-006**), and split-brain voter constraints (**BFT-007**).
+  - *Voter & Sybil Protections*: Enforced IP subnet caps (max 3 peers/subnet) (**BFT-003**), XOR collision rejection (**BFT-004**), and sandboxed untrusted nodes in AEDA/Quorum calculations (**BFT-002**, **BFT-009**, **BFT-010**, **BFT-030**).
+  - *Reputation Engine*: Implemented strict reputation boundaries `[0.0, 1.0]` (**BFT-011**, **BFT-020**), instant penalty curves (**BFT-012**), sub-linear square-root recovery (**BFT-013**), centrally controlled `MIN_TRUSTED_REP` constants (**BFT-014**), and local partition isolation (**BFT-017** with no override bypasses **BFT-018**).
+  - *Fixed-Point Math*: Enforced x86 ↔ ARM/Android identical behavior using robust 3-decimal precision rounding (**BFT-016**).
+  - *Attack Defenses*: Shielded innocent peers from signature-invalidation reputation-burn attacks by removing penalty on signature/key failures (**BFT-019**). Bounded signature checks to 5 per peer (**BFT-008**), pruned banned records (**BFT-015**), and capped seen messages cache to 5000 (**BFT-021**).
+- **Test Reconciliation**: Confirmed baseline of 143 passing tests from Session 73 + 8 new BFT tests = **151 tests passing** (reconciling the prior summary typo).
+- **Android FFI Build Setup**: JDK 17 configured and pinned. Compiled successfully to debug APK. Emulator download is currently running in the background at 54% (ETA ~20 minutes).
+- **Live Demo Eviction Regression**: Verified that normal messages are accepted while Byzantine flooders are correctly rate-limited and evicted in local process mode.
+
+## BFT Vector Status (1-30)
+- **Completed**: BFT-001, BFT-002, BFT-003, BFT-004, BFT-005, BFT-006, BFT-007, BFT-008, BFT-009, BFT-010, BFT-011, BFT-012, BFT-013, BFT-014, BFT-015, BFT-016, BFT-017, BFT-018, BFT-019, BFT-020, BFT-021, BFT-030.
+- **Open**: BFT-022, BFT-023, BFT-024, BFT-025, BFT-026, BFT-027, BFT-028, BFT-029 (Batch 2).
 
 ## Verification
 - Clean compilation and `cargo fmt`.
 - `cargo clippy --all-targets -- -D warnings` on the entire workspace passes cleanly.
-- 143 tests passing (`cargo test --all`).
+- 151 tests passing (`cargo test --all`).
 - mdBook docs compile without warnings.
 
 ## Manual Validation (Live Handshake Test)
@@ -135,4 +143,4 @@ bash scripts/chaos.sh
 ```
 
 ## Next Steps
-- Session 73 — Next roadmap development.
+- Session 75: Implement Batch 2 security vectors (BFT-022 to BFT-029).
