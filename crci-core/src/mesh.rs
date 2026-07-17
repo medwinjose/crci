@@ -104,18 +104,40 @@ impl MeshSimulator {
         let mut deduped_by_zone: HashMap<String, HashMap<String, (u8, u8, bool)>> = HashMap::new();
         for (zone, obs_list) in &by_zone {
             for (node_id, sev, conf, unknown_vis) in obs_list {
-                deduped_by_zone
-                    .entry(zone.clone())
-                    .or_default()
-                    .insert(node_id.clone(), (*sev, *conf, *unknown_vis));
+                // BFT-002 / BFT-010: Only trust nodes with reputation > 0.41 in the denominator
+                let is_trusted = self
+                    .nodes
+                    .get(node_id)
+                    .map(|n| n.is_trusted())
+                    .unwrap_or(false);
+                if is_trusted {
+                    deduped_by_zone
+                        .entry(zone.clone())
+                        .or_default()
+                        .insert(node_id.clone(), (*sev, *conf, *unknown_vis));
+                }
             }
         }
 
         for (zone, reporters) in &deduped_by_zone {
             println!("  [Zone {}] {} reporter(s)", zone, reporters.len());
 
-            if reporters.len() < 3 {
+            let n = reporters.len();
+            // BFT-006: Prevent unauthenticated state convergence under zero active peer configuration
+            if n == 0 {
+                println!("  [Zone {}] ⚠ Zero-peer configuration — skipped", zone);
+                continue;
+            }
+
+            if n < 3 {
                 println!("  [Zone {}] ⚠ Insufficient reporters — skipped", zone);
+                continue;
+            }
+
+            // BFT-007: Mitigate split-brain by requiring active voters > N_total / 2
+            let total_zone_nodes = self.nodes.values().filter(|n| n.zone == *zone).count();
+            if n <= total_zone_nodes / 2 {
+                println!("  [Zone {}] ⚠ Split-Brain Guard (BFT-007): reporter count {} <= half of total zone nodes {}. Consensus skipped.", zone, n, total_zone_nodes);
                 continue;
             }
 
@@ -143,6 +165,27 @@ impl MeshSimulator {
             };
 
             println!("  [Zone {}] Median severity: {}", zone, median);
+
+            // Compute faulty count before applying updates
+            let mut faulty_count = 0;
+            for (severity, confidence, unknown_vis) in reporters.values() {
+                if *unknown_vis || *confidence < 3 {
+                    continue;
+                }
+                let deviation = (*severity as i16 - median as i16).unsigned_abs();
+                if deviation > 2 {
+                    faulty_count += 1;
+                }
+            }
+
+            // BFT-001 / BFT-005: Strict f < n/3 inequality using safe integer multiplication
+            if 3 * faulty_count >= n {
+                println!(
+                    "  [Zone {}] ⚠ Byzantine Quorum Failure (BFT-001): 3f >= n (f: {}, n: {}), consensus aborted.",
+                    zone, faulty_count, n
+                );
+                continue;
+            }
 
             let mut unique_rescue_ids = HashSet::new();
             let mut any_anomaly = false;

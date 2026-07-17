@@ -10,3 +10,10 @@ src/Project rules.md
 docs/dashboard/node_modules/
 docs/dashboard/dist/
 docs/book/book/
+
+# Android build and local files
+/jdk17/
+crci-android/local.properties
+crci-android/.gradle/
+crci-android/app/build/
+*.log

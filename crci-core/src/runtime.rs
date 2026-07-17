@@ -7,6 +7,12 @@ use crate::message::{Message, MessageType, Signal, Visibility};
 use crate::storage::{PersistedRescue, PersistedState};
 use crate::transport::{LegacyTransport, SharedInbox, SimTransport};
 
+pub const MIN_TRUSTED_REP: f64 = 0.41;
+
+fn round_to_3_dec(val: f64) -> f64 {
+    (val * 1000.0).round() / 1000.0
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct WireMessage {
     pub id: String,
@@ -142,6 +148,7 @@ pub struct NodeRuntime {
     pub sybil_banned_events: u64,
     pub sybil_rate_limited_events: u64,
     pub sybil_pow_failed_events: u64,
+    pub sig_verifications_count: HashMap<String, usize>,
 }
 
 impl NodeRuntime {
@@ -153,7 +160,7 @@ impl NodeRuntime {
         NodeRuntime {
             id: id.to_string(),
             identity,
-            reputation: 1.0,
+            reputation: round_to_3_dec(1.0),
             zone: zone.to_string(),
             peers: Vec::new(),
             is_online: true,
@@ -177,6 +184,7 @@ impl NodeRuntime {
             sybil_banned_events: 0,
             sybil_rate_limited_events: 0,
             sybil_pow_failed_events: 0,
+            sig_verifications_count: HashMap::new(),
         }
     }
 
@@ -223,7 +231,8 @@ impl NodeRuntime {
     pub fn load_state(&mut self) {
         match self.storage.load() {
             Ok(state) => {
-                self.reputation = state.reputation;
+                // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
+                self.reputation = round_to_3_dec(state.reputation.clamp(0.0, 1.0));
                 self.peers = state.peers;
                 println!(
                     "  ✅ [{}] restored: rep={:.2}, {} peers, {} rescues",
@@ -246,14 +255,14 @@ impl NodeRuntime {
     }
 
     pub fn is_trusted(&self) -> bool {
-        self.reputation > 0.41
+        // BFT-014: non-zero MinTrustedRep floor enforced via MIN_TRUSTED_REP
+        self.reputation > MIN_TRUSTED_REP
     }
 
     pub fn penalize(&mut self) {
-        self.reputation -= 0.2;
-        if self.reputation < 0.0 {
-            self.reputation = 0.0;
-        }
+        let new_rep = self.reputation - 0.2;
+        // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
+        self.reputation = round_to_3_dec(new_rep.clamp(0.0, 1.0));
     }
 
     pub fn go_offline(&mut self) {
@@ -368,6 +377,23 @@ impl NodeRuntime {
                 }
             }
 
+            // BFT-008: Bounded local signature verification count per peer to prevent signature check DoS
+            if wire.message_type != "mce" {
+                let sig_checks = self
+                    .sig_verifications_count
+                    .entry(wire.origin.clone())
+                    .or_insert(0);
+                if *sig_checks >= 5 {
+                    println!(
+                        "  ⚠ [{}] BFT-008 Signature verification limit exceeded for {}, dropping message '{}'",
+                        self.id, wire.origin, wire.id
+                    );
+                    self.byzantine_events += 1;
+                    continue;
+                }
+                *sig_checks += 1;
+            }
+
             // Step 1: verify cryptographic signature
             if wire.message_type != "mce" && !wire.verify_signature() {
                 println!(
@@ -375,7 +401,8 @@ impl NodeRuntime {
                     self.id, wire.id
                 );
                 self.byzantine_events += 1;
-                self.sybil_guard.report_violation(&wire.origin);
+                // BFT-019: Defend against signature-invalidation attacks.
+                // Do NOT penalise the claimed origin node when signature check fails.
                 continue;
             }
 
@@ -388,7 +415,8 @@ impl NodeRuntime {
                             self.id, wire.id
                         );
                         self.byzantine_events += 1;
-                        self.sybil_guard.report_violation(&wire.origin);
+                        // BFT-019: Defend against signature-invalidation attacks.
+                        // Do NOT penalise the claimed origin node on pubkey mismatch.
                         continue;
                     }
                 } else {
@@ -428,6 +456,11 @@ impl NodeRuntime {
 
             if self.seen_messages.contains(&wire.id) {
                 continue;
+            }
+            // BFT-021: Hard ceiling on observed message ID cache
+            if self.seen_messages.len() >= 5000 {
+                self.seen_messages.clear();
+                self.sig_verifications_count.clear(); // Reset verification counters at cache eviction boundary
             }
             self.seen_messages.insert(wire.id.clone());
 

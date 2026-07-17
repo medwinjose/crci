@@ -112,6 +112,36 @@ impl PeerTable {
     pub fn upsert(&mut self, record: PeerRecord) -> bool {
         let is_new = !self.peers.contains_key(&record.node_id);
         if is_new {
+            // BFT-003: limit to max 3 peers per IP subnet
+            if let Some(subnet) = Self::get_subnet(&record.node_id) {
+                let subnet_count = self
+                    .peers
+                    .values()
+                    .filter(|p| Self::get_subnet(&p.node_id) == Some(subnet.clone()))
+                    .count();
+                if subnet_count >= 3 {
+                    log::warn!(
+                        "Sybil Clustering Guard (BFT-003): Rejected peer {} due to subnet limit.",
+                        record.node_id
+                    );
+                    return false;
+                }
+            }
+
+            // BFT-004: reject if public key XOR hash matches an existing peer exactly
+            let new_hash = Self::hash_id(&record.node_id);
+            let has_collision = self
+                .peers
+                .values()
+                .any(|p| Self::hash_id(&p.node_id) == new_hash);
+            if has_collision {
+                log::warn!(
+                    "XOR Collision Guard (BFT-004): Rejected peer {} due to duplicate XOR hash.",
+                    record.node_id
+                );
+                return false;
+            }
+
             if self.peers.len() >= MAX_PEER_TABLE_SIZE {
                 // Evict oldest
                 if let Some(oldest) = self.insertion_order.pop_front() {
@@ -130,6 +160,23 @@ impl PeerTable {
         }
         self.peers.insert(record.node_id.clone(), record);
         is_new
+    }
+
+    fn get_subnet(id: &str) -> Option<String> {
+        if let Ok(addr) = id.parse::<std::net::SocketAddr>() {
+            match addr.ip() {
+                std::net::IpAddr::V4(ipv4) => {
+                    let octets = ipv4.octets();
+                    Some(format!("{}.{}.{}", octets[0], octets[1], octets[2]))
+                }
+                std::net::IpAddr::V6(ipv6) => {
+                    let segments = ipv6.segments();
+                    Some(format!("{:x}:{:x}", segments[0], segments[1]))
+                }
+            }
+        } else {
+            None
+        }
     }
 
     pub fn get(&self, node_id: &str) -> Option<&PeerRecord> {

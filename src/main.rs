@@ -300,17 +300,54 @@ async fn main() {
                 {
                     let p = cons_pipeline.lock().unwrap_or_else(|e| e.into_inner());
                     let severities_map = &p.peer_severities;
-                    let mut severities: Vec<u8> = severities_map.values().cloned().collect();
-                    // Anchor median calculation to honest baseline severity (3)
-                    severities.push(3);
+                    let zone = "zone-host";
+                    let total_zone_nodes = p.zone_registry.member_count(zone);
 
-                    if severities.len() >= 2 {
-                        severities.sort();
-                        let median = severities[severities.len() / 2] as f64;
-                        for (id, &sev) in severities_map.iter() {
-                            let dev = (sev as f64 - median).abs();
-                            if dev >= 2.0 {
-                                penalties.push((id.clone(), dev));
+                    // BFT-002 / BFT-010: Filter severities to only verified/vouched zone members
+                    let verified_severities: HashMap<String, u8> = severities_map
+                        .iter()
+                        .filter(|(id, _)| p.zone_registry.is_verified(id, zone))
+                        .map(|(id, &sev)| (id.clone(), sev))
+                        .collect();
+
+                    let n = verified_severities.len();
+                    // BFT-006: Prevent unauthenticated state convergence under zero active peer configuration
+                    if n > 0 {
+                        // BFT-007: Mitigate split-brain by requiring active voters > N_total / 2
+                        if n <= total_zone_nodes / 2 {
+                            println!(
+                                "[{}] ⚠ Split-Brain Guard (BFT-007): verified count {} <= half of total zone nodes {}. Consensus skipped.",
+                                cons_node_id, n, total_zone_nodes
+                            );
+                        } else {
+                            let mut severities: Vec<u8> =
+                                verified_severities.values().cloned().collect();
+                            // Anchor median calculation to honest baseline severity (3)
+                            severities.push(3);
+
+                            if severities.len() >= 2 {
+                                severities.sort();
+                                let median = severities[severities.len() / 2] as f64;
+                                let mut faulty_count = 0;
+                                let mut round_penalties = Vec::new();
+
+                                for (id, &sev) in verified_severities.iter() {
+                                    let dev = (sev as f64 - median).abs();
+                                    if dev >= 2.0 {
+                                        faulty_count += 1;
+                                        round_penalties.push((id.clone(), dev));
+                                    }
+                                }
+
+                                // BFT-001 / BFT-005: Enforce strict f < n/3 inequality using safe integer arithmetic
+                                if 3 * faulty_count >= n {
+                                    println!(
+                                        "[{}] ⚠ Byzantine Quorum Failure (BFT-001): 3f >= n (f: {}, n: {}), consensus aborted.",
+                                        cons_node_id, faulty_count, n
+                                    );
+                                } else {
+                                    penalties.extend(round_penalties);
+                                }
                             }
                         }
                     }
