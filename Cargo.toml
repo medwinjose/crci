@@ -37,6 +37,8 @@ bincode = "1"
 [dev-dependencies]
 http-body-util = "0.1"
 tempfile = "3.27.0"
+# Activate test-utils feature for integration tests that use EncryptedStore helpers.
+crci-core = { path = "crci-core", features = ["test-utils"] }
 
 [[test]]
 name = "byzantine_bench"
