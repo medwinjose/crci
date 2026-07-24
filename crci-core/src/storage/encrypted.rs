@@ -182,3 +182,51 @@ impl StorageBackend for EncryptedStore {
         Ok(ids)
     }
 }
+
+// ─── Test-only helpers ────────────────────────────────────────────────────────
+// These methods are named and documented as test-only. They are not part of
+// the public API surface. Do not use them in production code.
+#[doc(hidden)]
+impl EncryptedStore {
+    /// Thin write alias for nonce-collision tests. Do not call from production code.
+    pub async fn write_raw_for_nonce_test(
+        &self,
+        id: &str,
+        plaintext: &[u8],
+    ) -> Result<(), super::StorageError> {
+        use super::StorageBackend;
+        self.write(id, plaintext).await
+    }
+
+    /// Read every stored frame and return their 12-byte nonces in insertion order.
+    /// Used exclusively by test_aes_gcm_nonce_never_repeats_across_writes.
+    pub fn read_all_nonces_for_test(&self) -> Result<Vec<[u8; 12]>, super::StorageError> {
+        // Re-read the file directly to collect every frame's nonce in order,
+        // including nonces from overwritten records (which read_all_frames dedups away).
+        use std::io::Read;
+        let mut f = std::fs::File::open(&self.path)?;
+        let mut salt = [0u8; 16];
+        if f.read_exact(&mut salt).is_err() {
+            return Ok(vec![]);
+        }
+        let mut nonces = Vec::new();
+        loop {
+            let mut len_buf = [0u8; 8];
+            if f.read_exact(&mut len_buf).is_err() {
+                break;
+            }
+            let frame_len = u64::from_le_bytes(len_buf);
+            let mut frame_buf = vec![0u8; frame_len as usize];
+            if f.read_exact(&mut frame_buf).is_err() {
+                break;
+            }
+            if let Ok(record) = bincode::deserialize::<super::record::StorageRecord>(&frame_buf) {
+                // Skip tombstones (nonce=[0;12], ciphertext empty)
+                if !(record.ciphertext.is_empty() && record.nonce == [0; 12]) {
+                    nonces.push(record.nonce);
+                }
+            }
+        }
+        Ok(nonces)
+    }
+}
