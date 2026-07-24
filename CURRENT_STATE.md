@@ -185,5 +185,15 @@ To execute the chaos engineering suite:
 bash scripts/chaos.sh
 ```
 
+## 8. Current Session Status: SESSION 78
+
+**Goal:** Fix un-isolated Tokio spawns, upgrade legacy AES key derivation, gate test helpers, and capture real Android screenshot.
+**Status:** COMPLETED.
+- **Panic Isolation (Part A):** Added watcher task to `tokio::spawn` in `runtime.rs:566` to catch panics via `JoinHandle` and log them, preventing worker thread crashes. Added 3 isolation tests. *(Note: FFI panic risk is dormant as the only current spawn is not on the Android path).*
+- **Legacy KDF (Part B):** Replaced raw Ed25519 bytes with SHA-256 domain-separated derivation (`crci-legacy-storage-v1`) in `legacy.rs`. Added 4 KDF tests.
+- **Feature Gates (Part C):** Moved `encrypted.rs` test helpers behind `#[cfg(feature = "test-utils")]` and confirmed exclusion from release binary via `cargo build --release`.
+- **Verification (Part D):** Captured real binary PNG screenshot from running Android emulator (`adb exec-out screencap -p`).
+- **Test Suite:** 179 tests passing.
+
 ## Next Steps
-- Session 75: Implement Batch 2 security vectors (BFT-022 to BFT-029) and setup Android NDK `.so` build step.
+- Session 79: Implement Batch 2 security vectors (BFT-022 to BFT-029) and setup Android NDK `.so` build step, or network partition transport-layer validation.
