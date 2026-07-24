@@ -74,6 +74,8 @@
 - Session 71: CLI Send / Byzantine / Peers Integration & Quickstart Walkthrough
 - Session 72: Clone-to-Wow Live Demo Path (Orchestrated Live Mesh & Dashboard)
 - Session 73: Harden TcpTransport Socket Lifecycle (ASYNC-001–015)
+- Session 77: Verification Closeout + Crypto-Layer Hardening + Chaos Partition Scenario
+
 
 ## Current Functionality
 1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -86,26 +88,57 @@
 8. **Byzantine Agent**: `byzantine_agent` binary available to inject adversarial traffic into the cluster. Run `cargo run --bin byzantine_agent -- --help` for details.
 9. **API Hardening**: Rate limits (60 req/min/IP), strict Content-Type checks, 64KB payload limits, and telemetry headers (`X-Request-Id`, `X-CRCI-Version`) enforce production-grade security on the node API.
 10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
-11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
+11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`)
 
-## Current Session Status: SESSION 74b COMPLETE
+### Current Session Status: SESSION 77 — PART A/B/C
 
-**Recent Accomplishments (Session 74b):**
-- **PART A — Test Count Reconciliation**: Empirically reconciled the workspace test suite count. The test suite grew monotonically across sessions: 137 baseline (Session 71 lib) $\rightarrow$ 140 (Session 71 final with CLI) $\rightarrow$ 143 (Session 73 TCP hardening) $\rightarrow$ 151 (Session 74 Part 1 BFT) $\rightarrow$ **158 tests passing** (Session 74b HEAD: 90 unittests + 68 integration tests).
-  - *Discrepancy Explanation*: The Session 74 log drop (143 to 137) was an artifact of running `cargo test --lib` (which counts 90 lib unittests + 47 baseline unittests = 137, excluding integration test files). Zero test functions were deleted or renamed.
-- **PART B — Reputation Vector Status & Provenance**: Confirmed that BFT-011, BFT-012, BFT-014, and BFT-016–020 have pre-existing passing tests in `tests/bft_batch1_tests.rs` (9/9 real named tests green). Detailed specifications were reconstructed from codebase test logic rather than pulled from a pre-existing audit document:
-  - **BFT-011**: Idle reputation decay curve (`test_bft_reputation_decay`)
-  - **BFT-012**: Honest behavior reputation recovery bounded slower than decay (`test_bft_reputation_recovery`, `test_bft_sub_linear_recovery`)
-  - **BFT-014**: Reputation score floor/ceiling `[0.0, 1.0]` clamping (`test_bft_reputation_bounds_clamping`, `test_bft_reputation_persistence_clamping`)
-  - **BFT-016**: Reputation-weighted consensus quorum (`test_bft_reputation_weighted_quorum`, `test_bft_reputation_fixed_point_rounding`)
-  - **BFT-017**: Reputation persistence across peer reconnect (`test_bft_reputation_persistence_across_reconnect`)
-  - **BFT-018**: Local peer reputation view isolation against malicious self-claims (`test_bft_reputation_isolation_per_peer_view`)
-  - **BFT-019**: Sybil cluster IP subnet correlation penalty (`test_bft_sybil_cluster_reputation_correlation`, `test_bft_signature_invalidation_spoof_defense`)
-  - **BFT-020**: Reputation-based eviction hysteresis `[0.10, 0.25]` gap to prevent flapping (`test_bft_reputation_based_eviction_hysteresis`)
-- **PART C — Demo Regression & Android Verification**:
-  - **Demo Execution**: `./scripts/demo.sh` executed. Docker daemon not active (`docker info` failed to connect to npipe API); demo gracefully executed native local process fallback, compiling binaries, serving Vite dashboard, and injecting telemetry.
-  - **Android Emulator**: Booted AVD `medium_phone` (`emulator-5554`), compiled debug APK (8.1 MB), installed via ADB, launched `dev.crci.android/.MainActivity`, and captured visual screenshot (`android_emulator_verification.png`).
-  - **Discovered Gap**: App launch threw `java.lang.UnsatisfiedLinkError: libcrci_core.so not found` at runtime due to missing Android NDK cross-compilation pipeline on host (`jniLibs/x86_64` missing target `.so`).
+### Part A — Session 76 Verification Closeout
+
+**A1 — Android emulator screenshot (`android_emulator_verification.png`)**:
+File exists (181,308 bytes) but has MIME type `text/plain; charset=utf-16le` — it is NOT a valid PNG image. Visual state of the emulator at capture time cannot be verified from this file. Status: **unverified — file is not a valid image**.
+
+**A2 — Docker demo path decision**: Formally documented as **option (b)**. Docker Desktop daemon service is not running on this host (`docker info` fails to connect to the npipe API). Native local process fallback is the confirmed, functional demo path for this environment. Docker containerized path is optional and untested in CI. No further action required on Docker until daemon elevation is available.
+
+---
+
+### Part B — Crypto-Layer Hardening
+
+Pre-audit findings (see Session 77 pre-audit report for full details):
+
+| File | Finding |
+|------|---------|
+| `security.rs` | No AES-GCM code. STRIDE module only (FNV node ID, AuditLog, zone registry, MCE counter, priority queue). |
+| `storage/encrypted.rs` | Live AES-GCM: 12-byte `OsRng` random nonces per write. Key via Argon2id + random salt. Append-log format. No nonce reuse. |
+| `storage/legacy.rs` | AES-GCM: same `OsRng` random nonce strategy. Key = first 32 bytes of Ed25519 signing key (key separation concern — documented, not a nonce bug). |
+| `identity.rs` | Ed25519 via `ed25519-dalek v2`. No panic risk. No edge-case tests previously existed. |
+| `ffi.rs` | All exported functions use `match`/`if let` — no hidden `unwrap()`/`expect()`. UniFFI's scaffolding wraps calls with `catch_unwind`; panics surface as `InternalException` in Kotlin, not crashes. |
+
+Tests added in `tests/crypto_hardening_tests.rs`:
+- `test_aes_gcm_nonce_never_repeats_across_writes` — 200-write nonce collision check on `EncryptedStore`
+- `test_ed25519_empty_payload_signs_and_verifies`
+- `test_ed25519_rejects_malformed_signature` (all-zero 64 bytes)
+- `test_ed25519_rejects_signature_from_wrong_key`
+- `test_ed25519_rejects_signature_for_different_payload`
+- `test_ed25519_signature_verifies_repeatedly`
+- `test_ed25519_verifying_key_roundtrip_matches_signing`
+- `test_ed25519_does_not_catch_replay_by_itself` (documents boundary: Ed25519 accepts replay; `ReplayFilter` must catch it — cross-checks both layers)
+- `test_ffi_invalid_config_returns_false_not_panic`
+- `test_ffi_zero_peers_returns_false_not_panic`
+- `test_ffi_excessive_peers_returns_false_not_panic`
+- `test_ffi_connect_peer_when_no_node_running_returns_false`
+- `test_ffi_start_stop_node_lifecycle_handles_errors_cleanly`
+
+**Key finding confirmed**: No nonce reuse bug exists. Both storage implementations use independent `OsRng` draws per encryption. The one real issue flagged: `legacy.rs::NodeStorage` derives the AES key directly from the first 32 bytes of the Ed25519 signing key (key separation concern) — documented here, not a nonce vulnerability.
+
+---
+
+### Part C — Chaos/Partition Suite Kickoff
+
+Added `test_partition_reconciliation_no_data_loss_or_conflict` to `crci-core/src/chaos.rs` as a proper `#[test]` function.
+
+Scenario: 10-node mesh split into two isolated halves (nodes 0–4 vs. 5–9) for 30 gossip rounds. Each partition originates its own rescue message. Partition healed; 20 reconciliation rounds run. Invariants: (1) no message crosses the partition boundary during isolation, (2) after healing, all 10 nodes hold both rescue messages (no silent data loss or Merkle-chain conflict).
+
+**Scope statement**: This is Scenario 4 — a start, not full chaos coverage. The three existing scenarios (10%/40% packet loss, crash+restart, reconnect storm) remain. TLA+ parity and full E2E chaos coverage are NOT claimed from this one scenario.
 
 ## BFT Vector Status & Security Hardening
 - **Completed**: BFT-001, BFT-002, BFT-003, BFT-004, BFT-005, BFT-006, BFT-007, BFT-008, BFT-009, BFT-010, BFT-011, BFT-012, BFT-013, BFT-014, BFT-015, BFT-016, BFT-017, BFT-018, BFT-019, BFT-020, BFT-021, BFT-030.
