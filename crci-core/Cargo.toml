@@ -3,6 +3,13 @@ name = "crci-core"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+# test-utils: exposes internal test helpers (nonce inspection, raw write).
+# NOT included in default features — never compiled into production builds.
+# Activated automatically during `cargo test --all` via the dev-dependency
+# self-reference below.
+test-utils = []
+
 [lib]
 name = "crci_core"
 path = "src/lib.rs"
@@ -37,4 +44,7 @@ uniffi = { version = "0.28", features = ["build"] }
 [dev-dependencies]
 http-body-util = "0.1"
 tempfile = "3.27.0"
+# Self-reference with test-utils feature so integration tests in tests/ can
+# access write_raw_for_nonce_test and read_all_nonces_for_test.
+crci-core = { path = ".", features = ["test-utils"] }
 

@@ -319,12 +319,14 @@ impl NodeRuntime {
             }
         }
 
-        self.observations.push((
-            self.id.clone(),
-            wire.severity,
-            wire.confidence,
-            wire.visibility == "unknown",
-        ));
+        if !wire.message_type.contains("ChainHeadAnnouncement") {
+            self.observations.push((
+                self.id.clone(),
+                wire.severity,
+                wire.confidence,
+                wire.visibility == "unknown",
+            ));
+        }
     }
 
     pub fn process_inbox(&mut self) {
@@ -561,8 +563,26 @@ impl NodeRuntime {
                 let key = format!("msg:{}", wire.id);
                 if let Ok(value) = serde_json::to_vec(&wire) {
                     let backend_clone = backend.clone();
-                    tokio::spawn(async move {
+                    // Spawn the write task and immediately wrap it with panic detection.
+                    // tokio::spawn returns a JoinHandle; if the spawned future panics,
+                    // JoinHandle::await returns Err(JoinError) containing the panic payload
+                    // rather than propagating the panic to this thread. We spawn a lightweight
+                    // watcher task so the caller remains fire-and-forget while panics are
+                    // observable (logged) instead of silently killing a Tokio worker thread.
+                    let write_handle = tokio::spawn(async move {
                         let _ = backend_clone.write(&key, &value).await;
+                    });
+                    tokio::spawn(async move {
+                        if let Err(join_err) = write_handle.await {
+                            if join_err.is_panic() {
+                                log::error!(
+                                    "[panic-isolation] storage write task panicked: {:?}. \
+                                     Tokio worker thread survived.",
+                                    join_err
+                                );
+                            }
+                            // is_cancelled() is ignored — cancellation is expected during shutdown.
+                        }
                     });
                 }
             }

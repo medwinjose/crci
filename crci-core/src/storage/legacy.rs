@@ -14,8 +14,33 @@ use aes_gcm::{
 use rand::rngs::OsRng;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::Path;
+
+/// Domain-separation label for AES-GCM key derivation from Ed25519 signing key material.
+/// Changing this string would invalidate all previously saved NodeStorage files.
+const KDF_DOMAIN_LABEL: &[u8] = b"crci-legacy-storage-v1";
+
+/// Derive a 32-byte AES-256-GCM key from Ed25519 signing key bytes using
+/// SHA-256 with domain separation.
+///
+/// SHA-256(KDF_DOMAIN_LABEL || 0x00 || signing_key_bytes) produces a key that:
+///   - Is cryptographically independent of the raw signing key bytes
+///   - Cannot be reversed to recover Ed25519 key material
+///   - Is deterministic: same signing key always produces the same AES key
+///   - Is domain-separated: the label prevents cross-context key reuse
+///
+/// This uses sha2 (already a workspace dependency) — no new crates added.
+fn derive_storage_key(signing_key_bytes: &[u8]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(KDF_DOMAIN_LABEL);
+    hasher.update([0x00]); // separator byte between label and key material
+    hasher.update(signing_key_bytes);
+    let digest = hasher.finalize();
+    // SHA-256 output is exactly 32 bytes — matches AES-256 key size.
+    digest.into()
+}
 
 // ─── Persisted State ─────────────────────────────────────────────────────────
 // Everything a node needs to restore itself after a restart.
@@ -50,10 +75,12 @@ impl NodeStorage {
     // 32 bytes of the node's Ed25519 signing key — the phone's own private key
     // becomes the storage encryption key. No separate password needed.
     pub fn new(node_id: &str, signing_key_bytes: &[u8]) -> NodeStorage {
-        // Use the first 32 bytes of the signing key as the AES-256 key
-        let mut key_bytes = [0u8; 32];
-        let len = signing_key_bytes.len().min(32);
-        key_bytes[..len].copy_from_slice(&signing_key_bytes[..len]);
+        // Derive the AES-256-GCM key from the Ed25519 signing key using
+        // SHA-256 with domain separation rather than using the raw signing key
+        // bytes directly. This ensures the AES key is cryptographically
+        // independent of the Ed25519 key material (fixes key-separation concern
+        // identified in Session 77 pre-audit).
+        let key_bytes = derive_storage_key(signing_key_bytes);
 
         let key = Key::<Aes256Gcm>::from_slice(&key_bytes);
         let cipher = Aes256Gcm::new(key);

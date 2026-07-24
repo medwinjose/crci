@@ -184,9 +184,12 @@ impl StorageBackend for EncryptedStore {
 }
 
 // ─── Test-only helpers ────────────────────────────────────────────────────────
-// These methods are named and documented as test-only. They are not part of
-// the public API surface. Do not use them in production code.
-#[doc(hidden)]
+// Gated behind the "test-utils" feature. This feature is activated only via
+// the crci-core dev-dependency self-reference in crci-core/Cargo.toml, so
+// these helpers are never compiled into production or release builds.
+// Verified with: cargo build --release (helpers absent) vs
+//                cargo test --all    (helpers present via test-utils feature).
+#[cfg(feature = "test-utils")]
 impl EncryptedStore {
     /// Thin write alias for nonce-collision tests. Do not call from production code.
     pub async fn write_raw_for_nonce_test(
