@@ -107,18 +107,19 @@
   - **Android Emulator**: Booted AVD `medium_phone` (`emulator-5554`), compiled debug APK (8.1 MB), installed via ADB, launched `dev.crci.android/.MainActivity`, and captured visual screenshot (`android_emulator_verification.png`).
   - **Discovered Gap**: App launch threw `java.lang.UnsatisfiedLinkError: libcrci_core.so not found` at runtime due to missing Android NDK cross-compilation pipeline on host (`jniLibs/x86_64` missing target `.so`).
 
-## BFT Vector Status (1-30)
+## BFT Vector Status & Security Hardening
 - **Completed**: BFT-001, BFT-002, BFT-003, BFT-004, BFT-005, BFT-006, BFT-007, BFT-008, BFT-009, BFT-010, BFT-011, BFT-012, BFT-013, BFT-014, BFT-015, BFT-016, BFT-017, BFT-018, BFT-019, BFT-020, BFT-021, BFT-030.
-- **Open**: BFT-022, BFT-023, BFT-024, BFT-025, BFT-026, BFT-027, BFT-028, BFT-029 (Batch 2).
+- **Open**: Remaining hardening work: nonce reuse in AES-GCM usage, Ed25519 signature verification edge cases, FFI panic safety at the Android/JDK boundary — not yet scoped into named vectors.
 
 ## Verification
-- Clean compilation and `cargo fmt --all -- --check` passes cleanly.
-- `cargo clippy --all-targets -- -D warnings` on the entire workspace passes with zero warnings.
+- Clean compilation and `cargo fmt --all -- --check` passes cleanly (exit code 0).
+- `cargo clippy --workspace --all-targets -- -D warnings` passes with zero warnings.
 - 158 tests passing (`cargo test --all`).
+- Android NDK cross-compilation verified: `libcrci_core.so` generated for `x86_64` (1.53 MB) & `arm64-v8a` (1.74 MB) via `cargo-ndk 4.1.2`. `UnsatisfiedLinkError` resolved on `emulator-5554`.
 - Android Emulator screenshot captured and referenced at `android_emulator_verification.png`.
 
 ## Open Gaps & Technical Debt
-- **Android NDK Cross-Compilation**: Configure `cargo-ndk` build script to generate `libcrci_core.so` for `x86_64` and `arm64-v8a` target ABIs and copy into `crci-android/app/src/main/jniLibs/`.
+- **Docker Daemon Service Elevation**: Docker Desktop daemon service is not running on host (`docker info` failed to connect to npipe API); `./scripts/demo.sh` executed native local process fallback.
 
 ## Manual Validation (Live Handshake Test)
 To run the live Android to Host peer handshake end-to-end:
