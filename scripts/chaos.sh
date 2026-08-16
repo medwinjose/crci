@@ -19,7 +19,33 @@ check() {
 echo "=== CRCI Chaos Engineering Suite ==="
 echo ""
 
-# Baseline
+# 1. Run in-memory Rust Chaos Suite (4 Scenarios: Packet Loss, Crash+Restart, Reconnect Storm, Partition Reconciliation)
+echo "--- In-Memory Rust Chaos Suite (4 Scenarios) ---"
+if cargo test --lib chaos -- --nocapture; then
+  check "In-Memory Rust Chaos Suite (4 scenarios)" "ok"
+else
+  check "In-Memory Rust Chaos Suite (4 scenarios)" "failed"
+fi
+echo ""
+
+# 2. Check Docker daemon availability for Container Integration Scenarios
+echo "--- Docker Compose Container Chaos Scenarios ---"
+DOCKER_AVAILABLE=false
+if command -v docker >/dev/null 2>&1; then
+  if docker info >/dev/null 2>&1; then
+    DOCKER_AVAILABLE=true
+  fi
+fi
+
+if [ "$DOCKER_AVAILABLE" = false ]; then
+  echo "! Docker daemon is not running. Skipping containerized network injection scenarios."
+  check "Docker Container Integration Scenarios" "skipped (Docker daemon not running)"
+  echo ""
+  echo "=== Results: $PASS passed/skipped, $FAIL failed ==="
+  [ "$FAIL" -eq 0 ] && exit 0 || exit 1
+fi
+
+# Baseline Docker Compose check
 echo "--- Baseline health check ---"
 docker compose up -d
 sleep 4
