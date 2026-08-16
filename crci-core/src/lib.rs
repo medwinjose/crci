@@ -16,7 +16,6 @@ pub mod merkle;
 pub mod mesh;
 pub mod message;
 pub mod metrics;
-pub mod network;
 pub mod node;
 pub mod replay;
 pub mod routing;
