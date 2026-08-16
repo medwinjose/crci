@@ -1,3 +1,10 @@
+param (
+    [switch]$Native,
+    [switch]$Local
+)
+
+$AllowNative = $Native -or $Local -or ($env:DEMO_MODE -eq "native") -or ($env:DEMO_MODE -eq "local")
+
 # Check docker compose and daemon status
 $DockerRunning = $false
 try {
@@ -9,7 +16,32 @@ try {
     }
 } catch {}
 
-if ($DockerRunning) {
+if (-not $DockerRunning -and -not $AllowNative) {
+    Write-Host "=========================================================" -ForegroundColor Red
+    Write-Host "       CRCI Live Demo Path — Docker Unavailable          " -ForegroundColor Red
+    Write-Host "=========================================================" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "ERROR: Docker daemon is not running or accessible." -ForegroundColor Red
+    Write-Host "Diagnostic output from docker info:" -ForegroundColor Yellow
+    docker info 2>&1
+    Write-Host ""
+    Write-Host "Resolution options:" -ForegroundColor Cyan
+    Write-Host "  1. Start Docker Desktop and ensure the engine daemon is running."
+    Write-Host "     Then re-run: .\scripts\demo.ps1"
+    Write-Host ""
+    Write-Host "  2. Alternatively, explicitly run native local process mode:"
+    Write-Host "     .\scripts\demo.ps1 -Native"
+    Write-Host ""
+    Write-Host "Feature Gap Notice (Native Local Mode):" -ForegroundColor Yellow
+    Write-Host "  - Requires local Rust toolchain (cargo) and Node.js (npm) installed on host."
+    Write-Host "  - Binds directly to host localhost ports (7001, 7002, 8080, 5173)."
+    Write-Host "  - Metrics available via raw HTTP GET /metrics endpoint."
+    Write-Host "  - Does not provide container/network-level process isolation."
+    Write-Host "========================================================="
+    exit 1
+}
+
+if ($DockerRunning -and -not $AllowNative) {
     Write-Host "========================================================="
     Write-Host "       CRCI Live Demo Path (Docker Container Mode)       "
     Write-Host "========================================================="

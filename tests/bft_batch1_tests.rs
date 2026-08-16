@@ -194,3 +194,223 @@ fn test_bft_reputation_persistence_clamping() {
     // Clean up state file
     node.storage.delete();
 }
+
+#[test]
+fn test_bft_reputation_decay() {
+    // BFT-011: Verify idle nodes decay reputation score over time
+    let mut rep = PeerReputation::new(); // Starts at 0.5
+
+    // Simulate inactivity by setting last_activity to 3 seconds ago
+    let now = std::time::Instant::now();
+    rep.last_activity = now - Duration::from_secs(3);
+    rep.last_updated = now - Duration::from_secs(3);
+
+    // Call decay_recover (simulates idle check)
+    rep.decay_recover();
+
+    // With IDLE_THRESHOLD = 2.0s and DECAY_RATE = 0.05/s:
+    // It has been idle for 3 seconds, so 3 seconds is > 2.0s.
+    // The decay time is 3 seconds. The score decays by 3 * 0.05 = 0.15.
+    // Score should be 0.5 - 0.15 = 0.35.
+    assert_eq!(rep.score, 0.35);
+}
+
+#[test]
+fn test_bft_reputation_recovery() {
+    // BFT-012: Verify recovery rate is slower than decay rate
+    let mut rep = PeerReputation::new(); // Starts at 0.5
+    rep.penalise(0.4); // Drop to 0.1
+    assert_eq!(rep.score, 0.1);
+
+    // Simulate active behavior (honest) over a short interval (e.g. 500ms)
+    let now = std::time::Instant::now();
+    rep.last_updated = now - Duration::from_millis(500);
+    rep.record_active_behavior();
+
+    // Recovery is elapsed.sqrt() * 0.005. For 0.5s: 0.707 * 0.005 = 0.003535.
+    // Score should recover slightly but not immediately jump back.
+    assert!(rep.score > 0.1);
+    assert!(rep.score < 0.15); // Stays bounded and recovers slowly
+}
+
+#[test]
+fn test_bft_reputation_weighted_quorum() {
+    // BFT-016: Verify low-reputation majority cannot out-vote high-reputation minority
+    use crci_core::mesh::MeshSimulator;
+
+    let mut mesh = MeshSimulator::new();
+    let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+
+    // Set up 5 nodes in the same zone
+    mesh.add_node("node-high-1", "zone-alpha", inbox.clone());
+    mesh.add_node("node-high-2", "zone-alpha", inbox.clone());
+    mesh.add_node("node-low-1", "zone-alpha", inbox.clone());
+    mesh.add_node("node-low-2", "zone-alpha", inbox.clone());
+    mesh.add_node("node-low-3", "zone-alpha", inbox.clone());
+
+    // Establish reputations: high-reputation nodes have 1.0, low-reputation nodes have 0.45
+    mesh.nodes.get_mut("node-high-1").unwrap().reputation = 1.0;
+    mesh.nodes.get_mut("node-high-2").unwrap().reputation = 1.0;
+    mesh.nodes.get_mut("node-low-1").unwrap().reputation = 0.45;
+    mesh.nodes.get_mut("node-low-2").unwrap().reputation = 0.45;
+    mesh.nodes.get_mut("node-low-3").unwrap().reputation = 0.45;
+
+    // Connect them
+    mesh.connect("node-high-1", "node-high-2");
+    mesh.connect("node-high-1", "node-low-1");
+    mesh.connect("node-high-1", "node-low-2");
+    mesh.connect("node-high-1", "node-low-3");
+
+    // Generate observations:
+    // Low-reputation majority votes 5 (deviating), High-reputation minority votes 2 (honest)
+    mesh.originate(
+        "node-high-1",
+        Message::new(
+            "msg-h1",
+            "node-high-1",
+            Signal::new(2, true, false, true, 3, Visibility::Direct),
+            None,
+        ),
+    );
+    mesh.originate(
+        "node-high-2",
+        Message::new(
+            "msg-h2",
+            "node-high-2",
+            Signal::new(2, true, false, true, 3, Visibility::Direct),
+            None,
+        ),
+    );
+    mesh.originate(
+        "node-low-1",
+        Message::new(
+            "msg-l1",
+            "node-low-1",
+            Signal::new(5, true, false, true, 3, Visibility::Direct),
+            None,
+        ),
+    );
+    mesh.originate(
+        "node-low-2",
+        Message::new(
+            "msg-l2",
+            "node-low-2",
+            Signal::new(5, true, false, true, 3, Visibility::Direct),
+            None,
+        ),
+    );
+    mesh.originate(
+        "node-low-3",
+        Message::new(
+            "msg-l3",
+            "node-low-3",
+            Signal::new(5, true, false, true, 3, Visibility::Direct),
+            None,
+        ),
+    );
+
+    // Deliver all messages
+    mesh.drain();
+
+    // Run consensus in mesh. The high-reputation nodes deviate from the simple median 5.
+    // So w_faulty is the sum of reputations of high-reputation nodes (2 * 1.0 = 2.0).
+    // w_total is 2 * 1.0 + 3 * 0.45 = 3.35.
+    // Since 3 * w_faulty (6.0) >= w_total (3.35), a Byzantine Quorum Failure must trigger, aborting the consensus.
+    // Thus, the low-reputation majority cannot force consensus.
+    mesh.run_consensus();
+
+    // Verify consensus aborted/failed and didn't result in consensus on 5,
+    // and that the deviators (node-high-1 and node-high-2) did NOT get penalized because consensus was aborted!
+    assert_eq!(mesh.nodes.get("node-high-1").unwrap().reputation, 1.0);
+    assert_eq!(mesh.nodes.get("node-high-2").unwrap().reputation, 1.0);
+}
+
+#[test]
+fn test_bft_reputation_persistence_across_reconnect() {
+    // BFT-017: Verify a node's reputation survives disconnect/reconnect cycles
+    let mut guard = SybilGuard::new(4);
+    let peer = "peer-127.0.0.1:9091".to_string();
+
+    // Initialize/check once
+    assert!(guard.check(&peer).is_ok());
+    assert_eq!(guard.reputation(&peer), 0.5);
+
+    // Penalize
+    guard.report_violation(&peer);
+    assert_eq!(guard.reputation(&peer), 0.35);
+
+    // Simulate disconnect and reconnect by querying again
+    // The reputation score must still be 0.35 (accounting for no decay as time hasn't passed)
+    assert_eq!(guard.reputation(&peer), 0.35);
+}
+
+#[test]
+fn test_bft_reputation_isolation_per_peer_view() {
+    // BFT-018: Verify local reputation table is isolated and cannot be overridden by self-reported values
+    let mut guard = SybilGuard::new(4);
+    let peer = "peer-127.0.0.1:9092".to_string();
+
+    // Check node
+    assert!(guard.check(&peer).is_ok());
+
+    // Record violation
+    guard.report_violation(&peer);
+
+    // Check reputation locally
+    let score = guard.reputation(&peer);
+    assert_eq!(score, 0.35);
+
+    // Even if an external message attempts to claim a higher reputation,
+    // there is no field or mechanism to update the local table from incoming messages.
+    // The score remains isolated at 0.35.
+    assert_eq!(guard.reputation(&peer), 0.35);
+}
+
+#[test]
+fn test_bft_sybil_cluster_reputation_correlation() {
+    // BFT-019: Verify new peers joining from a banned subnet start with a penalty
+    let mut guard = SybilGuard::new(4);
+
+    let banned_peer = "192.168.2.1:8080".to_string();
+    let new_peer_same_subnet = "192.168.2.2:8080".to_string();
+    let new_peer_diff_subnet = "192.168.3.1:8080".to_string();
+
+    // Ban the first peer
+    for _ in 0..7 {
+        guard.report_violation(&banned_peer);
+    }
+    assert!(guard.reputation(&banned_peer) < 0.1);
+
+    // Check new peer from same subnet -> should start with 0.2 penalty
+    assert!(guard.check(&new_peer_same_subnet).is_ok());
+    assert_eq!(guard.reputation(&new_peer_same_subnet), 0.2);
+
+    // Check new peer from different subnet -> should start at standard 0.5
+    assert!(guard.check(&new_peer_diff_subnet).is_ok());
+    assert_eq!(guard.reputation(&new_peer_diff_subnet), 0.5);
+}
+
+#[test]
+fn test_bft_reputation_based_eviction_hysteresis() {
+    // BFT-020: Verify eviction hysteresis prevents flapping
+    let mut rep = PeerReputation::new(); // Starts at 0.5
+    assert!(!rep.is_banned());
+
+    // Penalize repeatedly to ban it
+    rep.penalise(0.45); // 0.5 - 0.45 = 0.05
+    assert!(rep.is_banned());
+
+    // Let it recover slightly past the eviction threshold (0.1)
+    let now = std::time::Instant::now();
+    rep.last_updated = now - Duration::from_secs(1000);
+    rep.record_active_behavior(); // Recover slightly
+    assert!(rep.score > 0.1); // Score is now > 0.1
+
+    // Due to hysteresis, it must still remain banned since it hasn't crossed the 0.25 threshold
+    assert!(rep.is_banned());
+
+    // Recover more to cross 0.25
+    rep.score = 0.26;
+    rep.record_active_behavior();
+    assert!(!rep.is_banned()); // Successfully reinstated
+}

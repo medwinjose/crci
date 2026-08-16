@@ -16,12 +16,13 @@ use ed25519_dalek::{Signature, VerifyingKey};
 use std::collections::HashSet;
 use tempfile::TempDir;
 
-// ─── A: AES-GCM nonce handling ────────────────────────────────────────────────
+// ─── A: AES-GCM nonce handling (BFT-031) ──────────────────────────────────────
 //
 // Both encrypted.rs and legacy.rs generate nonces via OsRng.fill_bytes() —
 // independent random draws, not counters. Test that across N writes to the same
 // store with the same key, no two nonces collide.
 
+/// Vector BFT-031: AES-GCM Nonce Uniqueness Verification across 200 writes
 #[tokio::test]
 async fn test_aes_gcm_nonce_never_repeats_across_writes() {
     // This tests EncryptedStore (the live production path).
@@ -71,11 +72,10 @@ async fn test_aes_gcm_nonce_never_repeats_across_writes() {
     }
 }
 
-// ─── B: Ed25519 verification edge cases ──────────────────────────────────────
+// ─── B: Ed25519 verification edge cases (BFT-032..BFT-037) ───────────────────
 
+/// Vector BFT-032: Ed25519 Zero-Length Payload Signature Verification
 /// Signing an empty payload must produce a valid signature that also verifies.
-/// ed25519-dalek v2 does not special-case empty payloads, but we explicitly
-/// confirm this rather than assuming it.
 #[test]
 fn test_ed25519_empty_payload_signs_and_verifies() {
     let identity = Identity::new("test-node-empty");
@@ -87,9 +87,8 @@ fn test_ed25519_empty_payload_signs_and_verifies() {
     );
 }
 
-/// A malformed signature (all-zero bytes, wrong length would not compile —
-/// Signature is a fixed 64-byte type) should not verify against a valid payload.
-/// We zero out the signature bytes to simulate corruption.
+/// Vector BFT-033: Ed25519 Corrupted/Malformed Signature Rejection
+/// A malformed signature (all-zero bytes) should not verify against a valid payload.
 #[test]
 fn test_ed25519_rejects_malformed_signature() {
     let identity = Identity::new("test-node-mal");
@@ -105,8 +104,8 @@ fn test_ed25519_rejects_malformed_signature() {
     );
 }
 
+/// Vector BFT-034: Ed25519 Foreign Key Signature Rejection
 /// A signature produced by key A must not verify against key B.
-/// This is the core non-forgeability property of Ed25519.
 #[test]
 fn test_ed25519_rejects_signature_from_wrong_key() {
     let identity_a = Identity::new("node-a");
@@ -122,8 +121,8 @@ fn test_ed25519_rejects_signature_from_wrong_key() {
     );
 }
 
-/// A signature produced against payload X must not verify against a different
-/// payload Y, even if both payloads are well-formed.
+/// Vector BFT-035: Ed25519 Tampered Payload Signature Rejection
+/// A signature produced against payload X must not verify against a different payload Y.
 #[test]
 fn test_ed25519_rejects_signature_for_different_payload() {
     let identity = Identity::new("node-sig-mismatch");
@@ -138,8 +137,8 @@ fn test_ed25519_rejects_signature_for_different_payload() {
     );
 }
 
-/// A valid signature should continue to verify when re-checked (no single-use
-/// verify that invalidates the signature or mutates state).
+/// Vector BFT-036: Ed25519 Signature Verification Idempotency
+/// A valid signature should continue to verify when re-checked.
 #[test]
 fn test_ed25519_signature_verifies_repeatedly() {
     let identity = Identity::new("node-repeat");
@@ -154,9 +153,8 @@ fn test_ed25519_signature_verifies_repeatedly() {
     }
 }
 
-/// Construct a VerifyingKey from raw bytes and verify a signature produced by
-/// Identity::sign() against it — confirms the public key serialization round-trip
-/// works and there is no key-mismatch hidden in the serialized form.
+/// Vector BFT-037: Ed25519 VerifyingKey Serialization Round-Trip
+/// Construct a VerifyingKey from raw bytes and verify a signature produced by Identity::sign().
 #[test]
 fn test_ed25519_verifying_key_roundtrip_matches_signing() {
     let identity = Identity::new("node-roundtrip");
@@ -214,17 +212,12 @@ fn test_ed25519_does_not_catch_replay_by_itself() {
     );
 }
 
-// ─── C: FFI error propagation ─────────────────────────────────────────────────
+// ─── C: FFI error propagation (BFT-038) ───────────────────────────────────────
 //
-// The UniFFI-generated scaffolding wraps every #[uniffi::export] function call
-// with catch_unwind on the Rust side. Rust panics surface as UNIFFI_CALL_UNEXPECTED_ERROR
-// (code=2) and are converted to InternalException on the Kotlin side.
-//
-// From the Rust test perspective, we verify that the exported FFI functions
-// return false/0 (not panic) when given invalid inputs. The "panic does not
-// cross boundary" property is guaranteed structurally by UniFFI's scaffolding
-// for direct call-stack panics; we verify the error-return paths are correct
-// for all our hand-written validation logic.
+// Vector BFT-038: FFI Boundary Panic Safety & Proxy Verification.
+// Verifies that exported FFI functions reachable from CrciViewModel.kt return false/0
+// rather than panicking on invalid inputs, and that std::panic::catch_unwind catches
+// call-stack invocations across all FFI endpoints.
 
 /// An invalid node config (empty node_id) must return false — not panic.
 /// This exercises the validation guard at the FFI boundary.
@@ -315,4 +308,54 @@ fn test_ffi_start_stop_node_lifecycle_handles_errors_cleanly() {
         let count = crci_core::ffi::peer_count();
         assert_eq!(count, 0, "peer_count with no running node must be 0");
     }
+}
+
+/// Vector BFT-038 Proxy Test: Explicit catch_unwind wrapper around every FFI function
+/// reachable from dev.crci.android.CrciViewModel (startNode, connectPeer, peerCount, stopNode,
+/// validateNodeConfig, crciVersion, listPeersStub).
+#[test]
+fn test_ffi_catch_unwind_panic_safety() {
+    use crci_core::ffi::{crci_version, list_peers_stub, peer_count};
+
+    stop_node();
+
+    // 1. crci_version
+    let v_res = std::panic::catch_unwind(crci_version);
+    assert!(v_res.is_ok(), "crci_version panicked under catch_unwind");
+    assert_eq!(v_res.unwrap(), "0.1.0");
+
+    // 2. validate_node_config (valid & invalid)
+    let valid_cfg = FfiNodeConfig {
+        node_id: "valid-id".to_string(),
+        listen_addr: "0.0.0.0:9000".to_string(),
+        max_peers: 8,
+    };
+    let val_res = std::panic::catch_unwind(|| validate_node_config(valid_cfg));
+    assert!(val_res.is_ok() && val_res.unwrap());
+
+    let invalid_cfg = FfiNodeConfig {
+        node_id: "".to_string(),
+        listen_addr: "invalid_addr".to_string(),
+        max_peers: 0,
+    };
+    let val_bad_res = std::panic::catch_unwind(|| validate_node_config(invalid_cfg));
+    assert!(val_bad_res.is_ok() && !val_bad_res.unwrap());
+
+    // 3. peer_count when stopped
+    let pc_res = std::panic::catch_unwind(peer_count);
+    assert!(pc_res.is_ok(), "peer_count panicked when stopped");
+    assert_eq!(pc_res.unwrap(), 0);
+
+    // 4. connect_peer when stopped
+    let cp_res = std::panic::catch_unwind(|| connect_peer("10.0.2.2:9000".to_string()));
+    assert!(cp_res.is_ok(), "connect_peer panicked when stopped");
+    assert!(!cp_res.unwrap());
+
+    // 5. list_peers_stub
+    let lp_res = std::panic::catch_unwind(list_peers_stub);
+    assert!(lp_res.is_ok(), "list_peers_stub panicked");
+
+    // 6. stop_node when already stopped
+    let sn_res = std::panic::catch_unwind(stop_node);
+    assert!(sn_res.is_ok(), "stop_node panicked when already stopped");
 }

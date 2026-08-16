@@ -19,14 +19,20 @@ To launch the full multi-node mesh (node-alpha, node-beta, node-byzantine) along
 
 - **Linux / macOS**:
   ```bash
-  ./scripts/demo.sh
+  ./scripts/demo.sh          # Docker Container Mode (requires Docker Desktop / daemon)
+  ./scripts/demo.sh --native # Native Local Process Mode (host cargo & npm fallback)
   ```
 - **Windows (PowerShell)**:
   ```powershell
-  ./scripts/demo.ps1
+  ./scripts/demo.ps1          # Docker Container Mode (requires Docker Desktop / daemon)
+  ./scripts/demo.ps1 -Native  # Native Local Process Mode (host cargo & npm fallback)
   ```
 
-This script will start the mesh, wait for healthiness, automatically open your default browser to `http://localhost:5173`, and inject normal telemetry followed by a Byzantine attacker. Watch as the Byzantine node gets penalized and evicted dynamically in real time. Press `Ctrl+C` in the terminal to tear down all containers cleanly.
+This script will start the mesh, wait for healthiness, automatically open your default browser to `http://localhost:5173`, and inject normal telemetry followed by a Byzantine attacker. Watch as the Byzantine node gets penalized and evicted dynamically in real time. Press `Ctrl+C` in the terminal to tear down all processes/containers cleanly.
+
+> **Note on Demo Modes & Feature Gap:**
+> - **Docker Container Mode (Default)**: Builds containerized nodes (`node-alpha`, `node-beta`, `node-byzantine`, `dashboard`) isolated inside a Docker bridge network (`crci-mesh`). Requires a running Docker Desktop daemon. If Docker is not running, the script will fail loudly with diagnostic instructions.
+> - **Native Local Process Mode (`--native`)**: Compiles binaries locally via `cargo build` and runs processes on host `127.0.0.1`. Requires local Rust toolchain and Node.js (`npm`). Prometheus metrics are exposed at `http://localhost:8080/metrics`. Grafana visualizer is not containerized in native mode and requires manual setup.
 
 ### Run locally
 ```bash

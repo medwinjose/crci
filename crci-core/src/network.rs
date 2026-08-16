@@ -324,23 +324,34 @@ impl Network {
 
             println!("  [Zone {}] Median severity: {}", zone, median);
 
-            // Compute faulty count before applying updates
+            // Compute faulty count and reputation-weighted quorum weights
+            let mut w_total = 0.0f64;
+            let mut w_faulty = 0.0f64;
             let mut faulty_count = 0;
-            for (_, severity, confidence, unknown_vis) in reporters {
+
+            for (node_id, severity, confidence, unknown_vis) in reporters {
+                let rep = self.nodes.get(node_id).map(|n| n.reputation).unwrap_or(0.0);
+                w_total += rep;
+
                 if *unknown_vis || *confidence < 3 {
                     continue;
                 }
                 let deviation = (*severity as i16 - median as i16).unsigned_abs();
                 if deviation > 2 {
                     faulty_count += 1;
+                    w_faulty += rep;
                 }
             }
 
-            // BFT-001 / BFT-005: Strict f < n/3 inequality using safe integer multiplication
-            if 3 * faulty_count >= n {
+            // Fixed-point math using 3-decimal precision rounding (BFT-016)
+            let w_total = (w_total * 1000.0).round() / 1000.0;
+            let w_faulty = (w_faulty * 1000.0).round() / 1000.0;
+
+            // BFT-001 / BFT-005 / BFT-016: Reputation-weighted Byzantine quorum check
+            if 3.0 * w_faulty >= w_total {
                 println!(
-                    "  [Zone {}] ⚠ Byzantine Quorum Failure (BFT-001): 3f >= n (f: {}, n: {}), consensus aborted.",
-                    zone, faulty_count, n
+                    "  [Zone {}] ⚠ Byzantine Quorum Failure (BFT-001/BFT-016): 3 * w_faulty >= w_total (w_faulty: {:.3}, w_total: {:.3}, f: {}), consensus aborted.",
+                    zone, w_faulty, w_total, faulty_count
                 );
                 continue;
             }

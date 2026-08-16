@@ -74,126 +74,129 @@
 - Session 71: CLI Send / Byzantine / Peers Integration & Quickstart Walkthrough
 - Session 72: Clone-to-Wow Live Demo Path (Orchestrated Live Mesh & Dashboard)
 - Session 73: Harden TcpTransport Socket Lifecycle (ASYNC-001–015)
-- Session 77: Verification Closeout + Crypto-Layer Hardening + Chaos Partition Scenario
-
+- Session 74: BFT Batch 1 Partial (021, 030) + Android JDK17 Build Fix
+- Session 76: Android NDK Cross-Compilation & Demo Regression Verification
+- Session 77: Verification Closeout, Crypto-Layer Hardening, Chaos Partition Scenario
+- Session 78: FFI Spawned-Task Panic Isolation, Legacy Key Derivation Fix, Test-Utils Feature Gate
+- Session 79: Spawn-Site Panic Boundary Fix & Tokio Runtime Invariant Hardening
+- Session 80: FFI Reachability Audit, Named Crypto BFT Vector Scoping (BFT-031..BFT-038) & Test Suite Reconciliation
 
 ## Current Functionality
-1. **Real Async Networking**: The network is now backed by a true asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
-2. **Docker Multi-node Proof Loop**: Scripts and binaries exist to spin up isolated nodes with actual asynchronous communication, verifying the pipeline.
-3. **Advanced Features Embedded**: Reputation, AEDA scoring, battery management, message pruning, Byzantine discovery (K-bucket), Temporal routing, and Merkle chaining are fully integrated into `src/integration.rs` and the `NodeRuntime`.
+1. **Real Async Networking**: The network is backed by an asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
+2. **Docker Multi-node Proof Loop**: Scripts and configurations exist to run multi-node containers with real network traffic. Native local process fallback is documented for environments without a running Docker daemon.
+3. **Advanced Features Embedded**: Reputation, AEDA scoring, battery management, message pruning, Byzantine discovery (K-bucket), Temporal routing, and Merkle chaining are integrated in `src/integration.rs` and the `NodeRuntime`.
 4. **Wasm Edge Compute**: Priority computation can be executed dynamically via Wasmtime (`src/wasm.rs`).
-5. **Security**: Auditing (`src/security.rs`), validations, payload constraints, API telemetry, and a proper `SECURITY.md` are documented.
-6. **Live Dashboard**: A fully standalone web dashboard at `docs/dashboard/` visually tracks live messages, peer status, and SEV distribution over an Axum WebSocket.
-7. **Grafana & Prometheus**: Metrics collected and visualized in Grafana (available at `http://localhost:3001`). Prometheus available at `http://localhost:9090`.
-8. **Byzantine Agent**: `byzantine_agent` binary available to inject adversarial traffic into the cluster. Run `cargo run --bin byzantine_agent -- --help` for details.
-9. **API Hardening**: Rate limits (60 req/min/IP), strict Content-Type checks, 64KB payload limits, and telemetry headers (`X-Request-Id`, `X-CRCI-Version`) enforce production-grade security on the node API.
-10. **Formal Verification**: The core protocol's safety and liveness properties are formally verified via TLA+ in `docs/tla/CRCI.tla`.
-11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`)
-
-### Current Session Status: SESSION 77 — PART A/B/C
-
-### Part A — Session 76 Verification Closeout
-
-**A1 — Android emulator screenshot (`android_emulator_verification.png`)**:
-File exists (181,308 bytes) but has MIME type `text/plain; charset=utf-16le` — it is NOT a valid PNG image. Visual state of the emulator at capture time cannot be verified from this file. Status: **unverified — file is not a valid image**.
-
-**A2 — Docker demo path decision**: Formally documented as **option (b)**. Docker Desktop daemon service is not running on this host (`docker info` fails to connect to the npipe API). Native local process fallback is the confirmed, functional demo path for this environment. Docker containerized path is optional and untested in CI. No further action required on Docker until daemon elevation is available.
+5. **Security**: Auditing (`src/security.rs`), validations, payload constraints, API telemetry, and `SECURITY.md`.
+6. **Live Dashboard**: Standalone web dashboard at `docs/dashboard/` tracking live messages, peer status, and SEV distribution over Axum WebSocket.
+7. **Grafana & Prometheus**: Metrics exported for Prometheus (`http://localhost:9090`) and Grafana (`http://localhost:3001`).
+8. **Byzantine Agent**: `byzantine_agent` binary available to inject adversarial traffic into the cluster (`cargo run --bin byzantine_agent -- --help`).
+9. **API Hardening**: Rate limits (60 req/min/IP), strict Content-Type checks, 64KB payload limits, and telemetry headers (`X-Request-Id`, `X-CRCI-Version`).
+10. **Formal Verification**: Safety and liveness properties verified via TLA+ in `docs/tla/CRCI.tla`.
+11. **Academic Dissemination**: Full research paper draft and LaTeX build instructions completed for arXiv submission (`docs/paper/crci_paper.md`).
 
 ---
 
-### Part B — Crypto-Layer Hardening
+## Session 80 — Summary & Scope
 
-Pre-audit findings (see Session 77 pre-audit report for full details):
+**Goal:** Audit real FFI call path from Kotlin app (`crci-android`), verify panic safety across reachable FFI exported functions, scope completed crypto hardening tests into named BFT vectors (BFT-031..BFT-038), and reconcile test suite counts against v0.1.0 baseline.
 
-| File | Finding |
-|------|---------|
-| `security.rs` | No AES-GCM code. STRIDE module only (FNV node ID, AuditLog, zone registry, MCE counter, priority queue). |
-| `storage/encrypted.rs` | Live AES-GCM: 12-byte `OsRng` random nonces per write. Key via Argon2id + random salt. Append-log format. No nonce reuse. |
-| `storage/legacy.rs` | AES-GCM: same `OsRng` random nonce strategy. Key = first 32 bytes of Ed25519 signing key (key separation concern — documented, not a nonce bug). |
-| `identity.rs` | Ed25519 via `ed25519-dalek v2`. No panic risk. No edge-case tests previously existed. |
-| `ffi.rs` | All exported functions use `match`/`if let` — no hidden `unwrap()`/`expect()`. UniFFI's scaffolding wraps calls with `catch_unwind`; panics surface as `InternalException` in Kotlin, not crashes. |
+### 1. FFI Reachability Audit
+Traced Kotlin calls in `CrciViewModel.kt` to exported functions `start_node`, `connect_peer`, `peer_count`, `stop_node`, and `validate_node_config`. Confirmed Session 79 spawn-site panic boundary fix in `runtime.rs:566` is dormant/unreachable from FFI call path because `start_node` initializes `NodeRuntime` without `storage_backend` or Tokio background loop.
 
-Tests added in `tests/crypto_hardening_tests.rs`:
-- `test_aes_gcm_nonce_never_repeats_across_writes` — 200-write nonce collision check on `EncryptedStore`
-- `test_ed25519_empty_payload_signs_and_verifies`
-- `test_ed25519_rejects_malformed_signature` (all-zero 64 bytes)
-- `test_ed25519_rejects_signature_from_wrong_key`
-- `test_ed25519_rejects_signature_for_different_payload`
-- `test_ed25519_signature_verifies_repeatedly`
-- `test_ed25519_verifying_key_roundtrip_matches_signing`
-- `test_ed25519_does_not_catch_replay_by_itself` (documents boundary: Ed25519 accepts replay; `ReplayFilter` must catch it — cross-checks both layers)
-- `test_ffi_invalid_config_returns_false_not_panic`
-- `test_ffi_zero_peers_returns_false_not_panic`
-- `test_ffi_excessive_peers_returns_false_not_panic`
-- `test_ffi_connect_peer_when_no_node_running_returns_false`
-- `test_ffi_start_stop_node_lifecycle_handles_errors_cleanly`
-
-**Key finding confirmed**: No nonce reuse bug exists. Both storage implementations use independent `OsRng` draws per encryption. The one real issue flagged: `legacy.rs::NodeStorage` derives the AES key directly from the first 32 bytes of the Ed25519 signing key (key separation concern) — documented here, not a nonce vulnerability.
+### 2. BFT Vector Status & Security Hardening
+- **Completed**:
+  - BFT-001 through BFT-021: Byzantine consensus, reputation decay/recovery, MCE thresholds, and sybil resistance.
+  - BFT-030: Byzantine peer fault injection test.
+  - BFT-031: AES-GCM Nonce Uniqueness Verification across 200 writes (`tests/crypto_hardening_tests.rs:25`).
+  - BFT-032: Ed25519 Zero-Length Payload Signature Verification (`tests/crypto_hardening_tests.rs:77`).
+  - BFT-033: Ed25519 Corrupted/Malformed Signature Rejection (`tests/crypto_hardening_tests.rs:90`).
+  - BFT-034: Ed25519 Foreign Key Signature Rejection (`tests/crypto_hardening_tests.rs:107`).
+  - BFT-035: Ed25519 Tampered Payload Signature Rejection (`tests/crypto_hardening_tests.rs:124`).
+  - BFT-036: Ed25519 Signature Verification Idempotency (`tests/crypto_hardening_tests.rs:140`).
+  - BFT-037: Ed25519 VerifyingKey Serialization Round-Trip (`tests/crypto_hardening_tests.rs:156`).
+- **Open / Unverified**:
+  - **BFT-038: UNVERIFIED: Rust-side proxy test only — not confirmed reachable from Kotlin → UniFFI → ffi.rs path.** (`tests/crypto_hardening_tests.rs:313`). Live Kotlin instrumented execution (`connectedAndroidTest`) remains unexecuted on real emulator device.
 
 ---
 
-### Part C — Chaos/Partition Suite Kickoff
+## Test Suite Reconciliation (184 Passed vs 137 Baseline)
 
-Added `test_partition_reconciliation_no_data_loss_or_conflict` to `crci-core/src/chaos.rs` as a proper `#[test]` function.
+**Total Passing Tests:** 184 (0 failed, 0 ignored across 16 test targets).
+**Baseline at v0.1.0 (Session 69 / commit `110f232`):** 137 passing tests.
+**Net Delta:** +47 passing tests.
+**Baseline Removals/Renames:** 0 tests removed or renamed from baseline.
 
-Scenario: 10-node mesh split into two isolated halves (nodes 0–4 vs. 5–9) for 30 gossip rounds. Each partition originates its own rescue message. Partition healed; 20 reconciliation rounds run. Invariants: (1) no message crosses the partition boundary during isolation, (2) after healing, all 10 nodes hold both rescue messages (no silent data loss or Merkle-chain conflict).
+### Breakdown of the +47 Net New Tests:
 
-**Scope statement**: This is Scenario 4 — a start, not full chaos coverage. The three existing scenarios (10%/40% packet loss, crash+restart, reconnect storm) remain. TLA+ parity and full E2E chaos coverage are NOT claimed from this one scenario.
+1. **`tests/bft_batch1_tests.rs` (+15 tests)**:
+   - `test_bft_reputation_based_eviction_hysteresis`
+   - `test_bft_reputation_decay`
+   - `test_bft_reputation_persistence_across_reconnect`
+   - `test_bft_reputation_fixed_point_rounding`
+   - `test_bft_reputation_recovery`
+   - `test_bft_reputation_isolation_per_peer_view`
+   - `test_bft_subnet_limit`
+   - `test_bft_sybil_cluster_reputation_correlation`
+   - `test_bft_pruning_banned_records`
+   - `test_bft_signature_invalidation_spoof_defense`
+   - `test_bft_reputation_persistence_clamping`
+   - `test_bft_signature_verification_rate_limit`
+   - `test_bft_reputation_bounds_clamping`
+   - `test_bft_sub_linear_recovery`
+   - `test_bft_reputation_weighted_quorum`
 
-## BFT Vector Status & Security Hardening
-- **Completed**: BFT-001, BFT-002, BFT-003, BFT-004, BFT-005, BFT-006, BFT-007, BFT-008, BFT-009, BFT-010, BFT-011, BFT-012, BFT-013, BFT-014, BFT-015, BFT-016, BFT-017, BFT-018, BFT-019, BFT-020, BFT-021, BFT-030.
-- **Open**: Remaining hardening work: nonce reuse in AES-GCM usage, Ed25519 signature verification edge cases, FFI panic safety at the Android/JDK boundary — not yet scoped into named vectors.
+2. **`tests/crypto_hardening_tests.rs` (+14 tests)**:
+   - `test_aes_gcm_nonce_never_repeats_across_writes` (BFT-031)
+   - `test_ed25519_empty_payload_signs_and_verifies` (BFT-032)
+   - `test_ed25519_rejects_malformed_signature` (BFT-033)
+   - `test_ed25519_rejects_signature_from_wrong_key` (BFT-034)
+   - `test_ed25519_rejects_signature_for_different_payload` (BFT-035)
+   - `test_ed25519_signature_verifies_repeatedly` (BFT-036)
+   - `test_ed25519_verifying_key_roundtrip_matches_signing` (BFT-037)
+   - `test_ed25519_does_not_catch_replay_by_itself`
+   - `test_ffi_catch_unwind_panic_safety` (BFT-038 Proxy)
+   - `test_ffi_invalid_config_returns_false_not_panic`
+   - `test_ffi_zero_peers_returns_false_not_panic`
+   - `test_ffi_excessive_peers_returns_false_not_panic`
+   - `test_ffi_connect_peer_when_no_node_running_returns_false`
+   - `test_ffi_start_stop_node_lifecycle_handles_errors_cleanly`
 
-## Verification
-- Clean compilation and `cargo fmt --all -- --check` passes cleanly (exit code 0).
-- `cargo clippy --workspace --all-targets -- -D warnings` passes with zero warnings.
-- 158 tests passing (`cargo test --all`).
-- Android NDK cross-compilation verified: `libcrci_core.so` generated for `x86_64` (1.53 MB) & `arm64-v8a` (1.74 MB) via `cargo-ndk 4.1.2`. `UnsatisfiedLinkError` resolved on `emulator-5554`.
-- Android Emulator screenshot captured and referenced at `android_emulator_verification.png`.
+3. **`crci-core/src/chaos.rs` (+5 tests)**:
+   - `chaos::tests::test_packet_loss_scenarios`
+   - `chaos::tests::test_reconnect_storm_scenario`
+   - `chaos::tests::test_crash_restart_scenario`
+   - `chaos::tests::test_partition_reconciliation_no_data_loss_or_conflict`
+   - `chaos::tests::test_chaos_scenarios_ordering_independence`
 
-## Open Gaps & Technical Debt
-- **Docker Daemon Service Elevation**: Docker Desktop daemon service is not running on host (`docker info` failed to connect to npipe API); `./scripts/demo.sh` executed native local process fallback.
+4. **`tests/legacy_kdf_tests.rs` (+4 tests)**:
+   - `test_different_signing_keys_produce_different_derived_keys`
+   - `test_derived_key_differs_from_raw_signing_key_bytes`
+   - `test_wrong_signing_key_fails_to_decrypt`
+   - `test_node_storage_save_load_roundtrip_with_kdf`
 
-## Manual Validation (Live Handshake Test)
-To run the live Android to Host peer handshake end-to-end:
-```bash
-# Terminal 1 — start host node
-cargo run --bin crci-node -- --listen 0.0.0.0:9000 --node-id host-node-1
+5. **`tests/cli_integration.rs` (+3 tests)**:
+   - `test_cli_peers_dial`
+   - `test_cli_message_send_and_receive`
+   - `test_cli_byzantine_mode`
 
-# Android emulator — tap "Connect" with address 10.0.2.2:9000
-# Expected: peerCount in UI increments to 1 within 10 seconds
-```
+6. **`tests/spawn_panic_isolation_tests.rs` (+3 tests)**:
+   - `test_watcher_does_not_false_positive_on_success`
+   - `test_spawned_task_panic_does_not_kill_runtime`
+   - `test_watcher_task_observes_panic_without_crashing`
 
-To run the automated Byzantine eviction benchmark:
-```bash
-cargo test --test byzantine_bench -- --nocapture
-```
+7. **`tests/transport_tests.rs` (+3 tests)**:
+   - `test_tcp_transport_cancellation`
+   - `test_tcp_transport_connection_limit`
+   - `test_tcp_transport_handshake_timeout`
 
-To build the documentation site locally:
-```bash
-cd docs/book
-mdbook build
-```
+**Total New Tests:** 15 + 14 + 5 + 4 + 3 + 3 + 3 = 47.
+**Reconciled Total:** 137 baseline + 47 new = 184 passed.
 
-To run the multi-node Docker mesh:
-```bash
-docker compose up --build
-```
+---
 
-To execute the chaos engineering suite:
-```bash
-bash scripts/chaos.sh
-```
-
-## 8. Current Session Status: SESSION 78
-
-**Goal:** Fix un-isolated Tokio spawns, upgrade legacy AES key derivation, gate test helpers, and capture real Android screenshot.
-**Status:** COMPLETED.
-- **Panic Isolation (Part A):** Added watcher task to `tokio::spawn` in `runtime.rs:566` to catch panics via `JoinHandle` and log them, preventing worker thread crashes. Added 3 isolation tests. *(Note: FFI panic risk is dormant as the only current spawn is not on the Android path).*
-- **Legacy KDF (Part B):** Replaced raw Ed25519 bytes with SHA-256 domain-separated derivation (`crci-legacy-storage-v1`) in `legacy.rs`. Added 4 KDF tests.
-- **Feature Gates (Part C):** Moved `encrypted.rs` test helpers behind `#[cfg(feature = "test-utils")]` and confirmed exclusion from release binary via `cargo build --release`.
-- **Verification (Part D):** Captured real binary PNG screenshot from running Android emulator (`adb exec-out screencap -p`).
-- **Test Suite:** 179 tests passing.
-
-## Next Steps
-- Session 79: Implement Batch 2 security vectors (BFT-022 to BFT-029) and setup Android NDK `.so` build step, or network partition transport-layer validation.
+## Verification Status
+- `cargo test --all -- --nocapture`: 184 passed, 0 failed, 0 ignored across 16 test binaries.
+- `cargo clippy --workspace --all-targets -- -D warnings`: 0 warnings, clean exit code 0.
+- `cargo fmt --all -- --check`: clean exit code 0.
+- `cargo build --release`: finished in 6.53s, clean exit code 0.
+- Android NDK cross-compilation: `libcrci_core.so` verified for `x86_64` (1.53 MB) & `arm64-v8a` (1.74 MB).

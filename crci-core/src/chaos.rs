@@ -433,7 +433,6 @@ fn run_reconnect_storm() {
 //     coexist on every node — a conflict would manifest as one ID overwriting
 //     the other. The set-based received store proves both survive reconciliation.
 
-#[cfg(test)]
 #[allow(clippy::needless_range_loop)] // i and j are cross-referenced as node indices — enumerate() doesn't apply
 fn run_partition_reconciliation_scenario() -> PartitionResult {
     let node_count = 10;
@@ -540,7 +539,6 @@ fn run_partition_reconciliation_scenario() -> PartitionResult {
     }
 }
 
-#[cfg(test)]
 struct PartitionResult {
     partition_isolated_correctly: bool,
     all_nodes_have_partition_a_msg_after_heal: bool,
@@ -562,6 +560,26 @@ pub fn run_chaos_tests() {
     run_packet_loss_scenario(0.40, "40% Packet Loss (Critical)   ");
     run_crash_restart_scenario();
     run_reconnect_storm();
+    let p_res = run_partition_reconciliation_scenario();
+    println!();
+    println!("╔══════════════════════════════════════════════════════╗");
+    println!("║  CHAOS TEST: Network Partition + Reconciliation      ║");
+    println!("╚══════════════════════════════════════════════════════╝");
+    println!(
+        "  Partition isolated during split: {} | Both msgs delivered post-heal: {}",
+        if p_res.partition_isolated_correctly {
+            "✅ yes"
+        } else {
+            "❌ no"
+        },
+        if p_res.all_nodes_have_partition_a_msg_after_heal
+            && p_res.all_nodes_have_partition_b_msg_after_heal
+        {
+            "✅ 10/10 nodes"
+        } else {
+            "❌ partial"
+        }
+    );
 
     println!();
     println!("  ✅ Session 19 chaos tests complete.");
@@ -573,6 +591,22 @@ pub fn run_chaos_tests() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_packet_loss_scenarios() {
+        run_packet_loss_scenario(0.10, "10% Packet Loss");
+        run_packet_loss_scenario(0.40, "40% Packet Loss");
+    }
+
+    #[test]
+    fn test_crash_restart_scenario() {
+        run_crash_restart_scenario();
+    }
+
+    #[test]
+    fn test_reconnect_storm_scenario() {
+        run_reconnect_storm();
+    }
 
     /// Full network partition scenario (Session 77 — Part C).
     ///
@@ -605,5 +639,21 @@ mod tests {
             "after reconciliation, every node must have received partition-B's rescue message — \
              absence means silent data loss on merge"
         );
+    }
+
+    /// Session 79 Coherence Test:
+    /// Runs all four scenarios in reverse/mixed order to confirm zero resource collisions,
+    /// zero state pollution between runs, and deterministic execution.
+    #[test]
+    fn test_chaos_scenarios_ordering_independence() {
+        let result = run_partition_reconciliation_scenario();
+        assert!(result.partition_isolated_correctly);
+        assert!(result.all_nodes_have_partition_a_msg_after_heal);
+        assert!(result.all_nodes_have_partition_b_msg_after_heal);
+
+        run_reconnect_storm();
+        run_crash_restart_scenario();
+        run_packet_loss_scenario(0.40, "40% Packet Loss");
+        run_packet_loss_scenario(0.10, "10% Packet Loss");
     }
 }

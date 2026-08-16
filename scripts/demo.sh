@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Parse command-line flags
+ALLOW_NATIVE=false
+for arg in "$@"; do
+  if [ "$arg" = "--native" ] || [ "$arg" = "--local" ]; then
+    ALLOW_NATIVE=true
+  fi
+done
+
+if [ "${DEMO_MODE:-}" = "native" ] || [ "${DEMO_MODE:-}" = "local" ]; then
+  ALLOW_NATIVE=true
+fi
+
 # Check docker compose and daemon status
 DOCKER_RUNNING=false
 if command -v docker >/dev/null 2>&1; then
@@ -9,7 +21,32 @@ if command -v docker >/dev/null 2>&1; then
   fi
 fi
 
-if [ "$DOCKER_RUNNING" = true ]; then
+if [ "$DOCKER_RUNNING" = false ] && [ "$ALLOW_NATIVE" = false ]; then
+  echo "========================================================="
+  echo "       CRCI Live Demo Path — Docker Unavailable          "
+  echo "========================================================="
+  echo ""
+  echo "ERROR: Docker daemon is not running or accessible."
+  echo "Diagnostic output from docker info:"
+  docker info 2>&1 || true
+  echo ""
+  echo "Resolution options:"
+  echo "  1. Start Docker Desktop and ensure the engine daemon is running."
+  echo "     Then re-run: bash scripts/demo.sh"
+  echo ""
+  echo "  2. Alternatively, explicitly run native local process mode:"
+  echo "     bash scripts/demo.sh --native"
+  echo ""
+  echo "Feature Gap Notice (Native Local Mode):"
+  echo "  - Requires local Rust toolchain (cargo) and Node.js (npm) installed on host."
+  echo "  - Binds directly to host localhost ports (7001, 7002, 8080, 5173)."
+  echo "  - Metrics available via raw HTTP GET /metrics endpoint."
+  echo "  - Does not provide container/network-level process isolation."
+  echo "========================================================="
+  exit 1
+fi
+
+if [ "$DOCKER_RUNNING" = true ] && [ "$ALLOW_NATIVE" = false ]; then
   echo "========================================================="
   echo "       CRCI Live Demo Path (Docker Container Mode)       "
   echo "========================================================="

@@ -43,6 +43,8 @@ impl PowChallenge {
 pub struct PeerReputation {
     pub score: f32,
     pub last_updated: Instant,
+    pub last_activity: Instant,
+    pub banned: bool,
 }
 
 impl Default for PeerReputation {
@@ -57,9 +59,12 @@ fn round_to_3_dec_f32(val: f32) -> f32 {
 
 impl PeerReputation {
     pub fn new() -> Self {
+        let now = Instant::now();
         Self {
             score: 0.5,
-            last_updated: Instant::now(),
+            last_updated: now,
+            last_activity: now,
+            banned: false,
         }
     }
 
@@ -68,24 +73,63 @@ impl PeerReputation {
         // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
         self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
         self.last_updated = Instant::now();
+        if self.score < 0.1 {
+            self.banned = true;
+        }
+    }
+
+    pub fn record_active_behavior(&mut self) {
+        let now = Instant::now();
+        let elapsed = now.duration_since(self.last_updated).as_secs_f32();
+        if elapsed >= 0.01 {
+            // BFT-013: Sub-linear recovery curve
+            let recovery = elapsed.sqrt() * 0.005;
+            let new_score = self.score + recovery;
+            self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
+            self.last_updated = now;
+        }
+        self.last_activity = now;
+
+        // BFT-020: Hysteresis unbanning threshold
+        if self.banned && self.score >= 0.25 {
+            self.banned = false;
+        }
     }
 
     pub fn decay_recover(&mut self) {
         let now = Instant::now();
-        let elapsed = now.duration_since(self.last_updated).as_secs_f32();
+        let inactive_dur = now.duration_since(self.last_activity).as_secs_f32();
 
-        if elapsed >= 0.01 {
-            // BFT-013: Sub-linear recovery curve using square root of elapsed time to prevent immediate re-attacks after recovery
-            let recovery = elapsed.sqrt() * 0.005;
-            let new_score = self.score + recovery;
-            // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
-            self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
-            self.last_updated = now;
+        if inactive_dur > 2.0 {
+            // BFT-011: Idle decay curve
+            let idle_time_to_decay = now.duration_since(self.last_updated).as_secs_f32();
+            if idle_time_to_decay >= 0.01 {
+                let decay = idle_time_to_decay * 0.05;
+                let new_score = self.score - decay;
+                self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
+                self.last_updated = now;
+
+                if self.score < 0.1 {
+                    self.banned = true;
+                }
+            }
+        } else {
+            let elapsed = now.duration_since(self.last_updated).as_secs_f32();
+            if elapsed >= 0.01 {
+                let recovery = elapsed.sqrt() * 0.005;
+                let new_score = self.score + recovery;
+                self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
+                self.last_updated = now;
+
+                if self.banned && self.score >= 0.25 {
+                    self.banned = false;
+                }
+            }
         }
     }
 
     pub fn is_banned(&self) -> bool {
-        self.score < 0.1
+        self.banned
     }
 }
 
@@ -130,6 +174,23 @@ impl TokenBucket {
 }
 
 // ── SybilGuard ────────────────────────────────────────────────────────────────
+fn get_subnet(id: &str) -> Option<String> {
+    if let Ok(addr) = id.parse::<std::net::SocketAddr>() {
+        match addr.ip() {
+            std::net::IpAddr::V4(ipv4) => {
+                let octets = ipv4.octets();
+                Some(format!("{}.{}.{}", octets[0], octets[1], octets[2]))
+            }
+            std::net::IpAddr::V6(ipv6) => {
+                let segments = ipv6.segments();
+                Some(format!("{:x}:{:x}", segments[0], segments[1]))
+            }
+        }
+    } else {
+        None
+    }
+}
+
 pub struct SybilGuard {
     reputations: HashMap<NodeId, PeerReputation>,
     buckets: HashMap<NodeId, TokenBucket>,
@@ -156,12 +217,29 @@ impl SybilGuard {
     }
 
     pub fn check(&mut self, peer: &NodeId) -> Result<(), SybilError> {
+        let is_new = !self.reputations.contains_key(peer);
+        if is_new {
+            // BFT-019: Sybil cluster reputation correlation
+            if let Some(subnet) = get_subnet(peer) {
+                let has_banned_in_subnet = self.reputations.iter().any(|(other_id, other_rep)| {
+                    other_rep.is_banned() && get_subnet(other_id) == Some(subnet.clone())
+                });
+                if has_banned_in_subnet {
+                    let mut new_rep = PeerReputation::new();
+                    new_rep.score = 0.2; // Start penalized
+                    self.reputations.insert(peer.clone(), new_rep);
+                }
+            }
+        }
+
         let rep = self.reputations.entry(peer.clone()).or_default();
         rep.decay_recover();
 
         if rep.is_banned() {
             return Err(SybilError::Banned(peer.clone()));
         }
+
+        rep.record_active_behavior();
 
         // BFT-015: Prune low/zero reputation records when reputations map exceeds 1000 to prevent memory exhaustion
         if self.reputations.len() > 1000 {
