@@ -200,10 +200,28 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 - `cargo fmt --all -- --check`: clean, exit code 0.
 - `cargo build --release`: finished in 15.43s, clean.
 - Android NDK cross-compilation: `libcrci_core.so` verified for `x86_64` (1.53 MB) & `arm64-v8a` (1.74 MB).
+- **Mesh Networking (Simulated)**: `Node` and `Mesh` structs in `crci-core` simulating an asynchronous flood-routing protocol with deterministic timestamps.
+- **Persistent Storage**: Encrypted `chacha20poly1305` datastore.
+- **Proof of Work Sybil Protection**: Hardware-bound cryptographic identity with memory-hard PoW requirements.
+- **Event Loop / FFI**: Tokio-based runtime exposing FFI boundaries to Android via UniFFI. (Kotlin tests pending in Session 83).
+- **Reputation System**: Dynamic node scoring based on behavioral consensus and history.
+- **Chaos Engineering**: `run_chaos_tests()` scenario suite validating recovery from partitions, reconnect storms, and data loss.
 
----
+## Known Issues / Technical Debt
+- **Unverified BFT Vectors**: 30 vectors identified in `docs/book/src/bft_verification.md` remain untested.
+- **Live Android Tests**: Kotlin `connectedAndroidTest` infrastructure is missing, blocking live on-device verification of BFT-038 (FFI panic boundary).
 
-## Open Items / Session 82 Candidates
+## Next Steps
+- Implement BFT vector batch 2 (BFT-017 through BFT-030).
+- Integrate `metrics` subsystem with Prometheus exporter in FFI layer.
+- Refine memory footprint for long-running nodes.
+- Complete remaining BFT Vectors:
+- [ ] **BFT-004**: Malicious node drops high-severity packets (requires ack timeout).
+- [ ] **BFT-008**: Equivocation (node sends different messages for same seq).
+- [ ] **BFT-009**: State reversion attack (node claims older sequence).
+- [ ] **BFT-012**: Sybil token bucket bypass via reconnect flooding.
+- [ ] **BFT-015**: Sybil reputation cap (1-month minimum active lifecycle for top tier)
 
-1. **Quorum logic consolidation:** `network.rs` contains `Network::run_consensus` — a complete duplicate of `MeshSimulator::run_consensus` in `mesh.rs` with zero callers. This is dead code duplicating Byzantine-critical logic. Candidate action: delete `Network` struct or consolidate into a shared quorum function.
-2. **BFT-038 live verification:** `connectedAndroidTest` on real emulator/device remains unexecuted. The Rust-side proxy test passes but does not confirm the Kotlin → UniFFI → ffi.rs panic boundary end-to-end.
+## Current Session / Pending Closure
+- **Session 83 Candidate**:
+  - Live BFT-038 verification: Build and execute an actual `connectedAndroidTest` verifying Kotlin → UniFFI panic boundary. (Note: This requires a live Android Emulator and new test infra setup).
