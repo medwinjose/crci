@@ -140,6 +140,7 @@ pub struct NodeRuntime {
     pub seq_counter: u64,
     pub messages_handled: u64,
     pub byzantine_events: u64,
+    pub consensus_rounds: u64,
     pub merkle: crate::merkle::MerkleChain,
     pub divergence_log: Vec<crate::merkle::DivergenceAlert>,
     pub divergence_tx: Option<tokio::sync::broadcast::Sender<crate::merkle::DivergenceAlert>>,
@@ -176,6 +177,7 @@ impl NodeRuntime {
             seq_counter: 0,
             messages_handled: 0,
             byzantine_events: 0,
+            consensus_rounds: 0,
             merkle: crate::merkle::MerkleChain::new(),
             divergence_log: Vec::new(),
             divergence_tx: None,
@@ -647,5 +649,58 @@ impl NodeRuntime {
             "ID: {:10} | Zone: {:6} | Rep: {:.2} | {} | {} | Rescue: {} | PubKey: {}...",
             self.id, self.zone, self.reputation, trust, online, rescue, key_hex
         );
+    }
+
+    pub fn run_consensus(&mut self) {
+        self.consensus_rounds += 1;
+        let reporters = &self.observations;
+        let n = reporters.len();
+        if n == 0 {
+            return;
+        }
+
+        let confident: Vec<u8> = reporters
+            .iter()
+            .filter(|(_, _, conf, unknown)| *conf >= 3 && !unknown)
+            .map(|(_, sev, _, _)| *sev)
+            .collect();
+
+        if confident.len() < 2 {
+            return;
+        }
+
+        let mut sorted = confident.clone();
+        sorted.sort();
+        let mid = sorted.len() / 2;
+        let median = if sorted.len().is_multiple_of(2) {
+            (sorted[mid - 1] + sorted[mid]) / 2
+        } else {
+            sorted[mid]
+        };
+
+        let mut w_total = 0.0f64;
+        let mut w_faulty = 0.0f64;
+
+        for (node_id, severity, confidence, unknown_vis) in reporters {
+            let rep = self.sybil_guard.reputation(node_id) as f64;
+            w_total += rep;
+
+            if *unknown_vis || *confidence < 3 {
+                w_faulty += rep;
+                continue;
+            }
+
+            let deviation = (*severity as i16 - median as i16).abs();
+            if deviation > 2 {
+                w_faulty += rep;
+            }
+        }
+
+        let w_total = (w_total * 1000.0).round() / 1000.0;
+        let w_faulty = (w_faulty * 1000.0).round() / 1000.0;
+
+        if w_total > 0.0 && 3.0 * w_faulty >= w_total {
+            self.byzantine_events += 1;
+        }
     }
 }

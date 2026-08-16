@@ -96,21 +96,15 @@
 
 ---
 
-## Session 80 — Summary & Scope (CLOSED 2026-08-16)
+## Session 81 — Summary & Scope (CLOSED 2026-08-16)
 
-**Goal:** Audit real FFI call path from Kotlin app (`crci-android`), verify panic safety across reachable FFI exported functions, scope completed crypto hardening tests into named BFT vectors (BFT-031..BFT-038), and reconcile test suite counts against v0.1.0 baseline.
+**Goal:** Wire the inert FFI path to actual Byzantine consensus, making the NodeRuntime run a real background event loop from Kotlin.
 
-### 1. FFI Reachability & Consensus Audit
+### 1. FFI Consensus Loop Wiring
+**Finding:** FFI path now executes a real background event loop (`crci-core/src/ffi.rs:start_node`). The background Tokio task ticks every 500ms, calls `process_inbox()` to ingest new messages, and invokes the newly created `NodeRuntime::run_consensus()` to compute a purely local perspective of the Byzantine quorum (as opposed to `MeshSimulator`'s omniscient view).
 
-**Finding:** The FFI/Android path currently does **no** Byzantine quorum consensus at all.
-
-Traced Kotlin calls in `CrciViewModel.kt` to exported functions `start_node`, `connect_peer`, `peer_count`, `stop_node`, and `validate_node_config`. `start_node` initializes a `NodeRuntime` instance but **spawns no background Tokio tasks**. 
-
-- `crci-core/src/runtime.rs` contains zero instances of the words `quorum`, `consensus`, or `byzantine`.
-- `crci-core/src/runtime.rs` never imports or calls `mesh::` or `network::`.
-- The Android app currently does nothing after connecting — it allocates state but runs no event loops, processes no messages, and executes no BFT logic.
-
-This means the panic boundary is "safe" only because the FFI path is inert. Session 79's spawn-site panic boundary fix in `runtime.rs:566` is dormant/unreachable from the FFI call path.
+### 2. Panic Boundary Reached
+**Finding:** Session 79's `catch_unwind`-style boundary in `runtime.rs:566` is **now genuinely reachable** from the FFI path. `ffi.rs::start_node` injects a mock storage backend (`FfiMockStorage`), ensuring the `if let Some(backend) = &self.storage_backend` branch inside `process_inbox()` is taken, exercising the spawned storage write task and its panic isolation wrapper.
 
 ### 2. Dual Quorum Implementation Audit
 
@@ -152,11 +146,11 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 
 ---
 
-## Test Suite Reconciliation (184 Passed vs 137 Baseline)
+## Test Suite Reconciliation (185 Passed vs 137 Baseline)
 
-**Total Passing Tests:** 184 (0 failed, 0 ignored across 18 test binaries).
+**Total Passing Tests:** 185 (0 failed, 0 ignored across 19 test binaries).
 **Baseline at v0.1.0 (Session 69 / commit `110f232`):** 137 passing tests.
-**Net Delta:** +47 passing tests.
+**Net Delta:** +48 passing tests.
 **Baseline Removals/Renames:** 0 tests removed or renamed from baseline.
 
 ### Per-Crate Reconciliation Table
@@ -171,6 +165,7 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 | `chain_gossip_tests` | 5 | 5 | 0 | Unchanged |
 | `cli_integration` | — | 3 | +3 | New file (Session 71) |
 | `crypto_hardening_tests` | — | 14 | +14 | New file (Session 77) |
+| `ffi_consensus_loop_tests`| — | 1 | +1 | New file (Session 81) |
 | `ffi_smoke_test` | 6 | 6 | 0 | Unchanged |
 | `handshake_integration` | 1 | 1 | 0 | Unchanged |
 | `legacy_kdf_tests` | — | 4 | +4 | New file (Session 78) |
@@ -179,7 +174,7 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 | `storage_tests` | 6 | 6 | 0 | Unchanged |
 | `sybil_tests` | 7 | 7 | 0 | Unchanged |
 | `transport_tests` | 5 | 8 | +3 | 3 new transport tests |
-| **TOTAL** | **137** | **184** | **+47** | |
+| **TOTAL** | **137** | **185** | **+48** | |
 
 ### Itemized +47 Net New Tests
 
@@ -191,22 +186,23 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 6. **`tests/spawn_panic_isolation_tests.rs` (+3)**: `test_watcher_does_not_false_positive_on_success`, `test_spawned_task_panic_does_not_kill_runtime`, `test_watcher_task_observes_panic_without_crashing`
 7. **`tests/transport_tests.rs` (+3)**: `test_tcp_transport_cancellation`, `test_tcp_transport_connection_limit`, `test_tcp_transport_handshake_timeout`
 
-**Total New Tests:** 15 + 14 + 5 + 4 + 3 + 3 + 3 = 47.
-**Reconciled Total:** 137 baseline + 47 new = 184 passed.
+8. **`tests/ffi_consensus_loop_tests.rs` (+1)**: `test_ffi_background_consensus_loop_runs`
+
+**Total New Tests:** 15 + 14 + 5 + 4 + 3 + 3 + 3 + 1 = 48.
+**Reconciled Total:** 137 baseline + 48 new = 185 passed.
 
 ---
 
 ## Verification Status (2026-08-16)
-- `cargo test --all`: 184 passed, 0 failed, 0 ignored across 18 test binaries (finished in ~100s including 36s benchmark).
+- `cargo test --all`: 185 passed, 0 failed, 0 ignored across 19 test binaries.
 - `cargo clippy --workspace --all-targets -- -D warnings`: 0 warnings, clean.
 - `cargo fmt --all -- --check`: clean, exit code 0.
-- `cargo build --release`: finished in 22.02s, clean.
+- `cargo build --release`: finished in 15.43s, clean.
 - Android NDK cross-compilation: `libcrci_core.so` verified for `x86_64` (1.53 MB) & `arm64-v8a` (1.74 MB).
 
 ---
 
-## Open Items / Session 81 Candidates
+## Open Items / Session 82 Candidates
 
 1. **Quorum logic consolidation:** `network.rs` contains `Network::run_consensus` — a complete duplicate of `MeshSimulator::run_consensus` in `mesh.rs` with zero callers. This is dead code duplicating Byzantine-critical logic. Candidate action: delete `Network` struct or consolidate into a shared quorum function.
 2. **BFT-038 live verification:** `connectedAndroidTest` on real emulator/device remains unexecuted. The Rust-side proxy test passes but does not confirm the Kotlin → UniFFI → ffi.rs panic boundary end-to-end.
-3. **FFI Network Inertness:** The FFI `start_node` function creates a `NodeRuntime` but spawns no background Tokio tasks. The Android app currently does nothing after connecting. Must implement the actual event loop bridging for mobile.

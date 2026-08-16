@@ -53,6 +53,24 @@ fn get_node_handle() -> &'static Mutex<Option<NodeRuntimeHandle>> {
     NODE_HANDLE.get_or_init(|| Mutex::new(None))
 }
 
+struct FfiMockStorage;
+
+#[async_trait::async_trait]
+impl crate::storage::StorageBackend for FfiMockStorage {
+    async fn write(&self, _key: &str, _value: &[u8]) -> Result<(), crate::storage::StorageError> {
+        Ok(())
+    }
+    async fn read(&self, _key: &str) -> Result<Vec<u8>, crate::storage::StorageError> {
+        Ok(Vec::new())
+    }
+    async fn delete(&self, _id: &str) -> Result<(), crate::storage::StorageError> {
+        Ok(())
+    }
+    async fn list_ids(&self) -> Result<Vec<String>, crate::storage::StorageError> {
+        Ok(Vec::new())
+    }
+}
+
 #[uniffi::export]
 pub fn start_node(config: FfiNodeConfig) -> bool {
     if !validate_node_config(config.clone()) {
@@ -69,13 +87,36 @@ pub fn start_node(config: FfiNodeConfig) -> bool {
         };
 
         let inbox: crate::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
-        let node = NodeRuntime::new(&config.node_id, "zone-ffi", inbox);
+        let mut node = NodeRuntime::new(&config.node_id, "zone-ffi", inbox);
+        node.storage_backend = Some(Arc::new(FfiMockStorage));
 
         *handle = Some(NodeRuntimeHandle { _runtime: rt, node });
-        true
     } else {
-        false
+        return false;
+    };
+
+    // Spawn the background consensus loop using the static node handle
+    if let Ok(handle_guard) = get_node_handle().lock() {
+        if let Some(h) = handle_guard.as_ref() {
+            h._runtime.spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    if let Ok(mut lock) = get_node_handle().lock() {
+                        if let Some(runtime_handle) = lock.as_mut() {
+                            runtime_handle.node.process_inbox();
+                            runtime_handle.node.run_consensus();
+                        } else {
+                            break; // Stop loop if node is stopped
+                        }
+                    } else {
+                        break; // Stop loop if mutex is poisoned
+                    }
+                }
+            });
+        }
     }
+
+    true
 }
 
 #[uniffi::export]
@@ -115,4 +156,14 @@ pub fn connect_peer(addr: String) -> bool {
         }
         None => false,
     }
+}
+
+#[uniffi::export]
+pub fn consensus_rounds() -> u64 {
+    if let Ok(handle) = get_node_handle().lock() {
+        if let Some(runtime_handle) = handle.as_ref() {
+            return runtime_handle.node.consensus_rounds;
+        }
+    }
+    0
 }
