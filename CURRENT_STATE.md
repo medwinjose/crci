@@ -96,107 +96,117 @@
 
 ---
 
-## Session 80 — Summary & Scope
+## Session 80 — Summary & Scope (CLOSED 2026-08-16)
 
 **Goal:** Audit real FFI call path from Kotlin app (`crci-android`), verify panic safety across reachable FFI exported functions, scope completed crypto hardening tests into named BFT vectors (BFT-031..BFT-038), and reconcile test suite counts against v0.1.0 baseline.
 
-### 1. FFI Reachability Audit
-Traced Kotlin calls in `CrciViewModel.kt` to exported functions `start_node`, `connect_peer`, `peer_count`, `stop_node`, and `validate_node_config`. Confirmed Session 79 spawn-site panic boundary fix in `runtime.rs:566` is dormant/unreachable from FFI call path because `start_node` initializes `NodeRuntime` without `storage_backend` or Tokio background loop.
+### 1. FFI Reachability & Consensus Audit
 
-### 2. BFT Vector Status & Security Hardening
+**Finding:** The FFI/Android path currently does **no** Byzantine quorum consensus at all.
+
+Traced Kotlin calls in `CrciViewModel.kt` to exported functions `start_node`, `connect_peer`, `peer_count`, `stop_node`, and `validate_node_config`. `start_node` initializes a `NodeRuntime` instance but **spawns no background Tokio tasks**. 
+
+- `crci-core/src/runtime.rs` contains zero instances of the words `quorum`, `consensus`, or `byzantine`.
+- `crci-core/src/runtime.rs` never imports or calls `mesh::` or `network::`.
+- The Android app currently does nothing after connecting — it allocates state but runs no event loops, processes no messages, and executes no BFT logic.
+
+This means the panic boundary is "safe" only because the FFI path is inert. Session 79's spawn-site panic boundary fix in `runtime.rs:566` is dormant/unreachable from the FFI call path.
+
+### 2. Dual Quorum Implementation Audit
+
+**Finding:** `mesh.rs:86` (`MeshSimulator::run_consensus`) and `network.rs:251` (`Network::run_consensus`) contain near-identical Byzantine quorum logic (same `w_total`/`w_faulty`/`faulty_count` variables, same BFT-001/BFT-016 comments, same `unwrap_or(0.0)` pattern) but with different tuple shapes for `reporters`:
+- `mesh.rs:174` — `for (node_id, (severity, confidence, unknown_vis)) in reporters` (nested tuple, iterating a `HashMap<String, (u8, u8, bool)>`)
+- `network.rs:332` — `for (node_id, severity, confidence, unknown_vis) in reporters` (flat tuple, iterating a `Vec<(String, u8, u8, bool)>`)
+
+**Call-site analysis:**
+- `MeshSimulator::run_consensus` is called from: `src/main.rs` (CLI demo), `crci-core/src/stress.rs` (stress tests), `crci-core/src/crisis.rs` (crisis demos), and `tests/bft_batch1_tests.rs` (integration tests).
+- `Network::run_consensus` has **zero callers** anywhere in the workspace. The `Network` struct is declared `pub` in `lib.rs` but never imported or instantiated outside `network.rs`. It is dead code.
+
+**Status:** `Network::run_consensus` in `network.rs` is dead code duplicating live Byzantine-critical logic in `mesh.rs`. Logged as Session 81 candidate for consolidation or removal.
+
+### 3. BFT-011 / BFT-013 Numbering Ruling
+
+BFT-011 was introduced in commit `5780603` (Session 74) as a label on real production code (`sybil.rs:73`, `node.rs:56`, `runtime.rs:234,264`) and real tests (`bft_batch1_tests.rs:116,191,200`). BFT-013 appears as a label in `sybil.rs:85` (sub-linear recovery curve).
+
+**Status:** Ruled not a violation, 2026-08-16 — rule targets laundering of fabricated verification claims, not permanent retirement of numbering strings; BFT-011/013 are real code with real tests.
+
+(Note: Commit `5780603` also contains a contradictory message — the body lists "BFT-011... still unimplemented" while simultaneously introducing a test labeled BFT-011, indicating sloppy bookkeeping).
+
+### 4. BFT Vector Status & Security Hardening
+
+All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.rs` by grep. Each vector is a real test function that exercises its claimed behavior, and all 14 tests in `crypto_hardening_tests` pass in the `cargo test --all` run.
+
 - **Completed**:
   - BFT-001 through BFT-021: Byzantine consensus, reputation decay/recovery, MCE thresholds, and sybil resistance.
   - BFT-030: Byzantine peer fault injection test.
-  - BFT-031: AES-GCM Nonce Uniqueness Verification across 200 writes (`tests/crypto_hardening_tests.rs:25`).
-  - BFT-032: Ed25519 Zero-Length Payload Signature Verification (`tests/crypto_hardening_tests.rs:77`).
-  - BFT-033: Ed25519 Corrupted/Malformed Signature Rejection (`tests/crypto_hardening_tests.rs:90`).
-  - BFT-034: Ed25519 Foreign Key Signature Rejection (`tests/crypto_hardening_tests.rs:107`).
-  - BFT-035: Ed25519 Tampered Payload Signature Rejection (`tests/crypto_hardening_tests.rs:124`).
-  - BFT-036: Ed25519 Signature Verification Idempotency (`tests/crypto_hardening_tests.rs:140`).
-  - BFT-037: Ed25519 VerifyingKey Serialization Round-Trip (`tests/crypto_hardening_tests.rs:156`).
+  - BFT-031: AES-GCM Nonce Uniqueness Verification across 200 writes (`tests/crypto_hardening_tests.rs:27`).
+  - BFT-032: Ed25519 Zero-Length Payload Signature Verification (`tests/crypto_hardening_tests.rs:80`).
+  - BFT-033: Ed25519 Corrupted/Malformed Signature Rejection (`tests/crypto_hardening_tests.rs:93`).
+  - BFT-034: Ed25519 Foreign Key Signature Rejection (`tests/crypto_hardening_tests.rs:110`).
+  - BFT-035: Ed25519 Tampered Payload Signature Rejection (`tests/crypto_hardening_tests.rs:127`).
+  - BFT-036: Ed25519 Signature Verification Idempotency (`tests/crypto_hardening_tests.rs:143`).
+  - BFT-037: Ed25519 VerifyingKey Serialization Round-Trip (`tests/crypto_hardening_tests.rs:159`).
 - **Open / Unverified**:
-  - **BFT-038: UNVERIFIED: Rust-side proxy test only — not confirmed reachable from Kotlin → UniFFI → ffi.rs path.** (`tests/crypto_hardening_tests.rs:313`). Live Kotlin instrumented execution (`connectedAndroidTest`) remains unexecuted on real emulator device.
+  - **BFT-038: UNVERIFIED: Rust-side proxy test only — not confirmed reachable from Kotlin → UniFFI → ffi.rs path.** Live Kotlin instrumented execution (`connectedAndroidTest`) remains unexecuted on real emulator device.
+  - *Evidence:* `tests/crypto_hardening_tests.rs:317` defines `test_ffi_catch_unwind_panic_safety` which explicitly states: `Vector BFT-038 Proxy Test: Explicit catch_unwind wrapper around every FFI function`. The test manually invokes FFI functions from Rust to ensure they don't panic, but it does not test the actual Android JNI/UniFFI boundary.
 
 ---
 
 ## Test Suite Reconciliation (184 Passed vs 137 Baseline)
 
-**Total Passing Tests:** 184 (0 failed, 0 ignored across 16 test targets).
+**Total Passing Tests:** 184 (0 failed, 0 ignored across 18 test binaries).
 **Baseline at v0.1.0 (Session 69 / commit `110f232`):** 137 passing tests.
 **Net Delta:** +47 passing tests.
 **Baseline Removals/Renames:** 0 tests removed or renamed from baseline.
 
-### Breakdown of the +47 Net New Tests:
+### Per-Crate Reconciliation Table
 
-1. **`tests/bft_batch1_tests.rs` (+15 tests)**:
-   - `test_bft_reputation_based_eviction_hysteresis`
-   - `test_bft_reputation_decay`
-   - `test_bft_reputation_persistence_across_reconnect`
-   - `test_bft_reputation_fixed_point_rounding`
-   - `test_bft_reputation_recovery`
-   - `test_bft_reputation_isolation_per_peer_view`
-   - `test_bft_subnet_limit`
-   - `test_bft_sybil_cluster_reputation_correlation`
-   - `test_bft_pruning_banned_records`
-   - `test_bft_signature_invalidation_spoof_defense`
-   - `test_bft_reputation_persistence_clamping`
-   - `test_bft_signature_verification_rate_limit`
-   - `test_bft_reputation_bounds_clamping`
-   - `test_bft_sub_linear_recovery`
-   - `test_bft_reputation_weighted_quorum`
+| Test Target | Baseline (v0.1.0) | Current (HEAD) | Delta | Explanation |
+|---|---|---|---|---|
+| `crci_core` (unit tests) | 90 | 95 | +5 | New `chaos.rs` module tests |
+| `api_tests` | 13 | 13 | 0 | Unchanged |
+| `bft_batch1_tests` | — | 15 | +15 | New file (Session 74+) |
+| `byzantine_bench` | 2 | 2 | 0 | Unchanged |
+| `byzantine_integration` | 1 | 1 | 0 | Unchanged |
+| `chain_gossip_tests` | 5 | 5 | 0 | Unchanged |
+| `cli_integration` | — | 3 | +3 | New file (Session 71) |
+| `crypto_hardening_tests` | — | 14 | +14 | New file (Session 77) |
+| `ffi_smoke_test` | 6 | 6 | 0 | Unchanged |
+| `handshake_integration` | 1 | 1 | 0 | Unchanged |
+| `legacy_kdf_tests` | — | 4 | +4 | New file (Session 78) |
+| `mesh_integration` | 1 | 1 | 0 | Unchanged |
+| `spawn_panic_isolation_tests` | — | 3 | +3 | New file (Session 79) |
+| `storage_tests` | 6 | 6 | 0 | Unchanged |
+| `sybil_tests` | 7 | 7 | 0 | Unchanged |
+| `transport_tests` | 5 | 8 | +3 | 3 new transport tests |
+| **TOTAL** | **137** | **184** | **+47** | |
 
-2. **`tests/crypto_hardening_tests.rs` (+14 tests)**:
-   - `test_aes_gcm_nonce_never_repeats_across_writes` (BFT-031)
-   - `test_ed25519_empty_payload_signs_and_verifies` (BFT-032)
-   - `test_ed25519_rejects_malformed_signature` (BFT-033)
-   - `test_ed25519_rejects_signature_from_wrong_key` (BFT-034)
-   - `test_ed25519_rejects_signature_for_different_payload` (BFT-035)
-   - `test_ed25519_signature_verifies_repeatedly` (BFT-036)
-   - `test_ed25519_verifying_key_roundtrip_matches_signing` (BFT-037)
-   - `test_ed25519_does_not_catch_replay_by_itself`
-   - `test_ffi_catch_unwind_panic_safety` (BFT-038 Proxy)
-   - `test_ffi_invalid_config_returns_false_not_panic`
-   - `test_ffi_zero_peers_returns_false_not_panic`
-   - `test_ffi_excessive_peers_returns_false_not_panic`
-   - `test_ffi_connect_peer_when_no_node_running_returns_false`
-   - `test_ffi_start_stop_node_lifecycle_handles_errors_cleanly`
+### Itemized +47 Net New Tests
 
-3. **`crci-core/src/chaos.rs` (+5 tests)**:
-   - `chaos::tests::test_packet_loss_scenarios`
-   - `chaos::tests::test_reconnect_storm_scenario`
-   - `chaos::tests::test_crash_restart_scenario`
-   - `chaos::tests::test_partition_reconciliation_no_data_loss_or_conflict`
-   - `chaos::tests::test_chaos_scenarios_ordering_independence`
-
-4. **`tests/legacy_kdf_tests.rs` (+4 tests)**:
-   - `test_different_signing_keys_produce_different_derived_keys`
-   - `test_derived_key_differs_from_raw_signing_key_bytes`
-   - `test_wrong_signing_key_fails_to_decrypt`
-   - `test_node_storage_save_load_roundtrip_with_kdf`
-
-5. **`tests/cli_integration.rs` (+3 tests)**:
-   - `test_cli_peers_dial`
-   - `test_cli_message_send_and_receive`
-   - `test_cli_byzantine_mode`
-
-6. **`tests/spawn_panic_isolation_tests.rs` (+3 tests)**:
-   - `test_watcher_does_not_false_positive_on_success`
-   - `test_spawned_task_panic_does_not_kill_runtime`
-   - `test_watcher_task_observes_panic_without_crashing`
-
-7. **`tests/transport_tests.rs` (+3 tests)**:
-   - `test_tcp_transport_cancellation`
-   - `test_tcp_transport_connection_limit`
-   - `test_tcp_transport_handshake_timeout`
+1. **`tests/bft_batch1_tests.rs` (+15)**: `test_bft_reputation_based_eviction_hysteresis`, `test_bft_reputation_decay`, `test_bft_reputation_persistence_across_reconnect`, `test_bft_reputation_fixed_point_rounding`, `test_bft_reputation_recovery`, `test_bft_reputation_isolation_per_peer_view`, `test_bft_subnet_limit`, `test_bft_sybil_cluster_reputation_correlation`, `test_bft_pruning_banned_records`, `test_bft_signature_invalidation_spoof_defense`, `test_bft_reputation_persistence_clamping`, `test_bft_signature_verification_rate_limit`, `test_bft_reputation_bounds_clamping`, `test_bft_sub_linear_recovery`, `test_bft_reputation_weighted_quorum`
+2. **`tests/crypto_hardening_tests.rs` (+14)**: `test_aes_gcm_nonce_never_repeats_across_writes` (BFT-031), `test_ed25519_empty_payload_signs_and_verifies` (BFT-032), `test_ed25519_rejects_malformed_signature` (BFT-033), `test_ed25519_rejects_signature_from_wrong_key` (BFT-034), `test_ed25519_rejects_signature_for_different_payload` (BFT-035), `test_ed25519_signature_verifies_repeatedly` (BFT-036), `test_ed25519_verifying_key_roundtrip_matches_signing` (BFT-037), `test_ed25519_does_not_catch_replay_by_itself`, `test_ffi_catch_unwind_panic_safety` (BFT-038 Proxy), `test_ffi_invalid_config_returns_false_not_panic`, `test_ffi_zero_peers_returns_false_not_panic`, `test_ffi_excessive_peers_returns_false_not_panic`, `test_ffi_connect_peer_when_no_node_running_returns_false`, `test_ffi_start_stop_node_lifecycle_handles_errors_cleanly`
+3. **`crci-core/src/chaos.rs` (+5)**: `test_packet_loss_scenarios`, `test_reconnect_storm_scenario`, `test_crash_restart_scenario`, `test_partition_reconciliation_no_data_loss_or_conflict`, `test_chaos_scenarios_ordering_independence`
+4. **`tests/legacy_kdf_tests.rs` (+4)**: `test_different_signing_keys_produce_different_derived_keys`, `test_derived_key_differs_from_raw_signing_key_bytes`, `test_wrong_signing_key_fails_to_decrypt`, `test_node_storage_save_load_roundtrip_with_kdf`
+5. **`tests/cli_integration.rs` (+3)**: `test_cli_peers_dial`, `test_cli_message_send_and_receive`, `test_cli_byzantine_mode`
+6. **`tests/spawn_panic_isolation_tests.rs` (+3)**: `test_watcher_does_not_false_positive_on_success`, `test_spawned_task_panic_does_not_kill_runtime`, `test_watcher_task_observes_panic_without_crashing`
+7. **`tests/transport_tests.rs` (+3)**: `test_tcp_transport_cancellation`, `test_tcp_transport_connection_limit`, `test_tcp_transport_handshake_timeout`
 
 **Total New Tests:** 15 + 14 + 5 + 4 + 3 + 3 + 3 = 47.
 **Reconciled Total:** 137 baseline + 47 new = 184 passed.
 
 ---
 
-## Verification Status
-- `cargo test --all -- --nocapture`: 184 passed, 0 failed, 0 ignored across 16 test binaries.
-- `cargo clippy --workspace --all-targets -- -D warnings`: 0 warnings, clean exit code 0.
-- `cargo fmt --all -- --check`: clean exit code 0.
-- `cargo build --release`: finished in 6.53s, clean exit code 0.
+## Verification Status (2026-08-16)
+- `cargo test --all`: 184 passed, 0 failed, 0 ignored across 18 test binaries (finished in ~100s including 36s benchmark).
+- `cargo clippy --workspace --all-targets -- -D warnings`: 0 warnings, clean.
+- `cargo fmt --all -- --check`: clean, exit code 0.
+- `cargo build --release`: finished in 22.02s, clean.
 - Android NDK cross-compilation: `libcrci_core.so` verified for `x86_64` (1.53 MB) & `arm64-v8a` (1.74 MB).
+
+---
+
+## Open Items / Session 81 Candidates
+
+1. **Quorum logic consolidation:** `network.rs` contains `Network::run_consensus` — a complete duplicate of `MeshSimulator::run_consensus` in `mesh.rs` with zero callers. This is dead code duplicating Byzantine-critical logic. Candidate action: delete `Network` struct or consolidate into a shared quorum function.
+2. **BFT-038 live verification:** `connectedAndroidTest` on real emulator/device remains unexecuted. The Rust-side proxy test passes but does not confirm the Kotlin → UniFFI → ffi.rs panic boundary end-to-end.
+3. **FFI Network Inertness:** The FFI `start_node` function creates a `NodeRuntime` but spawns no background Tokio tasks. The Android app currently does nothing after connecting. Must implement the actual event loop bridging for mobile.
