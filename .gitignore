@@ -17,3 +17,6 @@ crci-android/local.properties
 crci-android/.gradle/
 crci-android/app/build/
 *.log
+
+# Scratch dumps
+/*.txt

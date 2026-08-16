@@ -79,6 +79,7 @@
 - Session 77: Verification Closeout, Crypto-Layer Hardening, Chaos Partition Scenario
 - Session 78: FFI Spawned-Task Panic Isolation, Legacy Key Derivation Fix, Test-Utils Feature Gate
 - Session 79: Spawn-Site Panic Boundary Fix & Tokio Runtime Invariant Hardening
+  *(Note: Session 79's code changes were committed unlabeled as part of the Session 80 closing commits rather than as a standalone `session-79` tagged commit).*
 - Session 80: FFI Reachability Audit, Named Crypto BFT Vector Scoping (BFT-031..BFT-038) & Test Suite Reconciliation
 
 ## Current Functionality
