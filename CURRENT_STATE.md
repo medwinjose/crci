@@ -210,6 +210,7 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 ## Known Issues / Technical Debt
 - **Unverified BFT Vectors**: 30 vectors identified in `docs/book/src/bft_verification.md` remain untested.
 - **Live Android Tests**: Kotlin `connectedAndroidTest` infrastructure is missing, blocking live on-device verification of BFT-038 (FFI panic boundary).
+  - **BLOCKED: No running emulator/device and ADB/emulator not in PATH, Rust-side proxy remains the only verification, marked UNVERIFIED for live path**
 
 ## Next Steps
 - Implement BFT vector batch 2 (BFT-017 through BFT-030).
@@ -223,5 +224,4 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 - [ ] **BFT-015**: Sybil reputation cap (1-month minimum active lifecycle for top tier)
 
 ## Current Session / Pending Closure
-- **Session 83 Candidate**:
-  - Live BFT-038 verification: Build and execute an actual `connectedAndroidTest` verifying Kotlin → UniFFI panic boundary. (Note: This requires a live Android Emulator and new test infra setup).
+- **Session 83 (Complete/Blocked)**: Documented Android test infra gap. Live BFT-038 verification halted at Step 0.
