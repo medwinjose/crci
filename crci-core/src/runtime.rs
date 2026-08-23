@@ -461,7 +461,7 @@ impl NodeRuntime {
             if self.seen_messages.contains(&wire.id) {
                 continue;
             }
-            // BFT-021: Hard ceiling on observed message ID cache
+            // BFT-046: Hard ceiling on observed message ID cache
             if self.seen_messages.len() >= 5000 {
                 self.seen_messages.clear();
                 self.sig_verifications_count.clear(); // Reset verification counters at cache eviction boundary

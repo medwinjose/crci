@@ -241,7 +241,7 @@ impl SybilGuard {
 
         rep.record_active_behavior();
 
-        // BFT-015: Prune low/zero reputation records when reputations map exceeds 1000 to prevent memory exhaustion
+        // BFT-039: Prune low/zero reputation records when reputations map exceeds 1000 to prevent memory exhaustion
         if self.reputations.len() > 1000 {
             self.reputations.retain(|_, r| !r.is_banned());
         }
