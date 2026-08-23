@@ -140,7 +140,7 @@ fn test_bft_reputation_fixed_point_rounding() {
 
 #[test]
 fn test_bft_signature_invalidation_spoof_defense() {
-    // BFT-019: Defend against signature-invalidation attacks aimed at burning a target peer's reputation
+    // BFT-042: Defend against signature-invalidation attacks aimed at burning a target peer's reputation
     let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
     let mut node = NodeRuntime::new("my-node-id", "zone-alpha", inbox.clone());
 
@@ -162,14 +162,14 @@ fn test_bft_signature_invalidation_spoof_defense() {
 
     node.process_inbox();
 
-    // Victim reputation must NOT be penalized (BFT-019)
+    // Victim reputation must NOT be penalized (BFT-042)
     let victim_rep = node.sybil_guard.reputation(&"victim-node".to_string());
     assert!(victim_rep >= 0.5); // Default starting reputation is 0.5, must not be penalized
 }
 
 #[test]
 fn test_bft_reputation_persistence_clamping() {
-    // BFT-020: Verify loaded own reputation is clamped to [0.0, 1.0]
+    // BFT-044: Verify loaded own reputation is clamped to [0.0, 1.0]
     let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
     let mut node = NodeRuntime::new("my-node-id-persist", "zone-alpha", inbox.clone());
 
@@ -327,7 +327,7 @@ fn test_bft_reputation_weighted_quorum() {
 
 #[test]
 fn test_bft_reputation_persistence_across_reconnect() {
-    // BFT-017: Verify a node's reputation survives disconnect/reconnect cycles
+    // BFT-040: Verify a node's reputation survives disconnect/reconnect cycles
     let mut guard = SybilGuard::new(4);
     let peer = "peer-127.0.0.1:9091".to_string();
 
@@ -346,7 +346,7 @@ fn test_bft_reputation_persistence_across_reconnect() {
 
 #[test]
 fn test_bft_reputation_isolation_per_peer_view() {
-    // BFT-018: Verify local reputation table is isolated and cannot be overridden by self-reported values
+    // BFT-041: Verify local reputation table is isolated and cannot be overridden by self-reported values
     let mut guard = SybilGuard::new(4);
     let peer = "peer-127.0.0.1:9092".to_string();
 
@@ -368,7 +368,7 @@ fn test_bft_reputation_isolation_per_peer_view() {
 
 #[test]
 fn test_bft_sybil_cluster_reputation_correlation() {
-    // BFT-019: Verify new peers joining from a banned subnet start with a penalty
+    // BFT-043: Verify new peers joining from a banned subnet start with a penalty
     let mut guard = SybilGuard::new(4);
 
     let banned_peer = "192.168.2.1:8080".to_string();
@@ -392,7 +392,7 @@ fn test_bft_sybil_cluster_reputation_correlation() {
 
 #[test]
 fn test_bft_reputation_based_eviction_hysteresis() {
-    // BFT-020: Verify eviction hysteresis prevents flapping
+    // BFT-045: Verify eviction hysteresis prevents flapping
     let mut rep = PeerReputation::new(); // Starts at 0.5
     assert!(!rep.is_banned());
 
