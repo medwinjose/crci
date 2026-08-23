@@ -38,6 +38,11 @@ pub fn list_peers_stub() -> Vec<FfiPeerInfo> {
     Vec::new()
 }
 
+#[uniffi::export]
+pub fn force_panic_for_bft038() {
+    panic!("BFT-038 explicit panic boundary test");
+}
+
 use crate::runtime::NodeRuntime;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
