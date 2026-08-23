@@ -153,8 +153,8 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
   - BFT-036: Ed25519 Signature Verification Idempotency (`tests/crypto_hardening_tests.rs:143`).
   - BFT-037: Ed25519 VerifyingKey Serialization Round-Trip (`tests/crypto_hardening_tests.rs:159`).
 - **Open / Unverified**:
-  - **BFT-038: UNVERIFIED: Rust-side proxy test only — not confirmed reachable from Kotlin → UniFFI → ffi.rs path.** Live Kotlin instrumented execution (`connectedAndroidTest`) remains unexecuted on real emulator device.
-  - *Evidence:* `tests/crypto_hardening_tests.rs:317` defines `test_ffi_catch_unwind_panic_safety` which explicitly states: `Vector BFT-038 Proxy Test: Explicit catch_unwind wrapper around every FFI function`. The test manually invokes FFI functions from Rust to ensure they don't panic, but it does not test the actual Android JNI/UniFFI boundary.
+  - **BFT-038: VERIFIED:** FFI panic boundary safely catches panics without crashing the JVM.
+  - *Evidence:* Live Android instrumented test `Bft038PanicBoundaryTest.kt` passes on the emulator, confirming that `force_panic_for_bft038()` returns a caught exception to the JVM, allowing subsequent FFI calls (`crci_version()`) to execute successfully. No panic/crash trace appeared in logcat during the test run (verified null result). Likely explanation, NOT independently confirmed: the catch_unwind boundary traps the panic before it reaches the OS, so no SIGABRT is emitted. This causal claim is unverified.
 
 ---
 
@@ -222,8 +222,8 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 - **No consolidated BFT audit document exists.** `CURRENT_STATE.md` previously referenced `docs/book/src/bft_verification.md`, but that file was never created. The only BFT doc is `docs/book/src/bft.md` (design prose, no numbered vectors). All vector definitions live as inline code comments and test labels.
 - **BFT-022 through BFT-029 were fabricated.** Introduced in Session 74 CURRENT_STATE.md as "Open (Batch 2)" with zero backing code, tests, or documentation in any commit. Struck in Session 84.
 - **BFT-011 through BFT-029 range is project-wide BANNED for new vector assignment** due to prior fabrication. Existing real code that was mislabeled inside this range has been renumbered to BFT-039 through BFT-046 in Session 84.
-- **Live Android Tests**: Kotlin `connectedAndroidTest` infrastructure is missing, blocking live on-device verification of BFT-038 (FFI panic boundary).
-  - **BLOCKED (Session 83)**: No running emulator/device and ADB/emulator not in PATH. Rust-side proxy remains the only verification, marked UNVERIFIED for live path.
+- **Live Android Tests**: Kotlin `connectedAndroidTest` infrastructure is missing from PATH and `$ANDROID_HOME` is unset, but SDK and AVD (`medium_phone`) were located at `%LOCALAPPDATA%\Android\Sdk`.
+  - **VERIFIED**: Live on-device verification of BFT-038 (FFI panic boundary) completed successfully via Kotlin instrumented test.
 
 ## Process Violations
 - **2026-08-23**: In Session 84, the coding agent made two judgment calls itself (splitting BFT-019/020 into BFT-042/043 and BFT-044/045, and leaving BFT-011/012/013 unrenumbered) without explicit owner approval, proceeding based on a "system auto-approval" signal. This violated the rule that design-approval gates are hard stops; an ambiguous system state must not be treated as approval. These specific decisions were retroactively approved on 2026-08-23 after review.
@@ -235,5 +235,6 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 - Create consolidated BFT audit document (`docs/book/src/bft_verification.md` or equivalent) listing all vectors with their test evidence.
 
 ## Current Session / Pending Closure
-- **Session 83 (Complete/Blocked)**: Documented Android test infra gap. Live BFT-038 verification halted at Step 0.
+- **Session 83 (Complete)**: Documented Android test infra gap.
+- **Session 85 (Complete)**: Executed BFT-038 Live Verification on the `medium_phone` AVD. Validated that FFI panics do not crash the JVM.
 - **Session 84 (In Progress)**: BFT vector numbering reconciliation — renumbered mislabeled vectors (BFT-039 through BFT-046), struck fabricated BFT-022–029, corrected ghost file references and stale checkboxes.
