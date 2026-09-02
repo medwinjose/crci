@@ -137,12 +137,9 @@ async fn run_trials(
     Ok(())
 }
 
-#[tokio::test]
-async fn byzantine_eviction_benchmark() -> Result<(), Box<dyn std::error::Error>> {
-    run_trials(50, false, "byzantine_eviction.csv").await
-}
-
-#[tokio::test]
-async fn byzantine_eviction_with_jitter_benchmark() -> Result<(), Box<dyn std::error::Error>> {
-    run_trials(50, true, "byzantine_eviction_jitter.csv").await
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    run_trials(50, false, "byzantine_eviction.csv").await?;
+    run_trials(50, true, "byzantine_eviction_jitter.csv").await?;
+    Ok(())
 }
