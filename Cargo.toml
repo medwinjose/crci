@@ -40,6 +40,7 @@ tempfile = "3.27.0"
 # Activate test-utils feature for integration tests that use EncryptedStore helpers.
 crci-core = { path = "crci-core", features = ["test-utils"] }
 
-[[test]]
+[[bench]]
 name = "byzantine_bench"
 path = "benches/byzantine_bench.rs"
+harness = false
