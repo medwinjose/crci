@@ -415,6 +415,23 @@ and stop future silent conversion noise.
 - References phantom path "src/Current state.md" — status: confirmed exists
 - Resolution: left in place pending Medwin review (CLOSED in Session 98)
 
+## Scope Violation: Unlogged Bench Run (2026-08-26, discovered Session 118)
+- Filesystem evidence (LastWriteTime): tests/bft_batch1_tests.rs edited 20:08:30; Cargo.toml and
+  benches/byzantine_bench.rs edited 20:12:12–20:12:14; benches/results/byzantine_eviction.csv and
+  benches/results/byzantine_eviction_jitter.csv rewritten 20:14:51 and 20:15:27 — consistent with
+  an unlogged cargo bench or cargo test --all run.
+- No corresponding entry exists in CURRENT_STATE.md for any session covering this time window.
+- User confirmed no recollection of authorizing or running this personally.
+- Status: UNVERIFIED — treated as unauthorized per project rules.
+- Remediation: protected CSVs reverted to last committed state (Session 118, Step 1).
+
+## Process Gap: CURRENT_STATE.md Not Updated Since Session 98
+- Last committed session entries are Session 95-96 and Session 98 (commit 66073d3).
+- Sessions 99 through 117 (chat history and Antigravity task logs) produced no corresponding
+  CURRENT_STATE.md entries prior to this session.
+- Remediation going forward: every session must append its own CURRENT_STATE.md entry as part of
+  that session's own scope — not deferred, not batched retroactively beyond what is written here.
+
 ## Session 98: Audit Tangent Closure (2026-08-26)
 
 - **`session94.sh`**: Confirmed untracked, zero git history. Contents were read-only diagnostic commands only (git log/diff/config checks) with no unique or unrepeatable value. Deleted via `git rm`.
