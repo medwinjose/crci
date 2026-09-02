@@ -414,3 +414,153 @@ fn test_bft_reputation_based_eviction_hysteresis() {
     rep.record_active_behavior();
     assert!(!rep.is_banned()); // Successfully reinstated
 }
+
+// BFT-004
+#[test]
+fn test_bft_xor_hash_collision_guard() {
+    let mut table = PeerTable::new();
+    let p1 = PeerRecord {
+        node_id: "8yn0iYCKYHlIj4-BwPqk".to_string(),
+        zone: "alpha".to_string(),
+        last_seen: 1,
+        discovery_method: DiscoveryMethod::DirectBeacon,
+        battery_tier: "FULL".to_string(),
+        zone_vouched: true,
+    };
+    assert!(table.upsert(p1.clone()));
+
+    let p2 = PeerRecord {
+        node_id: "GReLUrM4wMqfg9yzV3KQ".to_string(),
+        zone: "alpha".to_string(),
+        last_seen: 1,
+        discovery_method: DiscoveryMethod::DirectBeacon,
+        battery_tier: "FULL".to_string(),
+        zone_vouched: true,
+    };
+    assert!(!table.upsert(p2));
+}
+
+// BFT-009
+#[test]
+fn test_bft_untrusted_node_escalation_guard() {
+    use crci_core::aeda::{AedaDecision, AedaEngine, RescueEvent};
+
+    let mut engine = AedaEngine::new();
+
+    for i in 0..3 {
+        engine.process(
+            RescueEvent {
+                node_id: format!("low_rep_{}", i),
+                zone: "alpha".to_string(),
+                severity: 5,
+                round: 1,
+                reputation: 0.3,
+            },
+            1,
+        );
+    }
+
+    let escalated = engine
+        .decisions()
+        .iter()
+        .any(|d| matches!(d, AedaDecision::ZoneEscalated { .. }));
+    assert!(
+        !escalated,
+        "BFT-009/030 violation: untrusted nodes triggered escalation"
+    );
+}
+
+// BFT-030
+#[test]
+fn test_bft_trusted_node_passthrough_guard() {
+    use crci_core::aeda::{AedaDecision, AedaEngine, RescueEvent};
+
+    let mut engine = AedaEngine::new();
+
+    for i in 0..3 {
+        engine.process(
+            RescueEvent {
+                node_id: format!("trusted_{}", i),
+                zone: "alpha".to_string(),
+                severity: 5,
+                round: 2,
+                reputation: 0.9,
+            },
+            2,
+        );
+    }
+
+    let escalated_now = engine
+        .decisions()
+        .iter()
+        .any(|d| matches!(d, AedaDecision::ZoneEscalated { .. }));
+    assert!(
+        escalated_now,
+        "Expected trusted nodes to trigger escalation"
+    );
+}
+
+// BFT-046
+#[test]
+fn test_bft_seen_messages_cache_ceiling() {
+    let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+    let mut node = NodeRuntime::new("bft-046-node", "zone-alpha", inbox.clone());
+
+    for i in 0..5000 {
+        node.seen_messages.insert(format!("msg-id-{}", i));
+    }
+    assert_eq!(node.seen_messages.len(), 5000);
+
+    let msg = Message::new(
+        "msg-id-5001",
+        "peer-test",
+        Signal::new(1, false, false, false, 1, Visibility::Direct),
+        None,
+    );
+    let wire = WireMessage::from_message(&msg, &node.identity);
+    let payload = serde_json::to_vec(&wire).unwrap();
+
+    {
+        let mut guard = inbox.lock().unwrap();
+        guard.insert("bft-046-node".to_string(), vec![payload]);
+    }
+
+    node.process_inbox();
+
+    assert_eq!(node.seen_messages.len(), 1, "BFT-046: after hard-clear eviction at 5000 entries, cache should contain exactly the triggering message");
+    assert!(node.seen_messages.contains("msg-id-5001"));
+}
+
+// BFT-008 persists across BFT-046 eviction
+#[test]
+fn test_bft008_persists_across_bft046_eviction() {
+    let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+    let mut node = NodeRuntime::new("bft-008-046-node", "zone-alpha", inbox.clone());
+
+    let peer = "spammy-peer".to_string();
+    node.sig_verifications_count.insert(peer.clone(), 3);
+
+    for i in 0..5000 {
+        node.seen_messages.insert(format!("msg-id-{}", i));
+    }
+    assert_eq!(node.seen_messages.len(), 5000);
+
+    let msg = Message::new(
+        "msg-id-5001",
+        "some-other-peer",
+        Signal::new(1, false, false, false, 1, Visibility::Direct),
+        None,
+    );
+    let wire = WireMessage::from_message(&msg, &node.identity);
+    let payload = serde_json::to_vec(&wire).unwrap();
+
+    {
+        let mut guard = inbox.lock().unwrap();
+        guard.insert("bft-008-046-node".to_string(), vec![payload]);
+    }
+
+    node.process_inbox();
+
+    let count = node.sig_verifications_count.get(&peer).copied().unwrap_or(0);
+    assert_eq!(count, 3, "BFT-008 throttle should persist across BFT-046 eviction");
+}
