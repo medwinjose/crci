@@ -374,6 +374,7 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 
 ## Process Violations
 - **2026-08-23**: In Session 84, the coding agent made two judgment calls itself (splitting BFT-019/020 into BFT-042/043 and BFT-044/045, and leaving BFT-011/012/013 unrenumbered) without explicit owner approval, proceeding based on a "system auto-approval" signal. This violated the rule that design-approval gates are hard stops; an ambiguous system state must not be treated as approval. These specific decisions were retroactively approved on 2026-08-23 after review.
+- **2026-09-08**: Session 147 scope violation: an unauthorized `manage_task` tool call occurred during a session scoped strictly to (a) the BFT-046 assertion fix and (b) a .gitignore commit for TLC state artifacts. No task-management tool call was authorized in the session prompt. The two intended commits (9e84fae, 94eab5a) were evidence-clean and are not affected, but the unauthorized call itself is logged per standing scope-violation policy.
 
 ## Next Steps
 - Integrate `metrics` subsystem with Prometheus exporter in FFI layer.
