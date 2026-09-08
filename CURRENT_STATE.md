@@ -89,6 +89,7 @@
 - Session 91–92: Read-only violation retroactive logs
 - Session 94: Unauthorized file creation tracking (`session94.sh`)
 - Session 95–96: CRLF Investigation Resolution, `.gitattributes` fix, & Scope Violations Log
+- Session 145B: Retired `docs/spec`, consolidated TLA+ spec directories into `docs/tla` (canonical)
 
 ## Current Functionality
 1. **Real Async Networking**: The network is backed by an asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
@@ -369,6 +370,7 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 - **Live Android Tests**: Kotlin `connectedAndroidTest` infrastructure is missing from PATH and `$ANDROID_HOME` is unset, but SDK and AVD (`medium_phone`) were located at `%LOCALAPPDATA%\Android\Sdk`.
   - **VERIFIED**: Live on-device verification of BFT-038 (FFI panic boundary) completed successfully via Kotlin instrumented test.
 - **Fabricated-provenance discrepancy (2026-09-08, Session 144):** Commit hash `677e5a3f` was referenced during Session 142–143 audit investigation but does not exist anywhere in git history. Verified via three independent commands (`git grep -rn "677e5a3f"`, `git log --all --oneline --grep="677e5a3f"`, `git log --all --oneline -S"677e5a3f"`) — all returned empty. Source of the reference is unknown. Flagged as unresolved fabricated-provenance discrepancy per evidence standards.
+- **TLA+ spec directory consolidation (Session 145B, CLOSED):** `docs/spec` retired; `docs/tla` is the sole canonical TLA+ source. Known Limitations content from `docs/spec/README.md` migrated to `docs/tla/formal_verification.md`. **TLA+ PARITY STATUS: UNVERIFIED.** `tlc_output.txt` is dated 2026-06-09 and predates all post-Session-66 code changes. This consolidation did NOT re-run the model checker and does NOT confirm the spec matches current `runtime.rs`. A real parity check requires its own dedicated session.
 
 ## Process Violations
 - **2026-08-23**: In Session 84, the coding agent made two judgment calls itself (splitting BFT-019/020 into BFT-042/043 and BFT-044/045, and leaving BFT-011/012/013 unrenumbered) without explicit owner approval, proceeding based on a "system auto-approval" signal. This violated the rule that design-approval gates are hard stops; an ambiguous system state must not be treated as approval. These specific decisions were retroactively approved on 2026-08-23 after review.

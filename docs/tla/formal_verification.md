@@ -18,3 +18,9 @@ For our TLC model-checker configuration, we utilize a small-model instantiation:
 While the TLA+ specification is an abstraction, it maintains a direct 1-to-1 correspondence with the Rust implementation's critical algorithmic decisions. The replay filter abstractly modeled in TLA+ directly mirrors the caching logic in `src/runtime.rs`, the battery gating rules match `src/battery.rs`, and the Byzantine validation maps perfectly to `src/validation.rs`.
 
 The complete, annotated TLA+ specification and its corresponding configuration files are publicly available and can be reviewed in the `docs/tla/` directory of the project repository.
+
+## Known Limitations (migrated from retired docs/spec, Session 145B)
+
+- **Finite Model Approximation**: The model is configured for a micro-network (3–5 nodes) to ensure the state-space exploration completes in reasonable time.
+- **Rational Approximation**: TLA+ does not natively support floating-point arithmetic. Reputation scores (normally `0.0` to `1.0` floats) are modeled as scaled integers (`0` to `100`).
+- **Simplified Byzantine Threat**: The Byzantine actor is currently only modeled injecting severity anomalies. More complex attacks (e.g., eclipse attacks or eclipse routing) are abstracted out.
