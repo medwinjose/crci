@@ -531,7 +531,7 @@ fn test_bft_seen_messages_cache_ceiling() {
     assert!(node.seen_messages.contains("msg-id-5001"));
 }
 
-// BFT-008 persists across BFT-046 eviction
+// BFT-047: BFT-008 persists across BFT-046 eviction
 #[test]
 fn test_bft008_persists_across_bft046_eviction() {
     let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
