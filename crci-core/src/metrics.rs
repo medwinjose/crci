@@ -143,7 +143,9 @@ impl CrciMetrics {
             self.sybil_pow_failed_total.load(Ordering::Relaxed)
         ));
 
-        out.push_str("# HELP crci_seen_messages_evictions Total BFT-046 seen_messages cache evictions\n");
+        out.push_str(
+            "# HELP crci_seen_messages_evictions Total BFT-046 seen_messages cache evictions\n",
+        );
         out.push_str("# TYPE crci_seen_messages_evictions counter\n");
         out.push_str(&format!(
             "crci_seen_messages_evictions {}\n",

@@ -68,11 +68,7 @@ impl ChaosWanNode {
     /// Vec<usize>: capacity * 8.
     fn estimated_heap_bytes(&self) -> usize {
         let set_overhead = 56; // per-entry HashMap overhead estimate
-        let set_bytes: usize = self
-            .received
-            .iter()
-            .map(|s| s.len() + set_overhead)
-            .sum();
+        let set_bytes: usize = self.received.iter().map(|s| s.len() + set_overhead).sum();
         let peers_bytes = self.peers.capacity() * std::mem::size_of::<usize>();
         let id_bytes = std::mem::size_of::<usize>(); // stack, but for completeness
         set_bytes + peers_bytes + id_bytes
@@ -153,9 +149,7 @@ fn run_wan_chaos_100(node_count: usize, loss_rate: f32) -> WanChaosResult {
         // Originate messages exactly when partition starts
         if round == partition_start {
             nodes[0].received.insert(msg_a.clone());
-            nodes[partition_boundary + 1]
-                .received
-                .insert(msg_b.clone());
+            nodes[partition_boundary + 1].received.insert(msg_b.clone());
         }
 
         // Deliver delayed messages that are due this round
@@ -353,16 +347,8 @@ fn print_result(r: &WanChaosResult) {
     println!(
         "║  Partition isolated: {} | All got msg_a: {} | All got msg_b: {}  ║",
         if r.partition_isolated { "YES" } else { "NO " },
-        if r.all_received_msg_a {
-            "YES"
-        } else {
-            "NO "
-        },
-        if r.all_received_msg_b {
-            "YES"
-        } else {
-            "NO "
-        },
+        if r.all_received_msg_a { "YES" } else { "NO " },
+        if r.all_received_msg_b { "YES" } else { "NO " },
     );
     println!(
         "║  Wall time: {} ms{:>width$}║",

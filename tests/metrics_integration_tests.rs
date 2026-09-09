@@ -141,10 +141,7 @@ fn test_metrics_seen_messages_evictions_on_bft046() {
 
     node.process_inbox();
 
-    let evictions = node
-        .metrics
-        .seen_messages_evictions
-        .load(Ordering::Relaxed);
+    let evictions = node.metrics.seen_messages_evictions.load(Ordering::Relaxed);
     assert_eq!(
         evictions, 1,
         "Expected exactly 1 seen_messages_eviction after hitting 5000 ceiling, got {}",
