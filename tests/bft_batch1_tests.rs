@@ -561,6 +561,13 @@ fn test_bft008_persists_across_bft046_eviction() {
 
     node.process_inbox();
 
-    let count = node.sig_verifications_count.get(&peer).copied().unwrap_or(0);
-    assert_eq!(count, 3, "BFT-008 throttle should persist across BFT-046 eviction");
+    let count = node
+        .sig_verifications_count
+        .get(&peer)
+        .copied()
+        .unwrap_or(0);
+    assert_eq!(
+        count, 3,
+        "BFT-008 throttle should persist across BFT-046 eviction"
+    );
 }
