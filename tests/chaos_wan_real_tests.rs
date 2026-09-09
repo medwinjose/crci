@@ -153,7 +153,7 @@ fn test_real_wan_chaos_netns() {
         let peers_str = peers.join(",");
 
         let child = Command::new("sudo")
-            .args(&["ip", "netns", "exec", &format!("node{}", i)])
+            .args(["ip", "netns", "exec", &format!("node{}", i)])
             .arg(&crci_bin)
             .arg("--node-id")
             .arg(&format!("node-{}", i))
@@ -195,14 +195,14 @@ fn test_real_wan_chaos_netns() {
     }
     for i in 1..=5 {
         let _ = Command::new("sudo")
-            .args(&["ip", "netns", "del", &format!("node{}", i)])
+            .args(["ip", "netns", "del", &format!("node{}", i)])
             .status();
         let _ = Command::new("sudo")
-            .args(&["ip", "link", "del", &format!("veth{}a", i)])
+            .args(["ip", "link", "del", &format!("veth{}a", i)])
             .status();
     }
     let _ = Command::new("sudo")
-        .args(&["ip", "link", "del", "br0"])
+        .args(["ip", "link", "del", "br0"])
         .status();
 
     let partition_recovery_time = t0.elapsed().as_millis();
