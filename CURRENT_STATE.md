@@ -167,11 +167,11 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 
 ---
 
-## Test Suite Reconciliation (185 Passed vs 137 Baseline)
+## Test Suite Reconciliation (Session 152 real baseline, verbatim cargo test --all output attached as cargo_test_output_session152.txt)
 
-**Total Passing Tests:** 185 (0 failed, 0 ignored across 19 test binaries).
+**Total Passing Tests:** 188 (0 failed, 0 ignored).
 **Baseline at v0.1.0 (Session 69 / commit `110f232`):** 137 passing tests.
-**Net Delta:** +48 passing tests.
+**Net Delta:** +51 passing tests.
 **Baseline Removals/Renames:** 0 tests removed or renamed from baseline.
 
 ### Per-Crate Reconciliation Table
