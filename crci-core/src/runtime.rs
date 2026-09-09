@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::identity::Identity;
 use crate::message::{Message, MessageType, Signal, Visibility};
+use crate::metrics::CrciMetrics;
 use crate::storage::{PersistedRescue, PersistedState};
 use crate::transport::{LegacyTransport, SharedInbox, SimTransport};
 
@@ -150,6 +151,7 @@ pub struct NodeRuntime {
     pub sybil_rate_limited_events: u64,
     pub sybil_pow_failed_events: u64,
     pub sig_verifications_count: HashMap<String, usize>,
+    pub metrics: CrciMetrics,
 }
 
 impl NodeRuntime {
@@ -187,6 +189,7 @@ impl NodeRuntime {
             sybil_rate_limited_events: 0,
             sybil_pow_failed_events: 0,
             sig_verifications_count: HashMap::new(),
+            metrics: CrciMetrics::new(),
         }
     }
 
@@ -357,6 +360,7 @@ impl NodeRuntime {
                 Ok(()) => { /* proceed */ }
                 Err(crate::sybil::SybilError::Banned(peer)) => {
                     self.sybil_banned_events += 1;
+                    self.metrics.sybil_banned_total.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     println!(
                         "  ⚠ [{}] SYBIL GUARD DROP: peer {} is banned",
                         self.id, peer
@@ -365,6 +369,7 @@ impl NodeRuntime {
                 }
                 Err(crate::sybil::SybilError::RateLimited(peer)) => {
                     self.sybil_rate_limited_events += 1;
+                    self.metrics.sybil_rate_limited_total.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     println!(
                         "  ⚠ [{}] SYBIL GUARD DROP: peer {} exceeded rate limit",
                         self.id, peer
@@ -373,6 +378,7 @@ impl NodeRuntime {
                 }
                 Err(crate::sybil::SybilError::PowFailed(peer)) => {
                     self.sybil_pow_failed_events += 1;
+                    self.metrics.sybil_pow_failed_total.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     println!(
                         "  ⚠ [{}] SYBIL GUARD DROP: peer {} PoW failed",
                         self.id, peer
@@ -393,9 +399,12 @@ impl NodeRuntime {
                         self.id, wire.origin, wire.id
                     );
                     self.byzantine_events += 1;
+                    self.metrics.byzantine_detected.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    self.metrics.messages_rejected.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     continue;
                 }
                 *sig_checks += 1;
+                self.metrics.sig_verifications_performed.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
 
             // Step 1: verify cryptographic signature
@@ -405,6 +414,8 @@ impl NodeRuntime {
                     self.id, wire.id
                 );
                 self.byzantine_events += 1;
+                self.metrics.byzantine_detected.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                self.metrics.messages_rejected.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 // BFT-019: Defend against signature-invalidation attacks.
                 // Do NOT penalise the claimed origin node when signature check fails.
                 continue;
@@ -419,6 +430,8 @@ impl NodeRuntime {
                             self.id, wire.id
                         );
                         self.byzantine_events += 1;
+                        self.metrics.byzantine_detected.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        self.metrics.messages_rejected.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                         // BFT-019: Defend against signature-invalidation attacks.
                         // Do NOT penalise the claimed origin node on pubkey mismatch.
                         continue;
@@ -471,6 +484,7 @@ impl NodeRuntime {
             // BFT-052 (not in scope for this session).
             if self.seen_messages.len() >= 5000 {
                 self.seen_messages.clear();
+                self.metrics.seen_messages_evictions.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
             self.seen_messages.insert(wire.id.clone());
 
@@ -550,6 +564,7 @@ impl NodeRuntime {
             });
 
             self.messages_handled += 1;
+            self.metrics.messages_accepted.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
             let payload = match serde_json::to_vec(&wire) {
                 Ok(bytes) => bytes,

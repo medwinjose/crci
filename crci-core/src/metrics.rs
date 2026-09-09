@@ -24,6 +24,8 @@ pub struct CrciMetrics {
     pub sybil_banned_total: AtomicU64,
     pub sybil_rate_limited_total: AtomicU64,
     pub sybil_pow_failed_total: AtomicU64,
+    pub seen_messages_evictions: AtomicU64,
+    pub sig_verifications_performed: AtomicU64,
     pub peers: Mutex<HashMap<String, PeerState>>,
 }
 
@@ -48,6 +50,8 @@ impl CrciMetrics {
             sybil_banned_total: AtomicU64::new(0),
             sybil_rate_limited_total: AtomicU64::new(0),
             sybil_pow_failed_total: AtomicU64::new(0),
+            seen_messages_evictions: AtomicU64::new(0),
+            sig_verifications_performed: AtomicU64::new(0),
             peers: Mutex::new(HashMap::new()),
         }
     }
@@ -137,6 +141,20 @@ impl CrciMetrics {
         out.push_str(&format!(
             "crci_sybil_pow_failed_total {}\n",
             self.sybil_pow_failed_total.load(Ordering::Relaxed)
+        ));
+
+        out.push_str("# HELP crci_seen_messages_evictions Total BFT-046 seen_messages cache evictions\n");
+        out.push_str("# TYPE crci_seen_messages_evictions counter\n");
+        out.push_str(&format!(
+            "crci_seen_messages_evictions {}\n",
+            self.seen_messages_evictions.load(Ordering::Relaxed)
+        ));
+
+        out.push_str("# HELP crci_sig_verifications_performed Total BFT-008 signature verifications performed\n");
+        out.push_str("# TYPE crci_sig_verifications_performed counter\n");
+        out.push_str(&format!(
+            "crci_sig_verifications_performed {}\n",
+            self.sig_verifications_performed.load(Ordering::Relaxed)
         ));
 
         if let Ok(peers) = self.peers.lock() {
