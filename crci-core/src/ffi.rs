@@ -58,6 +58,13 @@ fn get_node_handle() -> &'static Mutex<Option<NodeRuntimeHandle>> {
     NODE_HANDLE.get_or_init(|| Mutex::new(None))
 }
 
+#[cfg(feature = "test-utils")]
+pub fn inject_node_for_test(node: NodeRuntime, rt: tokio::runtime::Runtime) {
+    if let Ok(mut handle) = get_node_handle().lock() {
+        *handle = Some(NodeRuntimeHandle { _runtime: rt, node });
+    }
+}
+
 struct FfiMockStorage;
 
 #[async_trait::async_trait]

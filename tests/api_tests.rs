@@ -261,3 +261,30 @@ async fn test_inject_wrong_content_type() {
 
     assert_eq!(res.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
 }
+
+#[tokio::test]
+async fn test_metrics_endpoint() {
+    let app = build_router(setup_state());
+
+    // Initialize global node handle so metrics_snapshot returns actual data
+    {
+        let inbox = std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
+        let node = crci_core::runtime::NodeRuntime::new("test-node", "zone-alpha", inbox);
+        // Create the runtime on a separate thread to avoid the "Cannot start a runtime from within a runtime" panic
+        let rt = std::thread::spawn(|| tokio::runtime::Runtime::new().unwrap())
+            .join()
+            .unwrap();
+        crci_core::ffi::inject_node_for_test(node, rt);
+    }
+
+    let req = Request::builder()
+        .uri("/metrics")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.oneshot(req).await.unwrap();
+
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let body_str = String::from_utf8(body.to_vec()).unwrap();
+    assert!(body_str.contains("crci_messages_accepted"));
+}
