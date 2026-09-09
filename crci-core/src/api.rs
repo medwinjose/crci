@@ -295,6 +295,7 @@ pub fn build_router(state: Arc<ApiState>) -> Router {
             post(inject_v1_handler).layer(DefaultBodyLimit::max(8192)),
         )
         .route("/api/v1/openapi.json", get(openapi_handler))
+        .route("/metrics", get(metrics_handler))
         .with_state(state.clone());
 
     app.layer(middleware::from_fn(rate_limit_middleware))
@@ -557,6 +558,14 @@ async fn openapi_handler(
             Err((StatusCode::SERVICE_UNAVAILABLE, Json(err_body)))
         }
     }
+}
+
+async fn metrics_handler() -> impl IntoResponse {
+    let prometheus_text = crate::ffi::metrics_snapshot();
+    (
+        [(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+        prometheus_text,
+    )
 }
 
 #[cfg(test)]
