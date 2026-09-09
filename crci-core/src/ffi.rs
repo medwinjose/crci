@@ -172,3 +172,13 @@ pub fn consensus_rounds() -> u64 {
     }
     0
 }
+
+#[uniffi::export]
+pub fn metrics_snapshot() -> String {
+    if let Ok(handle) = get_node_handle().lock() {
+        if let Some(runtime_handle) = handle.as_ref() {
+            return runtime_handle.node.metrics.to_prometheus();
+        }
+    }
+    String::new()
+}
