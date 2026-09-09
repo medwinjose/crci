@@ -23,6 +23,11 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
       - name: Tests
         run: cargo test --all
+      - name: Real WAN Chaos Test
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update && sudo apt-get install -y iproute2
+          sudo -E env "PATH=$PATH" cargo test --test chaos_wan_real_tests -- --ignored --nocapture
       - name: Build all binaries
         run: cargo build --bins --release
 
