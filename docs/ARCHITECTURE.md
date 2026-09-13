@@ -1,44 +1,21 @@
 # CRCI Architecture
 
-CRCI (Crisis Response Communication Infrastructure) is organized as a Cargo workspace with the following structure:
+CRCI is organized into a modular Cargo workspace with clearly defined subsystem boundaries.
 
-```mermaid
-graph TD
-    subgraph "CRCI Workspace"
-        crci_bin[crci Binary Crate]
-        crci_core[crci_core Library Crate]
-        
-        crci_bin -->|Depends on| crci_core
-    end
-    
-    subgraph "crci_core Library (Mesh Logic & API)"
-        network[Network & Transport Layer]
-        gossip[Gossip & Routing Protocol]
-        merkle[Merkle DAG State]
-        security[Security & Sybil Resistance]
-        storage[Encrypted Local Storage]
-        api[REST API & WebSockets]
-        
-        api --> gossip
-        gossip --> network
-        gossip --> merkle
-        merkle --> storage
-        network --> security
-    end
-    
-    subgraph "crci Binary (Entrypoint)"
-        cli[CLI Argument Parsing]
-        main[Main Event Loop & Initialization]
-        
-        main --> cli
-        main --> crci_core
-    end
-    
-    AndroidApp[Future Android App] -.->|Depends on| crci_core
-    WebApp[Future Web Interface] -.->|Interacts via| api
-```
+## Repository Layout
 
-## Workspace Crates
+- **`crates/crci-core/`**: The core library crate containing all business logic, protocol rules, cryptography, routing, Sybil resistance, state management, and the `rust-libp2p` networking layer. This module has no knowledge of external APIs or CLIs.
+- **`crates/crci-node/`**: The primary executable wrapper that handles argument parsing (`clap`), initializing the Tokio asynchronous runtime, and standing up the REST/WebSocket API endpoints. It depends on `crci-core`.
+- **`crci-android/`**: Contains the Kotlin Android application which consumes the core Rust logic via Foreign Function Interface (FFI).
+- **`bindings/`**: Contains the UniFFI setup that automatically generates Kotlin bindings from the `crci-core` Rust API, allowing Android to interact natively with the peer-to-peer network.
+- **`web/`**: The React-based Web Dashboard that connects to the `crci-node` REST API to provide a live view of network telemetry, node reputation, and partition status.
+- **`docker/`**: Contains Dockerfiles and `docker-compose.yml` for standing up the containerized 3-node mesh and web dashboard.
+- **`docs/`**: Contains project documentation, paper drafts, benchmark results, and formal TLA+ specifications.
+- **`scripts/`**: Development and testing scripts.
 
-- **`crci_core`**: The core library crate containing all business logic, protocol rules, cryptography, routing, Sybil resistance, state management, and API interfaces. This is completely decoupled from the binary execution loop, allowing it to be compiled into Android or iOS apps.
-- **`crci`**: The primary executable wrapper that handles argument parsing (`clap`), initializing the Tokio asynchronous runtime, setting up signal handlers, and driving the simulation or physical node execution.
+## Subsystem Interactions
+
+1. **Client to API Layer**: The `web` dashboard and external CLI tooling communicate with the `crci-node` over standard REST JSON endpoints.
+2. **API Layer to Core**: The `crci-node` binary translates REST commands into async Rust function calls into the `crci-core` library.
+3. **Core to FFI**: The `crci-android` app bypasses the REST API entirely. Instead, it statically links against a compiled `.so` of `crci-core` using the scaffolding in `bindings/`, calling core Rust methods directly from Kotlin.
+4. **Core to Network**: Inside `crci-core`, the `rust-libp2p` stack handles all inter-node communication, gossiping validated payloads and enforcing Byzantine reputation rules before surfacing data to the state machine.
