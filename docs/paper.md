@@ -1,7 +1,7 @@
 # CRCI: A Byzantine Fault-Tolerant, Partition-Resilient Gossip Mesh Network
 
 ## Abstract
-In disaster scenarios and remote operations, traditional communication infrastructure often fails, necessitating decentralized mesh networks. However, these networks are highly vulnerable to malicious actors injecting false data or overwhelming limited bandwidth. We present CRCI (Crisis Response Communication Infrastructure), a Byzantine fault-tolerant mesh network designed for high-latency, low-bandwidth environments. CRCI abandons traditional O(n²) PBFT consensus in favor of an O(n) Reputation-Weighted Quorum, tolerating up to 1/3 Byzantine reputation weight without network collapse. Our evaluation demonstrates rapid convergence, with a 100-node network achieving discovery convergence in 10 rounds (68 ms). The pipeline natively processes 90,090 msg/s, making it suitable for resource-constrained edge devices while providing cryptographic auditability through Merkle-chained state histories.
+In disaster scenarios and remote operations, traditional communication infrastructure often fails, necessitating decentralized mesh networks. However, these networks are highly vulnerable to malicious actors injecting false data or overwhelming limited bandwidth. We present CRCI (Crisis Response Communication Infrastructure), a Byzantine fault-tolerant mesh network designed for high-latency, low-bandwidth environments. CRCI abandons traditional O(n²) PBFT consensus in favor of an O(n) Reputation-Weighted Quorum, tolerating up to 1/3 Byzantine reputation weight without network collapse. Our evaluation demonstrates rapid convergence, with an in-process 100-node simulated network achieving discovery convergence in 10 rounds (68 ms). Note that real-world network-namespace-based WAN chaos tests (`chaos_wan_real_tests.rs`) run a downscaled 5-node topology due to CI runner memory and CPU constraints. The pipeline natively processes 90,090 msg/s, making it suitable for resource-constrained edge devices while providing cryptographic auditability through Merkle-chained state histories.
 
 ---
 
@@ -35,7 +35,7 @@ The core of CRCI is the `GossipPipeline`, a multi-stage validation engine that a
 
 ## 3. Evaluation
 
-CRCI was evaluated through a series of local benchmarks simulating up to 100,000 messages and 100-node topologies, followed by a multi-process distributed proof run.
+CRCI was evaluated through a series of local algorithmic benchmarks simulating up to 100,000 messages and 100-node topologies (e.g. `chaos_wan_100_tests.rs`), followed by a multi-process distributed proof run operating across 5 independent nodes using real Linux network namespaces (`chaos_wan_real_tests.rs`) to validate fault tolerance against true kernel-level packet loss and latency. The 5-node topology was specifically chosen due to hardware limitations (CPU/OOM kills) when running larger mesh topologies in CI runners.
 
 ### 3.1 Local Benchmarks
 
@@ -53,6 +53,8 @@ CRCI was evaluated through a series of local benchmarks simulating up to 100,000
 | 10 | 10 | 10 (0 ms) |
 | 50 | 10 | 10 (12 ms) |
 | 100 | 10 | 10 (68 ms) |
+
+*Interpretation: The XOR-based K-bucket routing massively accelerates peer discovery over naive beaconing in simulated high-density topologies (up to 100-node algorithm simulation).*
 
 **BENCHMARK 9 — AEDA Decision Latency**
 | Metric | Value |
