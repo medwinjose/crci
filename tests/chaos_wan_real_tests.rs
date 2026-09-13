@@ -22,7 +22,9 @@ fn test_real_wan_chaos_netns() {
 
     // Setup network namespaces
     for i in 1..=5 {
+        println!("[netns] Creating namespace node{}", i);
         run_cmd("sudo", &["ip", "netns", "add", &format!("node{}", i)]);
+        println!("[veth] Creating veth pair veth{}a <-> veth{}b", i, i);
         run_cmd(
             "sudo",
             &[
@@ -37,6 +39,7 @@ fn test_real_wan_chaos_netns() {
                 &format!("veth{}b", i),
             ],
         );
+        println!("[netns] Moving veth{}b into namespace node{}", i, i);
         run_cmd(
             "sudo",
             &[
@@ -51,6 +54,7 @@ fn test_real_wan_chaos_netns() {
 
         // Setup bridge
         if i == 1 {
+            println!("[bridge] Creating br0");
             run_cmd("sudo", &["ip", "link", "add", "br0", "type", "bridge"]);
             run_cmd("sudo", &["ip", "link", "set", "br0", "up"]);
             run_cmd(
@@ -65,6 +69,10 @@ fn test_real_wan_chaos_netns() {
         );
         run_cmd("sudo", &["ip", "link", "set", &format!("veth{}a", i), "up"]);
 
+        println!(
+            "[netns] Assigning 10.0.0.{}/24 to veth{}b inside node{}",
+            i, i, i
+        );
         run_cmd(
             "sudo",
             &[
@@ -109,7 +117,11 @@ fn test_real_wan_chaos_netns() {
             ],
         );
 
-        // Add tc qdisc for latency and packet loss (50ms delay, 5% loss)
+        // Add tc qdisc netem for 50ms delay + 5% packet loss
+        println!(
+            "[tc] Adding tc qdisc netem delay 50ms loss 5%% on veth{}b in node{}",
+            i, i
+        );
         run_cmd(
             "sudo",
             &[
@@ -174,6 +186,7 @@ fn test_real_wan_chaos_netns() {
 
     // Measure Memory Footprint for each node
     let mut mem_usages = vec![];
+    println!("[mem] Reading VmRSS for each node process:");
     for (id, child) in &children {
         if let Ok(status) = fs::read_to_string(format!("/proc/{}/status", child.id())) {
             for line in status.lines() {
@@ -181,11 +194,25 @@ fn test_real_wan_chaos_netns() {
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if parts.len() >= 2 {
                         if let Ok(kb) = parts[1].parse::<usize>() {
-                            mem_usages.push((*id, kb * 1024));
+                            let bytes = kb * 1024;
+                            println!(
+                                "[mem]   node-{} pid={} VmRSS={} bytes ({} kB)",
+                                id,
+                                child.id(),
+                                bytes,
+                                kb
+                            );
+                            mem_usages.push((*id, bytes));
                         }
                     }
                 }
             }
+        } else {
+            println!(
+                "[mem]   node-{} pid={} VmRSS=<unavailable: process already exited>",
+                id,
+                child.id()
+            );
         }
     }
 
@@ -218,11 +245,21 @@ fn test_real_wan_chaos_netns() {
         throughput, partition_recovery_time, mem_usages
     );
 
-    fs::write("target/chaos_wan_results.json", result_json).unwrap();
+    println!("[results] chaos_wan_results.json contents:");
+    println!("{}", result_json);
+    println!(
+        "[results] partition_recovery_ms={}",
+        partition_recovery_time
+    );
+    println!("[results] throughput_msgs={}", throughput);
+    println!("[results] memory_bytes={:?}", mem_usages);
+
+    fs::write("target/chaos_wan_results.json", &result_json).unwrap();
     println!("Chaos WAN test complete. Real metrics written to target/chaos_wan_results.json");
 }
 
 fn run_cmd(cmd: &str, args: &[&str]) {
+    println!("[cmd] {} {}", cmd, args.join(" "));
     let status = Command::new(cmd)
         .args(args)
         .status()
