@@ -133,12 +133,12 @@ fn test_real_wan_chaos_netns() {
     }
 
     // Build the binary once
-    run_cmd("cargo", &["build", "--bin", "crci"]);
+    run_cmd("cargo", &["build", "--bin", "crci-node"]);
     let crci_bin = std::env::current_dir()
         .unwrap()
         .join("target")
         .join("debug")
-        .join("crci");
+        .join("crci-node");
 
     // Spawn nodes
     let mut children = vec![];
