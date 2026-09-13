@@ -266,7 +266,9 @@ fn test_real_wan_chaos_netns() {
     println!("[results] memory_bytes={}", mem_bytes_json);
 
     fs::write("../../target/chaos_wan_results.json", &result_json).unwrap();
-    println!("Chaos WAN test complete. Real metrics written to ../../target/chaos_wan_results.json");
+    println!(
+        "Chaos WAN test complete. Real metrics written to ../../target/chaos_wan_results.json"
+    );
 }
 
 fn run_cmd(cmd: &str, args: &[&str]) {
