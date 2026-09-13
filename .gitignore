@@ -1,4 +1,4 @@
-/target/
+﻿/target/
 **/*.rs.bk
 docs/interview_script.md
 task.md
@@ -24,3 +24,8 @@ crci-android/app/build/
 # TLC generated state directories
 states/
 docs/tla/states/
+extracted.json
+
+
+
+crci-android/.kotlin/
