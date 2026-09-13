@@ -137,7 +137,7 @@ else
 
   # Run npm install for dashboard
   echo "Installing Vite dashboard dependencies..."
-  (cd docs/dashboard && npm install)
+  (cd web/dashboard && npm install)
 
   ALPHA_PID=""
   BETA_PID=""
@@ -176,7 +176,7 @@ else
 
   # 3. Wait for Dashboard to be ready
   echo "[3/4] Starting live dashboard Vite dev server on port 5173..."
-  (cd docs/dashboard && npm run dev -- --host 0.0.0.0) >/dev/null 2>&1 &
+  (cd web/dashboard && npm run dev -- --host 0.0.0.0) >/dev/null 2>&1 &
   DASH_PID=$!
 
   while ! curl -s -I http://localhost:5173 | grep -q "200\|304\|404\|200 OK"; do

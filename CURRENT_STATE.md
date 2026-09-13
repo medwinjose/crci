@@ -92,12 +92,12 @@
 - Session 145B: Retired `docs/spec`, consolidated TLA+ spec directories into `docs/tla` (canonical)
 
 ## Current Functionality
-1. **Real Async Networking**: The network is backed by an asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
+1. **Real Async Networking**: The network is backed by an asynchronous `tokio::net` TCP transport layer (`crates/crci-core/src/transport/mod.rs`), dropping the simulation harness.
 2. **Docker Multi-node Proof Loop**: Scripts and configurations exist to run multi-node containers with real network traffic. Native local process fallback is documented for environments without a running Docker daemon.
-3. **Advanced Features Embedded**: Reputation, AEDA scoring, battery management, message pruning, Byzantine discovery (K-bucket), Temporal routing, and Merkle chaining are integrated in `src/integration.rs` and the `NodeRuntime`.
-4. **Wasm Edge Compute**: Priority computation can be executed dynamically via Wasmtime (`src/wasm.rs`).
-5. **Security**: Auditing (`src/security.rs`), validations, payload constraints, API telemetry, and `SECURITY.md`.
-6. **Live Dashboard**: Standalone web dashboard at `docs/dashboard/` tracking live messages, peer status, and SEV distribution over Axum WebSocket.
+3. **Advanced Features Embedded**: Reputation, AEDA scoring, battery management, message pruning, Byzantine discovery (K-bucket), Temporal routing, and Merkle chaining are integrated in `crates/crci-core/src/integration.rs` and the `NodeRuntime`.
+4. **Wasm Edge Compute**: Priority computation can be executed dynamically via Wasmtime (`crates/crci-core/src/wasm.rs`).
+5. **Security**: Auditing (`crates/crci-core/src/security.rs`), validations, payload constraints, API telemetry, and `SECURITY.md`.
+6. **Live Dashboard**: Standalone web dashboard at `web/dashboard/` tracking live messages, peer status, and SEV distribution over Axum WebSocket.
 7. **Grafana & Prometheus**: Metrics exported for Prometheus (`http://localhost:9090`) and Grafana (`http://localhost:3001`).
 8. **Byzantine Agent**: `byzantine_agent` binary available to inject adversarial traffic into the cluster (`cargo run --bin byzantine_agent -- --help`).
 9. **API Hardening**: Rate limits (60 req/min/IP), strict Content-Type checks, 64KB payload limits, and telemetry headers (`X-Request-Id`, `X-CRCI-Version`).
@@ -111,7 +111,7 @@
 **Goal:** Wire the inert FFI path to actual Byzantine consensus, making the NodeRuntime run a real background event loop from Kotlin.
 
 ### 1. FFI Consensus Loop Wiring
-**Finding:** FFI path now executes a real background event loop (`crci-core/src/ffi.rs:start_node`). The background Tokio task ticks every 500ms, calls `process_inbox()` to ingest new messages, and invokes the newly created `NodeRuntime::run_consensus()` to compute a purely local perspective of the Byzantine quorum (as opposed to `MeshSimulator`'s omniscient view).
+**Finding:** FFI path now executes a real background event loop (`crates/crci-core/src/ffi.rs:start_node`). The background Tokio task ticks every 500ms, calls `process_inbox()` to ingest new messages, and invokes the newly created `NodeRuntime::run_consensus()` to compute a purely local perspective of the Byzantine quorum (as opposed to `MeshSimulator`'s omniscient view).
 
 ### 2. Panic Boundary Reached
 **Finding:** Session 79's `catch_unwind`-style boundary in `runtime.rs:566` is **now genuinely reachable** from the FFI path. `ffi.rs::start_node` injects a mock storage backend (`FfiMockStorage`), ensuring the `if let Some(backend) = &self.storage_backend` branch inside `process_inbox()` is taken, exercising the spawned storage write task and its panic isolation wrapper.
@@ -123,7 +123,7 @@
 - `network.rs:332` — `for (node_id, severity, confidence, unknown_vis) in reporters` (flat tuple, iterating a `Vec<(String, u8, u8, bool)>`)
 
 **Call-site analysis:**
-- `MeshSimulator::run_consensus` is called from: `src/main.rs` (CLI demo), `crci-core/src/stress.rs` (stress tests), `crci-core/src/crisis.rs` (crisis demos), and `tests/bft_batch1_tests.rs` (integration tests).
+- `MeshSimulator::run_consensus` is called from: `crates/crci-node/src/main.rs` (CLI demo), `crates/crci-core/src/stress.rs` (stress tests), `crates/crci-core/src/crisis.rs` (crisis demos), and `crates/crci-node/tests/bft_batch1_tests.rs` (integration tests).
 - `Network::run_consensus` has **zero callers** anywhere in the workspace. The `Network` struct is declared `pub` in `lib.rs` but never imported or instantiated outside `network.rs`. It is dead code.
 
 **Status:** `Network::run_consensus` in `network.rs` is dead code duplicating live Byzantine-critical logic in `mesh.rs`. Logged as Session 81 candidate for consolidation or removal.
@@ -199,9 +199,9 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 
 ### Itemized +47 Net New Tests
 
-1. **`tests/bft_batch1_tests.rs` (+15)**: `test_bft_reputation_based_eviction_hysteresis`, `test_bft_reputation_decay`, `test_bft_reputation_persistence_across_reconnect`, `test_bft_reputation_fixed_point_rounding`, `test_bft_reputation_recovery`, `test_bft_reputation_isolation_per_peer_view`, `test_bft_subnet_limit`, `test_bft_sybil_cluster_reputation_correlation`, `test_bft_pruning_banned_records`, `test_bft_signature_invalidation_spoof_defense`, `test_bft_reputation_persistence_clamping`, `test_bft_signature_verification_rate_limit`, `test_bft_reputation_bounds_clamping`, `test_bft_sub_linear_recovery`, `test_bft_reputation_weighted_quorum`
+1. **`crates/crci-node/tests/bft_batch1_tests.rs` (+15)**: `test_bft_reputation_based_eviction_hysteresis`, `test_bft_reputation_decay`, `test_bft_reputation_persistence_across_reconnect`, `test_bft_reputation_fixed_point_rounding`, `test_bft_reputation_recovery`, `test_bft_reputation_isolation_per_peer_view`, `test_bft_subnet_limit`, `test_bft_sybil_cluster_reputation_correlation`, `test_bft_pruning_banned_records`, `test_bft_signature_invalidation_spoof_defense`, `test_bft_reputation_persistence_clamping`, `test_bft_signature_verification_rate_limit`, `test_bft_reputation_bounds_clamping`, `test_bft_sub_linear_recovery`, `test_bft_reputation_weighted_quorum`
 2. **`tests/crypto_hardening_tests.rs` (+14)**: `test_aes_gcm_nonce_never_repeats_across_writes` (BFT-031), `test_ed25519_empty_payload_signs_and_verifies` (BFT-032), `test_ed25519_rejects_malformed_signature` (BFT-033), `test_ed25519_rejects_signature_from_wrong_key` (BFT-034), `test_ed25519_rejects_signature_for_different_payload` (BFT-035), `test_ed25519_signature_verifies_repeatedly` (BFT-036), `test_ed25519_verifying_key_roundtrip_matches_signing` (BFT-037), `test_ed25519_does_not_catch_replay_by_itself`, `test_ffi_catch_unwind_panic_safety` (BFT-038 Proxy), `test_ffi_invalid_config_returns_false_not_panic`, `test_ffi_zero_peers_returns_false_not_panic`, `test_ffi_excessive_peers_returns_false_not_panic`, `test_ffi_connect_peer_when_no_node_running_returns_false`, `test_ffi_start_stop_node_lifecycle_handles_errors_cleanly`
-3. **`crci-core/src/chaos.rs` (+5)**: `test_packet_loss_scenarios`, `test_reconnect_storm_scenario`, `test_crash_restart_scenario`, `test_partition_reconciliation_no_data_loss_or_conflict`, `test_chaos_scenarios_ordering_independence`
+3. **`crates/crci-core/src/chaos.rs` (+5)**: `test_packet_loss_scenarios`, `test_reconnect_storm_scenario`, `test_crash_restart_scenario`, `test_partition_reconciliation_no_data_loss_or_conflict`, `test_chaos_scenarios_ordering_independence`
 4. **`tests/legacy_kdf_tests.rs` (+4)**: `test_different_signing_keys_produce_different_derived_keys`, `test_derived_key_differs_from_raw_signing_key_bytes`, `test_wrong_signing_key_fails_to_decrypt`, `test_node_storage_save_load_roundtrip_with_kdf`
 5. **`tests/cli_integration.rs` (+3)**: `test_cli_peers_dial`, `test_cli_message_send_and_receive`, `test_cli_byzantine_mode`
 6. **`tests/spawn_panic_isolation_tests.rs` (+3)**: `test_watcher_does_not_false_positive_on_success`, `test_spawned_task_panic_does_not_kill_runtime`, `test_watcher_task_observes_panic_without_crashing`
@@ -228,12 +228,12 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 - Session 95–96: CRLF Investigation Resolution, `.gitattributes` fix, & Scope Violations Log
 
 ## Current Functionality
-1. **Real Async Networking**: The network is backed by an asynchronous `tokio::net` TCP transport layer (`src/transport.rs`), dropping the simulation harness.
+1. **Real Async Networking**: The network is backed by an asynchronous `tokio::net` TCP transport layer (`crates/crci-core/src/transport/mod.rs`), dropping the simulation harness.
 2. **Docker Multi-node Proof Loop**: Scripts and configurations exist to run multi-node containers with real network traffic. Native local process fallback is documented for environments without a running Docker daemon.
-3. **Advanced Features Embedded**: Reputation, AEDA scoring, battery management, message pruning, Byzantine discovery (K-bucket), Temporal routing, and Merkle chaining are integrated in `src/integration.rs` and the `NodeRuntime`.
-4. **Wasm Edge Compute**: Priority computation can be executed dynamically via Wasmtime (`src/wasm.rs`).
-5. **Security**: Auditing (`src/security.rs`), validations, payload constraints, API telemetry, and `SECURITY.md`.
-6. **Live Dashboard**: Standalone web dashboard at `docs/dashboard/` tracking live messages, peer status, and SEV distribution over Axum WebSocket.
+3. **Advanced Features Embedded**: Reputation, AEDA scoring, battery management, message pruning, Byzantine discovery (K-bucket), Temporal routing, and Merkle chaining are integrated in `crates/crci-core/src/integration.rs` and the `NodeRuntime`.
+4. **Wasm Edge Compute**: Priority computation can be executed dynamically via Wasmtime (`crates/crci-core/src/wasm.rs`).
+5. **Security**: Auditing (`crates/crci-core/src/security.rs`), validations, payload constraints, API telemetry, and `SECURITY.md`.
+6. **Live Dashboard**: Standalone web dashboard at `web/dashboard/` tracking live messages, peer status, and SEV distribution over Axum WebSocket.
 7. **Grafana & Prometheus**: Metrics exported for Prometheus (`http://localhost:9090`) and Grafana (`http://localhost:3001`).
 8. **Byzantine Agent**: `byzantine_agent` binary available to inject adversarial traffic into the cluster (`cargo run --bin byzantine_agent -- --help`).
 9. **API Hardening**: Rate limits (60 req/min/IP), strict Content-Type checks, 64KB payload limits, and telemetry headers (`X-Request-Id`, `X-CRCI-Version`).
@@ -247,7 +247,7 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 **Goal:** Wire the inert FFI path to actual Byzantine consensus, making the NodeRuntime run a real background event loop from Kotlin.
 
 ### 1. FFI Consensus Loop Wiring
-**Finding:** FFI path now executes a real background event loop (`crci-core/src/ffi.rs:start_node`). The background Tokio task ticks every 500ms, calls `process_inbox()` to ingest new messages, and invokes the newly created `NodeRuntime::run_consensus()` to compute a purely local perspective of the Byzantine quorum (as opposed to `MeshSimulator`'s omniscient view).
+**Finding:** FFI path now executes a real background event loop (`crates/crci-core/src/ffi.rs:start_node`). The background Tokio task ticks every 500ms, calls `process_inbox()` to ingest new messages, and invokes the newly created `NodeRuntime::run_consensus()` to compute a purely local perspective of the Byzantine quorum (as opposed to `MeshSimulator`'s omniscient view).
 
 ### 2. Panic Boundary Reached
 **Finding:** Session 79's `catch_unwind`-style boundary in `runtime.rs:566` is **now genuinely reachable** from the FFI path. `ffi.rs::start_node` injects a mock storage backend (`FfiMockStorage`), ensuring the `if let Some(backend) = &self.storage_backend` branch inside `process_inbox()` is taken, exercising the spawned storage write task and its panic isolation wrapper.
@@ -259,7 +259,7 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 - `network.rs:332` — `for (node_id, severity, confidence, unknown_vis) in reporters` (flat tuple, iterating a `Vec<(String, u8, u8, bool)>`)
 
 **Call-site analysis:**
-- `MeshSimulator::run_consensus` is called from: `src/main.rs` (CLI demo), `crci-core/src/stress.rs` (stress tests), `crci-core/src/crisis.rs` (crisis demos), and `tests/bft_batch1_tests.rs` (integration tests).
+- `MeshSimulator::run_consensus` is called from: `crates/crci-node/src/main.rs` (CLI demo), `crates/crci-core/src/stress.rs` (stress tests), `crates/crci-core/src/crisis.rs` (crisis demos), and `crates/crci-node/tests/bft_batch1_tests.rs` (integration tests).
 - `Network::run_consensus` has **zero callers** anywhere in the workspace. The `Network` struct is declared `pub` in `lib.rs` but never imported or instantiated outside `network.rs`. It is dead code.
 
 **Status:** `Network::run_consensus` in `network.rs` is dead code duplicating live Byzantine-critical logic in `mesh.rs`. Logged as Session 81 candidate for consolidation or removal.
@@ -335,9 +335,9 @@ All BFT-031 through BFT-038 confirmed present in `tests/crypto_hardening_tests.r
 
 ### Itemized +47 Net New Tests
 
-1. **`tests/bft_batch1_tests.rs` (+15)**: `test_bft_reputation_based_eviction_hysteresis`, `test_bft_reputation_decay`, `test_bft_reputation_persistence_across_reconnect`, `test_bft_reputation_fixed_point_rounding`, `test_bft_reputation_recovery`, `test_bft_reputation_isolation_per_peer_view`, `test_bft_subnet_limit`, `test_bft_sybil_cluster_reputation_correlation`, `test_bft_pruning_banned_records`, `test_bft_signature_invalidation_spoof_defense`, `test_bft_reputation_persistence_clamping`, `test_bft_signature_verification_rate_limit`, `test_bft_reputation_bounds_clamping`, `test_bft_sub_linear_recovery`, `test_bft_reputation_weighted_quorum`
+1. **`crates/crci-node/tests/bft_batch1_tests.rs` (+15)**: `test_bft_reputation_based_eviction_hysteresis`, `test_bft_reputation_decay`, `test_bft_reputation_persistence_across_reconnect`, `test_bft_reputation_fixed_point_rounding`, `test_bft_reputation_recovery`, `test_bft_reputation_isolation_per_peer_view`, `test_bft_subnet_limit`, `test_bft_sybil_cluster_reputation_correlation`, `test_bft_pruning_banned_records`, `test_bft_signature_invalidation_spoof_defense`, `test_bft_reputation_persistence_clamping`, `test_bft_signature_verification_rate_limit`, `test_bft_reputation_bounds_clamping`, `test_bft_sub_linear_recovery`, `test_bft_reputation_weighted_quorum`
 2. **`tests/crypto_hardening_tests.rs` (+14)**: `test_aes_gcm_nonce_never_repeats_across_writes` (BFT-031), `test_ed25519_empty_payload_signs_and_verifies` (BFT-032), `test_ed25519_rejects_malformed_signature` (BFT-033), `test_ed25519_rejects_signature_from_wrong_key` (BFT-034), `test_ed25519_rejects_signature_for_different_payload` (BFT-035), `test_ed25519_signature_verifies_repeatedly` (BFT-036), `test_ed25519_verifying_key_roundtrip_matches_signing` (BFT-037), `test_ed25519_does_not_catch_replay_by_itself`, `test_ffi_catch_unwind_panic_safety` (BFT-038 Proxy), `test_ffi_invalid_config_returns_false_not_panic`, `test_ffi_zero_peers_returns_false_not_panic`, `test_ffi_excessive_peers_returns_false_not_panic`, `test_ffi_connect_peer_when_no_node_running_returns_false`, `test_ffi_start_stop_node_lifecycle_handles_errors_cleanly`
-3. **`crci-core/src/chaos.rs` (+5)**: `test_packet_loss_scenarios`, `test_reconnect_storm_scenario`, `test_crash_restart_scenario`, `test_partition_reconciliation_no_data_loss_or_conflict`, `test_chaos_scenarios_ordering_independence`
+3. **`crates/crci-core/src/chaos.rs` (+5)**: `test_packet_loss_scenarios`, `test_reconnect_storm_scenario`, `test_crash_restart_scenario`, `test_partition_reconciliation_no_data_loss_or_conflict`, `test_chaos_scenarios_ordering_independence`
 4. **`tests/legacy_kdf_tests.rs` (+4)**: `test_different_signing_keys_produce_different_derived_keys`, `test_derived_key_differs_from_raw_signing_key_bytes`, `test_wrong_signing_key_fails_to_decrypt`, `test_node_storage_save_load_roundtrip_with_kdf`
 5. **`tests/cli_integration.rs` (+3)**: `test_cli_peers_dial`, `test_cli_message_send_and_receive`, `test_cli_byzantine_mode`
 6. **`tests/spawn_panic_isolation_tests.rs` (+3)**: `test_watcher_does_not_false_positive_on_success`, `test_spawned_task_panic_does_not_kill_runtime`, `test_watcher_task_observes_panic_without_crashing`
@@ -422,7 +422,7 @@ and stop future silent conversion noise.
 - Resolution: left in place pending Medwin review (CLOSED in Session 98)
 
 ## Scope Violation: Unlogged Bench Run (2026-08-26, discovered Session 118)
-- Filesystem evidence (LastWriteTime): tests/bft_batch1_tests.rs edited 20:08:30; Cargo.toml and
+- Filesystem evidence (LastWriteTime): crates/crci-node/tests/bft_batch1_tests.rs edited 20:08:30; Cargo.toml and
   benches/byzantine_bench.rs edited 20:12:12–20:12:14; benches/results/byzantine_eviction.csv and
   benches/results/byzantine_eviction_jitter.csv rewritten 20:14:51 and 20:15:27 — consistent with
   an unlogged cargo bench or cargo test --all run.
@@ -461,7 +461,7 @@ No other branches/tags affected, confirmed via Session 160 Part 2c. (2) Unscoped
 
 ## Session 159 (2026-09-09)
 - **Item 5**: DONE. Root cause was formatting drift in `tests/chaos_wan_100_tests.rs` and `tests/metrics_integration_tests.rs` (identified via `gh run view 34336584714 --job 102417283739 --log-failed`). Fixed via `cargo fmt`.
-- **Item 10**: DONE. Fixed by adding a test-only accessor `inject_node_for_test` in `crci-core/src/ffi.rs` gated by `#[cfg(feature = "test-utils")]`, matching the codebase's existing integration-test pattern. Registered `GET /metrics` in `crci-core/src/api.rs` and added `test_metrics_endpoint` to `tests/api_tests.rs`.
+- **Item 10**: DONE. Fixed by adding a test-only accessor `inject_node_for_test` in `crates/crci-core/src/ffi.rs` gated by `#[cfg(feature = "test-utils")]`, matching the codebase's existing integration-test pattern. Registered `GET /metrics` in `crates/crci-core/src/api.rs` and added `test_metrics_endpoint` to `tests/api_tests.rs`.
 
 ## Session 161 (2026-09-09)
 - **Item 8**: DONE — Real suite designed using Linux network namespaces (`ip netns`), `veth` pairs, and `tc qdisc netem`. 
@@ -495,10 +495,10 @@ Stash `stash@{0}` was created on commit `6de9110` (Session 69, v0.1.0 release, 2
 ### 1. TLA+ MessageKind expansion (docs/tla/CRCITypes.tla)
 Added `"PANIC"`, `"HAZARD"`, `"GOODBYE"`, `"RESCUERESOLUTION"` to the `MessageKind` set. **Status**: Idea preserved here for future session; needs independent review against current TLA+ spec state before applying.
 
-### 2. Mutex poison-recovery in src/bin/node.rs
+### 2. Mutex poison-recovery in crates/crci-node/src/bin/node.rs
 Replaced 6 instances of `.lock().unwrap()` with `.unwrap_or_else(|e| e.into_inner())`. Also changed `main()` signature to `-> Result<(), Box<dyn std::error::Error>>`, replaced `.parse().unwrap()` and `.expect(...)` with `?` operator, appended `Ok(())`. **Status**: Already applied on current main (confirmed by grep — zero `.lock().unwrap()` calls remain in node.rs).
 
-### 3. API bind panic improvement in src/main.rs
+### 3. API bind panic improvement in crates/crci-node/src/main.rs
 Changed `TcpListener::bind("0.0.0.0:8080").await.unwrap()` to `.unwrap_or_else(|_| panic!("Failed to bind 8080"))`. **Status**: Already applied on current main (confirmed by grep).
 
 ### 4. Port-0 binding in tests (byzantine_integration.rs, ffi_smoke_test.rs)

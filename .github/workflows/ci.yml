@@ -55,4 +55,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: crci-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/crci
+          path: target/${{ matrix.target }}/release/crci-node

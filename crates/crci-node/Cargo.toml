@@ -1,0 +1,42 @@
+[package]
+name = "crci-node"
+version = "0.1.0"
+edition = "2021"
+autobenches = false
+
+[[bin]]
+name = "crci-node"
+path = "src/main.rs"
+
+[dependencies]
+crci-core = { path = "../crci-core" }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+aes-gcm = "0.10"
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+axum = { version = "0.7", features = ["ws"] }
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["cors"] }
+clap = { version = "4", features = ["derive"] }
+uuid = { version = "1.23.2", features = ["v4"] }
+async-trait = "0.1.89"
+futures = "0.3.32"
+log = "0.4.32"
+thiserror = "2.0.18"
+argon2 = "0.5.3"
+bincode = "1"
+
+[dev-dependencies]
+http-body-util = "0.1"
+tempfile = "3.27.0"
+# Activate test-utils feature for integration tests that use EncryptedStore helpers.
+crci-core = { path = "../crci-core", features = ["test-utils"] }
+
+[[bench]]
+name = "byzantine_bench"
+path = "benches/byzantine_bench.rs"
+harness = false

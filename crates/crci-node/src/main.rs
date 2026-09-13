@@ -1492,8 +1492,8 @@ async fn main() {
         println!("╔══════════════════════════════════════════════════════════╗");
         println!("║  SESSION 30 — DOCKER PROOF LOOP                          ║");
         println!("╚══════════════════════════════════════════════════════════╝");
-        println!("  TCP transport layer: ADDED (src/transport.rs)");
-        println!("  Docker node binary: ADDED (src/bin/node.rs)");
+        println!("  TCP transport layer: ADDED (crates/crci-core/src/transport/mod.rs)");
+        println!("  Docker node binary: ADDED (crates/crci-node/src/bin/node.rs)");
         println!("  Benchmark 6 pruning fix: increased store capacity in benchmark so messages expire naturally by TTL rather than getting evicted early by the storage capacity cap");
         println!("  Docker Proof Loop: READY — run `docker compose up` to execute");
 
@@ -1521,8 +1521,8 @@ async fn main() {
         println!("╔══════════════════════════════════════════════════════════╗");
         println!("║  SESSION 33 — METRICS, DASHBOARD, WASM, INTERVIEW        ║");
         println!("╚══════════════════════════════════════════════════════════╝");
-        println!("  Prometheus metrics: src/metrics.rs wired to node binary");
-        println!("  Live dashboard: docs/dashboard.html (open in browser)");
+        println!("  Prometheus metrics: crates/crci-core/src/metrics.rs wired to node binary");
+        println!("  Live dashboard: web/dashboard.html (open in browser)");
 
         let mut runtime = crci_core::wasm::WasmRuntime::new(10 * 1024 * 1024, 100);
         runtime.register(Box::new(crci_core::wasm::PriorityScorer));

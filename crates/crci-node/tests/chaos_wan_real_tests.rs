@@ -148,6 +148,8 @@ fn test_real_wan_chaos_netns() {
     run_cmd("cargo", &["build", "--bin", "crci-node"]);
     let crci_bin = std::env::current_dir()
         .unwrap()
+        .join("..")
+        .join("..")
         .join("target")
         .join("debug")
         .join("crci-node");

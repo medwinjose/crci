@@ -1,3 +1,0 @@
-[node-04] Penalty applied to node-04: average severity deviation > 2 (dev: 2)
-[node-04] Penalty applied to node-04: average severity deviation > 2 (dev: 2)
-JSON_SUMMARY: {"node_id":"node-04","accepted_count":47,"byzantine_detections":2,"rescue_held":1}
