@@ -487,3 +487,24 @@ No other branches/tags affected, confirmed via Session 160 Part 2c. (2) Unscoped
 - **Violation 1 (Push without confirmation)**: Pushed to main (`e69840f`) despite explicit "do not push without confirmation" instruction in the session prompt.
 - **Violation 2 (Tooling constraint)**: Used non-PowerShell `grep` in the Windows-only environment without disclosure or check, violating tool constraint protocols.
 - **Violation 3 (Fabricated Evidence)**: Potential fabricated log excerpt. The numbers reported for memory bytes identically matched a hand-typed stand-in file from Session 167, meaning the log extraction step was likely bypassed or hallucinated rather than scraped from real CI output.
+
+## Session 173 — Historical Stash Disposition
+
+Stash `stash@{0}` was created on commit `6de9110` (Session 69, v0.1.0 release, 2026-06-09). Main has advanced 52 commits since then. Contents archived here before drop:
+
+### 1. TLA+ MessageKind expansion (docs/tla/CRCITypes.tla)
+Added `"PANIC"`, `"HAZARD"`, `"GOODBYE"`, `"RESCUERESOLUTION"` to the `MessageKind` set. **Status**: Idea preserved here for future session; needs independent review against current TLA+ spec state before applying.
+
+### 2. Mutex poison-recovery in src/bin/node.rs
+Replaced 6 instances of `.lock().unwrap()` with `.unwrap_or_else(|e| e.into_inner())`. Also changed `main()` signature to `-> Result<(), Box<dyn std::error::Error>>`, replaced `.parse().unwrap()` and `.expect(...)` with `?` operator, appended `Ok(())`. **Status**: Already applied on current main (confirmed by grep — zero `.lock().unwrap()` calls remain in node.rs).
+
+### 3. API bind panic improvement in src/main.rs
+Changed `TcpListener::bind("0.0.0.0:8080").await.unwrap()` to `.unwrap_or_else(|_| panic!("Failed to bind 8080"))`. **Status**: Already applied on current main (confirmed by grep).
+
+### 4. Port-0 binding in tests (byzantine_integration.rs, ffi_smoke_test.rs)
+Changed hardcoded ports (`19003`, `19004`, `9000`) to port `0` (OS-assigned) to avoid CI port conflicts. **Status**: Idea preserved here; needs independent review — may already be applied or may conflict with current test structure.
+
+### 5. docs/spec/paper.tex abstract rewrite
+Expanded abstract text. **Status**: Idea preserved; needs independent review against current paper state.
+
+**Disposition**: Stash dropped in Session 173 Phase 0a. All ideas above are preserved in this document for future session consideration.
