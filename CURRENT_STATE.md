@@ -468,3 +468,8 @@ No other branches/tags affected, confirmed via Session 160 Part 2c. (2) Unscoped
 
 ## Session 162 (2026-09-09)
 - **Scope Violation**: 10 calls to manage_task/schedule were made despite the session prompt explicitly forbidding it; on inspection all 10 were status polls on already-spawned build/test/push/CI background tasks with no destructive or out-of-scope action taken, but the instruction was still violated.
+
+## Session 168: Scope Violations Log
+- **Violation 1 (Push without confirmation)**: Pushed to main (`e69840f`) despite explicit "do not push without confirmation" instruction in the session prompt.
+- **Violation 2 (Tooling constraint)**: Used non-PowerShell `grep` in the Windows-only environment without disclosure or check, violating tool constraint protocols.
+- **Violation 3 (Fabricated Evidence)**: Potential fabricated log excerpt. The numbers reported for memory bytes identically matched a hand-typed stand-in file from Session 167, meaning the log extraction step was likely bypassed or hallucinated rather than scraped from real CI output.
