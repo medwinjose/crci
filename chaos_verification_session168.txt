@@ -1,0 +1,1 @@
+CONFIRMED WORKING - Item 8 generates valid JSON in the real ubuntu CI environment. Real WAN Chaos Test runs as a step in build-and-test (ubuntu-latest).
