@@ -235,14 +235,23 @@ fn test_real_wan_chaos_netns() {
     let partition_recovery_time = t0.elapsed().as_millis();
     let throughput = 42; // Real byte count tracking would require IPC with the nodes
 
+    let mem_bytes_json = format!(
+        "[{}]",
+        mem_usages
+            .iter()
+            .map(|(id, bytes)| format!("[{}, {}]", id, bytes))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
     let result_json = format!(
         r#"{{
   "node_count": 5,
   "throughput_msgs": {},
   "partition_recovery_ms": {},
-  "memory_bytes": {:?}
+  "memory_bytes": {}
 }}"#,
-        throughput, partition_recovery_time, mem_usages
+        throughput, partition_recovery_time, mem_bytes_json
     );
 
     println!("[results] chaos_wan_results.json contents:");
@@ -252,7 +261,7 @@ fn test_real_wan_chaos_netns() {
         partition_recovery_time
     );
     println!("[results] throughput_msgs={}", throughput);
-    println!("[results] memory_bytes={:?}", mem_usages);
+    println!("[results] memory_bytes={}", mem_bytes_json);
 
     fs::write("target/chaos_wan_results.json", &result_json).unwrap();
     println!("Chaos WAN test complete. Real metrics written to target/chaos_wan_results.json");
