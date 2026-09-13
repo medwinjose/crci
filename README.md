@@ -62,5 +62,4 @@ cargo run --bin node
 
 ## Documentation & Papers
 
-- [**CRCI Whitepaper (`docs/paper.md`)**](docs/paper.md): A high-level overview and summary of the CRCI project goals and early simulated benchmarks.
-- [**CRCI Academic Draft (`docs/paper/crci_paper.md`)**](docs/paper/crci_paper.md): The full, detailed academic paper draft intended for arXiv submission.
+- [**CRCI Academic Paper (`docs/paper.md`)**](docs/paper.md): The formal research paper and architectural overview.
