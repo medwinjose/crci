@@ -1,38 +1,28 @@
-# Changelog
+# CRCI Changelog
 
-All notable changes to CRCI are documented here.
-Format follows [Keep a Changelog](https://keepachangelog.com/).
+All notable changes to this project will be documented in this file.
 
-## [0.1.0] — 2026-06-09
+## Recent History (Derived from Git Log)
 
-### Core Protocol
-- Byzantine fault-tolerant node eviction with p95 latency < 512ms (20-trial benchmark)
-- Cryptographic node identity: Ed25519 keypairs, AES-GCM message encryption
-- Peer registry with concurrent state management (DashMap)
-- Byzantine agent simulator for adversarial injection testing
+- **2026-09-13** docs(session-181): update BENCHMARKS.md with verified numbers
+- **2026-09-13** docs(session-181): rename and update formal verification doc
+- **2026-09-13** docs(session-181): create design-decisions.md with initial ADRs
+- **2026-09-13** docs(session-181): create STRIDE threat model
+- **2026-09-13** docs(session-181): update ARCHITECTURE.md for post-reorg layout
+- **2026-09-13** docs(session-181): rewrite README.md per recruiter-facing roadmap
+- **2026-09-13** docs(session-179): close item 12 - repo reorg verified, remove stray screenshot
+- **2026-09-13** fix(ci): resolve rustfmt line-length violation in chaos_wan_real_tests.rs
+- **2026-09-13** fix(ci): correct output path in chaos_wan_real_tests.rs for workspace layout
+- **2026-09-13** feat(session-174): close repo reorg hygiene pass, log Session 173 violation, correct PROJECT_RULES.md record, move CURRENT_STATE.md to local tracking
+- **2026-09-13** fix(session-173): phase 0d - add .internal/ and docs/tla/states/ to gitignore
+- **2026-09-13** fix(session-173): phase 0d - remove cited log evidence from repo, retaining in local .internal/
+- **2026-09-13** fix(session-173): phase 0d - delete regenerable tree-dump and scratch files
+- **2026-09-13** fix(session-173): phase 0d - move session planning docs to .internal/, gitignore, untrack
+- **2026-09-13** refactor(session-173): professional workspace reorganization
+- **2026-09-13** docs(session-173): reorg plan for item 12
+- **2026-09-13** fix(session-173): phase 0c - gitignore interview_script.md (local-only prep doc, not for public repo)
+- **2026-09-13** fix(session-173): phase 0b - remove hardcoded python script and gitignore extracted.json
+- **2026-09-13** docs(session-173): phase 0a - stash disposition archived and stash dropped
+- **2026-09-13** feat(session-170): close item 8 - real WAN chaos suite verified via hash-anchored CI log
 
-### Transport
-- Async TCP transport layer (Tokio)
-- Prometheus metrics endpoint
-- Axum REST API with OpenAPI 3.1 specification
-- WebSocket real-time event stream
-
-### Cross-Platform
-- Linux x86_64 (primary)
-- Raspberry Pi ARMv7 cross-compilation pipeline
-- Android library via UniFFI v0.28 Kotlin bindings + Jetpack Compose app
-
-### Formal Methods
-- TLA+ specification of BFT eviction protocol
-- TLC model checker integration
-
-### Observability & Tooling
-- React/Vite/Tailwind/Recharts web dashboard
-- Docker Compose 3-node mesh with chaos engineering suite
-- 4-scenario adversarial test harness (link partition, node crash, latency, combined)
-- mdBook documentation site with architecture, BFT, benchmark, chaos pages
-- GitHub Actions CI (4/4 checks)
-
-### Research
-- arXiv paper draft: system design, formal properties, benchmark methodology
-- 137 passing unit and integration tests, zero Clippy warnings
+*(For earlier history, refer to `git log`.)*
