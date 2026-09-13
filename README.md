@@ -63,3 +63,7 @@ cargo run --bin node
 ## Documentation & Papers
 
 - [**CRCI Academic Paper (`docs/paper.md`)**](docs/paper.md): The formal research paper and architectural overview.
+
+## License
+
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
