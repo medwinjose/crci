@@ -1,5 +1,5 @@
 import re
-with open('src/bin/node.rs', 'r', encoding='utf-8') as f:
+with open('crates/crci-node/src/bin/node.rs', 'r', encoding='utf-8') as f:
     content = f.read()
 
 content = content.replace('use crci::transport::AsyncTransport;', 'use crci::transport::{TcpTransport, TransportMultiplexer, Transport, TransportType, LoraTransport, LoraConfig, BleTransport, BleConfig};\nuse std::str::FromStr;')
@@ -66,5 +66,5 @@ content = content.replace('sync_transport.peers.len()', 'peers.len()')
 
 content = re.sub(r'let accepted = transport[\s\S]*?\.load\(std::sync::atomic::Ordering::SeqCst\);', 'let accepted = p.accepted;', content)
 
-with open('src/bin/node.rs', 'w', encoding='utf-8') as f:
+with open('crates/crci-node/src/bin/node.rs', 'w', encoding='utf-8') as f:
     f.write(content)

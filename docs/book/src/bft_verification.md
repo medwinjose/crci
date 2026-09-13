@@ -18,11 +18,11 @@ computes a SHA-256 hash of the candidate node ID and rejects insertion if the ha
 any existing peer.
 
 **Production code**:
-- `crci-core/src/discovery.rs:131` — XOR collision check in `PeerTable::upsert()`
-- `crci-core/src/discovery.rs:139` — Log warning on rejection
+- `crates/crci-core/src/discovery.rs:131` — XOR collision check in `PeerTable::upsert()`
+- `crates/crci-core/src/discovery.rs:139` — Log warning on rejection
 
 **Test**:
-- `tests/bft_batch1_tests.rs:420` — `test_bft_xor_hash_collision_guard()`
+- `crates/crci-node/tests/bft_batch1_tests.rs:420` — `test_bft_xor_hash_collision_guard()`
 
 **Commits**:
 - `5780603` (Session 74): BFT batch 1 partial — introduced the test
@@ -38,14 +38,14 @@ an Ed25519 signature verification, exhausting CPU resources. The `process_inbox(
 any peer exceeding the threshold (5 verifications per round), incrementing `byzantine_events`.
 
 **Production code**:
-- `crci-core/src/runtime.rs:384` — BFT-008 bounded signature verification check
-- `crci-core/src/runtime.rs:465-469` — Comment documenting that BFT-008 counters are
+- `crates/crci-core/src/runtime.rs:384` — BFT-008 bounded signature verification check
+- `crates/crci-core/src/runtime.rs:465-469` — Comment documenting that BFT-008 counters are
   intentionally NOT cleared during BFT-046 cache eviction
 
 **Tests**:
-- `tests/bft_batch1_tests.rs:75` — `test_bft_signature_verification_rate_limit()` (sends 10
+- `crates/crci-node/tests/bft_batch1_tests.rs:75` — `test_bft_signature_verification_rate_limit()` (sends 10
   messages from one peer, asserts `byzantine_events >= 5`)
-- `tests/bft_batch1_tests.rs:536` — `test_bft008_persists_across_bft046_eviction()` (BFT-047,
+- `crates/crci-node/tests/bft_batch1_tests.rs:536` — `test_bft008_persists_across_bft046_eviction()` (BFT-047,
   confirms throttle count survives cache eviction)
 
 **Commits**:
@@ -63,11 +63,11 @@ reputation against `MIN_TRUSTED_REP` (0.41) and silently drops escalation events
 below this threshold.
 
 **Production code**:
-- `crci-core/src/aeda.rs:143` — `return;` guard for reputation < 0.41
-- `crci-core/src/integration.rs:194` — sandbox weight for untrusted nodes in rescue processing
+- `crates/crci-core/src/aeda.rs:143` — `return;` guard for reputation < 0.41
+- `crates/crci-core/crates/crci-core/src/integration.rs:194` — sandbox weight for untrusted nodes in rescue processing
 
 **Test**:
-- `tests/bft_batch1_tests.rs:445` — `test_bft_untrusted_node_escalation_guard()` (sends 3
+- `crates/crci-node/tests/bft_batch1_tests.rs:445` — `test_bft_untrusted_node_escalation_guard()` (sends 3
   events from nodes with rep 0.3, asserts no `ZoneEscalated` decision)
 
 **Commits**:
@@ -84,11 +84,11 @@ independent trusted reporters converge on the same severity signal. This is the 
 counterpart ensuring the guard doesn't over-block.
 
 **Production code**:
-- `crci-core/src/aeda.rs:143` — same guard (trusted nodes pass through)
-- `crci-core/src/integration.rs:194` — full weight applied to trusted nodes
+- `crates/crci-core/src/aeda.rs:143` — same guard (trusted nodes pass through)
+- `crates/crci-core/crates/crci-core/src/integration.rs:194` — full weight applied to trusted nodes
 
 **Test**:
-- `tests/bft_batch1_tests.rs:475` — `test_bft_trusted_node_passthrough_guard()` (sends 3
+- `crates/crci-node/tests/bft_batch1_tests.rs:475` — `test_bft_trusted_node_passthrough_guard()` (sends 3
   events from nodes with rep 0.9, asserts `ZoneEscalated` decision IS produced)
 
 **Commits**:
@@ -105,10 +105,10 @@ clears the entire cache and re-inserts only the triggering message (plus a chain
 announcement originated during `process_inbox()`).
 
 **Production code**:
-- `crci-core/src/runtime.rs:464` — BFT-046 hard ceiling check and cache clear
+- `crates/crci-core/src/runtime.rs:464` — BFT-046 hard ceiling check and cache clear
 
 **Test**:
-- `tests/bft_batch1_tests.rs:505` — `test_bft_seen_messages_cache_ceiling()` (inserts 5001
+- `crates/crci-node/tests/bft_batch1_tests.rs:505` — `test_bft_seen_messages_cache_ceiling()` (inserts 5001
   messages, asserts cache contains exactly 2 entries after eviction: the triggering message
   and a chain-head announcement)
 
@@ -127,10 +127,10 @@ ceiling triggered, then resume signature-check abuse with a fresh counter. BFT-0
 that `sig_verifications_count` is NOT cleared when `seen_messages` is evicted.
 
 **Production code**:
-- `crci-core/src/runtime.rs:465-469` — explicit comment documenting the intentional non-clearing
+- `crates/crci-core/src/runtime.rs:465-469` — explicit comment documenting the intentional non-clearing
 
 **Test**:
-- `tests/bft_batch1_tests.rs:536` — `test_bft008_persists_across_bft046_eviction()` (fills
+- `crates/crci-node/tests/bft_batch1_tests.rs:536` — `test_bft008_persists_across_bft046_eviction()` (fills
   seen_messages to 5001, then sends 3 more messages from the same peer, asserts
   `sig_verifications_count` is 3, confirming the counter was not reset by the eviction)
 

@@ -1,10 +1,10 @@
 // Session 77 — Part B: Crypto-layer hardening tests
 //
 // Derived from pre-audit of:
-//   crci-core/src/storage/encrypted.rs  (EncryptedStore — Argon2+AES-256-GCM)
-//   crci-core/src/storage/legacy.rs     (NodeStorage — raw-key AES-256-GCM)
-//   crci-core/src/identity.rs           (Ed25519 via ed25519-dalek v2)
-//   crci-core/src/ffi.rs                (UniFFI-exported functions)
+//   crates/crci-core/src/storage/encrypted.rs  (EncryptedStore — Argon2+AES-256-GCM)
+//   crates/crci-core/src/storage/legacy.rs     (NodeStorage — raw-key AES-256-GCM)
+//   crates/crci-core/src/identity.rs           (Ed25519 via ed25519-dalek v2)
+//   crates/crci-core/src/ffi.rs                (UniFFI-exported functions)
 //
 // These tests are named descriptively per the session requirement.
 // No invented vector IDs.

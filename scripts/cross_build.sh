@@ -28,7 +28,7 @@ build_target() {
     rustup target add "$triple"
     cargo build --release --target "$triple"
 
-    local bin_path="target/$triple/release/crci"
+    local bin_path="target/$triple/release/crci-node"
     echo ""
     echo "Build successful! Binary location and size:"
     ls -lh "$bin_path"

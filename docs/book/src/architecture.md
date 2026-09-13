@@ -35,7 +35,7 @@ The lifecycle of a CRCI node ensures it integrates securely into the mesh before
 
 ## Transport Layer
 
-The physical transmission of bytes is abstracted behind the `Transport` trait, currently located in `crci-core/src/transport/`. The `TransportMultiplexer` dynamically selects the best available medium:
+The physical transmission of bytes is abstracted behind the `Transport` trait, currently located in `crates/crci-core/src/transport/`. The `TransportMultiplexer` dynamically selects the best available medium:
 
 - **`TcpTransport`**: Built on `tokio::net`, this provides real asynchronous networking over standard IP networks. It's the primary transport used in local testing, the Docker proof loop, and stable infrastructure scenarios.
 - **`BleTransport`**: A stubbed interface designed to utilize Bluetooth Low Energy for short-range phone-to-phone mesh networking when cellular towers fail.

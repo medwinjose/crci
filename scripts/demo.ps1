@@ -140,7 +140,7 @@ if ($DockerRunning -and -not $AllowNative) {
     
     # Run npm install for dashboard
     Write-Host "Installing Vite dashboard dependencies..." -ForegroundColor Gray
-    Push-Location docs/dashboard
+    Push-Location web/dashboard
     npm install
     Pop-Location
 
@@ -185,7 +185,7 @@ if ($DockerRunning -and -not $AllowNative) {
 
         # 3. Wait for Dashboard to be ready
         Write-Host "[3/4] Starting live dashboard Vite dev server on port 5173..."
-        $DashProc = Start-Process npm -ArgumentList "run", "dev", "--", "--host", "0.0.0.0" -WorkingDirectory "docs/dashboard" -NoNewWindow -PassThru
+        $DashProc = Start-Process npm -ArgumentList "run", "dev", "--", "--host", "0.0.0.0" -WorkingDirectory "web/dashboard" -NoNewWindow -PassThru
 
         while ($true) {
             try {

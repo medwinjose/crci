@@ -981,8 +981,8 @@ plant-zone: contaminated. evac-zone: at risk. clear-zone: safe.
 ╔══════════════════════════════════════════════════════════╗
 ║  SESSION 30 — DOCKER PROOF LOOP                          ║
 ╚══════════════════════════════════════════════════════════╝
-  TCP transport layer: ADDED (src/transport.rs)
-  Docker node binary: ADDED (src/bin/node.rs)
+  TCP transport layer: ADDED (crates/crci-core/src/transport/mod.rs)
+  Docker node binary: ADDED (crates/crci-node/src/bin/node.rs)
   Benchmark 6 pruning fix: increased store capacity in benchmark so messages expire naturally by TTL rather than getting evicted early by the storage capacity cap
   Docker Proof Loop: READY — run `docker compose up` to execute
 
@@ -1004,8 +1004,8 @@ plant-zone: contaminated. evac-zone: at risk. clear-zone: safe.
 ╔══════════════════════════════════════════════════════════╗
 ║  SESSION 33 — METRICS, DASHBOARD, WASM, INTERVIEW        ║
 ╚══════════════════════════════════════════════════════════╝
-  Prometheus metrics: src/metrics.rs wired to node binary
-  Live dashboard: docs/dashboard.html (open in browser)
+  Prometheus metrics: crates/crci-core/src/metrics.rs wired to node binary
+  Live dashboard: web/dashboard.html (open in browser)
   Wasmtime stub: WasmRuntime registered 1 module (priority_scorer)
   Edge computation: input=5 bytes → score=200
   Interview script: docs/interview_script.md
