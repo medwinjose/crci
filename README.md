@@ -1,115 +1,66 @@
-# CRCI — Crisis Response Communication Infrastructure
+# CRCI (Consensus Rules & Cryptographic Integrity)
 
-> Byzantine fault-tolerant mesh networking in Rust. Designed for
-> resilience when up to ⌊(n-1)/3⌋ nodes are actively adversarial.
+CRCI is a distributed systems framework designed to maintain strict state consistency and network integrity across malicious or failing nodes.
 
-## What This Is
-CRCI is a distributed systems research project demonstrating a secure, decentralized mesh networking stack for zero-infrastructure environments. It employs a reputation-weighted Byzantine fault-tolerant gossip protocol, utilizing strict cryptographic node identity and an autonomous emergency decision engine to prioritize critical telemetry. For a comprehensive overview of the theoretical models and evaluation methodology, please refer to our [arXiv paper preprint](docs/paper/crci_paper.md).
+## The Problem
 
-## Key Properties
-- Byzantine fault tolerance (PBFT-inspired eviction, p95 < 512ms)
-- Cryptographic node identity (Ed25519 + AES-GCM)
-- Formal specification (TLA+ with TLC model checker)
-- Cross-platform: Linux, Raspberry Pi (ARM), Android (via UniFFI FFI)
-- Observability: Prometheus metrics, REST/WebSocket API, React dashboard
+In distributed systems, trust is often implicitly assumed between nodes on the network. When nodes become malicious or undergo Byzantine faults (e.g., sending conflicting information, forging messages, or dropping traffic), standard consensus protocols can break down, leading to divergent state or network partitions. Securing a network against these faults typically requires heavy cryptographic overhead and rigid topology assumptions, making it difficult to maintain performance under real-world WAN conditions.
 
-## Quick Start
-### See It Work (One-Command Live Mesh & Dashboard Demo)
-To launch the full multi-node mesh (node-alpha, node-beta, node-byzantine) along with the containerized React live dashboard in a single command, run the following:
+## The Solution
 
-- **Linux / macOS**:
-  ```bash
-  ./scripts/demo.sh          # Docker Container Mode (requires Docker Desktop / daemon)
-  ./scripts/demo.sh --native # Native Local Process Mode (host cargo & npm fallback)
-  ```
-- **Windows (PowerShell)**:
-  ```powershell
-  ./scripts/demo.ps1          # Docker Container Mode (requires Docker Desktop / daemon)
-  ./scripts/demo.ps1 -Native  # Native Local Process Mode (host cargo & npm fallback)
-  ```
-
-This script will start the mesh, wait for healthiness, automatically open your default browser to `http://localhost:5173`, and inject normal telemetry followed by a Byzantine attacker. Watch as the Byzantine node gets penalized and evicted dynamically in real time. Press `Ctrl+C` in the terminal to tear down all processes/containers cleanly.
-
-> **Note on Demo Modes & Feature Gap:**
-> - **Docker Container Mode (Default)**: Builds containerized nodes (`node-alpha`, `node-beta`, `node-byzantine`, `dashboard`) isolated inside a Docker bridge network (`crci-mesh`). Requires a running Docker Desktop daemon. If Docker is not running, the script will fail loudly with diagnostic instructions.
-> - **Native Local Process Mode (`--native`)**: Compiles binaries locally via `cargo build` and runs processes on host `127.0.0.1`. Requires local Rust toolchain and Node.js (`npm`). Prometheus metrics are exposed at `http://localhost:8080/metrics`. Grafana visualizer is not containerized in native mode and requires manual setup.
-
-### Run locally
-```bash
-cargo build --release
-./target/release/crci-node --help
-```
-
-### Gossip CLI Quick Start (Two-Node Communication Demo)
-To demonstrate real-time async communication and message origination via the CLI:
-
-1. **Start Node A** (listener):
-   ```bash
-   ./target/release/crci-node --listen 127.0.0.1:7001 --node-id node-a
-   ```
-   *Expected Output:*
-   ```text
-   Node node-a listening on 127.0.0.1:7001
-   ```
-
-2. **Start Node B** and peer it with Node A:
-   ```bash
-   ./target/release/crci-node --listen 127.0.0.1:7002 --node-id node-b --peers 127.0.0.1:7001
-   ```
-   *Expected Output:*
-   ```text
-   Successfully dialed peer: 127.0.0.1:7001
-   Node node-b listening on 127.0.0.1:7002
-   ```
-
-3. **Originate a message from A to B**:
-   In a new terminal window, send an emergency rescue message from A targeting B's listen address:
-   ```bash
-   ./target/release/crci-node --send "trapped under debris" --to 127.0.0.1:7002 --severity rescue --node-id node-a
-   ```
-   *Expected Output (Sender):*
-   ```text
-   SUCCESS: Message originated and sent to 127.0.0.1:7002
-   ```
-
-   *Expected Output (Node B's Terminal):*
-   ```text
-   Node node-b received message from node-a: kind=Rescue, payload_bytes=20
-   ```
-
-### Run the mesh (Docker)
-```bash
-docker compose up --build
-```
-
-### Run chaos engineering suite
-```bash
-bash scripts/chaos.sh
-```
+CRCI introduces a resilient, cryptographically hardened peer-to-peer architecture built on `rust-libp2p`. It enforces strict Byzantine fault tolerance (BFT) via multi-layered validation, isolating malicious actors by tracking reputation and dynamically evicting nodes that violate consensus rules. By treating all inbound data as untrusted and requiring cryptographic proof for state transitions, CRCI ensures that the network converges to a single correct state even when a subset of nodes actively attempt to sabotage it. 
 
 ## Architecture
-The CRCI networking stack fundamentally isolates physical transmission complexity from localized consensus mechanics. It is structured into three distinct layers:
-1. **Transport Abstraction**: An extensible interface (currently supporting async TCP) handling low-level byte transmission and connection state.
-2. **BFT Consensus & Routing**: Evaluates peer reputation, verifies cryptographic signatures, evicts malicious actors, and intelligently routes telemetry based on severity, K-bucket peer discovery, and TTL metrics.
-3. **Application & Verification**: The `NodeRuntime` that applies business logic, stores Merkle-chained histories, and interacts with edge clients through FFI or REST/WebSocket.
 
-For a deeper dive, visit the [Architecture Documentation](docs/book/src/architecture.md).
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryBorderColor': '#333333', 'lineColor': '#666666', 'textColor': '#000000'}}}%%
+graph TD
+    Client[Client App / Web Dashboard] -->|REST / JSON| APILayer[API Layer / Actix Web]
+    APILayer --> CRCI_Node[CRCI Core Node]
+    
+    subgraph CRCI Node Architecture
+        CRCI_Node --> Consensus[Consensus Engine]
+        CRCI_Node --> Mempool[Transaction Mempool]
+        CRCI_Node --> StateMachine[State Machine]
+        CRCI_Node --> Network[P2P Network Layer - libp2p]
+        CRCI_Node --> Crypto[Cryptographic Verification]
+        CRCI_Node --> Storage[Persistent Storage - RocksDB]
+        
+        Consensus -->|Validates| Mempool
+        Consensus -->|Commits| StateMachine
+        Mempool -->|Broadcasts/Receives| Network
+        StateMachine -->|Reads/Writes| Storage
+        Crypto -->|Signs/Verifies| Network
+        Crypto -->|Validates blocks| Consensus
+    end
+    
+    Network <-->|Gossipsub / Kademlia DHT| Peer1[Peer Node 1]
+    Network <-->|TCP / Noise Protocol| Peer2[Peer Node 2]
+    Network <-->|Quic| Peer3[Peer Node 3]
+```
 
-## Benchmarks
-Real numbers from the 20-trial Byzantine loopback benchmark. Under active injection, the localized reputation engine strictly penalizes and evicts adversarial peers.
-- p95 eviction latency: **< 512ms**
-- Honest peer connection survivability: **20 / 20 trials**
+## Key Results
 
-For more granular results and methodology, see the [Benchmark Results](docs/book/src/benchmarks.md).
+- **Test Suite**: Backed by 197 passing tests (196 local unit/integration tests + 1 CI-only integration test).
+- **WAN Chaos Testing**: Successfully converges under simulated real-world WAN conditions (packet loss, high latency). *Note: The real network-namespace-based WAN chaos test (`chaos_wan_real_tests.rs`) runs a downscaled 5-node topology due to CI runner constraints. Larger node-count figures found in earlier documentation refer to an in-process simulation (`chaos_wan_100_tests.rs`), which is not the same class of evidence.*
+- **Continuous Integration**: Green across all jobs (Ubuntu, Windows, and cross-compilation) for the `test_real_wan_chaos_netns` execution (verified under CI Run ID: `34764207118`).
 
-## Documentation
-- [Architecture](docs/book/) — full mdBook site
-- [TLA+ Specification](docs/tla/)
-- [Chaos Engineering Report](docs/chaos/README.md)
-- [Paper (preprint)](docs/paper/crci_paper.md)
+## Quick Start
 
-## Status
-v0.1.0 — research prototype. See CHANGELOG.md.
+CRCI has been reorganized into a Cargo workspace. To build and run the project:
 
-## License
-MIT
+```bash
+# Build the entire workspace
+cargo build --workspace
+
+# Run the test suite
+cargo test --workspace
+
+# Run a local CRCI node
+cargo run --bin node
+```
+
+## Documentation & Papers
+
+- [**CRCI Whitepaper (`docs/paper.md`)**](docs/paper.md): A high-level overview and summary of the CRCI project goals and early simulated benchmarks.
+- [**CRCI Academic Draft (`docs/paper/crci_paper.md`)**](docs/paper/crci_paper.md): The full, detailed academic paper draft intended for arXiv submission.
