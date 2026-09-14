@@ -8,7 +8,7 @@ CRCI is organized as a Cargo workspace. To get started, you'll need the standard
 
 1. **Clone the repository:**
    ```bash
-   git clone <repository_url>
+   git clone https://github.com/medwinjose/crci.git
    cd crci
    ```
 

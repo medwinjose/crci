@@ -2,7 +2,7 @@
 
 A standalone React/Vite dashboard for monitoring a CRCI mesh node in real-time.
 
-![CRCI Dashboard Screenshot Placeholder](./screenshot.png)
+*Screenshot will be added once the dashboard UI is finalized.*
 
 ## Quickstart
 

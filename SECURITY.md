@@ -12,11 +12,11 @@ Report vulnerabilities via GitHub private security advisory (Settings → Securi
 
 ## Known Limitations
 
-- No formal Sybil resistance yet (planned Session 47)
-- LoRa transport is a stub (planned Session 43)
-- Ed25519 keys stored in memory, not in an HSM (planned Session 33+)
+- No formal Sybil resistance yet (planned).
+- LoRa transport is a stub (planned).
+- Ed25519 keys stored in memory, not in an HSM (planned).
 
-See `docs/fault_model.md` for the full STRIDE analysis.
+See `docs/fault-model.md` for the full STRIDE analysis.
 
 ## Contact
 medwinjose on GitHub

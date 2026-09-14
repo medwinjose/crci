@@ -1513,7 +1513,7 @@ async fn main() {
         println!("╚══════════════════════════════════════════════════════════╝");
         println!("  Real Proof Loop: EXECUTED (proof_run.log written)");
         println!("  Research Paper: COMPLETED (docs/paper.md)");
-        println!("  Fault Model: COMPLETED (docs/fault_model.md)");
+        println!("  Fault Model: COMPLETED (docs/fault-model.md)");
         println!("  Architecture Decision Records: COMPLETED (docs/adr/)");
 
         // ── Session 33: Metrics, Dashboard, Wasm, Interview ──────────
@@ -1537,7 +1537,7 @@ async fn main() {
             );
         }
 
-        println!("  Interview script: docs/interview_script.md");
+        println!("  Interview script: docs/interview-script.md");
     });
 
     let api_task = tokio::spawn(async move {
