@@ -1,7 +1,8 @@
-# CRCI (Crisis Response Communication Infrastructure)
+# Crisis Response Communication Infrastructure (CRCI)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/medwinjose/crci/ci.yml?branch=main)](https://github.com/medwinjose/crci/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
 
 CRCI is a distributed systems framework designed to maintain strict state consistency and network integrity across malicious or failing nodes.
 
@@ -45,7 +46,7 @@ graph TD
 ## Key Results
 
 - **Test Suite**: Backed by 197 passing tests (196 local unit/integration tests + 1 CI-only integration test).
-- **WAN Chaos Testing**: Successfully converges under real-world WAN conditions (packet loss, high latency). The real network-namespace-based chaos test (`chaos_wan_real_tests.rs`) runs a 5-node topology using Linux network namespaces with `tc`/`netem` for traffic shaping, constrained to 5 nodes due to CI runner resource limits.
+- **WAN Chaos Testing**: Successfully converges under real-world WAN conditions (packet loss, high latency). The real network-namespace-based chaos test (`chaos_wan_real_tests.rs`) proves the system's resilience by running a 5-node topology using Linux network namespaces with `tc`/`netem` for traffic shaping. Note: This represents a deliberate 5-node downscale from the original 100-node target to accommodate CI runner resource limits without overstating the current verified scale.
 - **Continuous Integration**: Green across all jobs (Ubuntu, Windows, and cross-compilation), including the `test_real_wan_chaos_netns` integration test. See the [Actions tab](https://github.com/medwinjose/crci/actions) for current build status.
 
 ## Quick Start

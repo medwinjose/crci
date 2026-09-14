@@ -1,4 +1,4 @@
-# Contributing to CRCI
+# Contributing to Crisis Response Communication Infrastructure (CRCI)
 
 Thank you for your interest in contributing to CRCI! 
 

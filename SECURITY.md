@@ -1,4 +1,4 @@
-# Security Policy
+# Security Policy for Crisis Response Communication Infrastructure (CRCI)
 
 ## Supported Versions
 | Version | Supported          |
