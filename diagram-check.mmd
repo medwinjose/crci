@@ -1,0 +1,24 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryBorderColor': '#333333', 'lineColor': '#666666', 'textColor': '#000000'}}}%%
+graph TD
+    Client["Client App / WebDashboard"] -->|"REST/JSON"| APILayer["API Layer — Actix Web(REST/JSON)"]
+    APILayer --> CRCI_Node["CRCI Core Node"]
+    
+    subgraph CRCI Node
+        CRCI_Node --> Consensus["Consensus Engine (BFT)"]
+        CRCI_Node --> Mempool["Transaction Mempool"]
+        CRCI_Node --> StateMachine["State Machine"]
+        CRCI_Node --> Network["P2P Network Layer — libp2p"]
+        CRCI_Node --> Crypto["Cryptographic Verification"]
+        CRCI_Node --> Storage["Persistent Storage —RocksDB"]
+        
+        Consensus -->|"validates"| Mempool
+        Consensus -->|"commits"| StateMachine
+        Mempool -->|"broadcasts/receives"| Network
+        StateMachine -->|"reads/writes"| Storage
+        Crypto -->|"signs/verifies"| Network
+        Crypto -->|"validates blocks"| Consensus
+    end
+    
+    Network <-->|"gossipsub / Kademlia DHT"| Peer1["Peer Node 1"]
+    Network <-->|"TCP / Noise Protocol"| Peer2["Peer Node 2"]
+    Network <-->|"QUIC"| Peer3["Peer Node 3"]
