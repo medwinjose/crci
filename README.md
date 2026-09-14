@@ -1,6 +1,6 @@
 # CRCI (Crisis Response Communication Infrastructure)
 
-[![CI](https://github.com/medwinjose/crci/actions/workflows/ci.yml/badge.svg)](https://github.com/medwinjose/crci/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/medwinjose/crci/ci.yml?branch=main)](https://github.com/medwinjose/crci/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 CRCI is a distributed systems framework designed to maintain strict state consistency and network integrity across malicious or failing nodes.
@@ -18,28 +18,28 @@ CRCI introduces a resilient, cryptographically hardened peer-to-peer architectur
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryBorderColor': '#333333', 'lineColor': '#666666', 'textColor': '#000000'}}}%%
 graph TD
-    Client[Client App / Web Dashboard] -->|REST / JSON| APILayer[API Layer / Actix Web]
-    APILayer --> CRCI_Node[CRCI Core Node]
+    Client["Client App / WebDashboard"] -->|"REST/JSON"| APILayer["API Layer — Actix Web(REST/JSON)"]
+    APILayer --> CRCI_Node["CRCI Core Node"]
     
-    subgraph CRCI Node Architecture
-        CRCI_Node --> Consensus[Consensus Engine]
-        CRCI_Node --> Mempool[Transaction Mempool]
-        CRCI_Node --> StateMachine[State Machine]
-        CRCI_Node --> Network[P2P Network Layer - libp2p]
-        CRCI_Node --> Crypto[Cryptographic Verification]
-        CRCI_Node --> Storage[Persistent Storage - RocksDB]
+    subgraph CRCI Node
+        CRCI_Node --> Consensus["Consensus Engine (BFT)"]
+        CRCI_Node --> Mempool["Transaction Mempool"]
+        CRCI_Node --> StateMachine["State Machine"]
+        CRCI_Node --> Network["P2P Network Layer — libp2p"]
+        CRCI_Node --> Crypto["Cryptographic Verification"]
+        CRCI_Node --> Storage["Persistent Storage —RocksDB"]
         
-        Consensus -->|Validates| Mempool
-        Consensus -->|Commits| StateMachine
-        Mempool -->|Broadcasts/Receives| Network
-        StateMachine -->|Reads/Writes| Storage
-        Crypto -->|Signs/Verifies| Network
-        Crypto -->|Validates blocks| Consensus
+        Consensus -->|"validates"| Mempool
+        Consensus -->|"commits"| StateMachine
+        Mempool -->|"broadcasts/receives"| Network
+        StateMachine -->|"reads/writes"| Storage
+        Crypto -->|"signs/verifies"| Network
+        Crypto -->|"validates blocks"| Consensus
     end
     
-    Network <-->|Gossipsub / Kademlia DHT| Peer1[Peer Node 1]
-    Network <-->|TCP / Noise Protocol| Peer2[Peer Node 2]
-    Network <-->|Quic| Peer3[Peer Node 3]
+    Network <-->|"gossipsub / Kademlia DHT"| Peer1["Peer Node 1"]
+    Network <-->|"TCP / Noise Protocol"| Peer2["Peer Node 2"]
+    Network <-->|"QUIC"| Peer3["Peer Node 3"]
 ```
 
 ## Key Results
