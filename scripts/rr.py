@@ -998,7 +998,7 @@ plant-zone: contaminated. evac-zone: at risk. clear-zone: safe.
 ╚══════════════════════════════════════════════════════════╝
   Real Proof Loop: EXECUTED (proof_run.log written)
   Research Paper: COMPLETED (docs/paper.md)
-  Fault Model: COMPLETED (docs/fault_model.md)
+  Fault Model: COMPLETED (docs/fault-model.md)
   Architecture Decision Records: COMPLETED (docs/adr/)
 
 ╔══════════════════════════════════════════════════════════╗
@@ -1008,4 +1008,4 @@ plant-zone: contaminated. evac-zone: at risk. clear-zone: safe.
   Live dashboard: web/dashboard.html (open in browser)
   Wasmtime stub: WasmRuntime registered 1 module (priority_scorer)
   Edge computation: input=5 bytes → score=200
-  Interview script: docs/interview_script.md
+  Interview script: docs/interview-script.md

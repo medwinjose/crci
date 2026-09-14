@@ -12,6 +12,9 @@ CRCI is organized into a modular Cargo workspace with clearly defined subsystem 
 - **`docker/`**: Contains Dockerfiles and `docker-compose.yml` for standing up the containerized 3-node mesh and web dashboard.
 - **`docs/`**: Contains project documentation, paper drafts, benchmark results, and formal TLA+ specifications.
 - **`scripts/`**: Development and testing scripts.
+- **`.cargo/`**: Cargo toolchain and linker configuration for cross-compilation targets.
+- **`.github/`**: CI workflow definitions (GitHub Actions) and issue/PR templates.
+- `target/` is the standard Cargo build artifact directory and is gitignored.
 
 ## Subsystem Interactions
 
