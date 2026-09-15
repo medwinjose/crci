@@ -40,3 +40,4 @@ crci-core = { path = "../crci-core", features = ["test-utils"] }
 name = "byzantine_bench"
 path = "benches/byzantine_bench.rs"
 harness = false
+test = false
