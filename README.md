@@ -45,7 +45,7 @@ graph TD
 
 ## Key Results
 
-- **Test Suite**: Backed by 197 passing tests (196 local unit/integration tests + 1 CI-only integration test).
+- **Test Suite**: Backed by 195 passed tests.
 - **WAN Chaos Testing**: Successfully converges under real-world WAN conditions (packet loss, high latency). The real network-namespace-based chaos test (`chaos_wan_real_tests.rs`) proves the system's resilience by running a 5-node topology using Linux network namespaces with `tc`/`netem` for traffic shaping. Note: This represents a deliberate 5-node downscale from the original 100-node target to accommodate CI runner resource limits without overstating the current verified scale.
 - **Continuous Integration**: Green across all jobs (Ubuntu, Windows, and cross-compilation), including the `test_real_wan_chaos_netns` integration test. See the [Actions tab](https://github.com/medwinjose/crci/actions) for current build status.
 
