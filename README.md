@@ -18,7 +18,7 @@ CRCI introduces a resilient, cryptographically hardened peer-to-peer architectur
 
 ![CRCI Architecture](docs/architecture/crci-architecture.png)
 
-[Open the interactive diagram →](https://medwinjose.github.io/crci/architecture/crci-architecture.html)
+[Open the interactive diagram →](docs/architecture/crci-architecture.html)
 
 ## Key Results
 
