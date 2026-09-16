@@ -38,10 +38,13 @@ cd crci
 # Build the entire workspace
 cargo build --workspace
 
-# Run the test suite
+# Run the test suite (195 tests)
 cargo test --workspace
 
-# Run a local CRCI node
+# Spin up a local simulated multi-node mesh
+docker compose up --build
+
+# Or run a single local node directly
 cargo run --bin node
 ```
 
