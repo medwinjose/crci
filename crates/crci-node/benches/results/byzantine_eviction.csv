@@ -1,3 +1,5 @@
+# Frozen reference data — do not regenerate. See CURRENT_STATE.md
+#  (provenance investigation, 2026-09-16) for history.
 trial,legitimate_handshake_ms,byzantine_eviction_ms,legitimate_peer_survived
 1,15,514,true
 2,0,512,true
@@ -49,3 +51,4 @@ trial,legitimate_handshake_ms,byzantine_eviction_ms,legitimate_peer_survived
 48,14,502,true
 49,0,510,true
 50,15,511,true
+
