@@ -3,8 +3,8 @@
 ## Supported Versions
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
-| Older   | :x:                |
+| 2.0.x   | :white_check_mark: |
+| < 2.0.0 | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -19,4 +19,4 @@ Report vulnerabilities via GitHub private security advisory (Settings → Securi
 See `docs/fault-model.md` for the full STRIDE analysis.
 
 ## Contact
-medwinjose on GitHub
+Please report all security vulnerabilities via [GitHub Private Security Advisories](https://github.com/medwinjose/crci/security/advisories).

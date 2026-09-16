@@ -1,6 +1,6 @@
 # Crisis Response Communication Infrastructure (CRCI)
 
-[![CI](https://img.shields.io/github/actions/workflow/status/medwinjose/crci/ci.yml?branch=main)](https://github.com/medwinjose/crci/actions/workflows/ci.yml)
+[![CI](https://github.com/medwinjose/crci/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/medwinjose/crci/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
 
@@ -12,34 +12,34 @@ In distributed systems, trust is often implicitly assumed between nodes on the n
 
 ## The Solution
 
-CRCI introduces a resilient, cryptographically hardened peer-to-peer architecture built on `rust-libp2p`. It enforces strict Byzantine fault tolerance (BFT) via multi-layered validation, isolating malicious actors by tracking reputation and dynamically evicting nodes that violate consensus rules. By treating all inbound data as untrusted and requiring cryptographic proof for state transitions, CRCI ensures that the network converges to a single correct state even when a subset of nodes actively attempt to sabotage it. 
+CRCI introduces a resilient, cryptographically hardened peer-to-peer architecture built on `rust-libp2p`. It enforces strict Byzantine fault tolerance (BFT) using a reputation-weighted Byzantine quorum algorithm. The algorithm tracks node reputation and enforces a rigorous `3 * w_faulty < w_total` quorum threshold, isolating malicious actors and dynamically evicting nodes that violate consensus rules. By treating all inbound data as untrusted and requiring cryptographic proof for state transitions, CRCI ensures that the network converges to a single correct state even when a subset of nodes actively attempt to sabotage it.
 
 ## Architecture
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryBorderColor': '#333333', 'lineColor': '#666666', 'textColor': '#000000'}}}%%
-graph TD
-    Client["Client App / WebDashboard"] -->|"REST/JSON"| APILayer["API Layer — Actix Web(REST/JSON)"]
-    APILayer --> CRCI_Node["CRCI Core Node"]
-    
-    subgraph CRCI Node
-        CRCI_Node --> Consensus["Consensus Engine (BFT)"]
-        CRCI_Node --> Mempool["Transaction Mempool"]
-        CRCI_Node --> StateMachine["State Machine"]
-        CRCI_Node --> Network["P2P Network Layer — libp2p"]
-        CRCI_Node --> Crypto["Cryptographic Verification"]
-        CRCI_Node --> Storage["Persistent Storage —RocksDB"]
-        
-        Consensus -->|"validates"| Mempool
-        Consensus -->|"commits"| StateMachine
-        Mempool -->|"broadcasts/receives"| Network
-        StateMachine -->|"reads/writes"| Storage
-        Crypto -->|"signs/verifies"| Network
-        Crypto -->|"validates blocks"| Consensus
+flowchart TB
+    Client["Client App / Web Dashboard"] -->|"REST / JSON"| APILayer["API Layer (Actix Web)"]
+    APILayer --> Mempool
+
+    subgraph Node["CRCI Core Node"]
+        direction TB
+        Crypto["Cryptographic Verification"]
+        Mempool["Transaction Mempool"]
+        Consensus["Consensus Engine (BFT)"]
+        StateMachine["State Machine"]
+        Network["P2P Network Layer (libp2p)"]
+        Storage[(Persistent Storage)]
+
+        Crypto -.->|"signs / verifies"| Network
+        Crypto -.->|"validates blocks"| Consensus
+        Network <-->|"broadcasts / receives"| Mempool
+        Mempool -->|"validates via"| Consensus
+        Consensus -->|"commits to"| StateMachine
+        StateMachine -->|"reads / writes"| Storage
     end
-    
-    Network <-->|"gossipsub / Kademlia DHT"| Peer1["Peer Node 1"]
-    Network <-->|"TCP / Noise Protocol"| Peer2["Peer Node 2"]
+
+    Network <-->|"gossipsub / Kademlia"| Peer1["Peer Node 1"]
+    Network <-->|"TCP / Noise"| Peer2["Peer Node 2"]
     Network <-->|"QUIC"| Peer3["Peer Node 3"]
 ```
 
@@ -54,6 +54,10 @@ graph TD
 CRCI has been reorganized into a Cargo workspace. To build and run the project:
 
 ```bash
+# Clone the repository
+git clone https://github.com/medwinjose/crci.git
+cd crci
+
 # Build the entire workspace
 cargo build --workspace
 
