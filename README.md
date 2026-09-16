@@ -23,7 +23,7 @@ CRCI introduces a resilient, cryptographically hardened peer-to-peer architectur
 ## Key Results
 
 - **Test Suite**: Backed by 195 passed tests.
-- **WAN Chaos Testing**: Successfully converges under real-world WAN conditions (packet loss, high latency). The real network-namespace-based chaos test (`chaos_wan_real_tests.rs`) proves the system's resilience by running a 5-node topology using Linux network namespaces with `tc`/`netem` for traffic shaping. Note: This represents a deliberate 5-node downscale from the original 100-node target to accommodate CI runner resource limits without overstating the current verified scale.
+- **WAN Chaos Testing**: Runs on an automated 5-node Linux network-namespace testbed (`tc`/`netem`) validating partition tolerance and packet-jitter behavior under real kernel-level network emulation. This is a CI-scale subset of the 100-node target topology, chosen to fit CI runner resource limits.
 - **Continuous Integration**: Green across all jobs (Ubuntu, Windows, and cross-compilation), including the `test_real_wan_chaos_netns` integration test. See the [Actions tab](https://github.com/medwinjose/crci/actions) for current build status.
 
 ### Byzantine Eviction Benchmarks (50 trials each)
