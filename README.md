@@ -16,32 +16,9 @@ CRCI introduces a resilient, cryptographically hardened peer-to-peer architectur
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    Client["Client App / Web Dashboard"] -->|"REST / JSON"| APILayer["API Layer (Actix Web)"]
-    APILayer --> Mempool
+![CRCI Architecture](docs/architecture/crci-architecture.png)
 
-    subgraph Node["CRCI Core Node"]
-        direction TB
-        Crypto["Cryptographic Verification"]
-        Mempool["Transaction Mempool"]
-        Consensus["Consensus Engine (BFT)"]
-        StateMachine["State Machine"]
-        Network["P2P Network Layer (libp2p)"]
-        Storage[(Persistent Storage)]
-
-        Crypto -.->|"signs / verifies"| Network
-        Crypto -.->|"validates blocks"| Consensus
-        Network <-->|"broadcasts / receives"| Mempool
-        Mempool -->|"validates via"| Consensus
-        Consensus -->|"commits to"| StateMachine
-        StateMachine -->|"reads / writes"| Storage
-    end
-
-    Network <-->|"gossipsub / Kademlia"| Peer1["Peer Node 1"]
-    Network <-->|"TCP / Noise"| Peer2["Peer Node 2"]
-    Network <-->|"QUIC"| Peer3["Peer Node 3"]
-```
+[Open the interactive diagram →](https://medwinjose.github.io/crci/architecture/crci-architecture.html)
 
 ## Key Results
 
