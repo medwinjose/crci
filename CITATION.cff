@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the corresponding paper."
+authors:
+  - family-names: "Jose"
+    given-names: "Medwin"
+    affiliation: "Vellore Institute of Technology, Bhopal, India"
+title: "CRCI: Reputation-Based Local Misbehaving-Peer Isolation for Mesh Communication"
+version: "v1.2.0-oist"
+date-released: 2026-09-15
+repository-code: "https://github.com/medwinjose/crci"
+commit: "b5b28e6ed7e051c777fd32a3c692e2104ff7c50f"
+abstract: >-
+  The exact implementation and benchmark harnesses corresponding to the empirical claims made in the manuscript.
+  Evaluates misbehaving-peer isolation under the sliding-window sequence logic.
