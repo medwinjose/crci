@@ -32,7 +32,7 @@ Bhopal, India}
 \maketitle
 
 \begin{abstract}
-Infrastructure failure during disasters eliminates the connectivity upon which emergency coordination depends. Ad-hoc mesh networking addresses physical-layer reachability but provides limited protection against Byzantine faults---nodes that inject false reports, suppress messages, or broadcast inconsistent state to partition the network. We present CRCI (Crisis Response Communication Infrastructure), a peer-to-peer mesh protocol implemented in Rust that integrates local misbehaving-peer isolation directly into the gossip layer. Each node maintains a local, continuously updated reputation score for every peer, derived from authenticated and protocol-verifiable behavioral evidence, specifically the transmission of invalid signatures or explicitly malicious direct message replays. The system enforces local reputation-based peer eviction using a deterministic three-strike threshold rule, independently isolating malicious nodes without requiring synchronized voting rounds or stable membership. An unevaluated prototype application, Emergency Decision Architecture (EDA), demonstrates how this verified state could support rule-based triage, automatically escalating zones with concentrated rescue requests and flagging suspected misinformation based on severity state-flips. Across 50 repeated benchmark runs on a loopback testbed, CRCI detects and evicts a replaying attacker after exactly three strikes without requiring voting rounds, achieving 50/50 survivability for honest peers that send fresh sequence numbers (corresponding to a two-sided 95\% Clopper--Pearson upper bound of approximately 7.1\% on the failure rate). These results provide empirical evidence that the proposed reputation-based fault-isolation mechanism can operate through fully local decisions, supporting the feasibility of local fault isolation as a component of decentralized crisis communication.
+Infrastructure failure during disasters eliminates the connectivity upon which emergency coordination depends. Ad-hoc mesh networking addresses physical-layer reachability but provides limited protection against Byzantine faults---nodes that inject false reports, suppress messages, or broadcast inconsistent state to partition the network. We present CRCI (Crisis Response Communication Infrastructure), a peer-to-peer mesh protocol implemented in Rust that integrates local misbehaving-peer isolation directly into the gossip layer. Each node maintains a local, continuously updated reputation score for every peer, derived from authenticated and protocol-verifiable behavioral evidence, specifically the transmission of invalid signatures or explicitly malicious direct message replays. The system enforces local reputation-based peer eviction using a deterministic three-strike threshold rule, independently isolating malicious nodes without requiring synchronized voting rounds or stable membership. An unevaluated prototype application, Emergency Decision Architecture (EDA), illustrates how this verified state could be consumed by rule-based triage logic, automatically escalating zones with concentrated rescue requests and flagging suspected misinformation based on severity state-flips. Across 50 repeated benchmark runs on a loopback testbed, CRCI detects and evicts a replaying attacker after exactly three strikes without requiring voting rounds, achieving 50/50 survivability for honest peers that send fresh sequence numbers (corresponding to a two-sided 95\% Clopper--Pearson upper bound of approximately 7.1\% on the failure rate). These results provide empirical evidence that the proposed reputation-based fault-isolation mechanism can operate through fully local decisions, supporting the feasibility of local fault isolation as a component of decentralized crisis communication.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -71,7 +71,9 @@ The Byzantine Generals Problem \cite{lamport1982byzantine} established theoretic
 EigenTrust \cite{kamvar2003eigentrust} calculates a global trust value by aggregating local transaction histories using an iterative distributed algorithm. CONFIDANT \cite{buchegger2002confidant}, building on foundational mitigation strategies like Watchdog \cite{marti2000watchdog}, detects routing misbehavior in mobile ad-hoc networks through a localized neighborhood watch mechanism.
 
 \subsection{How CRCI Differs}
-CRCI integrates a local misbehaving-peer isolation mechanism directly into an epidemic gossip protocol. Unlike PBFT, CRCI does not attempt to reach globally synchronized consensus. Unlike federated permissionless consensus models (e.g., Stellar SCP \cite{mazieres2015stellar} or Ripple \cite{schwartz2014ripple}) that rely on overlapping quorum slices, CRCI evaluates reputation strictly locally without any distributed voting. By binding reputation metrics to authenticated identities, CRCI enforces a dynamic fault-isolation threshold via a ``3-strikes'' penalty system without synchronous voting rounds.
+CRCI integrates a local misbehaving-peer isolation mechanism directly into an epidemic gossip protocol. Unlike PBFT, CRCI does not attempt to reach globally synchronized consensus. Unlike federated consensus mechanisms such as Stellar SCP \cite{mazieres2015stellar} and the Ripple Protocol \cite{schwartz2014ripple}, CRCI does not establish distributed agreement through quorum-based voting. By binding reputation metrics to authenticated identities, CRCI enforces a dynamic fault-isolation threshold via a ``3-strikes'' penalty system without synchronous voting rounds.
+
+Existing approaches therefore occupy different points in the design space: gossip and DTN protocols primarily address dissemination under intermittent connectivity; Watchdog and CONFIDANT address locally observable routing misbehavior; reputation systems such as EigenTrust aggregate trust across peers; and Byzantine consensus protocols establish globally consistent state under stronger coordination assumptions. CRCI targets the narrower intersection of these areas: local isolation of cryptographically verifiable peer misbehavior within gossip dissemination, without attempting global agreement.
 
 \section{Methodology}
 \label{sec:methodology}
@@ -89,12 +91,12 @@ CRCI isolates adversaries within a local observation scope. We assume a Byzantin
 \caption{Threat Model Capability Matrix}
 \begin{tabular}{lccc}
 \toprule
-\textbf{Adversarial Behavior} & \textbf{Detected?} & \textbf{Penalized?} & \textbf{Evicted?} \\
+\textbf{Adversarial Behavior} & \textbf{System response} & \textbf{Penalized?} & \textbf{Evicted?} \\
 \midrule
 Invalid signature & Yes & Yes & Yes, after threshold \\
 Same-message replay & Yes & Yes & Yes, after threshold \\
 Cross-path duplicate & No penalty & No & No \\
-Flooding & Yes & No & No \\
+Flooding & Rate-limited/dropped & No & No \\
 Valid signed false report & Flagged & No & No \\
 Sybil identity & No & No & No \\
 Colluding Byzantine peers & Not evaluated & --- & --- \\
@@ -103,7 +105,7 @@ Colluding Byzantine peers & Not evaluated & --- & --- \\
 \label{tab:threat_matrix}
 \end{table}
 
-CRCI's eviction mechanism only bans for signature invalidation or repeated resends of the same message ID by one neighbor. Flooding is dropped by a token bucket rate limiter but does not trigger a ban, and validly signed false reports are only flagged as misinformation without causing an eviction. Additionally, because the protocol operates without a global PKI, a banned adversary can reset their ban by generating a fresh cryptographic identity.
+CRCI's eviction mechanism is triggered by invalid signatures or repeated replay of the same message ID by one neighbor. Flooding is dropped by a token bucket rate limiter but does not trigger a ban, and validly signed false reports are only flagged as misinformation without causing an eviction. Additionally, because the protocol operates without a global PKI, a banned adversary can reset their ban by generating a fresh cryptographic identity.
 
 \textbf{Out-of-Scope:} This model explicitly does not address Sybil attacks \cite{douceur2002sybil, yu2006sybilguard, yu2010sybillimit} (where an adversary generates unbounded cryptographic identities), coordinated collusion among multiple Byzantine nodes, or networks with a majority-Byzantine population. These attacks generally require additional identity-management or Sybil-resistance mechanisms, such as social-graph approaches \cite{yu2006sybilguard, yu2010sybillimit} or centralized PKI, which fall outside the strictly local scope of CRCI.
 
@@ -120,7 +122,15 @@ Out-of-order packets common in wireless routing are tolerated within $W$, while 
 
 \subsection{Local Misbehaving-Peer Isolation Mechanism}
 \label{sec:local_isolation}
-CRCI enforces fault-isolation directly in the gossip layer by separating transport-peer attribution from author-layer authentication. The immediate relaying neighbor is accountable for maliciously replayed traffic or invalid signatures, while the cryptographically claimed originator is used for signature and sequence verification. For each transport peer $j$, node $i$ initializes a local reputation value $R_{i,j}(0)=0.5$. The reputation update is formalized as $R_{i,j}(t^+) = \min(1, R_{i,j}(t) + \Delta R)$, where $\Delta R = -0.15$ for explicitly malicious evidence (e.g., replays or invalid signatures).
+CRCI enforces fault-isolation directly in the gossip layer by separating transport-peer attribution from author-layer authentication. The immediate relaying neighbor is accountable for maliciously replayed traffic or invalid signatures, while the cryptographically claimed originator is used for signature and sequence verification. For each transport peer $j$, node $i$ initializes a local reputation value $R_{i,j}(0)=0.5$. The reputation update is formalized as $R_{i,j}(t^+) = \min\left(1,\max\left(0,R_{i,j}(t)+\Delta R\right)\right)$, where:
+\begin{equation}
+\Delta R = 
+\begin{cases} 
+-0.15, & \text{explicitly malicious evidence}\\ 
++0.05, & \text{eligible recovery event}\\ 
+0, & \text{otherwise.} 
+\end{cases}
+\end{equation}
 
 When processing an incoming message, CRCI enforces the following strictly ordered checks: (1) token-bucket rate limiting (dropping excess traffic), (2) author-layer cryptographic signature verification (penalizing invalid signatures), (3) silent deduplication (ignoring normal gossip redundancy from different paths or severely stale messages), and finally (4) explicitly malicious replay detection. Specifically, an ID first received from neighbor $j$ and received again from $j$ is a strike; the same ID arriving from a different neighbor is treated as normal gossip redundancy and ignored. If a neighbor transmits a malicious replay or forwards an invalid signature, CRCI applies an explicitly malicious penalty ($p = -0.15$) against the \textbf{transport-layer peer}.
 
@@ -132,7 +142,7 @@ This forms a deterministic ``3-strikes'' rule:
 \begin{equation}
 0.5 - 3(0.15) = 0.05 < 0.1
 \end{equation}
-After 3 explicitly malicious acts attributable to the same transport peer, that peer identity is banned locally and subsequent connections using that identity are rejected. The transport layer tracks \texttt{already\_sent} IDs per neighbor to prevent honest periodic re-gossiping from triggering replay strikes. Peers whose reputation is diminished but not banned slowly recover reputation over time through a \texttt{decay\_recover} mechanism (e.g., $+0.05$ per hour). Rate limit violations result in dropped messages without reputation penalties.
+After 3 explicitly malicious acts attributable to the same transport peer, that peer identity is banned locally and subsequent connections using that identity are rejected. The transport layer tracks \texttt{already\_sent} IDs per neighbor. The per-neighbor sent-ID cache prevents the sender-side gossip scheduler from repeatedly forwarding the same payload to a peer during periodic dissemination, while receiver-side cross-path duplicates remain harmless. Peers whose reputation is diminished but not banned slowly recover reputation over time through a \texttt{decay\_recover} mechanism (e.g., $+0.05$ per hour). Rate limit violations result in dropped messages without reputation penalties.
 
 \subsection{Demonstration Application}
 EDA is included only as an architectural demonstration of how locally verified state could be consumed by an application layer; it is not evaluated and does not constitute a contribution to automated disaster triage. It operates locally on the ledger:
@@ -167,7 +177,7 @@ Runs & 50 \\
 \label{tab:reproducibility}
 \end{table}
 
-The evaluation was conducted on a local loopback testbed utilizing a 3-node topology: an honest listener (Node A), an honest peer (Node H), and a Byzantine adversary (Node B). Node H periodically broadcasts legitimate sequence-incrementing telemetry, serving as the ground-truth control to verify \textit{honest-peer survivability}. Simultaneously, the Byzantine adversary mounted a continuous replay attack against the honest listener by transmitting the exact same previously processed payload three times. The harness sends a total of four identical messages; the first is accepted normally, and the subsequent three identical replays trigger the three strikes required for eviction.
+The evaluation was conducted on a local loopback testbed utilizing a 3-node topology: an honest listener (Node A), an honest peer (Node H), and a Byzantine adversary (Node B). Node H periodically broadcasts legitimate sequence-incrementing telemetry, serving as the ground-truth control to verify \textit{honest-peer survivability}. Simultaneously, the compromised transport peer mounted a continuous replay attack against the honest listener by transmitting the exact same previously processed payload three times. The harness sends a total of four identical messages; the first is accepted normally, and the subsequent three identical replays trigger the three strikes required for eviction.
 
 \subsection{Eviction Latency and Survivability}
 We conducted 50 repeated benchmark runs under both baseline and a fixed 15~ms inter-message delay injected before each of the 3 replayed messages. The system successfully isolated the attacker after exactly 3 strikes in all runs. Because the procedure is deterministic, the 50 runs primarily serve to verify harness execution consistency. The results are summarized in Table~\ref{tab:latency}.
@@ -215,7 +225,7 @@ The complete source code for the CRCI Rust implementation, EDA engine, and the b
 
 \section{Conclusion and Future Work}
 \label{sec:conclusion}
-CRCI demonstrates a local fault-isolation mechanism for crisis communication networks that does not require fixed infrastructure or synchronized voting phases. Future work will focus on large-scale physical testing over LoRa and BLE to characterize MAC-layer collisions, and on invalid signature attacks, Sybil-resistant identity binding, and adaptive attack pacing.
+The evaluation is intentionally limited to controlled loopback workloads and therefore does not establish resilience under physical mesh conditions, large-scale topologies, Sybil attacks, collusion, or semantically false signed reports. Within this scope, the results demonstrate the feasibility of deterministic local isolation for explicitly observable replay behavior while preserving bounded packet reordering. Future work will focus on large-scale physical testing over LoRa and BLE to characterize MAC-layer collisions, and on invalid signature attacks, Sybil-resistant identity binding, and adaptive attack pacing.
 
 \begin{thebibliography}{00}
 
