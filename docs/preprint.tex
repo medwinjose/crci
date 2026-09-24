@@ -80,7 +80,28 @@ CRCI integrates a local misbehaving-peer isolation mechanism directly into an ep
 CRCI operates as an overlay mesh network utilizing a gossip dissemination protocol. Nodes communicate via peer-to-peer transport. The Rust \texttt{NodeRuntime} maintains an inbox, outbox, and local state ledger. The system does not elect leaders or perform synchronized voting. Each node independently evaluates incoming messages and updates local reputation scores.
 
 \subsection{Threat Model}
-CRCI isolates adversaries within a local observation scope. We assume an adversary can replay messages, generate validly signed false reports, and flood the network. We assume the adversary cannot forge signatures corresponding to uncompromised public keys.
+CRCI isolates adversaries within a local observation scope. We assume a Byzantine-capable adversary who may inspect, drop, modify, or artificially inject packets. We assume the adversary cannot forge signatures corresponding to uncompromised public keys.
+
+\textbf{Evaluated Attack:} The primary experimental validation focuses on the repeated replay of previously accepted payloads by a compromised transport peer.
+
+\begin{table}[h]
+\centering
+\caption{Threat Model Capability Matrix}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Adversarial Behavior} & \textbf{Detected?} & \textbf{Penalized?} & \textbf{Evicted?} \\
+\midrule
+Invalid signature & Yes & Yes & Yes, after threshold \\
+Same-message replay & Yes & Yes & Yes, after threshold \\
+Cross-path duplicate & No penalty & No & No \\
+Flooding & Yes & No & No \\
+Valid signed false report & Flagged & No & No \\
+Sybil identity & No & No & No \\
+Colluding Byzantine peers & Not evaluated & --- & --- \\
+\bottomrule
+\end{tabular}
+\label{tab:threat_matrix}
+\end{table}
 
 CRCI's eviction mechanism only bans for signature invalidation or repeated resends of the same message ID by one neighbor. Flooding is dropped by a token bucket rate limiter but does not trigger a ban, and validly signed false reports are only flagged as misinformation without causing an eviction. Additionally, because the protocol operates without a global PKI, a banned adversary can reset their ban by generating a fresh cryptographic identity.
 
@@ -99,7 +120,7 @@ Out-of-order packets common in wireless routing are tolerated within $W$, while 
 
 \subsection{Local Misbehaving-Peer Isolation Mechanism}
 \label{sec:local_isolation}
-CRCI enforces fault-isolation directly in the gossip layer by separating transport-peer attribution from author-layer authentication. The immediate relaying neighbor is accountable for maliciously replayed traffic or invalid signatures, while the cryptographically claimed originator is used for signature and sequence verification. Reputation starts at $0.5$ for all peers.
+CRCI enforces fault-isolation directly in the gossip layer by separating transport-peer attribution from author-layer authentication. The immediate relaying neighbor is accountable for maliciously replayed traffic or invalid signatures, while the cryptographically claimed originator is used for signature and sequence verification. For each transport peer $j$, node $i$ initializes a local reputation value $R_{i,j}(0)=0.5$. The reputation update is formalized as $R_{i,j}(t^+) = \min(1, R_{i,j}(t) + \Delta R)$, where $\Delta R = -0.15$ for explicitly malicious evidence (e.g., replays or invalid signatures).
 
 When processing an incoming message, CRCI enforces the following strictly ordered checks: (1) token-bucket rate limiting (dropping excess traffic), (2) author-layer cryptographic signature verification (penalizing invalid signatures), (3) silent deduplication (ignoring normal gossip redundancy from different paths or severely stale messages), and finally (4) explicitly malicious replay detection. Specifically, an ID first received from neighbor $j$ and received again from $j$ is a strike; the same ID arriving from a different neighbor is treated as normal gossip redundancy and ignored. If a neighbor transmits a malicious replay or forwards an invalid signature, CRCI applies an explicitly malicious penalty ($p = -0.15$) against the \textbf{transport-layer peer}.
 
@@ -124,13 +145,35 @@ EDA is included only as an architectural demonstration of how locally verified s
 \label{sec:results}
 
 \subsection{Experimental Setup}
+
+\begin{table}[h]
+\centering
+\caption{Experimental Reproducibility Parameters}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Nodes & 3 (1 Attacker, 2 Honest peers) \\
+Protocol & UDP / loopback \\
+Reputation Initial & 0.5 \\
+Strike Penalty & -0.15 \\
+Ban Threshold & $< 0.1$ \\
+Replay Window & 64 \\
+Replay Count & 3 \\
+Injected Delay & 0 ms / 15 ms \\
+Runs & 50 \\
+\bottomrule
+\end{tabular}
+\label{tab:reproducibility}
+\end{table}
+
 The evaluation was conducted on a local loopback testbed utilizing a 3-node topology: an honest listener (Node A), an honest peer (Node H), and a Byzantine adversary (Node B). Node H periodically broadcasts legitimate sequence-incrementing telemetry, serving as the ground-truth control to verify \textit{honest-peer survivability}. Simultaneously, the Byzantine adversary mounted a continuous replay attack against the honest listener by transmitting the exact same previously processed payload three times. The harness sends a total of four identical messages; the first is accepted normally, and the subsequent three identical replays trigger the three strikes required for eviction.
 
 \subsection{Eviction Latency and Survivability}
-We conducted $N=50$ independent trials under both baseline and a fixed 15~ms inter-message delay injected before each of the 3 replayed messages. The system successfully isolated the attacker after exactly 3 strikes in all trials. Because the procedure is deterministic, the 50 trials primarily serve to verify harness execution consistency. The results are summarized in Table~\ref{tab:latency}.
+We conducted 50 repeated benchmark runs under both baseline and a fixed 15~ms inter-message delay injected before each of the 3 replayed messages. The system successfully isolated the attacker after exactly 3 strikes in all runs. Because the procedure is deterministic, the 50 runs primarily serve to verify harness execution consistency. The results are summarized in Table~\ref{tab:latency}.
 
 \begin{table}[htbp]
-\caption{Strikes to Eviction and Processing Latency Across 50 Trials}
+\caption{Strikes to Eviction and Processing Latency Across 50 Runs}
 \label{tab:latency}
 \centering
 \begin{tabular}{lcccc}
@@ -143,10 +186,10 @@ Fixed 15ms Delay & 3 & 45.8 ms & 45 ms / 46 ms & 50/50 \\
 \end{tabular}
 \end{table}
 
-The deterministic 3-strike requirement forms the core eviction logic. The observed wall-clock latency (e.g., 45.82~ms with fixed delay) is dominated by the experimental injected delays rather than protocol overhead. The logical eviction condition is determined by the three-strike threshold, while observed wall-clock latency depends on message arrival and processing conditions.
+The deterministic 3-strike requirement forms the core eviction logic. The observed wall-clock latency (e.g., 45.8~ms with fixed delay) is dominated by the experimental injected delays rather than protocol overhead. The logical eviction condition is determined by the three-strike threshold, while observed wall-clock latency depends on message arrival and processing conditions.
 
 \subsection{Sliding-Window vs. Strict-Monotonic Rejection}
-We compared CRCI's sliding-window replay policy ($W=64$) against a naive strict-monotonic rule (\texttt{seq <= last\_seq}). Both policies were evaluated over 50 trials using the same telemetry workload, reputation parameters, and controlled packet-reordering pattern (depth of 2 packets) for the honest peer:
+We compared CRCI's sliding-window replay policy ($W=64$) against a naive strict-monotonic rule (\texttt{seq <= last\_seq}). Both policies were evaluated over 50 runs using the same telemetry workload, reputation parameters, and controlled packet-reordering pattern (depth of 2 packets) for the honest peer:
 \begin{itemize}
     \item \textbf{Strict-Monotonic Baseline:} The out-of-order packet was immediately classified as a replay, resulting in a false-positive penalty against the honest peer. Repeated reordering led directly to false-positive bans (Honest Survival = 0/50), as expected by construction because three reordered packets trigger a ban under the strict-monotonic policy.
     \item \textbf{CRCI Sliding Window:} The out-of-order packet was correctly accepted. No penalty or eviction was observed for the honest peer (Honest Survival = 50/50).
