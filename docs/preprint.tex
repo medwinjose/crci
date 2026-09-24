@@ -151,7 +151,7 @@ EDA is included only as an architectural demonstration of how locally verified s
     \item \textbf{Conflicting-State Flagging:} If reports from a source exhibit repeated severity-state transitions (e.g., severity rapidly flipping $\ge 3$ times within a 10-minute window), EDA tags the source with \texttt{MisinformationSuspect}, warning users without deleting potentially life-saving data. Misinformation tagging does not ban the peer, leaving human operators to evaluate the contested data.
 \end{itemize}
 
-\section{Controlled Fault-Isolation Validation}
+\section{Protocol Implementation and Functional Validation}
 \label{sec:results}
 
 \subsection{Experimental Setup}
@@ -196,7 +196,7 @@ Fixed 15ms Delay & 3 & 45.8 ms & 45 ms / 46 ms & 50/50 \\
 \end{tabular}
 \end{table}
 
-The deterministic 3-strike requirement forms the core eviction logic. The observed wall-clock latency (e.g., 45.8~ms with fixed delay) is dominated by the experimental injected delays rather than protocol overhead. The logical eviction condition is determined by the three-strike threshold, while observed wall-clock latency depends on message arrival and processing conditions.
+The deterministic 3-strike requirement forms the core eviction logic. The 45.8~ms measurement under the fixed 15~ms delay is an end-to-end paced delivery benchmark demonstrating that the eviction logic operates correctly across separated inter-packet arrival intervals, rather than serving as a pure protocol latency benchmark. The logical eviction condition is determined by the three-strike threshold.
 
 \subsection{Sliding-Window vs. Strict-Monotonic Rejection}
 We compared CRCI's sliding-window replay policy ($W=64$) against a naive strict-monotonic rule (\texttt{seq <= last\_seq}). Both policies were evaluated over 50 runs using the same telemetry workload, reputation parameters, and controlled packet-reordering pattern (depth of 2 packets) for the honest peer:
