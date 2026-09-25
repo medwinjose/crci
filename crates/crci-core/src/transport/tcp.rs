@@ -193,8 +193,16 @@ async fn handle_connection(
             return;
         }
 
-        let t_frame_start = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
-        println!("[SERVER LOG] t={} PORT={} Frame len {} received, awaiting payload...", t_frame_start, stream.peer_addr().map(|a| a.port()).unwrap_or(0), len);
+        let t_frame_start = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        println!(
+            "[SERVER LOG] t={} PORT={} Frame len {} received, awaiting payload...",
+            t_frame_start,
+            stream.peer_addr().map(|a| a.port()).unwrap_or(0),
+            len
+        );
 
         let mut buf = vec![0u8; len as usize];
 
@@ -214,16 +222,31 @@ async fn handle_connection(
         };
 
         if let Err(e) = payload_res {
-            let t_err = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
-            println!("[SERVER LOG] t={} PORT={} Parse result: error ({:?}) - dropping connection", t_err, stream.peer_addr().map(|a| a.port()).unwrap_or(0), e);
+            let t_err = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis();
+            println!(
+                "[SERVER LOG] t={} PORT={} Parse result: error ({:?}) - dropping connection",
+                t_err,
+                stream.peer_addr().map(|a| a.port()).unwrap_or(0),
+                e
+            );
             log_io_error("TCP payload read error", &e);
             let _ = stream.shutdown().await;
             return;
         }
 
-        let t_parse = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis();
+        let t_parse = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
         if let Ok(msg) = serde_json::from_slice::<NetworkMessage>(&buf) {
-            println!("[SERVER LOG] t={} PORT={} Parse result: success", t_parse, stream.peer_addr().map(|a| a.port()).unwrap_or(0));
+            println!(
+                "[SERVER LOG] t={} PORT={} Parse result: success",
+                t_parse,
+                stream.peer_addr().map(|a| a.port()).unwrap_or(0)
+            );
             if msg.origin_node == local_node_id {
                 continue;
             }
@@ -233,7 +256,11 @@ async fn handle_connection(
                 break;
             }
         } else {
-            println!("[SERVER LOG] t={} PORT={} Parse result: malformed JSON - dropping connection", t_parse, stream.peer_addr().map(|a| a.port()).unwrap_or(0));
+            println!(
+                "[SERVER LOG] t={} PORT={} Parse result: malformed JSON - dropping connection",
+                t_parse,
+                stream.peer_addr().map(|a| a.port()).unwrap_or(0)
+            );
             log::warn!("Invalid JSON message payload received.");
             let _ = stream.shutdown().await;
             return;
