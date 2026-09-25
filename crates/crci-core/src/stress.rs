@@ -188,7 +188,9 @@ pub fn test_signature_forgery() {
             Ok(guard) => guard,
             Err(poisoned) => poisoned.into_inner(),
         };
-        ib.entry("node-002".to_string()).or_default().push(("node-001".to_string(), raw));
+        ib.entry("node-002".to_string())
+            .or_default()
+            .push(("node-001".to_string(), raw));
     }
 
     println!("Injecting forged message into node-002's inbox...");

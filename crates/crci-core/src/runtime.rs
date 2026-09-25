@@ -457,7 +457,7 @@ impl NodeRuntime {
                 }
                 continue;
             }
-            
+
             // First time seeing this message. Record the sender.
             let mut new_senders = HashSet::new();
             new_senders.insert(sender_id.clone());

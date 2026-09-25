@@ -28,7 +28,10 @@ impl LegacyTransport for SimTransport {
             Ok(guard) => guard,
             Err(poisoned) => poisoned.into_inner(),
         };
-        inbox.entry(to.to_string()).or_default().push((self.node_id.clone(), data.to_vec()));
+        inbox
+            .entry(to.to_string())
+            .or_default()
+            .push((self.node_id.clone(), data.to_vec()));
     }
 
     fn node_id(&self) -> &str {

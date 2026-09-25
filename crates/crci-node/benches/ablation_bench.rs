@@ -1,3 +1,5 @@
+#![allow(clippy::match_like_matches_macro)]
+#![allow(clippy::single_char_add_str)]
 use crci_core::runtime::{NodeRuntime, WireMessage};
 
 use crci_core::message::{Message, Signal};

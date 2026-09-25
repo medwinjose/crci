@@ -24,9 +24,10 @@ pub struct ReplayFilter {
 
 impl ReplayFilter {
     pub fn new() -> ReplayFilter {
-        let mut filter = ReplayFilter::default();
-        filter.window_size = 64; // Default window size
-        filter
+        ReplayFilter {
+            window_size: 64, // Default window size
+            ..Default::default()
+        }
     }
 
     // Returns true if the message should be accepted, false if it should be dropped.

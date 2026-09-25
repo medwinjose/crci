@@ -1,3 +1,6 @@
+#![allow(clippy::type_complexity)]
+#![allow(clippy::match_like_matches_macro)]
+#![allow(clippy::unwrap_or_default)]
 use crci_core::{
     identity::Identity,
     message::{Message, Signal},

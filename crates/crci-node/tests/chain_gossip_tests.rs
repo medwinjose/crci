@@ -71,7 +71,10 @@ fn test_matching_head_no_divergence() {
 
     {
         let mut inbox = node.inbox.lock().unwrap();
-        inbox.entry(node.id.clone()).or_default().push(("test-sender".to_string(), bytes));
+        inbox
+            .entry(node.id.clone())
+            .or_default()
+            .push(("test-sender".to_string(), bytes));
     }
 
     node.process_inbox();
@@ -108,7 +111,10 @@ fn test_peer_ahead_no_divergence() {
 
     {
         let mut inbox = node.inbox.lock().unwrap();
-        inbox.entry(node.id.clone()).or_default().push(("test-sender".to_string(), bytes));
+        inbox
+            .entry(node.id.clone())
+            .or_default()
+            .push(("test-sender".to_string(), bytes));
     }
 
     node.process_inbox();
@@ -155,7 +161,10 @@ fn test_mismatched_head_divergence_alert() {
 
     {
         let mut inbox = node.inbox.lock().unwrap();
-        inbox.entry(node.id.clone()).or_default().push(("test-sender".to_string(), bytes));
+        inbox
+            .entry(node.id.clone())
+            .or_default()
+            .push(("test-sender".to_string(), bytes));
     }
 
     let events_before = node.byzantine_events;
@@ -210,7 +219,10 @@ fn test_divergence_increments_byzantine_events() {
 
     {
         let mut inbox = node.inbox.lock().unwrap();
-        inbox.entry(node.id.clone()).or_default().push(("test-sender".to_string(), bytes));
+        inbox
+            .entry(node.id.clone())
+            .or_default()
+            .push(("test-sender".to_string(), bytes));
     }
 
     let events_before = node.byzantine_events;
