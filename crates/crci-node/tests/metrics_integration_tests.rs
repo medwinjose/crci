@@ -129,7 +129,7 @@ fn test_metrics_seen_messages_evictions_on_bft046() {
 
     // Pre-fill seen_messages to just below threshold
     for i in 0..5000 {
-        node.seen_messages.insert(format!("prefill-{}", i));
+        node.seen_messages.insert(format!("prefill-{}", i), std::collections::HashSet::new());
     }
 
     // Send one more message to trigger eviction

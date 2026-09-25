@@ -57,7 +57,7 @@ cargo run --bin node
 
 ## Documentation & Papers
 
-- [**CRCI Academic Preprint (`docs/preprint.md`)**](docs/preprint.md): The formal research preprint detailing the architecture and experimental validation.
+- [**CRCI Academic Paper (`docs/paper.md`)**](docs/paper.md): The formal research paper detailing the architecture and experimental validation.
 
 ## License
 

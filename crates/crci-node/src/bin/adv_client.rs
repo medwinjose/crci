@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn main() {
     let t_start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();

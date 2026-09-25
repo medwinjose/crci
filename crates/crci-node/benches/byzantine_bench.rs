@@ -1,5 +1,5 @@
 use crci_core::runtime::{NodeRuntime, WireMessage};
-use crci_core::transport::SharedInbox;
+
 use crci_core::message::{Message, Signal};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
