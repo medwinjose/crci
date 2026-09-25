@@ -440,6 +440,21 @@ impl NodeRuntime {
                 continue;
             }
 
+            // BFT-046: Hard ceiling on observed message ID cache
+            // NOTE: sig_verifications_count (BFT-008) is intentionally NOT cleared here.
+            // These are two independent concerns: BFT-046 bounds the message-ID dedup cache,
+            // BFT-008 throttles per-origin signature checks. Clearing the throttle counters
+            // on this unrelated eviction previously allowed a peer to reset its own BFT-008
+            // count by flooding traffic to trip the 5000-entry ceiling. sig_verifications_count
+            // currently has no independent eviction policy of its own — tracked separately as
+            // BFT-052 (not in scope for this session).
+            if self.seen_messages.len() >= 5000 {
+                self.seen_messages.clear();
+                self.metrics
+                    .seen_messages_evictions
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            }
+
             // Step 1.5: Gossip duplicate tracking (Fix for honest relay bans)
             if let Some(senders) = self.seen_messages.get_mut(&wire.id) {
                 if senders.contains(&sender_id) {
@@ -523,21 +538,6 @@ impl NodeRuntime {
                     _ => {}
                 }
                 continue;
-            }
-
-            // BFT-046: Hard ceiling on observed message ID cache
-            // NOTE: sig_verifications_count (BFT-008) is intentionally NOT cleared here.
-            // These are two independent concerns: BFT-046 bounds the message-ID dedup cache,
-            // BFT-008 throttles per-origin signature checks. Clearing the throttle counters
-            // on this unrelated eviction previously allowed a peer to reset its own BFT-008
-            // count by flooding traffic to trip the 5000-entry ceiling. sig_verifications_count
-            // currently has no independent eviction policy of its own — tracked separately as
-            // BFT-052 (not in scope for this session).
-            if self.seen_messages.len() >= 5000 {
-                self.seen_messages.clear();
-                self.metrics
-                    .seen_messages_evictions
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
 
             let mut is_chain_head = false;
