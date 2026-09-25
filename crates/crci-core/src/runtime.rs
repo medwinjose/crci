@@ -129,7 +129,7 @@ pub struct NodeRuntime {
     pub zone: String,
     pub peers: Vec<String>,
     pub is_online: bool,
-    pub seen_messages: HashSet<String>,
+    pub seen_messages: HashMap<String, HashSet<String>>,
     pub persistent_messages: HashMap<String, WireMessage>,
     pub transport: SimTransport,
     pub inbox: SharedInbox,
@@ -167,7 +167,7 @@ impl NodeRuntime {
             zone: zone.to_string(),
             peers: Vec::new(),
             is_online: true,
-            seen_messages: HashSet::new(),
+            seen_messages: HashMap::new(),
             persistent_messages: HashMap::new(),
             transport,
             inbox,
@@ -291,7 +291,9 @@ impl NodeRuntime {
             self.persistent_messages
                 .insert(wire.id.clone(), wire.clone());
         }
-        self.seen_messages.insert(wire.id.clone());
+        let mut senders = HashSet::new();
+        senders.insert(self.id.clone());
+        self.seen_messages.insert(wire.id.clone(), senders);
         let payload = match serde_json::to_vec(&wire) {
             Ok(bytes) => bytes,
             Err(e) => {
@@ -338,7 +340,7 @@ impl NodeRuntime {
         if !self.is_online {
             return;
         }
-        let messages: Vec<Vec<u8>> = {
+        let messages: Vec<(String, Vec<u8>)> = {
             let mut inbox = match self.inbox.lock() {
                 Ok(guard) => guard,
                 Err(poisoned) => poisoned.into_inner(),
@@ -346,7 +348,7 @@ impl NodeRuntime {
             inbox.remove(&self.id).unwrap_or_default()
         };
         let has_messages = !messages.is_empty();
-        for raw in messages {
+        for (sender_id, raw) in messages {
             let wire: WireMessage = match serde_json::from_slice(&raw) {
                 Ok(w) => w,
                 Err(_) => {
@@ -356,7 +358,7 @@ impl NodeRuntime {
             };
 
             // Sybil admission check
-            match self.sybil_guard.check(&wire.origin) {
+            match self.sybil_guard.check(&sender_id) {
                 Ok(()) => { /* proceed */ }
                 Err(crate::sybil::SybilError::Banned(peer)) => {
                     self.sybil_banned_events += 1;
@@ -433,9 +435,33 @@ impl NodeRuntime {
                     .messages_rejected
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 // BFT-019: Defend against signature-invalidation attacks.
-                // Do NOT penalise the claimed origin node when signature check fails.
+                // Penalise the RELAYING NEIGHBOR for forwarding cryptographically invalid data.
+                self.sybil_guard.report_violation(&sender_id);
                 continue;
             }
+
+            // Step 1.5: Gossip duplicate tracking (Fix for honest relay bans)
+            if let Some(senders) = self.seen_messages.get_mut(&wire.id) {
+                if senders.contains(&sender_id) {
+                    // This specific peer has already sent us this exact message!
+                    // This is a malicious direct replay attack, not normal gossip redundancy.
+                    println!(
+                        "  ⚠ [{}] MALICIOUS REPLAY from '{}' — same message '{}' sent repeatedly!",
+                        self.id, sender_id, wire.id
+                    );
+                    self.byzantine_events += 1;
+                    self.sybil_guard.report_violation(&sender_id);
+                } else {
+                    // Normal gossip duplicate from a DIFFERENT path. Silently drop without penalty.
+                    senders.insert(sender_id.clone());
+                }
+                continue;
+            }
+            
+            // First time seeing this message. Record the sender.
+            let mut new_senders = HashSet::new();
+            new_senders.insert(sender_id.clone());
+            self.seen_messages.insert(wire.id.clone(), new_senders);
 
             // Step 2: pubkey consistency check — reject impersonation
             if wire.message_type != "mce" {
@@ -453,7 +479,8 @@ impl NodeRuntime {
                             .messages_rejected
                             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                         // BFT-019: Defend against signature-invalidation attacks.
-                        // Do NOT penalise the claimed origin node on pubkey mismatch.
+                        // Penalise the RELAYING NEIGHBOR, NOT the claimed origin node.
+                        self.sybil_guard.report_violation(&sender_id);
                         continue;
                     }
                 } else {
@@ -468,16 +495,23 @@ impl NodeRuntime {
                 crate::message::now_ts(),
             );
             if !verdict.is_accept() {
-                self.byzantine_events += 1;
-                self.sybil_guard.report_violation(&wire.origin);
+                // Silently drop severely stale messages (partition heal) or future drift.
+                // Do NOT penalize the relaying neighbor, as honest nodes can deliver stale messages.
+                self.metrics
+                    .messages_rejected
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 match &verdict {
                     crate::replay::ReplayVerdict::Replayed {
                         received_seq,
                         expected_min,
-                    } => println!(
-                        "  ⛔ [{}] REPLAY dropped from '{}' — seq {} already seen (min {})",
-                        self.id, wire.origin, received_seq, expected_min
-                    ),
+                    } => {
+                        println!(
+                            "  ⛔ [{}] REPLAY dropped from '{}' (claimed '{}') — seq {} already seen (min {})",
+                            self.id, sender_id, wire.origin, received_seq, expected_min
+                        );
+                        self.byzantine_events += 1;
+                        self.sybil_guard.report_violation(&sender_id);
+                    }
                     crate::replay::ReplayVerdict::Stale { age_seconds } => println!(
                         "  ⏰ [{}] STALE msg from '{}' — {}s old, dropped",
                         self.id, wire.origin, age_seconds
@@ -491,9 +525,6 @@ impl NodeRuntime {
                 continue;
             }
 
-            if self.seen_messages.contains(&wire.id) {
-                continue;
-            }
             // BFT-046: Hard ceiling on observed message ID cache
             // NOTE: sig_verifications_count (BFT-008) is intentionally NOT cleared here.
             // These are two independent concerns: BFT-046 bounds the message-ID dedup cache,
@@ -508,7 +539,6 @@ impl NodeRuntime {
                     .seen_messages_evictions
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             }
-            self.seen_messages.insert(wire.id.clone());
 
             let mut is_chain_head = false;
             let type_label = match wire.message_type.as_str() {

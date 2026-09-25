@@ -50,7 +50,7 @@ fn test_metrics_messages_accepted_increments() {
 
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert("metrics-test-node".to_string(), payloads);
+        guard.insert("metrics-test-node".to_string(), payloads.into_iter().map(|p| ("test-sender".to_string(), p)).collect());
     }
 
     node.process_inbox();
@@ -92,7 +92,7 @@ fn test_metrics_byzantine_detected_on_bft008_throttle() {
 
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert("bft008-metrics-node".to_string(), payloads);
+        guard.insert("bft008-metrics-node".to_string(), payloads.into_iter().map(|p| ("test-sender".to_string(), p)).collect());
     }
 
     node.process_inbox();
@@ -136,7 +136,7 @@ fn test_metrics_seen_messages_evictions_on_bft046() {
     let payload = make_wire(&node, "trigger-eviction", 1);
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert("bft046-metrics-node".to_string(), vec![payload]);
+        guard.insert("bft046-metrics-node".to_string(), vec![("test-sender".to_string(), payload)]);
     }
 
     node.process_inbox();
@@ -161,7 +161,7 @@ fn test_metrics_to_prometheus_output_well_formed() {
     }
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert("prom-test-node".to_string(), payloads);
+        guard.insert("prom-test-node".to_string(), payloads.into_iter().map(|p| ("test-sender".to_string(), p)).collect());
     }
     node.process_inbox();
 

@@ -12,13 +12,11 @@ In distributed systems, trust is often implicitly assumed between nodes on the n
 
 ## The Solution
 
-CRCI introduces a resilient, cryptographically hardened peer-to-peer architecture built on `rust-libp2p`. It enforces strict Byzantine fault tolerance (BFT) using a reputation-weighted Byzantine quorum algorithm. The algorithm tracks node reputation and enforces a rigorous `3 * w_faulty < w_total` quorum threshold, isolating malicious actors and dynamically evicting nodes that violate consensus rules. By treating all inbound data as untrusted and requiring cryptographic proof for state transitions, CRCI ensures that the network converges to a single correct state even when a subset of nodes actively attempt to sabotage it.
+CRCI introduces a peer-to-peer mesh protocol implemented in Rust that integrates local misbehaving-peer isolation directly into the gossip layer. Rather than attempting to reach globally synchronized Byzantine fault tolerance (BFT) or quorum consensus, CRCI enforces a purely local reputation-based peer eviction mechanism using a deterministic three-strike threshold. By binding authenticated Ed25519 identities to protocol-verifiable behavioral evidence (e.g., detecting explicit message replays or invalid signatures), CRCI allows honest nodes to independently isolate malicious relays without requiring voting rounds or stable membership.
 
 ## Architecture
 
 ![CRCI Architecture](docs/architecture/crci-architecture.png)
-
-[Open the interactive diagram →](docs/architecture/crci-architecture.html)
 
 ## Key Results
 
@@ -26,16 +24,14 @@ CRCI introduces a resilient, cryptographically hardened peer-to-peer architectur
 - **WAN Chaos Testing**: Runs on an automated 5-node Linux network-namespace testbed (`tc`/`netem`) validating partition tolerance and packet-jitter behavior under real kernel-level network emulation. This is a CI-scale subset of the 100-node target topology, chosen to fit CI runner resource limits.
 - **Continuous Integration**: Green across all jobs (Ubuntu, Windows, and cross-compilation), including the `test_real_wan_chaos_netns` integration test. See the [Actions tab](https://github.com/medwinjose/crci/actions) for current build status.
 
-### Byzantine Eviction Benchmarks (50 trials each)
+### Byzantine Eviction Benchmarks (100 total runs)
 
-| Metric | Baseline | Under Network Jitter |
-| :--- | :--- | :--- |
-| **Byzantine Eviction — Median** | 514ms | 669ms |
-| **Byzantine Eviction — Mean** | 514.5ms | 668.3ms |
-| **Byzantine Eviction — Min** | 502ms | 656ms |
-| **Byzantine Eviction — Max** | 532ms | 686ms |
+| Condition | Strikes to Ban | Eviction Latency (Mean) | Min / Max Latency | Honest Survival Rate |
+| :--- | :--- | :--- | :--- | :--- |
+| **Baseline** | 3 | $< 1$ ms | $< 1$ ms | 50/50 |
+| **Fixed 15 ms Delay** | 3 | 45.8 ms | 45 ms / 46 ms | 50/50 |
 
-Data source: `crates/crci-node/benches/results/byzantine_eviction.csv` and `byzantine_eviction_jitter.csv`.
+Data source: `crates/crci-node/benches/` test harness.
 
 ## Quick Start
 
@@ -61,7 +57,7 @@ cargo run --bin node
 
 ## Documentation & Papers
 
-- [**CRCI Academic Paper (`docs/paper.md`)**](docs/paper.md): The formal research paper and architectural overview.
+- [**CRCI Academic Preprint (`docs/preprint.md`)**](docs/preprint.md): The formal research preprint detailing the architecture and experimental validation.
 
 ## License
 

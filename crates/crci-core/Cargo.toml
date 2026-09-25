@@ -9,6 +9,7 @@ edition = "2021"
 # Activated automatically during `cargo test --all` via the dev-dependency
 # self-reference below.
 test-utils = []
+paper_v2 = []
 
 [lib]
 name = "crci_core"

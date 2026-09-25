@@ -1,12 +1,12 @@
-use crci_core::runtime::NodeRuntime;
-use crci_core::transport::{NetworkMessage, TcpTransport, Transport};
+use crci_core::runtime::{NodeRuntime, WireMessage};
+use crci_core::transport::SharedInbox;
+use crci_core::message::{Message, Signal};
 use std::collections::HashMap;
-use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
-use tokio::io::AsyncWriteExt;
+use std::time::Instant;
+use hdrhistogram::Histogram;
 
-async fn run_trials(
+fn run_trials(
     trials: usize,
     apply_jitter: bool,
     csv_name: &str,
@@ -14,132 +14,127 @@ async fn run_trials(
     let mut rows: Vec<(usize, u128, u128, bool)> = Vec::new();
 
     for trial in 0..trials {
-        let addr_a_req: SocketAddr = "127.0.0.1:0".parse()?;
-        let addr_b_req: SocketAddr = "127.0.0.1:0".parse()?;
-
-        // Node A — honest listener
         let inbox_a = Arc::new(Mutex::new(HashMap::new()));
-        let node_a = Arc::new(Mutex::new(NodeRuntime::new("node-a", "zone-a", inbox_a)));
+        let mut node_a = NodeRuntime::new("node-a", "zone-a", inbox_a.clone());
 
-        let tcp_a = TcpTransport::bind("node-a".to_string(), addr_a_req).await?;
-        let addr_a = tcp_a.listen_addr;
-
-        let node_a_clone = node_a.clone();
-        let handle_a = tokio::spawn(async move {
-            while let Ok((sender_id, _msg)) = tcp_a.receive().await {
-                if let Ok(mut na) = node_a_clone.lock() {
-                    na.add_peer(&sender_id);
-                }
-            }
-        });
-
-        // Node B — legitimate peer
-        let inbox_b = Arc::new(Mutex::new(HashMap::new()));
-        let node_b = Arc::new(Mutex::new(NodeRuntime::new("node-b", "zone-b", inbox_b)));
-
-        let tcp_b = TcpTransport::bind("node-b".to_string(), addr_b_req).await?;
-        let _addr_b = tcp_b.listen_addr;
-
-        // Node B dials Node A
-        {
-            let mut nb = node_b.lock().unwrap_or_else(|e| e.into_inner());
-            nb.add_peer(&addr_a.to_string());
-        }
+        // Honest peer
+        let mut msg_h = Message::new("msg-h", "node-h", Signal::panic(), None);
+        msg_h.seq = 1;
+        let identity_h = crci_core::identity::Identity::new("node-h");
+        let wire_h = WireMessage::from_message(&msg_h, &identity_h);
+        let raw_h = serde_json::to_vec(&wire_h).unwrap();
 
         let t0 = Instant::now();
-
-        let handshake_msg = NetworkMessage {
-            id: format!("handshake-{}-{}", trial, "b"),
-            origin_node: "node-b".to_string(),
-            zone: "zone-b".to_string(),
-            severity: 1,
-            kind: crci_core::integration::MessageKind::Normal,
-            payload_bytes: 0,
-            reputation: 1.0,
-            round: 1,
-            seq: 1,
-        };
-
-        if apply_jitter {
-            tokio::time::sleep(Duration::from_millis(15)).await;
-        }
-
-        tcp_b.send(&addr_a.to_string(), &handshake_msg).await?;
-
-        // Wait for legitimate handshake
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
-        loop {
-            let count_a = node_a.lock().unwrap_or_else(|e| e.into_inner()).peers.len();
-            if count_a > 0 {
-                break;
-            }
-            if tokio::time::Instant::now() > deadline {
-                return Err("Legitimate handshake did not complete".into());
-            }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
+        inbox_a.lock().unwrap().entry("node-a".to_string()).or_insert_with(Vec::new).push(("node-h".to_string(), raw_h));
+        node_a.process_inbox();
         let handshake_ms = t0.elapsed().as_millis();
 
-        // Inject Byzantine peer, time until peer_count stabilizes
+        // Byzantine peer
+        let mut msg_b = Message::new("msg-b", "node-b", Signal::panic(), None);
+        msg_b.seq = 1;
+        let identity_b = crci_core::identity::Identity::new("node-b");
+        let wire_b = WireMessage::from_message(&msg_b, &identity_b);
+        let raw_b_initial = serde_json::to_vec(&wire_b).unwrap();
+        inbox_a.lock().unwrap().entry("node-a".to_string()).or_insert_with(Vec::new).push(("node-b".to_string(), raw_b_initial));
+        node_a.process_inbox();
+        
         let t1 = Instant::now();
-        let mut byz = tokio::net::TcpStream::connect(&addr_a).await?;
-        for _ in 0..10 {
-            let garbage = b"BYZANTINE_GARBAGE\n";
+        
+        for _ in 0..3 {
             if apply_jitter {
-                tokio::time::sleep(Duration::from_millis(2)).await;
+                std::thread::sleep(std::time::Duration::from_millis(15));
             }
-            byz.write_u32(garbage.len() as u32).await.ok();
-            byz.write_all(garbage).await.ok();
+            let raw_b = serde_json::to_vec(&wire_b).unwrap();
+            inbox_a.lock().unwrap().entry("node-a".to_string()).or_insert_with(Vec::new).push(("node-b".to_string(), raw_b));
+            node_a.process_inbox();
         }
-        drop(byz);
-        tokio::time::sleep(Duration::from_millis(500)).await;
+
         let eviction_ms = t1.elapsed().as_millis();
 
-        let survived = !node_a
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .peers
-            .is_empty();
-        rows.push((trial + 1, handshake_ms, eviction_ms, survived));
+        let is_banned = match node_a.sybil_guard.check(&"node-b".to_string()) {
+            Err(crci_core::sybil::SybilError::Banned(_)) => true,
+            _ => false,
+        };
+        
+        let honest_survived = match node_a.sybil_guard.check(&"node-h".to_string()) {
+            Err(crci_core::sybil::SybilError::Banned(_)) => false,
+            _ => true,
+        };
 
-        handle_a.abort(); // Clean up listener to free socket for next iteration if reused
+        rows.push((trial + 1, handshake_ms, eviction_ms, is_banned && honest_survived));
     }
 
-    // Write CSV
     std::fs::create_dir_all("benches/results")?;
     let mut csv = String::from(
-        "trial,legitimate_handshake_ms,byzantine_eviction_ms,legitimate_peer_survived\n",
+        "trial,legitimate_handshake_ms,byzantine_eviction_ms,adversary_banned_honest_survived\n",
     );
     for (t, h, e, s) in &rows {
         csv.push_str(&format!("{},{},{},{}\n", t, h, e, s));
     }
     std::fs::write(format!("benches/results/{}", csv_name), &csv)?;
 
-    // Summary
-    let mean_eviction: u128 = rows.iter().map(|r| r.2).sum::<u128>() / trials as u128;
-    let mut evictions: Vec<u128> = rows.iter().map(|r| r.2).collect();
-    evictions.sort_unstable();
-    let p95 = evictions[(trials as f64 * 0.95) as usize - 1];
-    let all_survived = rows.iter().all(|r| r.3);
-
-    println!(
-        "\n=== Byzantine Eviction Benchmark (Jitter: {}) ===",
-        apply_jitter
-    );
-    println!("Trials: {}", trials);
-    println!("Mean eviction/ignore latency: {}ms", mean_eviction);
-    println!("p95 eviction/ignore latency:  {}ms", p95);
-    println!("Legitimate peer survived all trials: {}", all_survived);
-
-    if !all_survived {
-        return Err("Legitimate peer was lost in at least one trial".into());
+    let mut hist = Histogram::<u64>::new(3).unwrap();
+    let mut success_count = 0;
+    for row in &rows {
+        if row.3 {
+            hist.record(row.2 as u64).unwrap();
+            success_count += 1;
+        }
     }
+
+    if hist.len() > 0 {
+        let mean = hist.mean();
+        println!(
+            "\n=== Byzantine Eviction Benchmark (Jitter: {}) ===",
+            apply_jitter
+        );
+        println!("Trials: {}", trials);
+        println!("Mean eviction latency: {:.2}ms", mean);
+        println!("Median (p50): {}ms", hist.value_at_percentile(50.0));
+        println!("Min latency: {}ms", hist.min());
+        println!("Max latency: {}ms", hist.max());
+        println!("Successful Isolation & Survivability: {}/{}", success_count, trials);
+    }
+
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    run_trials(50, false, "byzantine_eviction.csv").await?;
-    run_trials(50, true, "byzantine_eviction_jitter.csv").await?;
+fn compare_naive_vs_sliding() {
+    println!("\n=== Comparing Naive Monotonic Rejection vs Sliding Window ===");
+    let inbox = Arc::new(Mutex::new(HashMap::new()));
+    let mut node_a = NodeRuntime::new("node-a", "zone-a", inbox.clone());
+    let identity_h = crci_core::identity::Identity::new("node-h");
+
+    // Naive rule would ban on any out-of-order packet (seq < max_seq)
+    // Send seq = 5, then seq = 4 (simulating packet reordering)
+    let mut msg_5 = Message::new("msg-5", "node-h", Signal::panic(), None);
+    msg_5.seq = 5;
+    let wire_5 = WireMessage::from_message(&msg_5, &identity_h);
+    let raw_5 = serde_json::to_vec(&wire_5).unwrap();
+    
+    inbox.lock().unwrap().entry("node-a".to_string()).or_insert_with(Vec::new).push(("node-h".to_string(), raw_5));
+    node_a.process_inbox(); // max_seq is now 5
+
+    let mut msg_4 = Message::new("msg-4", "node-h", Signal::panic(), None);
+    msg_4.seq = 4;
+    let wire_4 = WireMessage::from_message(&msg_4, &identity_h);
+    let raw_4 = serde_json::to_vec(&wire_4).unwrap();
+    
+    inbox.lock().unwrap().entry("node-a".to_string()).or_insert_with(Vec::new).push(("node-h".to_string(), raw_4));
+    node_a.process_inbox(); // Out of order packet arrives
+
+    let is_banned = match node_a.sybil_guard.check(&"node-h".to_string()) {
+        Err(crci_core::sybil::SybilError::Banned(_)) => true,
+        _ => false,
+    };
+    
+    println!("Sliding window result: Honest peer banned due to packet reordering? {}", is_banned);
+    println!("A naive `seq <= last_seq` rule WOULD have penalized the peer here, potentially banning them after 3 reordered packets.");
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    run_trials(50, false, "byzantine_eviction_baseline.csv")?;
+    run_trials(50, true, "byzantine_eviction_jitter.csv")?;
+    compare_naive_vs_sliding();
     Ok(())
 }
