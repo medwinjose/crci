@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 autobenches = false
 
+[features]
+paper_v2 = ["crci-core/paper_v2"]
+
 [[bin]]
 name = "crci-node"
 path = "src/main.rs"
@@ -39,5 +42,17 @@ crci-core = { path = "../crci-core", features = ["test-utils"] }
 [[bench]]
 name = "byzantine_bench"
 path = "benches/byzantine_bench.rs"
+harness = false
+test = false
+
+[[bench]]
+name = "ablation_bench"
+path = "benches/ablation_bench.rs"
+harness = false
+test = false
+
+[[bench]]
+name = "recovery_bench"
+path = "benches/recovery_bench.rs"
 harness = false
 test = false

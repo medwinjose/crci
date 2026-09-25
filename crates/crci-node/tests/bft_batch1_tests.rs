@@ -102,7 +102,7 @@ fn test_bft_signature_verification_rate_limit() {
 
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert("my-node-id".to_string(), raw_messages);
+        guard.insert("my-node-id".to_string(), raw_messages.into_iter().map(|p| ("test-sender".to_string(), p)).collect());
     }
 
     node.process_inbox();
@@ -157,7 +157,7 @@ fn test_bft_signature_invalidation_spoof_defense() {
 
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert("my-node-id".to_string(), vec![payload]);
+        guard.insert("my-node-id".to_string(), vec![("test-sender".to_string(), payload)]);
     }
 
     node.process_inbox();
@@ -507,7 +507,7 @@ fn test_bft_seen_messages_cache_ceiling() {
     let mut node = NodeRuntime::new("bft-046-node", "zone-alpha", inbox.clone());
 
     for i in 0..5000 {
-        node.seen_messages.insert(format!("msg-id-{}", i));
+        node.seen_messages.insert(format!("msg-id-{}", i), std::collections::HashSet::new());
     }
     assert_eq!(node.seen_messages.len(), 5000);
 
@@ -522,13 +522,13 @@ fn test_bft_seen_messages_cache_ceiling() {
 
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert("bft-046-node".to_string(), vec![payload]);
+        guard.insert("bft-046-node".to_string(), vec![("test-sender".to_string(), payload)]);
     }
 
     node.process_inbox();
 
     assert_eq!(node.seen_messages.len(), 2, "BFT-046: after hard-clear eviction at 5000 entries, cache should contain exactly the triggering message and a chain-head announcement");
-    assert!(node.seen_messages.contains("msg-id-5001"));
+    assert!(node.seen_messages.contains_key("msg-id-5001"));
 }
 
 // BFT-047: BFT-008 persists across BFT-046 eviction
@@ -541,7 +541,7 @@ fn test_bft008_persists_across_bft046_eviction() {
     node.sig_verifications_count.insert(peer.clone(), 3);
 
     for i in 0..5000 {
-        node.seen_messages.insert(format!("msg-id-{}", i));
+        node.seen_messages.insert(format!("msg-id-{}", i), std::collections::HashSet::new());
     }
     assert_eq!(node.seen_messages.len(), 5000);
 
@@ -556,7 +556,7 @@ fn test_bft008_persists_across_bft046_eviction() {
 
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert("bft-008-046-node".to_string(), vec![payload]);
+        guard.insert("bft-008-046-node".to_string(), vec![("test-sender".to_string(), payload)]);
     }
 
     node.process_inbox();

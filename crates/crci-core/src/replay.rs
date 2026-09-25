@@ -15,18 +15,24 @@ use std::collections::HashMap;
 pub struct ReplayFilter {
     // origin_id -> highest sequence number seen
     seen_sequences: HashMap<String, u64>,
+    #[cfg(feature = "paper_v2")]
+    sliding_windows: HashMap<String, std::collections::HashSet<u64>>,
     // origin_id -> last wall-clock time seen (loose bound, not enforced strictly)
     last_wall: HashMap<String, u64>,
+    pub window_size: u64,
 }
 
 impl ReplayFilter {
     pub fn new() -> ReplayFilter {
-        ReplayFilter::default()
+        let mut filter = ReplayFilter::default();
+        filter.window_size = 64; // Default window size
+        filter
     }
 
     // Returns true if the message should be accepted, false if it should be dropped.
     // seq: monotonically increasing counter per origin (starts at 1)
     // wall_ts: unix timestamp from message (advisory only — we tolerate ±2hr drift)
+    #[cfg(not(feature = "paper_v2"))]
     pub fn check_and_record(&mut self, origin: &str, seq: u64, wall_ts: u64) -> ReplayVerdict {
         let now = crate::message::now_ts();
 
@@ -57,6 +63,55 @@ impl ReplayFilter {
 
         // Accept and record
         self.seen_sequences.insert(origin.to_string(), seq);
+        self.last_wall.insert(origin.to_string(), wall_ts);
+        ReplayVerdict::Accept
+    }
+
+    #[cfg(feature = "paper_v2")]
+    pub fn check_and_record(&mut self, origin: &str, seq: u64, wall_ts: u64) -> ReplayVerdict {
+        let now = crate::message::now_ts();
+
+        let drift_tolerance: u64 = 7_200; // 2 hours in seconds
+        if wall_ts + drift_tolerance < now {
+            return ReplayVerdict::Stale {
+                age_seconds: now.saturating_sub(wall_ts),
+            };
+        }
+        if wall_ts > now + drift_tolerance {
+            return ReplayVerdict::FromFuture {
+                skew_seconds: wall_ts.saturating_sub(now),
+            };
+        }
+
+        let highest_seq = *self.seen_sequences.get(origin).unwrap_or(&0);
+        let window_size = self.window_size;
+
+        if seq <= highest_seq {
+            if highest_seq >= window_size && seq < highest_seq - window_size {
+                return ReplayVerdict::Replayed {
+                    received_seq: seq,
+                    expected_min: highest_seq - window_size,
+                };
+            }
+            let window = self.sliding_windows.entry(origin.to_string()).or_default();
+            if window.contains(&seq) {
+                return ReplayVerdict::Replayed {
+                    received_seq: seq,
+                    expected_min: highest_seq,
+                };
+            }
+            window.insert(seq);
+            self.last_wall.insert(origin.to_string(), wall_ts);
+            return ReplayVerdict::Accept;
+        }
+
+        self.seen_sequences.insert(origin.to_string(), seq);
+        let window = self.sliding_windows.entry(origin.to_string()).or_default();
+        window.insert(seq);
+        if seq >= window_size {
+            let cutoff = seq - window_size;
+            window.retain(|&s| s >= cutoff);
+        }
         self.last_wall.insert(origin.to_string(), wall_ts);
         ReplayVerdict::Accept
     }
