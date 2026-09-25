@@ -3,10 +3,10 @@
 use crci_core::runtime::{NodeRuntime, WireMessage};
 
 use crci_core::message::{Message, Signal};
+use hdrhistogram::Histogram;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use hdrhistogram::Histogram;
 
 fn run_trials(
     trials: usize,
@@ -27,7 +27,12 @@ fn run_trials(
         let raw_h = serde_json::to_vec(&wire_h).unwrap();
 
         let t0 = Instant::now();
-        inbox_a.lock().unwrap().entry("node-a".to_string()).or_insert_with(Vec::new).push(("node-h".to_string(), raw_h));
+        inbox_a
+            .lock()
+            .unwrap()
+            .entry("node-a".to_string())
+            .or_insert_with(Vec::new)
+            .push(("node-h".to_string(), raw_h));
         node_a.process_inbox();
         let handshake_ms = t0.elapsed().as_millis();
 
@@ -37,17 +42,27 @@ fn run_trials(
         let identity_b = crci_core::identity::Identity::new("node-b");
         let wire_b = WireMessage::from_message(&msg_b, &identity_b);
         let raw_b_initial = serde_json::to_vec(&wire_b).unwrap();
-        inbox_a.lock().unwrap().entry("node-a".to_string()).or_insert_with(Vec::new).push(("node-b".to_string(), raw_b_initial));
+        inbox_a
+            .lock()
+            .unwrap()
+            .entry("node-a".to_string())
+            .or_insert_with(Vec::new)
+            .push(("node-b".to_string(), raw_b_initial));
         node_a.process_inbox();
-        
+
         let t1 = Instant::now();
-        
+
         for _ in 0..3 {
             if apply_jitter {
                 std::thread::sleep(std::time::Duration::from_millis(15));
             }
             let raw_b = serde_json::to_vec(&wire_b).unwrap();
-            inbox_a.lock().unwrap().entry("node-a".to_string()).or_insert_with(Vec::new).push(("node-b".to_string(), raw_b));
+            inbox_a
+                .lock()
+                .unwrap()
+                .entry("node-a".to_string())
+                .or_insert_with(Vec::new)
+                .push(("node-b".to_string(), raw_b));
             node_a.process_inbox();
         }
 
@@ -57,13 +72,18 @@ fn run_trials(
             Err(crci_core::sybil::SybilError::Banned(_)) => true,
             _ => false,
         };
-        
+
         let honest_survived = match node_a.sybil_guard.check(&"node-h".to_string()) {
             Err(crci_core::sybil::SybilError::Banned(_)) => false,
             _ => true,
         };
 
-        rows.push((trial + 1, handshake_ms, eviction_ms, is_banned && honest_survived));
+        rows.push((
+            trial + 1,
+            handshake_ms,
+            eviction_ms,
+            is_banned && honest_survived,
+        ));
     }
 
     std::fs::create_dir_all("benches/results")?;
@@ -95,7 +115,10 @@ fn run_trials(
         println!("Median (p50): {}ms", hist.value_at_percentile(50.0));
         println!("Min latency: {}ms", hist.min());
         println!("Max latency: {}ms", hist.max());
-        println!("Successful Isolation & Survivability: {}/{}", success_count, trials);
+        println!(
+            "Successful Isolation & Survivability: {}/{}",
+            success_count, trials
+        );
     }
 
     Ok(())
@@ -113,24 +136,37 @@ fn compare_naive_vs_sliding() {
     msg_5.seq = 5;
     let wire_5 = WireMessage::from_message(&msg_5, &identity_h);
     let raw_5 = serde_json::to_vec(&wire_5).unwrap();
-    
-    inbox.lock().unwrap().entry("node-a".to_string()).or_insert_with(Vec::new).push(("node-h".to_string(), raw_5));
+
+    inbox
+        .lock()
+        .unwrap()
+        .entry("node-a".to_string())
+        .or_insert_with(Vec::new)
+        .push(("node-h".to_string(), raw_5));
     node_a.process_inbox(); // max_seq is now 5
 
     let mut msg_4 = Message::new("msg-4", "node-h", Signal::panic(), None);
     msg_4.seq = 4;
     let wire_4 = WireMessage::from_message(&msg_4, &identity_h);
     let raw_4 = serde_json::to_vec(&wire_4).unwrap();
-    
-    inbox.lock().unwrap().entry("node-a".to_string()).or_insert_with(Vec::new).push(("node-h".to_string(), raw_4));
+
+    inbox
+        .lock()
+        .unwrap()
+        .entry("node-a".to_string())
+        .or_insert_with(Vec::new)
+        .push(("node-h".to_string(), raw_4));
     node_a.process_inbox(); // Out of order packet arrives
 
     let is_banned = match node_a.sybil_guard.check(&"node-h".to_string()) {
         Err(crci_core::sybil::SybilError::Banned(_)) => true,
         _ => false,
     };
-    
-    println!("Sliding window result: Honest peer banned due to packet reordering? {}", is_banned);
+
+    println!(
+        "Sliding window result: Honest peer banned due to packet reordering? {}",
+        is_banned
+    );
     println!("A naive `seq <= last_seq` rule WOULD have penalized the peer here, potentially banning them after 3 reordered packets.");
 }
 
