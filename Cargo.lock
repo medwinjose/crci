@@ -425,7 +425,7 @@ dependencies = [
 
 [[package]]
 name = "crci-core"
-version = "0.1.0"
+version = "2.1.0"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -455,7 +455,7 @@ dependencies = [
 
 [[package]]
 name = "crci-node"
-version = "0.1.0"
+version = "2.1.0"
 dependencies = [
  "aes-gcm",
  "argon2",
