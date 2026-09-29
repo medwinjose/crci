@@ -57,7 +57,7 @@ cargo run --bin node
 
 ## Documentation & Papers
 
-- [**CRCI Academic Paper (`docs/paper.md`)**](docs/paper.md): The formal research paper detailing the architecture and experimental validation.
+- **CRCI Academic Paper**: [Preprint (Zenodo): https://doi.org/10.5281/zenodo.23032042](https://doi.org/10.5281/zenodo.23032042)
 
 ## License
 

@@ -21,3 +21,12 @@ abstract: >-
   reputation-based misbehaving-peer isolation, sliding-window replay
   protection, and the benchmark harnesses used to produce the results in the
   accompanying preprint.
+
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Jose"
+      given-names: "Medwin"
+  title: "CRCI: Local Reputation-Based Fault Isolation for Ad-Hoc Gossip Communication"
+  doi: "10.5281/zenodo.23032042"
+  year: 2026
