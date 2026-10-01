@@ -6,6 +6,7 @@ authors:
     given-names: "Medwin"
     affiliation: "Vellore Institute of Technology, Bhopal, India"
 title: "CRCI: Crisis Response Communication Infrastructure"
+doi: 10.5281/zenodo.23033990
 version: "2.1.0"
 date-released: 2026-09-29
 repository-code: "https://github.com/medwinjose/crci"
