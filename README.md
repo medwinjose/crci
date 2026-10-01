@@ -3,6 +3,7 @@
 [![CI](https://github.com/medwinjose/crci/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/medwinjose/crci/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23033990.svg)](https://doi.org/10.5281/zenodo.23033990)
 
 CRCI is a distributed systems framework designed to maintain strict state consistency and network integrity across malicious or failing nodes.
 
@@ -58,6 +59,11 @@ cargo run --bin node
 ## Documentation & Papers
 
 - **CRCI Academic Paper**: [Preprint (Zenodo): https://doi.org/10.5281/zenodo.23032042](https://doi.org/10.5281/zenodo.23032042)
+- Archived software (all versions): https://doi.org/10.5281/zenodo.23033990
+
+## Citation
+If you use CRCI, please cite the preprint: https://doi.org/10.5281/zenodo.23032042
+Software archive: https://doi.org/10.5281/zenodo.23033990
 
 ## License
 
