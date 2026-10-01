@@ -1,3 +1,5 @@
+#![allow(clippy::double_must_use)]
+
 pub mod aeda;
 pub mod api;
 pub mod api_types;
