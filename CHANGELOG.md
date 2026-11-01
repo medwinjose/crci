@@ -43,6 +43,13 @@ git history; `git log` is the complete record.
   node's ID first get that node's honest relays banned.
 - Property-based tests (proptest) of the replay window: with reordering depth at most W, every honest
   message is accepted once and no relay loses reputation; at any depth, no honest relay is struck.
+- Reputation recovery depends on elapsed time only (0.0005 per second, one strike forgiven in 300 s)
+  and never raises a score above the initial 0.5; two strikes within 300 s cap recovery at 0.18. Before,
+  recovery grew with the peer's own traffic, so an adversary sending valid messages between replays was
+  never banned, and good behaviour could be banked for a burst of up to six replays. Idle decay is
+  removed: inactivity no longer changes a score. Banned peers recover at the same rate and are readmitted
+  at 0.25.
+- `recovery_bench` rewritten: exact duplicate replays on a simulated clock, sweeping the replay period.
 - `crci_version()` reports the crate version instead of a hard-coded `0.1.0`.
 - The TCP transport no longer panics on clock errors and logs through `log` instead of standard output.
 - `/chain/head` on a TCP node reports the node's Merkle chain head instead of the latest message ID.

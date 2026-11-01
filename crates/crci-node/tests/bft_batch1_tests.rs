@@ -53,13 +53,13 @@ fn test_bft_subnet_limit() {
 }
 
 #[test]
-fn test_bft_sub_linear_recovery() {
+fn test_bft_recovery_after_penalty() {
     let mut rep = PeerReputation::new();
     rep.penalise(0.5);
     let original = rep.score;
 
-    std::thread::sleep(Duration::from_millis(100));
-    rep.decay_recover();
+    let later = rep.last_updated + Duration::from_secs(100);
+    rep.recover_at(later);
 
     assert!(rep.score > original);
     assert!(rep.score <= 1.0);
@@ -132,7 +132,7 @@ fn test_bft_reputation_bounds_clamping() {
 
     rep.score = 0.99;
     std::thread::sleep(Duration::from_millis(50));
-    rep.decay_recover();
+    rep.recover();
     assert!(rep.score <= 1.0);
 }
 
@@ -207,23 +207,12 @@ fn test_bft_reputation_persistence_clamping() {
 }
 
 #[test]
-fn test_bft_reputation_decay() {
-    // Verify idle nodes decay reputation score over time
+fn test_bft_reputation_no_idle_decay() {
+    // Inactivity is not evidence: an idle peer keeps its score.
     let mut rep = PeerReputation::new(); // Starts at 0.5
-
-    // Simulate inactivity by setting last_activity to 3 seconds ago
-    let now = std::time::Instant::now();
-    rep.last_activity = now - Duration::from_secs(3);
-    rep.last_updated = now - Duration::from_secs(3);
-
-    // Call decay_recover (simulates idle check)
-    rep.decay_recover();
-
-    // With IDLE_THRESHOLD = 2.0s and DECAY_RATE = 0.05/s:
-    // It has been idle for 3 seconds, so 3 seconds is > 2.0s.
-    // The decay time is 3 seconds. The score decays by 3 * 0.05 = 0.15.
-    // Score should be 0.5 - 0.15 = 0.35.
-    assert_eq!(rep.score, 0.35);
+    let later = rep.last_updated + Duration::from_secs(3_600);
+    rep.recover_at(later);
+    assert_eq!(rep.score, 0.5);
 }
 
 #[test]
@@ -231,13 +220,11 @@ fn test_idle_peer_is_never_banned_by_inactivity() {
     // An honest peer that is silent for a long time must not be banned when it
     // sends its next message: only evidenced misbehaviour may ban.
     let mut rep = PeerReputation::new();
-    let now = std::time::Instant::now();
-    rep.last_activity = now - Duration::from_secs(60);
-    rep.last_updated = now - Duration::from_secs(60);
+    let later = rep.last_updated + Duration::from_secs(60);
 
-    rep.decay_recover();
+    rep.recover_at(later);
 
-    assert!(!rep.is_banned(), "idle decay produced a ban");
+    assert!(!rep.is_banned(), "inactivity produced a ban");
 }
 
 #[test]
@@ -259,12 +246,10 @@ fn test_bft_reputation_recovery() {
     rep.penalise(0.4); // Drop to 0.1
     assert_eq!(rep.score, 0.1);
 
-    // Simulate active behavior (honest) over a short interval (e.g. 500ms)
-    let now = std::time::Instant::now();
-    rep.last_updated = now - Duration::from_millis(500);
-    rep.record_active_behavior();
+    // Recovery is linear in time: 0.0005 per second, so 0.5 s adds 0.00025.
+    let later = rep.last_updated + Duration::from_millis(500);
+    rep.recover_at(later);
 
-    // Recovery is elapsed.sqrt() * 0.005. For 0.5s: 0.707 * 0.005 = 0.003535.
     // Score should recover slightly but not immediately jump back.
     assert!(rep.score > 0.1);
     assert!(rep.score < 0.15); // Stays bounded and recovers slowly
@@ -437,10 +422,9 @@ fn test_bft_reputation_based_eviction_hysteresis() {
     rep.penalise(0.45); // 0.5 - 0.45 = 0.05
     assert!(rep.is_banned());
 
-    // Let it recover slightly past the eviction threshold (0.1)
-    let now = std::time::Instant::now();
-    rep.last_updated = now - Duration::from_secs(1000);
-    rep.record_active_behavior(); // Recover slightly
+    // Let it recover past the eviction threshold (0.1): 200 s at 0.0005/s = +0.1
+    let later = rep.last_updated + Duration::from_secs(200);
+    rep.recover_at(later); // Recover slightly
     assert!(rep.score > 0.1); // Score is now > 0.1
 
     // Due to hysteresis, it must still remain banned since it hasn't crossed the 0.25 threshold
@@ -448,7 +432,7 @@ fn test_bft_reputation_based_eviction_hysteresis() {
 
     // Recover more to cross 0.25
     rep.score = 0.26;
-    rep.record_active_behavior();
+    rep.recover_at(later);
     assert!(!rep.is_banned()); // Successfully reinstated
 }
 

@@ -1,0 +1,17 @@
+Paced replays vs strike-damped recovery: horizon 21600 s, filler every 10 s, one strike forgiven in 300 s
+ period_s  replays  strikes  first_ban_s   banned_% strikes_per_h min_score
+        1    21600       89            3      99.6%         14.83     0.000
+       15     1440       85           45      95.2%         14.17     0.000
+       30      720       83           90      92.4%         13.83     0.000
+       60      360       74          180      82.9%         12.33     0.000
+      120      180       74          480      75.3%         12.33     0.020
+      180      120       73          720      41.4%         12.17     0.060
+      240       90       73         1680      26.8%         12.17     0.080
+      270       80       72         3240      11.8%         12.00     0.090
+      290       74       72        10150       2.9%         12.00     0.095
+      300       72       72        never       0.0%         12.00     0.350
+      330       65       65        never       0.0%         10.83     0.350
+      450       48       48        never       0.0%          8.00     0.350
+      600       36       36        never       0.0%          6.00     0.350
+     1200       18       18        never       0.0%          3.00     0.350
+Wrote benches/results/recovery_paced_sweep.csv and recovery_trajectory.csv

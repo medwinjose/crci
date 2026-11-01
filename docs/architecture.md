@@ -54,9 +54,14 @@ applies, in order:
    the same sender after it has left the window is also dropped as stale (step 4 does not strike it). The
    sequence number is covered by the origin's signature, so a relay cannot move the window.
 
-A strike is −0.15 reputation (start 0.5, ban below 0.1, so three strikes ban). Reputation also drifts:
-small recovery while a peer is active, and decay of 0.05/s once a peer has been silent for more than 2 s.
-Idle decay stops at the ban threshold and never bans; only a strike can.
+A strike is −0.15 reputation (start 0.5, ban below 0.1, so three strikes ban). Between strikes a score
+recovers with elapsed time, 0.0005 per second (one strike forgiven in 300 s), whatever the peer sends,
+and never above 0.5, so good behaviour cannot be banked for a later burst. While two or more strikes fall
+within the last 300 s, recovery cannot raise the score above 0.18 (strike damping; it never lowers a
+score). A banned peer recovers at the same rate and is readmitted at 0.25. Inactivity never changes a
+score (`sybil.rs`). Any forgiving recovery leaves a residual bound: a peer that paces its violations at
+one per 300 s or slower is never banned (measured in
+[benchmarks.md](benchmarks.md#paced-attack-vs-reputation-recovery)).
 
 The signature covers every `WireMessage` field except the signature itself (`WireMessage::signing_bytes`):
 a domain tag (`CRCI-WIRE-MESSAGE-v1`), then each field in declaration order, variable-length fields with a

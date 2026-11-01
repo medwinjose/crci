@@ -24,6 +24,7 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 | Direct replay | Same message ID from the same sender → strike; from a different sender → ignored | `runtime.rs` |
 | Sequence replay | Sliding window W = 64 per origin: same sequence from the same sender → strike; from another sender → ignored; older than the window → dropped without a strike. The sequence number is signed | `replay.rs` |
 | Repeat offender | Reputation 0.5, −0.15 per strike, banned below 0.1; banned senders are dropped on admission | `sybil.rs` |
+| Paced replays | Recovery depends on elapsed time only (0.0005/s, capped at the initial 0.5, so credit cannot be banked); two strikes within 300 s cap recovery at 0.18 | `sybil.rs` |
 | Message flood | Token bucket per sender (20 messages, +5/s), applied before the signature check | `sybil.rs` |
 | Signature-verification flood | Verifications bounded by the sender's token bucket; each invalid signature is a strike, so three bad signatures ban the sender | `runtime.rs`, `sybil.rs` |
 | Malformed input | Origin-ID length, severity range, sequence overflow and note size checked before `NodeRuntime` on a TCP node | `validation.rs`, `crci-node` `main.rs` |
@@ -44,8 +45,12 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 2. **Stale floods are not penalised.** A packet older than the replay window is dropped without a strike,
    so an adversary can resend old signed messages without losing reputation. Each one still costs a
    signature verification; the cost is bounded only by the per-sender token bucket (20 messages, then 5/s).
-3. **Paced replays evade eviction.** An adversary that sends enough valid traffic between replays recovers
-   reputation faster than it loses it (measured in [benchmarks.md](benchmarks.md); strike-damped recovery planned).
+3. **Paced replays are bounded, not eliminated.** Recovery forgives one strike per 300 s, so an adversary
+   that replays at most once every 300 s is never banned: at most 12 replays per hour per identity. Faster
+   pacing is banned (a replay every 290 s after 10 150 s, every 120 s after 480 s). An adversary that keeps
+   replaying through repeated bans lands about 15 replays per hour while banned 99.6 % of the time. Every
+   replay is dropped and costs one signature check (measured in
+   [benchmarks.md](benchmarks.md#paced-attack-vs-reputation-recovery)).
 4. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
    earlier IDs can be resent. Inside the replay window the sequence filter still strikes a repeat from the
    same sender; outside it the packet is dropped without a strike.

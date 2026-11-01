@@ -1,0 +1,37 @@
+P=5s replay 1 at t=5.0s rep_after=0.410 byzantine_events=1 ban_drops=0
+P=5s replay 2 at t=10.0s rep_after=0.320 byzantine_events=2 ban_drops=0
+P=5s replay 3 at t=15.0s rep_after=0.230 byzantine_events=3 ban_drops=0
+P=5s replay 4 at t=20.0s rep_after=0.140 byzantine_events=4 ban_drops=0
+P=5s replay 5 at t=25.1s rep_after=0.050 byzantine_events=5 ban_drops=0
+P=5s replay 6 at t=30.1s rep_after=0.071 byzantine_events=5 ban_drops=20
+P=5s replay 7 at t=35.1s rep_after=0.071 byzantine_events=5 ban_drops=40
+P=5s replay 8 at t=40.1s rep_after=0.071 byzantine_events=5 ban_drops=60
+P=5s FINAL rep=0.071 banned=true replays=8 elapsed=40.3s
+P=10s replay 1 at t=10.0s rep_after=0.470 byzantine_events=1 ban_drops=0
+P=10s replay 2 at t=20.0s rep_after=0.440 byzantine_events=2 ban_drops=0
+P=10s replay 3 at t=30.1s rep_after=0.410 byzantine_events=3 ban_drops=0
+P=10s replay 4 at t=40.1s rep_after=0.380 byzantine_events=4 ban_drops=0
+P=10s replay 5 at t=50.1s rep_after=0.350 byzantine_events=5 ban_drops=0
+P=10s replay 6 at t=60.1s rep_after=0.320 byzantine_events=6 ban_drops=0
+P=10s replay 7 at t=70.1s rep_after=0.290 byzantine_events=7 ban_drops=0
+P=10s replay 8 at t=80.2s rep_after=0.260 byzantine_events=8 ban_drops=0
+P=10s FINAL rep=0.263 banned=false replays=8 elapsed=80.4s
+P=20s replay 1 at t=20.0s rep_after=0.590 byzantine_events=1 ban_drops=0
+P=20s replay 2 at t=40.1s rep_after=0.680 byzantine_events=2 ban_drops=0
+P=20s replay 3 at t=60.1s rep_after=0.770 byzantine_events=3 ban_drops=0
+P=20s replay 4 at t=80.2s rep_after=0.850 byzantine_events=4 ban_drops=0
+P=20s replay 5 at t=100.2s rep_after=0.850 byzantine_events=5 ban_drops=0
+P=20s replay 6 at t=120.1s rep_after=0.850 byzantine_events=6 ban_drops=0
+P=20s replay 7 at t=140.2s rep_after=0.850 byzantine_events=7 ban_drops=0
+P=20s replay 8 at t=160.2s rep_after=0.850 byzantine_events=8 ban_drops=0
+P=20s FINAL rep=0.853 banned=false replays=8 elapsed=160.5s
+P=30s replay 1 at t=30.1s rep_after=0.710 byzantine_events=1 ban_drops=0
+P=30s replay 2 at t=60.1s rep_after=0.850 byzantine_events=2 ban_drops=0
+P=30s replay 3 at t=90.2s rep_after=0.850 byzantine_events=3 ban_drops=0
+P=30s replay 4 at t=120.1s rep_after=0.850 byzantine_events=4 ban_drops=0
+P=30s replay 5 at t=150.2s rep_after=0.850 byzantine_events=5 ban_drops=0
+P=30s replay 6 at t=180.0s rep_after=0.850 byzantine_events=6 ban_drops=0
+P=30s replay 7 at t=210.1s rep_after=0.850 byzantine_events=7 ban_drops=0
+P=30s replay 8 at t=240.1s rep_after=0.850 byzantine_events=8 ban_drops=0
+P=30s FINAL rep=0.853 banned=false replays=8 elapsed=240.4s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 240.40s

@@ -1,0 +1,54 @@
+//! Real-time paced-replay run on the pre-damping recovery rules.
+use crci_core::identity::Identity;
+use crci_core::message::{Message, Signal, Visibility};
+use crci_core::runtime::{NodeRuntime, WireMessage};
+use crci_core::transport::SharedInbox;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+fn run(period_s: u64, replays: usize) -> String {
+    let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+    let mut node = NodeRuntime::new("rx", "z", inbox.clone());
+    let key = Identity::new("atk");
+    let atk = "atk".to_string();
+    let start = Instant::now();
+    let mut seq = 0u64;
+    let mut last: Option<WireMessage> = None;
+    let mut next_replay = start + Duration::from_secs(period_s);
+    let mut done = 0;
+    let mut out = String::new();
+    while done < replays {
+        let now = Instant::now();
+        let is_replay = now >= next_replay;
+        let wire = if is_replay {
+            next_replay += Duration::from_secs(period_s);
+            done += 1;
+            last.clone().unwrap()
+        } else {
+            seq += 1;
+            let mut m = Message::new(&format!("m{seq}"), "atk", Signal::new(3, false, false, true, 3, Visibility::Direct), None);
+            m.seq = seq;
+            let w = WireMessage::from_message(&m, &key);
+            last = Some(w.clone());
+            w
+        };
+        inbox.lock().unwrap().entry("rx".into()).or_default().push((atk.clone(), serde_json::to_vec(&wire).unwrap()));
+        node.process_inbox();
+        if is_replay {
+            let rep = node.sybil_guard.reputation(&atk);
+            out.push_str(&format!("P={period_s}s replay {done} at t={:.1}s rep_after={rep:.3} byzantine_events={} ban_drops={}
+", start.elapsed().as_secs_f32(), node.byzantine_events, node.sybil_banned_events));
+        }
+        std::thread::sleep(Duration::from_millis(250));
+    }
+    let rep = node.sybil_guard.reputation(&atk);
+    out.push_str(&format!("P={period_s}s FINAL rep={rep:.3} banned={} replays={replays} elapsed={:.1}s\n", node.sybil_banned_events > 0, start.elapsed().as_secs_f32()));
+    out
+}
+
+#[test]
+fn paced_replay_before_damping() {
+    let handles: Vec<_> = [5u64, 10, 20, 30].into_iter().map(|p| std::thread::spawn(move || run(p, 8))).collect();
+    for h in handles { print!("{}", h.join().unwrap()); }
+}

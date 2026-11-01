@@ -70,9 +70,11 @@ measured with the in-process benchmark harness, 50 deterministic trials per cond
 
 - **Reordering:** late or stale packets never count against a neighbour; packets more than W behind
   are dropped instead of delivered. Measuring delivery under reordering on the network testbed is planned.
-- **Known limit:** an adversary that paces its replays and sends enough valid traffic in between recovers
-  reputation faster than it loses it. This evasion was measured on an earlier build and is disclosed; it
-  is the focus of ongoing work on strike-damped recovery.
+- **Paced replays:** reputation recovers with elapsed time only (one strike forgiven per 300 s, never
+  above the initial score) and two strikes within 300 s damp recovery. In a 6-hour simulated sweep an
+  adversary replaying more often than every 300 s is banned; one pacing at 300 s or slower is never banned
+  but lands at most 12 replays per hour. Before this change, an adversary replaying every 20 s was never
+  banned.
 
 Every number above links back to a raw data file and the exact command in
 [docs/benchmarks.md](docs/benchmarks.md).
@@ -126,12 +128,11 @@ A Docker Compose demo (two honest nodes, one adversarial node, and the dashboard
 CRCI is an active research project. The isolation pipeline runs in the node runtime used by both the
 networked TCP node and the test suite; the benchmarks so far drive it in-process. Current work, in order:
 
-1. Strike-damped recovery to close the paced-attack evasion.
-2. Anti-entropy re-synchronisation after network partitions.
-3. A 20–50 node network-emulation testbed (loss, delay, reordering, link flapping) and comparison against
+1. Anti-entropy re-synchronisation after network partitions.
+2. A 20–50 node network-emulation testbed (loss, delay, reordering, link flapping) and comparison against
    baselines.
-4. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
-5. Safety and liveness invariants of the final protocol in TLA+.
+3. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
+4. Safety and liveness invariants of the final protocol in TLA+.
 
 Out of scope: large-scale Sybil attacks, colluding adversaries, and physical LoRa/BLE radios (the BLE and
 LoRa transports are interface stubs). Known gaps are tracked in [docs/threat-model.md](docs/threat-model.md).

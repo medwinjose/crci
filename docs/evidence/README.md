@@ -62,10 +62,30 @@ What these files show, stated plainly:
   column. That column has no recorded run and is to be re-measured.
 - The logs show `BFT-008 Signature verification limit exceeded … dropping message`, i.e. the per-origin
   signature-check cap was dropping honest traffic during these runs.
-- `recovery_paper_v2_run2_0255.txt` is the source of the preprint's paced-attack result
+- `recovery_paper_v2_run2_0255.txt` was the source of the preprint's first paced-attack result, now
+  superseded by `paced-attack-2026-11-02/`
   (Rapid Attack: banned; Paced Attack with 300 recovery packets: not banned).
   `recovery_paper_v2_run1_0243.txt` is an earlier run from a different build that reports different
   results (both conditions survive). It is kept because it was observed, not because it is correct.
+
+## `paced-attack-2026-11-02/`
+
+| File | SHA-256 |
+|---|---|
+| `recovery_bench_summary.txt` | `34f5b0970983e6e8acc3a8197fee1f3a0c94623e21e86c52771b7092042bc842` |
+| `before_realtime_paced_replay.txt` | `1bcfe189f1515786655e2b97f22f859b6b55febd62068b7ad8a63e12e010aee6` |
+| `before_harness_paced_before.rs.txt` | `86a09fad584dca2f94e6530db833eec6dfaf3872c7799320ceb94810d3beed42` |
+
+- `recovery_bench_summary.txt`: the summary lines of `cargo bench -p crci-node --bench recovery_bench`
+  (`grep -E "^Paced|^ +period_s|^ +[0-9]+ +[0-9]+ +[0-9]+|^Wrote"`; the full output also contains one log
+  line per processed message). The CSVs it wrote are in `crates/crci-node/benches/results/`
+  (`recovery_paced_sweep.csv` SHA-256 `0b7c3b49e972b6ec89b8977159de92d1e48bf672ede867c5847fe2092924c516`,
+  `recovery_trajectory.csv` SHA-256 `ef657bba88ccc0ef11b8bf3f81add0497d0be7061037733caca55342d783274c`).
+- `before_realtime_paced_replay.txt`: the same attack on the previous recovery rules (commit 7d70aff),
+  in real time, from `before_harness_paced_before.rs.txt` placed at
+  `crates/crci-node/tests/paced_before.rs` and run with
+  `cargo test --release -p crci-node --test paced_before -- --nocapture` (lines matching `^P=` and the
+  test result).
 
 ## `archive/`
 

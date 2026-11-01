@@ -19,9 +19,9 @@ Two harness details affect what the results mean:
   counter between messages, because `NodeRuntime` then dropped every message from an origin after its 5th
   signature check. That counter has been removed (signature checks are now bounded by the per-sender token
   bucket) and the harnesses no longer reset anything.
-- The per-sender token bucket (20 messages, then 5 per second) applies in every harness. `recovery_bench`
-  sends 100 messages per second from one sender in its paced condition, so most of those messages are
-  dropped as rate-limited; reputation recovery is credited before the rate check.
+- The per-sender token bucket (20 messages, then 5 per second) applies in every harness.
+- `recovery_bench` runs on a simulated clock (`SybilGuard::use_manual_clock` and `advance_time`), so it
+  covers six hours per condition in seconds and produces byte-identical output on every run.
 
 Bench targets have `test = false`, so `cargo test` never runs them or rewrites their CSVs.
 
@@ -71,27 +71,50 @@ is dropped without a strike, so reordering can no longer ban an honest peer at a
 shows survival in every cell by construction. What W now controls is delivery: packets beyond the window
 are lost. Re-measuring the window ablation as delivered packets, not bans, is planned.
 
-## Paced attack vs. reputation recovery (preprint §IV-D)
+## Paced attack vs. reputation recovery
 
 - **Harness:** `crates/crci-node/benches/recovery_bench.rs`
-- **Command (recorded run):** `cargo bench -p crci-node --bench recovery_bench --features paper_v2`
-- **Procedure:** with `window_size = 0`, the adversary sends 3 replays. "Rapid": back to back. "Paced":
-  between replays the adversary itself sends 300 valid, fresh messages 10 ms apart, so its reputation
-  recovers before the next strike.
-- **Raw output:** [`evidence/paper-v1-benches-2026-09-25/recovery_paper_v2_run2_0255.txt`](evidence/paper-v1-benches-2026-09-25/recovery_paper_v2_run2_0255.txt)
+- **Command:** `cargo bench -p crci-node --bench recovery_bench`
+- **Procedure:** one receiver, one adversarial transport peer that authors its own messages. The adversary
+  sends a fresh, validly signed message every 10 s and, every *P* seconds, resends its latest message
+  unchanged (an exact duplicate from the same peer inside the window: one strike). Simulated clock, 6 h
+  (21 600 s) per period, one step per simulated second.
+- **Raw data:** [`recovery_paced_sweep.csv`](../crates/crci-node/benches/results/recovery_paced_sweep.csv)
+  (one row per *P*), [`recovery_trajectory.csv`](../crates/crci-node/benches/results/recovery_trajectory.csv)
+  (score every 10 s for *P* = 120, 290, 330 s); console summary in
+  [`evidence/paced-attack-2026-11-02/`](evidence/paced-attack-2026-11-02/). Two runs gave byte-identical CSVs.
 
-| Condition | Adversary banned? |
-|---|---|
-| Rapid (0 recovery packets) | yes |
-| Paced (300 recovery packets between replays) | no |
+| Replay period *P* (s) | Strikes landed in 6 h | First ban (s) | Time banned |
+|---|---|---|---|
+| 1 | 89 | 3 | 99.6 % |
+| 15 | 85 | 45 | 95.2 % |
+| 60 | 74 | 180 | 82.9 % |
+| 120 | 74 | 480 | 75.3 % |
+| 240 | 73 | 1 680 | 26.8 % |
+| 290 | 72 | 10 150 | 2.9 % |
+| 300 | 72 | never | 0 % |
+| 600 | 36 | never | 0 % |
+| 1 200 | 18 | never | 0 % |
 
-An earlier run from a different build (`recovery_paper_v2_run1_0243.txt`) reports both conditions not
-banned. The paced-attack result is a known evasion; strike-damped recovery is planned to address it.
+The measured threshold is the forgiveness period, *T* = penalty / recovery rate = 0.15 / 0.0005 = 300 s:
+an adversary pacing at *P* ≥ 300 s is never banned and lands at most 12 replays per hour; below it the
+adversary is banned, sooner the faster it replays. Strike damping does not move this threshold; it halves
+the time a sub-threshold adversary survives (net change per period 0.001 *P* − 0.3 instead of
+0.0005 *P* − 0.15). An adversary that keeps replaying through bans (*P* = 1 s) lands about 15 replays per
+hour across ban cycles while being banned 99.6 % of the time. Every replay is dropped and costs one
+signature check.
 
-**Current rule:** each "replay" in this harness is a fresh message carrying an older sequence number, not a
-repeat of an earlier message. Under the stale-packet rule that packet is dropped without a strike, so the
-harness no longer exercises a replay and its output is not a measurement of the evasion. It is planned to be
-rewritten with true duplicate replays together with strike-damped recovery.
+**Before this rule** (same commit lineage, previous recovery rules; real-time run, adversary sending valid
+traffic at 4 messages per second; harness and output in
+[`evidence/paced-attack-2026-11-02/`](evidence/paced-attack-2026-11-02/)): an adversary replaying every
+20 s or 30 s was never banned and its score rose to 0.85 after 8 replays; every 10 s its score fell by
+0.03 per replay; every 5 s it was banned after 5 replays. Recovery then grew with the adversary's own
+traffic (+0.005·√Δt per admitted message), so sending more valid messages bought faster forgiveness.
+
+The 2026-09-25 runs (`recovery_paper_v2_*` in
+[`evidence/paper-v1-benches-2026-09-25/`](evidence/paper-v1-benches-2026-09-25/)) measured a different
+harness (fresh messages with an older sequence number, which the current rules drop without a strike) and
+are kept as history only.
 
 ## WAN smoke test
 

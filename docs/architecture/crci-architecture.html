@@ -218,7 +218,7 @@
         <rect x="560" y="790" width="480" height="90" rx="6" fill="rgba(136,19,55,0.5)" stroke="#fb7185" stroke-width="1.5"/>
         <text x="800" y="812" fill="white" font-size="11" font-weight="600" text-anchor="middle">Local reputation — sybil.rs</text>
         <text x="800" y="830" fill="#94a3b8" font-size="8" text-anchor="middle">start 0.5 · strike −0.15 · banned below 0.1 → 3 strikes ban</text>
-        <text x="800" y="844" fill="#94a3b8" font-size="8" text-anchor="middle">small recovery while active · idle decay 0.05/s after 2 s, stops at 0.1 (never bans)</text>
+        <text x="800" y="844" fill="#94a3b8" font-size="8" text-anchor="middle">recovery 0.0005/s (time only, cap 0.5) · 2 strikes in 300 s cap it at 0.18 · no idle decay</text>
         <text x="800" y="858" fill="#94a3b8" font-size="8" text-anchor="middle">per neighbour, per node — no voting, no global state</text>
         <path d="M 560 835 L 550 835 L 550 423 L 557 423" fill="none" stroke="#fb7185" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrowrose)"/>
 
@@ -227,7 +227,7 @@
         <text x="572" y="938" fill="#94a3b8" font-size="7.5">• origin IDs are pinned to the first key seen (key-derived IDs planned)</text>
         <text x="572" y="952" fill="#94a3b8" font-size="7.5">• stale resends drop without a strike but each costs a signature check</text>
         <text x="572" y="966" fill="#94a3b8" font-size="7.5">• the duplicate-ID cache is cleared at 5 000 entries</text>
-        <text x="572" y="980" fill="#94a3b8" font-size="7.5">• paced replays let an adversary recover between strikes (fix planned)</text>
+        <text x="572" y="980" fill="#94a3b8" font-size="7.5">• replays paced at ≥ 300 s are never banned (≤ 12 per hour)</text>
 
         <!-- ── Arrows from outside ────────────────────────────── -->
         <path d="M 100 106 L 100 132 L 50 132 L 50 685 L 58 685" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
