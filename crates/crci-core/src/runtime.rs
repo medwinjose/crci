@@ -420,7 +420,6 @@ impl NodeRuntime {
             };
             inbox.remove(&self.id).unwrap_or_default()
         };
-        let has_messages = !messages.is_empty();
         for (sender_id, raw) in messages {
             let wire: WireMessage = match serde_json::from_slice(&raw) {
                 Ok(w) => w,
@@ -739,8 +738,11 @@ impl NodeRuntime {
             });
         }
 
-        // Periodic broadcast of chain head
-        if has_messages {
+        // Announce the chain head after a pass that delivered at least one message. A pass
+        // that only received announcements does not announce: otherwise two
+        // neighbours would answer each other's announcements forever and exhaust each
+        // other's rate limits.
+        if !delivered.is_empty() {
             let (head_hash, head_seq) = self.chain_head();
             let announcement = Message {
                 id: format!("head-{}-{}", self.id, self.seq_counter + 1),

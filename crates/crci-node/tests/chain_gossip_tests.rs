@@ -226,3 +226,41 @@ fn test_divergence_increments_byzantine_events() {
     assert_eq!(node.byzantine_events, events_before + 1);
     assert_eq!(node.divergence_log[0].divergence_seq, 0);
 }
+
+/// A chain-head announcement does not trigger another one: two flooding neighbours do not
+/// echo announcements back and forth (which used to exhaust their rate limits).
+#[test]
+fn chain_head_announcements_do_not_echo() {
+    let inbox = create_test_inbox();
+    let mut sim = crci_core::mesh::MeshSimulator::new();
+    sim.add_node("a", "z", inbox.clone());
+    sim.add_node("b", "z", inbox.clone());
+    for node in sim.nodes.values_mut() {
+        node.use_router = false;
+    }
+    sim.connect("a", "b");
+    sim.originate(
+        "a",
+        Message::new(
+            "only",
+            "a",
+            Signal::new(3, false, false, true, 3, Visibility::Direct),
+            None,
+        ),
+    );
+    sim.drain(); // ten passes
+
+    // a: its message + b's announcement processed without answering; b: one announcement.
+    assert!(
+        sim.nodes["a"].seq_counter <= 2,
+        "a announced {} times",
+        sim.nodes["a"].seq_counter - 1
+    );
+    assert!(
+        sim.nodes["b"].seq_counter <= 1,
+        "b announced {} times",
+        sim.nodes["b"].seq_counter
+    );
+    assert_eq!(sim.nodes["a"].sybil_rate_limited_events, 0);
+    assert_eq!(sim.nodes["b"].sybil_rate_limited_events, 0);
+}
