@@ -22,7 +22,7 @@ payload (at most 1 MiB).
 - Peer discovery and DHT routing.
 - NAT traversal and relaying.
 - Authenticated and encrypted connections. The custom transport has neither today: the sender identity is
-  the self-declared `origin_node` field of each message (an authenticated handshake is planned).
+  a self-declared `sender` field in each frame (an authenticated handshake is planned).
 
 **Gained:**
 - A transport small enough to read in full (`transport/tcp.rs`, about 440 lines including connection

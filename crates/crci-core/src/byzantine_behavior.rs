@@ -1,15 +1,38 @@
-use crate::integration::{MessageKind, PipelineMessage};
+use crate::identity::Identity;
+use crate::message::{Message, MessageType, Signal, Visibility};
+use crate::runtime::WireMessage;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::time::sleep;
 
-async fn send_msg(target: &str, msg: &PipelineMessage) -> std::io::Result<()> {
+/// Send one TCP frame to `target`, declaring `sender` as the transport sender.
+async fn send_msg(target: &str, sender: &str, msg: &WireMessage) -> std::io::Result<()> {
     let mut stream = TcpStream::connect(target).await?;
-    let payload = serde_json::to_vec(msg)?;
+    let payload = crate::transport::tcp::encode_frame(sender, msg)?;
     stream.write_u32(payload.len() as u32).await?;
     stream.write_all(&payload).await?;
     Ok(())
+}
+
+/// A message from `origin`, signed with `key`.
+fn signed(
+    key: &Identity,
+    id: &str,
+    origin: &str,
+    severity: u8,
+    message_type: MessageType,
+    seq: u64,
+) -> WireMessage {
+    let mut msg = Message::new(
+        id,
+        origin,
+        Signal::new(severity, false, false, true, 3, Visibility::Direct),
+        None,
+    );
+    msg.message_type = message_type;
+    msg.seq = seq;
+    WireMessage::from_message(&msg, key)
 }
 
 pub async fn run_byzantine_behavior(
@@ -23,7 +46,32 @@ pub async fn run_byzantine_behavior(
     let mut injections = 0;
     let mut failures = 0;
 
+    if !matches!(
+        mode,
+        "replay"
+            | "false_allclear"
+            | "sybil"
+            | "flood"
+            | "partition_heal"
+            | "bad_signature"
+            | "unsigned"
+            | "unsigned_mce"
+    ) {
+        return Err(format!("Unknown mode: {}", mode).into());
+    }
+
     println!("[byzantine-agent] Starting in mode: {}", mode);
+
+    let key = Identity::new(my_node_id);
+    // Replay mode resends this exact signed message every time.
+    let replayed = signed(
+        &key,
+        "replayed-msg-1",
+        my_node_id,
+        3,
+        MessageType::Normal,
+        1,
+    );
 
     let end_time = start + Duration::from_secs(duration_secs);
     let mut seq = 0;
@@ -35,132 +83,101 @@ pub async fn run_byzantine_behavior(
             .unwrap_or_default()
             .as_millis();
 
-        match mode {
-            "replay" => {
-                let msg = PipelineMessage {
-                    id: "replayed-msg-1".to_string(),
-                    origin_node: my_node_id.to_string(),
-                    zone: "zone-0".to_string(),
-                    severity: 3,
-                    kind: MessageKind::Normal,
-                    payload_bytes: 50,
-                    reputation: 1.0,
-                    round: 0,
-                    seq: 1, // Same seq every time to trigger replay
-                };
-                match send_msg(target, &msg).await {
-                    Ok(_) => {
-                        println!("[byzantine-agent][replay] injected at {} seq={}", ts, seq);
-                        injections += 1;
-                    }
-                    Err(_) => {
-                        failures += 1;
-                    }
-                }
-                sleep(Duration::from_millis(interval_ms)).await;
-            }
-            "false_allclear" => {
-                let msg = PipelineMessage {
-                    id: format!("false-allclear-{}", seq),
-                    origin_node: my_node_id.to_string(),
-                    zone: "zone-0".to_string(),
-                    severity: 5,
-                    kind: MessageKind::Normal,
-                    payload_bytes: 50,
-                    reputation: 1.0,
-                    round: 0,
-                    seq,
-                };
-                match send_msg(target, &msg).await {
-                    Ok(_) => {
-                        println!(
-                            "[byzantine-agent][false_allclear] injected at {} seq={}",
-                            ts, seq
-                        );
-                        injections += 1;
-                    }
-                    Err(_) => {
-                        failures += 1;
-                    }
-                }
-                sleep(Duration::from_millis(interval_ms)).await;
-            }
-            "sybil" => {
-                let mut sybil_injections = 0;
-                for i in 0..10 {
-                    let msg = PipelineMessage {
-                        id: format!("sybil-{}-{}", seq, i),
-                        origin_node: format!("sybil-node-{}-{}", seq, i),
-                        zone: "zone-0".to_string(),
-                        severity: 5,
-                        kind: MessageKind::Panic,
-                        payload_bytes: 50,
-                        reputation: 1.0,
-                        round: 0,
+        // Messages for this round, all delivered with `my_node_id` as the transport sender.
+        let batch: Vec<WireMessage> = match mode {
+            "replay" => vec![replayed.clone()],
+            "false_allclear" => vec![signed(
+                &key,
+                &format!("false-allclear-{}", seq),
+                my_node_id,
+                5,
+                MessageType::Normal,
+                seq,
+            )],
+            "sybil" => (0..10)
+                .map(|i| {
+                    let origin = format!("sybil-node-{}-{}", seq, i);
+                    signed(
+                        &Identity::new(&origin),
+                        &format!("sybil-{}-{}", seq, i),
+                        &origin,
+                        5,
+                        MessageType::Panic,
                         seq,
-                    };
-                    if send_msg(target, &msg).await.is_ok() {
-                        sybil_injections += 1;
-                    } else {
-                        failures += 1;
-                    }
-                }
-                println!(
-                    "[byzantine-agent][sybil] injected {} messages at {} seq={}",
-                    sybil_injections, ts, seq
-                );
-                injections += sybil_injections;
-                sleep(Duration::from_millis(interval_ms)).await;
-            }
-            "flood" => {
-                let msg = PipelineMessage {
-                    id: format!("flood-{}", seq),
-                    origin_node: my_node_id.to_string(),
-                    zone: "zone-0".to_string(),
-                    severity: 3,
-                    kind: MessageKind::Normal,
-                    payload_bytes: 50,
-                    reputation: 1.0,
-                    round: 0,
+                    )
+                })
+                .collect(),
+            "flood" => vec![signed(
+                &key,
+                &format!("flood-{}", seq),
+                my_node_id,
+                3,
+                MessageType::Normal,
+                seq,
+            )],
+            "partition_heal" => (0..5)
+                .map(|i| {
+                    signed(
+                        &key,
+                        &format!("part-heal-{}-{}", seq, i),
+                        my_node_id,
+                        3,
+                        MessageType::Normal,
+                        seq * 10 + i,
+                    )
+                })
+                .collect(),
+            "bad_signature" => {
+                let mut wire = signed(
+                    &key,
+                    &format!("bad-sig-{}", seq),
+                    my_node_id,
+                    3,
+                    MessageType::Normal,
                     seq,
-                };
-                if send_msg(target, &msg).await.is_ok() {
-                    injections += 1;
-                } else {
-                    failures += 1;
-                }
-                // No sleep for flood
-            }
-            "partition_heal" => {
-                let mut part_injections = 0;
-                for i in 0..5 {
-                    let msg = PipelineMessage {
-                        id: format!("part-heal-{}-{}", seq, i),
-                        origin_node: my_node_id.to_string(),
-                        zone: "zone-0".to_string(),
-                        severity: 3,
-                        kind: MessageKind::Normal,
-                        payload_bytes: 50,
-                        reputation: 1.0,
-                        round: 0,
-                        seq: seq * 10 + i,
-                    };
-                    if send_msg(target, &msg).await.is_ok() {
-                        part_injections += 1;
-                    } else {
-                        failures += 1;
-                    }
-                }
-                println!(
-                    "[byzantine-agent][partition_heal] injected {} messages at {} seq={}",
-                    part_injections, ts, seq
                 );
-                injections += part_injections;
-                sleep(Duration::from_millis(interval_ms)).await;
+                if let Some(b) = wire.signature_bytes.first_mut() {
+                    *b ^= 0xFF;
+                }
+                vec![wire]
             }
-            _ => {
-                return Err(format!("Unknown mode: {}", mode).into());
+            "unsigned" | "unsigned_mce" => {
+                let message_type = if mode == "unsigned_mce" {
+                    MessageType::MassCasualtyEvent
+                } else {
+                    MessageType::Normal
+                };
+                let mut wire = signed(
+                    &key,
+                    &format!("{}-{}", mode, seq),
+                    my_node_id,
+                    5,
+                    message_type,
+                    seq,
+                );
+                wire.signature_bytes.clear();
+                vec![wire]
             }
+            _ => Vec::new(),
+        };
+
+        let mut sent = 0;
+        for msg in &batch {
+            if send_msg(target, my_node_id, msg).await.is_ok() {
+                sent += 1;
+            } else {
+                failures += 1;
+            }
+        }
+        injections += sent;
+
+        // Flood mode sends without pausing or logging each message.
+        if mode != "flood" {
+            println!(
+                "[byzantine-agent][{}] injected {} message(s) at {} seq={}",
+                mode, sent, ts, seq
+            );
+            sleep(Duration::from_millis(interval_ms)).await;
         }
     }
 

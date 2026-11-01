@@ -59,10 +59,10 @@ async fn main() {
             .clone()
             .unwrap_or_else(|| "cli-sender".to_string());
 
-        let (kind, severity_val) = match args.severity.to_lowercase().as_str() {
-            "normal" => (crci_core::integration::MessageKind::Normal, 3),
-            "rescue" => (crci_core::integration::MessageKind::Rescue, 5),
-            "panic" => (crci_core::integration::MessageKind::Panic, 5),
+        let (message_type, severity_val) = match args.severity.to_lowercase().as_str() {
+            "normal" => (message::MessageType::Normal, 3),
+            "rescue" => (message::MessageType::RescueRequest, 5),
+            "panic" => (message::MessageType::Panic, 5),
             _ => {
                 eprintln!(
                     "Invalid severity: {}. Must be normal, rescue, or panic.",
@@ -96,45 +96,26 @@ async fn main() {
         let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
         let mut node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
 
-        let mut target_peers = Vec::new();
-        if let Some(dial) = args.dial.clone() {
-            target_peers.push(dial);
-        }
-        if let Some(peers_str) = args.peers.clone() {
-            for p in peers_str.split(',') {
-                let p = p.trim();
-                if !p.is_empty() {
-                    target_peers.push(p.to_string());
-                }
-            }
-        }
+        // Originate a message signed with this node's key.
+        let mut msg = Message::new(
+            &uuid::Uuid::new_v4().to_string(),
+            &node_id,
+            Signal::new(
+                severity_val,
+                severity_val >= 5,
+                false,
+                true,
+                3,
+                Visibility::Direct,
+            ),
+            Some(&send_text),
+        );
+        msg.message_type = message_type;
+        node.seq_counter += 1;
+        msg.seq = node.seq_counter;
+        let wire = crci_core::runtime::WireMessage::from_message(&msg, &node.identity);
 
-        for peer in target_peers {
-            match tokio::net::TcpStream::connect(&peer).await {
-                Ok(_) => {
-                    node.add_peer(&peer);
-                    println!("Successfully dialed peer: {}", peer);
-                }
-                Err(e) => {
-                    println!("Warning: Failed to connect to peer {}: {}", peer, e);
-                }
-            }
-        }
-
-        let msg = crci_core::integration::PipelineMessage {
-            id: uuid::Uuid::new_v4().to_string(),
-            origin_node: node_id.clone(),
-            zone: "zone-host".to_string(),
-            severity: severity_val,
-            kind,
-            payload_bytes: send_text.len(),
-            reputation: 1.0,
-            round: 1,
-            seq: 1,
-        };
-
-        use crci_core::transport::Transport;
-        match tcp.send(&to_addr, &msg).await {
+        match tcp.send(&to_addr, &wire).await {
             Ok(_) => {
                 println!("SUCCESS: Message originated and sent to {}", to_addr);
             }
@@ -144,22 +125,7 @@ async fn main() {
         }
 
         if args.listen.is_some() {
-            println!("Node {} listening on {}", node_id, tcp.listen_addr);
-            let tcp_arc = Arc::new(tcp);
-            let node_arc = Arc::new(Mutex::new(node));
-            tokio::spawn(async move {
-                while let Ok((sender_id, msg)) = tcp_arc.receive().await {
-                    println!(
-                        "Node {} received message from {}: kind={:?}, payload_bytes={}",
-                        node_id, sender_id, msg.kind, msg.payload_bytes
-                    );
-                    if let Ok(mut n) = node_arc.lock() {
-                        n.add_peer(&sender_id);
-                    }
-                }
-            });
-            tokio::signal::ctrl_c().await.unwrap_or(());
-            println!("Shutting down.");
+            run_node(node_id, node, Some(Arc::new(tcp)), dial_targets(&args)).await;
         }
         return;
     }
@@ -172,39 +138,7 @@ async fn main() {
         let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
         let node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
 
-        let node_arc = Arc::new(Mutex::new(node));
-        let pipeline = Arc::new(Mutex::new(crci_core::integration::GossipPipeline::new()));
-        if let Ok(mut p) = pipeline.lock() {
-            p.register_bootstrap("zone-host", &node_id);
-        }
-
-        let (ws_tx, _) = tokio::sync::broadcast::channel(100);
-        let (divergence_tx, _) = tokio::sync::broadcast::channel(100);
-
-        let api_state = Arc::new(crci_core::api::ApiState {
-            node_count: Arc::new(std::sync::RwLock::new(0)),
-            peer_list: Arc::new(std::sync::RwLock::new(Vec::new())),
-            recent_messages: Arc::new(std::sync::RwLock::new(std::collections::VecDeque::new())),
-            ws_tx: ws_tx.clone(),
-            node_id: node_id.clone(),
-            start_time: std::time::Instant::now(),
-            byzantine_events: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            divergence_alerts: Arc::new(std::sync::RwLock::new(Vec::new())),
-            divergence_tx: divergence_tx.clone(),
-            rate_limit_counts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-            merkle_head: Arc::new(std::sync::RwLock::new(([0; 32], 0))),
-        });
-
-        // Spawn Axum REST/WebSocket API Server on 8080
-        let api_state_clone = api_state.clone();
-        tokio::spawn(async move {
-            if let Ok(listener) = tokio::net::TcpListener::bind("0.0.0.0:8080").await {
-                println!("Axum API server listening on 0.0.0.0:8080");
-                let _ = axum::serve(listener, crci_core::api::build_router(api_state_clone)).await;
-            }
-        });
-
-        let tcp_arc = if let Some(ref listen) = args.listen {
+        let tcp = if let Some(ref listen) = args.listen {
             let addr = match listen.parse::<std::net::SocketAddr>() {
                 Ok(a) => a,
                 Err(e) => {
@@ -212,245 +146,18 @@ async fn main() {
                     std::process::exit(1);
                 }
             };
-            let tcp = match crci_core::transport::TcpTransport::bind(node_id.clone(), addr).await {
-                Ok(t) => t,
+            match crci_core::transport::TcpTransport::bind(node_id.clone(), addr).await {
+                Ok(t) => Some(Arc::new(t)),
                 Err(e) => {
                     eprintln!("Failed to bind TcpTransport on {addr}: {e}");
                     std::process::exit(1);
                 }
-            };
-            let tcp_arc = Arc::new(tcp);
-
-            let node_arc_clone = node_arc.clone();
-            let tcp_arc_clone = tcp_arc.clone();
-            let node_id_clone = node_id.clone();
-            let api_state_clone = api_state.clone();
-            let pipeline_clone = pipeline.clone();
-
-            tokio::spawn(async move {
-                while let Ok((sender_id, msg)) = tcp_arc_clone.receive().await {
-                    println!(
-                        "Node {} received message from {}: kind={:?}, payload_bytes={}",
-                        node_id_clone, sender_id, msg.kind, msg.payload_bytes
-                    );
-
-                    // Register sender in zone registry to bypass zone claim rejection for normal gossip
-                    if let Ok(mut p) = pipeline_clone.lock() {
-                        p.register_bootstrap(&msg.zone, &sender_id);
-                    }
-
-                    // Process message via GossipPipeline
-                    let verdict = {
-                        let mut pipeline_guard =
-                            pipeline_clone.lock().unwrap_or_else(|e| e.into_inner());
-                        pipeline_guard.process(&msg)
-                    };
-                    println!(
-                        "Node {} pipeline verdict for message from {}: {:?}",
-                        node_id_clone, sender_id, verdict
-                    );
-
-                    // Add peer to PeerTable
-                    if let Ok(mut na) = node_arc_clone.lock() {
-                        na.add_peer(&sender_id);
-                        if let Ok(mut peer_list) = api_state_clone.peer_list.write() {
-                            if !peer_list.contains(&sender_id) {
-                                peer_list.push(sender_id.clone());
-                            }
-                        }
-                        if let Ok(mut node_count) = api_state_clone.node_count.write() {
-                            *node_count = api_state_clone
-                                .peer_list
-                                .read()
-                                .map(|l| l.len())
-                                .unwrap_or(0);
-                        }
-                    }
-
-                    // Update Merkle head hash
-                    if let Ok(mut head) = api_state_clone.merkle_head.write() {
-                        let mut h = [0u8; 32];
-                        let bytes = msg.id.as_bytes();
-                        let len = bytes.len().min(32);
-                        h[..len].copy_from_slice(&bytes[..len]);
-                        *head = (h, msg.seq);
-                    }
-
-                    // Broadcast message over REST/WebSocket
-                    let api_msg = crci_core::api::ApiMessage {
-                        from: sender_id.clone(),
-                        severity: msg.severity,
-                        content: format!(
-                            "Gossip: kind={:?}, seq={}, verdict={:?}",
-                            msg.kind, msg.seq, verdict
-                        ),
-                        timestamp_ms: std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_millis() as u64,
-                    };
-
-                    if let Ok(mut recent) = api_state_clone.recent_messages.write() {
-                        recent.push_back(api_msg.clone());
-                        if recent.len() > 50 {
-                            recent.pop_front();
-                        }
-                    }
-
-                    if let Ok(json) = serde_json::to_string(&api_msg) {
-                        let _ = api_state_clone.ws_tx.send(json);
-                    }
-                }
-            });
-            Some(tcp_arc)
+            }
         } else {
             None
         };
 
-        // Spawn consensus thread for Byzantine detection
-        let cons_pipeline = pipeline.clone();
-        let cons_node_id = node_id.clone();
-        let api_state_clone = api_state.clone();
-        tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                let mut penalties = Vec::new();
-                {
-                    let p = cons_pipeline.lock().unwrap_or_else(|e| e.into_inner());
-                    let severities_map = &p.peer_severities;
-                    let zone = "zone-host";
-                    let total_zone_nodes = p.zone_registry.member_count(zone);
-
-                    // BFT-002 / BFT-010: Filter severities to only verified/vouched zone members
-                    let verified_severities: HashMap<String, u8> = severities_map
-                        .iter()
-                        .filter(|(id, _)| p.zone_registry.is_verified(id, zone))
-                        .map(|(id, &sev)| (id.clone(), sev))
-                        .collect();
-
-                    let n = verified_severities.len();
-                    // BFT-006: Prevent unauthenticated state convergence under zero active peer configuration
-                    if n > 0 {
-                        // BFT-007: Mitigate split-brain by requiring active voters > N_total / 2
-                        if n <= total_zone_nodes / 2 {
-                            println!(
-                                "[{}] ⚠ Split-Brain Guard (BFT-007): verified count {} <= half of total zone nodes {}. Consensus skipped.",
-                                cons_node_id, n, total_zone_nodes
-                            );
-                        } else {
-                            let mut severities: Vec<u8> =
-                                verified_severities.values().cloned().collect();
-                            // Anchor median calculation to honest baseline severity (3)
-                            severities.push(3);
-
-                            if severities.len() >= 2 {
-                                severities.sort();
-                                let median = severities[severities.len() / 2] as f64;
-                                let mut faulty_count = 0;
-                                let mut round_penalties = Vec::new();
-
-                                for (id, &sev) in verified_severities.iter() {
-                                    let dev = (sev as f64 - median).abs();
-                                    if dev >= 2.0 {
-                                        faulty_count += 1;
-                                        round_penalties.push((id.clone(), dev));
-                                    }
-                                }
-
-                                // BFT-001 / BFT-005: Enforce strict f < n/3 inequality using safe integer arithmetic
-                                if 3 * faulty_count >= n {
-                                    println!(
-                                        "[{}] ⚠ Byzantine Quorum Failure (BFT-001): 3f >= n (f: {}, n: {}), consensus aborted.",
-                                        cons_node_id, faulty_count, n
-                                    );
-                                } else {
-                                    penalties.extend(round_penalties);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                for (bad_id, dev) in penalties {
-                    println!(
-                        "[{}] Penalty applied to {}: average severity deviation > 2 (dev: {})",
-                        cons_node_id, bad_id, dev
-                    );
-
-                    api_state_clone
-                        .byzantine_events
-                        .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-
-                    let alert = crci_core::merkle::DivergenceAlert {
-                        peer_id: bad_id.clone(),
-                        expected_head_hash:
-                            "0000000000000000000000000000000000000000000000000000000000000000"
-                                .to_string(),
-                        actual_head_hash:
-                            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-                                .to_string(),
-                        divergence_seq: 1,
-                        detected_at_ms: std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_millis() as u64,
-                    };
-
-                    if let Ok(mut alerts) = api_state_clone.divergence_alerts.write() {
-                        alerts.push(alert.clone());
-                    }
-                    let _ = api_state_clone.divergence_tx.send(alert);
-
-                    if let Ok(mut p) = cons_pipeline.lock() {
-                        p.peer_severities.remove(&bad_id);
-                    }
-                }
-            }
-        });
-
-        let mut target_peers = Vec::new();
-        if let Some(dial) = args.dial.clone() {
-            target_peers.push(dial);
-        }
-        if let Some(peers_str) = args.peers.clone() {
-            for p in peers_str.split(',') {
-                let p = p.trim();
-                if !p.is_empty() {
-                    target_peers.push(p.to_string());
-                }
-            }
-        }
-
-        for peer in target_peers {
-            match tokio::net::TcpStream::connect(&peer).await {
-                Ok(_) => {
-                    if let Ok(mut n) = node_arc.lock() {
-                        n.add_peer(&peer);
-                    }
-                    if let Ok(mut peer_list) = api_state.peer_list.write() {
-                        if !peer_list.contains(&peer) {
-                            peer_list.push(peer.clone());
-                        }
-                    }
-                    if let Ok(mut node_count) = api_state.node_count.write() {
-                        *node_count = api_state.peer_list.read().map(|l| l.len()).unwrap_or(0);
-                    }
-                    if let Ok(mut p) = pipeline.lock() {
-                        p.register_bootstrap("zone-host", &peer);
-                    }
-                    println!("Successfully dialed peer: {}", peer);
-                }
-                Err(e) => {
-                    println!("Warning: Failed to connect to peer {}: {}", peer, e);
-                }
-            }
-        }
-
-        if let Some(tcp) = tcp_arc {
-            println!("Node {} listening on {}", node_id, tcp.listen_addr);
-            tokio::signal::ctrl_c().await.unwrap_or(());
-            println!("Shutting down.");
-        }
+        run_node(node_id, node, tcp, dial_targets(&args)).await;
         return;
     }
     let (ws_tx, _) = tokio::sync::broadcast::channel(100);
@@ -1532,4 +1239,326 @@ async fn main() {
     });
 
     let _ = tokio::join!(sim_task, api_task);
+}
+
+/// Peer addresses from `--dial` and `--peers`.
+fn dial_targets(args: &Cli) -> Vec<String> {
+    let mut targets = Vec::new();
+    if let Some(dial) = args.dial.clone() {
+        targets.push(dial);
+    }
+    if let Some(peers_str) = args.peers.clone() {
+        for p in peers_str.split(',') {
+            let p = p.trim();
+            if !p.is_empty() {
+                targets.push(p.to_string());
+            }
+        }
+    }
+    targets
+}
+
+/// Field rules from the gossip pipeline, applied before a message reaches `NodeRuntime`
+/// so that malformed messages are neither delivered nor relayed.
+fn check_fields(wire: &runtime::WireMessage) -> Result<(), String> {
+    validation::validate_node_id(&wire.origin).map_err(|e| format!("invalid origin: {e}"))?;
+    validation::validate_severity_u8(wire.severity).map_err(|e| e.to_string())?;
+    validation::validate_seq(wire.seq).map_err(|e| e.to_string())?;
+    let note = wire.note.as_deref().unwrap_or("");
+    validation::validate_payload_size(note.as_bytes()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// The application-layer view of a delivered message, for AEDA and the severity check.
+/// `reputation` is the reputation of the neighbour that delivered it.
+fn to_pipeline_message(
+    wire: &runtime::WireMessage,
+    reputation: f32,
+) -> integration::PipelineMessage {
+    let kind = match wire.message_type.as_str() {
+        "rescue" | "mce" => integration::MessageKind::Rescue,
+        "panic" => integration::MessageKind::Panic,
+        _ => integration::MessageKind::Normal,
+    };
+    integration::PipelineMessage {
+        id: wire.id.clone(),
+        origin_node: wire.origin.clone(),
+        zone: "zone-host".to_string(),
+        severity: wire.severity,
+        kind,
+        payload_bytes: wire.note.as_ref().map(|n| n.len()).unwrap_or(0),
+        reputation,
+        round: 0,
+        seq: wire.seq,
+    }
+}
+
+/// Remove and return everything `NodeRuntime` queued for other nodes (gossip relays and
+/// chain-head announcements), keyed by destination.
+fn take_outbound(node: &runtime::NodeRuntime) -> Vec<(String, Vec<u8>)> {
+    let mut inbox = node.inbox.lock().unwrap_or_else(|e| e.into_inner());
+    let destinations: Vec<String> = inbox.keys().filter(|k| **k != node.id).cloned().collect();
+    let mut out = Vec::new();
+    for dest in destinations {
+        for (_, bytes) in inbox.remove(&dest).unwrap_or_default() {
+            out.push((dest.clone(), bytes));
+        }
+    }
+    out
+}
+
+/// Run a node: dial peers, then (with a listener) feed every received TCP message through
+/// `NodeRuntime` (signatures, replay window, strikes, bans), hand delivered messages to the
+/// gossip pipeline, and relay `NodeRuntime`'s outgoing messages over TCP.
+async fn run_node(
+    node_id: String,
+    mut node: runtime::NodeRuntime,
+    tcp: Option<Arc<transport::TcpTransport>>,
+    dial: Vec<String>,
+) {
+    // Forward to every dialed peer: the router's next hops are node IDs, not TCP addresses.
+    node.use_router = false;
+    let mut pipeline = integration::GossipPipeline::new();
+    pipeline.register_bootstrap("zone-host", &node_id);
+
+    let (ws_tx, _) = tokio::sync::broadcast::channel(100);
+    let (divergence_tx, _) = tokio::sync::broadcast::channel(100);
+    let api_state = Arc::new(api::ApiState {
+        node_count: Arc::new(std::sync::RwLock::new(0)),
+        peer_list: Arc::new(std::sync::RwLock::new(Vec::new())),
+        recent_messages: Arc::new(std::sync::RwLock::new(std::collections::VecDeque::new())),
+        ws_tx: ws_tx.clone(),
+        node_id: node_id.clone(),
+        start_time: std::time::Instant::now(),
+        byzantine_events: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        divergence_alerts: Arc::new(std::sync::RwLock::new(Vec::new())),
+        divergence_tx: divergence_tx.clone(),
+        rate_limit_counts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        merkle_head: Arc::new(std::sync::RwLock::new(([0; 32], 0))),
+    });
+
+    for peer in dial {
+        match tokio::net::TcpStream::connect(&peer).await {
+            Ok(_) => {
+                node.add_peer(&peer);
+                pipeline.register_bootstrap("zone-host", &peer);
+                add_api_peer(&api_state, &peer);
+                println!("Successfully dialed peer: {}", peer);
+            }
+            Err(e) => {
+                println!("Warning: Failed to connect to peer {}: {}", peer, e);
+            }
+        }
+    }
+
+    let Some(tcp) = tcp else {
+        return;
+    };
+
+    // Axum REST/WebSocket API on 8080
+    let api_state_clone = api_state.clone();
+    tokio::spawn(async move {
+        if let Ok(listener) = tokio::net::TcpListener::bind("0.0.0.0:8080").await {
+            println!("Axum API server listening on 0.0.0.0:8080");
+            let _ = axum::serve(listener, api::build_router(api_state_clone)).await;
+        }
+    });
+
+    let node_arc = Arc::new(Mutex::new(node));
+    let pipeline = Arc::new(Mutex::new(pipeline));
+
+    let recv_tcp = tcp.clone();
+    let recv_node = node_arc.clone();
+    let recv_pipeline = pipeline.clone();
+    let recv_api = api_state.clone();
+    let recv_id = node_id.clone();
+    tokio::spawn(async move {
+        while let Ok((sender_id, wire)) = recv_tcp.receive().await {
+            println!(
+                "Node {} received message from {}: id={}, type={}, origin={}",
+                recv_id, sender_id, wire.id, wire.message_type, wire.origin
+            );
+            if let Err(reason) = check_fields(&wire) {
+                println!(
+                    "Node {} rejected '{}' from {}: {}",
+                    recv_id, wire.id, sender_id, reason
+                );
+                continue;
+            }
+            let bytes = match serde_json::to_vec(&wire) {
+                Ok(b) => b,
+                Err(_) => continue,
+            };
+
+            // All isolation checks run inside NodeRuntime, as on the in-process path.
+            let (delivered, outbound, head, sender_rep, new_events) = {
+                let mut n = recv_node.lock().unwrap_or_else(|e| e.into_inner());
+                {
+                    let mut inbox = n.inbox.lock().unwrap_or_else(|e| e.into_inner());
+                    inbox
+                        .entry(n.id.clone())
+                        .or_default()
+                        .push((sender_id.clone(), bytes));
+                }
+                let events_before = n.byzantine_events;
+                let delivered = n.process_inbox_delivered();
+                let outbound = take_outbound(&n);
+                let sender_rep = n.sybil_guard.reputation(&sender_id);
+                (
+                    delivered,
+                    outbound,
+                    n.chain_head(),
+                    sender_rep,
+                    n.byzantine_events - events_before,
+                )
+            };
+            recv_api
+                .byzantine_events
+                .fetch_add(new_events, std::sync::atomic::Ordering::SeqCst);
+            if let Ok(mut h) = recv_api.merkle_head.write() {
+                *h = head;
+            }
+
+            for msg in &delivered {
+                println!(
+                    "Node {} accepted '{}' (origin {}, via {})",
+                    recv_id, msg.id, msg.origin, sender_id
+                );
+                let verdict = {
+                    let mut p = recv_pipeline.lock().unwrap_or_else(|e| e.into_inner());
+                    p.register_bootstrap("zone-host", &msg.origin);
+                    p.process(&to_pipeline_message(msg, sender_rep))
+                };
+                println!(
+                    "Node {} pipeline verdict for '{}': {:?}",
+                    recv_id, msg.id, verdict
+                );
+
+                add_api_peer(&recv_api, &sender_id);
+                let api_msg = api::ApiMessage {
+                    from: msg.origin.clone(),
+                    severity: msg.severity,
+                    content: format!(
+                        "type={}, seq={}, via={}, verdict={:?}",
+                        msg.message_type, msg.seq, sender_id, verdict
+                    ),
+                    timestamp_ms: std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_millis() as u64,
+                };
+                if let Ok(mut recent) = recv_api.recent_messages.write() {
+                    recent.push_back(api_msg.clone());
+                    if recent.len() > 50 {
+                        recent.pop_front();
+                    }
+                }
+                if let Ok(json) = serde_json::to_string(&api_msg) {
+                    let _ = recv_api.ws_tx.send(json);
+                }
+            }
+
+            // Relay what NodeRuntime queued. Destinations are peer addresses from --dial /
+            // --peers; a destination that is a node ID (from the router) has no address yet.
+            for (dest, bytes) in outbound {
+                let Ok(out) = serde_json::from_slice::<runtime::WireMessage>(&bytes) else {
+                    continue;
+                };
+                if let Err(e) = recv_tcp.send(&dest, &out).await {
+                    log::warn!("relay of '{}' to {} failed: {}", out.id, dest, e);
+                }
+            }
+        }
+    });
+
+    // Every 5 s: advance the pipeline round (per-round rate limit, TTL) and run the
+    // severity-median check. The check only counts outliers: a validly signed report is
+    // never grounds for a strike, so reputation is not changed.
+    let cons_pipeline = pipeline.clone();
+    let cons_node_id = node_id.clone();
+    let cons_api = api_state.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            let mut flagged = Vec::new();
+            {
+                let mut p = cons_pipeline.lock().unwrap_or_else(|e| e.into_inner());
+                p.next_round();
+                let zone = "zone-host";
+                let total_zone_nodes = p.zone_registry.member_count(zone);
+
+                // BFT-002 / BFT-010: Filter severities to only verified/vouched zone members
+                let verified_severities: HashMap<String, u8> = p
+                    .peer_severities
+                    .iter()
+                    .filter(|(id, _)| p.zone_registry.is_verified(id, zone))
+                    .map(|(id, &sev)| (id.clone(), sev))
+                    .collect();
+
+                let n = verified_severities.len();
+                // BFT-006: Prevent unauthenticated state convergence under zero active peer configuration
+                if n > 0 {
+                    // BFT-007: Mitigate split-brain by requiring active voters > N_total / 2
+                    if n <= total_zone_nodes / 2 {
+                        println!(
+                            "[{}] Split-brain guard (BFT-007): verified count {} <= half of total zone nodes {}. Check skipped.",
+                            cons_node_id, n, total_zone_nodes
+                        );
+                    } else {
+                        let mut severities: Vec<u8> =
+                            verified_severities.values().cloned().collect();
+                        // Anchor median calculation to honest baseline severity (3)
+                        severities.push(3);
+                        severities.sort();
+                        let median = severities[severities.len() / 2] as f64;
+                        let outliers: Vec<(String, f64)> = verified_severities
+                            .iter()
+                            .map(|(id, &sev)| (id.clone(), (sev as f64 - median).abs()))
+                            .filter(|(_, dev)| *dev >= 2.0)
+                            .collect();
+
+                        // BFT-001 / BFT-005: Enforce strict f < n/3 inequality using safe integer arithmetic
+                        if 3 * outliers.len() >= n {
+                            println!(
+                                "[{}] Quorum guard (BFT-001): 3f >= n (f: {}, n: {}), check skipped.",
+                                cons_node_id,
+                                outliers.len(),
+                                n
+                            );
+                        } else {
+                            flagged = outliers;
+                        }
+                    }
+                }
+                for (id, _) in &flagged {
+                    p.peer_severities.remove(id);
+                }
+            }
+
+            for (id, dev) in flagged {
+                println!(
+                    "[{}] Severity outlier flagged: {} (deviation {} from the median); counted only, reputation unchanged",
+                    cons_node_id, id, dev
+                );
+                cons_api
+                    .byzantine_events
+                    .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            }
+        }
+    });
+
+    println!("Node {} listening on {}", node_id, tcp.listen_addr);
+    tokio::signal::ctrl_c().await.unwrap_or(());
+    println!("Shutting down.");
+}
+
+fn add_api_peer(api_state: &api::ApiState, peer: &str) {
+    if let Ok(mut peer_list) = api_state.peer_list.write() {
+        if !peer_list.iter().any(|p| p == peer) {
+            peer_list.push(peer.to_string());
+        }
+    }
+    if let Ok(mut node_count) = api_state.node_count.write() {
+        *node_count = api_state.peer_list.read().map(|l| l.len()).unwrap_or(0);
+    }
 }

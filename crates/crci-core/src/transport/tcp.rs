@@ -7,6 +7,26 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+/// One TCP frame: the node that sent it and the origin-signed message it carries.
+///
+/// `sender` is the relaying neighbour, kept separate from `message.origin` (the author) so
+/// that a strike for a replayed or invalid message falls on whoever delivered it, never on
+/// the author whose message was replayed. It is self-declared: nothing on the connection
+/// proves it.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct TcpFrame {
+    pub sender: NodeId,
+    pub message: NetworkMessage,
+}
+
+/// Serialise a frame body (without the 4-byte length prefix).
+pub fn encode_frame(sender: &str, message: &NetworkMessage) -> serde_json::Result<Vec<u8>> {
+    serde_json::to_vec(&TcpFrame {
+        sender: sender.to_string(),
+        message: message.clone(),
+    })
+}
+
 pub struct TcpTransport {
     pub listen_addr: SocketAddr,
     pub rx: tokio::sync::Mutex<mpsc::Receiver<(NodeId, NetworkMessage)>>,
@@ -222,13 +242,12 @@ async fn handle_connection(
             return;
         }
 
-        if let Ok(msg) = serde_json::from_slice::<NetworkMessage>(&buf) {
-            if msg.origin_node == local_node_id {
+        if let Ok(frame) = serde_json::from_slice::<TcpFrame>(&buf) {
+            if frame.sender == local_node_id {
                 continue;
             }
 
-            let sender_id = msg.origin_node.clone();
-            if tx.send((sender_id, msg)).await.is_err() {
+            if tx.send((frame.sender, frame.message)).await.is_err() {
                 break;
             }
         } else {
@@ -343,7 +362,7 @@ impl Transport for TcpTransport {
             )));
         }
 
-        let payload = serde_json::to_vec(message)
+        let payload = encode_frame(&self.node_id, message)
             .map_err(|e| TransportError::Serialisation(e.to_string()))?;
 
         let mut stream = stream;

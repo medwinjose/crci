@@ -21,9 +21,10 @@ The full list, with the code location of each defence and gap, is in
 [docs/threat-model.md](docs/threat-model.md). The most important ones:
 
 - TCP connections are neither authenticated nor encrypted, and the sender identity is self-declared.
-- The networked `crci-node` binary does not yet apply signature checks, replay protection or reputation
-  bans; these run only in `NodeRuntime` (simulator, tests, benchmarks).
-- Messages of type `mce` are accepted without a signature on the signed path.
+- Strikes and bans on a TCP node attach to the sender ID each frame declares, which nothing verifies: a
+  peer can escape a ban by changing ID, or get another node struck by claiming its ID.
+- The signature covers only a message's ID, origin, severity and sequence number; a relay can change the
+  other fields.
 - Sybil resistance is minimal: new key pairs are free.
 - Keys are held in process memory; there is no hardware-backed key storage.
 - BLE and LoRa transports are stubs.

@@ -20,16 +20,17 @@ Diagram: [`architecture/crci-architecture.html`](architecture/crci-architecture.
 | `Dockerfile`, `docker-compose.yml` | Container build and a 3-container demo mesh plus dashboard. |
 | `.github/workflows/` | CI (`ci.yml`) and tag-triggered release builds (`release.yml`). |
 
-## Two message paths
+## Message path
 
-The most important fact about the current code: the reputation and isolation mechanism and the TCP
-network path are **separate code paths**.
+Every message is a `WireMessage` (JSON) carrying the origin's Ed25519 public key, a signature and a
+sequence number, and every node runs the same checks in `NodeRuntime` (`crates/crci-core/src/runtime.rs`),
+whether messages arrive in-process (simulator, tests, benchmarks, Android FFI) or over TCP
+(`crci-node --listen`).
 
-### 1. Signed path: `NodeRuntime` (simulator, tests, benchmarks)
+### Checks in `NodeRuntime::process_inbox`
 
-`crates/crci-core/src/runtime.rs`. Messages are `WireMessage` values (JSON) carrying the origin's Ed25519
-public key, a signature and a sequence number. `NodeRuntime::process_inbox()` reads
-`(sender_id, bytes)` pairs from a shared in-memory inbox (`transport::SharedInbox`) and applies, in order:
+`process_inbox()` reads `(sender_id, bytes)` pairs from a shared inbox (`transport::SharedInbox`) and
+applies, in order:
 
 1. **Admission** (`sybil.rs`, `SybilGuard::check`): reject banned senders; token bucket of 20 messages,
    refilled at 5 per second.
@@ -38,6 +39,7 @@ public key, a signature and a sequence number. `NodeRuntime::process_inbox()` re
    5 per second), and every invalid signature is a strike, so a sender of bad signatures is banned after
    three checks. The claimed origin is not used for budgeting, because it is not authenticated.
 3. **Ed25519 signature check**: an invalid signature costs the *sender* (relaying neighbour) one strike.
+   Every message type is checked, mass-casualty events (`mce`) included.
 4. **Duplicate check**: the same message ID received again from the same sender is a strike; from a
    different sender it is ignored as normal gossip redundancy. The ID cache is cleared when it reaches
    5 000 entries.
@@ -53,39 +55,47 @@ A strike is −0.15 reputation (start 0.5, ban below 0.1, so three strikes ban).
 small recovery while a peer is active, and decay of 0.05/s once a peer has been silent for more than 2 s.
 Idle decay stops at the ban threshold and never bans; only a strike can.
 
-Messages of type `mce` (mass-casualty event) skip steps 2, 3 and 5: they are accepted without a signature.
+The signature covers `id`, `origin`, `severity` and `seq` only; the other `WireMessage` fields (note,
+message type, confidence, flags) are not signed yet, so a relay can change them (planned).
 
-### 2. Network path: `TcpTransport` + `GossipPipeline` (the `crci-node` binary)
+### Over TCP: the `crci-node` binary
 
-`crates/crci-core/src/transport/tcp.rs` and `integration.rs`. Over TCP, nodes exchange
-`PipelineMessage` values (JSON, 4-byte big-endian length prefix, at most 1 MiB, 5 s read timeouts, at most
-100 concurrent connections). A `PipelineMessage` has **no signature and no public key**. The sender
-identity is the self-declared `origin_node` field. `GossipPipeline::process` applies zone-registration,
-node-ID, sequence-overflow, severity, payload-size, rate-limit, panic-cooldown, duplicate/TTL and
-battery rules; failures are dropped or throttled without any penalty. It does **not** run `SybilGuard`,
-the replay filter, signature checks or the three-strike rule.
+`crates/crci-core/src/transport/tcp.rs`. Each frame is a 4-byte big-endian length prefix followed by a JSON
+`TcpFrame { sender, message }` (at most 1 MiB, 5 s read timeouts, at most 100 concurrent connections).
+`message` is the origin-signed `WireMessage`. `sender` is the node that sent the frame, the relaying
+neighbour, and it is what `NodeRuntime` admits, strikes and bans. It is kept separate from the message's
+author so that a replay of an honest node's message is charged to whoever replayed it. The sender is
+**self-declared**: there is no handshake on connect, and TCP traffic is neither authenticated nor
+encrypted, so a connection can claim any sender ID (authenticated handshake planned).
 
-Every 5 s the binary also compares the severities reported by verified zone members with their median
-(anchored at 3) and treats deviations ≥ 2 as faulty, unless 3f ≥ n. A "penalty" there only increments
-the `byzantine_events` counter and publishes a placeholder divergence alert (head hashes all `0`/all `f`);
-it does not affect reputation or connectivity. The `/chain/head` value on this path is the latest message
-ID padded to 32 bytes, not a hash-chain head.
+For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`):
 
-There is no handshake on connect, and TCP traffic is not encrypted.
+1. checks the field rules from `validation.rs` (origin ID length, severity 1–5, sequence overflow, note at
+   most 255 bytes) and drops a malformed message without a strike;
+2. passes the message to `NodeRuntime`, which applies the checks above;
+3. hands each message `NodeRuntime` accepted to `GossipPipeline` (`integration.rs`: AEDA, panic cooldown,
+   duplicate/TTL, battery throttling, per-round rate limit). The pipeline only decides application-level
+   handling and never strikes. Zone membership is not enforced on this path: every accepted origin is
+   registered in the node's zone;
+4. relays what `NodeRuntime` queued for other nodes over TCP, to every peer address given with
+   `--peers` / `--dial` except the message's origin. The in-process router is switched off on a TCP node,
+   because it picks next hops by node ID, which TCP cannot address.
 
-Joining the two paths (signed messages, reputation and strikes on TCP) and authenticating the transport
-peer are the next planned milestones.
+Every 5 s the binary advances the pipeline round and compares the severities reported by verified zone
+members with their median (anchored at 3), treating deviations ≥ 2 as outliers unless 3f ≥ n. An outlier
+is only logged and counted in `byzantine_events`; a validly signed report never changes reputation.
+`/chain/head` reports the node's Merkle chain head.
 
 ## `crci-core` modules
 
 | Module | Role |
 |---|---|
-| `runtime.rs` | `NodeRuntime` and `WireMessage`: the signed message path described above. |
+| `runtime.rs` | `NodeRuntime` and `WireMessage`: the message checks described above. |
 | `sybil.rs` | `SybilGuard`: per-peer reputation, ban threshold, token bucket, proof-of-work check, subnet correlation. |
 | `replay.rs` | `ReplayFilter`: per-origin sliding window (W = 64); `window_size = 0` gives strict-monotonic delivery. |
 | `identity.rs` | Ed25519 key pair (`ed25519-dalek` 2) and signing. |
 | `message.rs` | Application message and signal types. |
-| `integration.rs` | `PipelineMessage` and `GossipPipeline`: the TCP path's validation pipeline. |
+| `integration.rs` | `GossipPipeline`: application-level handling (AEDA, TTL, battery, panic cooldown) of messages the TCP node has accepted. |
 | `validation.rs` | Input checks (severity range, payload size, node-ID format, sequence overflow) and rate limiting. |
 | `battery.rs` | Battery-tier gossip throttling; rescue messages are always forwarded. |
 | `ttl.rs` | Round-based message TTL and storage pruning with tombstones. |
@@ -110,8 +120,7 @@ the Android `.so` as well.
 
 | Binary | Purpose |
 |---|---|
-| `crci-node` | Main CLI. `--listen` (+ `--peers`/`--dial`) runs a TCP node with the HTTP API on port 8080. `--send … --to …` sends one message. `--byzantine <mode> --to …` runs an adversary (`replay`, `false_allclear`, `sybil`, `flood`, `partition_heal`). With no arguments it runs a scripted in-process demonstration and serves the API. |
-| `node` | Older environment-variable-driven node (`NODE_ID`, `LISTEN_PORT`, `PEERS`, …); used by `scripts/run_proof.ps1`. |
+| `crci-node` | Main CLI. `--listen` (+ `--peers`/`--dial`) runs a TCP node with the HTTP API on port 8080. `--send … --to …` sends one message. `--byzantine <mode> --to …` runs an adversary that sends signed frames (`replay`, `false_allclear`, `sybil`, `flood`, `partition_heal`) or frames that must be rejected (`bad_signature`, `unsigned`, `unsigned_mce`). With no arguments it runs a scripted in-process demonstration and serves the API. |
 | `byzantine_agent`, `adv_client` | Stand-alone adversary clients. |
 | `uniffi-bindgen` (in `crci-core`) | Generates Kotlin bindings. |
 

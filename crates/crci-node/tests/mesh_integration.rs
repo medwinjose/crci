@@ -6,6 +6,25 @@ use std::sync::{Arc, Mutex};
 use tokio::io::AsyncWriteExt;
 use tokio::time::Duration;
 
+fn signed_message(id: &str, origin: &str) -> NetworkMessage {
+    let key = crci_core::identity::Identity::new(origin);
+    let mut msg = crci_core::message::Message::new(
+        id,
+        origin,
+        crci_core::message::Signal::new(
+            1,
+            false,
+            false,
+            true,
+            1,
+            crci_core::message::Visibility::Direct,
+        ),
+        None,
+    );
+    msg.seq = 1;
+    NetworkMessage::from_message(&msg, &key)
+}
+
 #[tokio::test]
 async fn four_node_mesh_integration() -> Result<(), Box<dyn std::error::Error>> {
     let mut nodes = Vec::new();
@@ -57,17 +76,7 @@ async fn four_node_mesh_integration() -> Result<(), Box<dyn std::error::Error>> 
 
     // Node 0 originates a message and sends to Node 1
     let msg_id = "test-mesh-msg-1".to_string();
-    let handshake_msg = NetworkMessage {
-        id: msg_id.clone(),
-        origin_node: "node-0".to_string(),
-        zone: "zone-0".to_string(),
-        severity: 1,
-        kind: crci_core::integration::MessageKind::Normal,
-        payload_bytes: 0,
-        reputation: 1.0,
-        round: 1,
-        seq: 1,
-    };
+    let handshake_msg = signed_message(&msg_id, "node-0");
     tcps[0].send(&addrs[1].to_string(), &handshake_msg).await?;
 
     // Node 1 forwards to Node 2, Node 2 forwards to Node 3

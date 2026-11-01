@@ -2,8 +2,8 @@
 
 | Document | What it covers |
 |---|---|
-| [architecture.md](architecture.md) | Code layout, the two message paths, modules, binaries, build features. Diagram: [architecture/crci-architecture.html](architecture/crci-architecture.html). |
-| [threat-model.md](threat-model.md) | Adversary model, defences that exist (and on which path), known gaps. |
+| [architecture.md](architecture.md) | Code layout, the message path (in-process and TCP), modules, binaries, build features. Diagram: [architecture/crci-architecture.html](architecture/crci-architecture.html). |
+| [threat-model.md](threat-model.md) | Adversary model, defences that exist, known gaps. |
 | [benchmarks.md](benchmarks.md) | Every recorded measurement, with harness, command and raw data. |
 | [formal-verification.md](formal-verification.md) | The TLA+ model, how to run TLC, and exactly what the model covers. |
 | [cross-compilation.md](cross-compilation.md) | Building `crci-node` for Raspberry Pi targets. |

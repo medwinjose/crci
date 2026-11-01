@@ -152,6 +152,9 @@ pub struct NodeRuntime {
     pub divergence_log: Vec<crate::merkle::DivergenceAlert>,
     pub divergence_tx: Option<tokio::sync::broadcast::Sender<crate::merkle::DivergenceAlert>>,
     pub router: crate::routing::TemporalRouter,
+    /// When false, every outgoing message goes to all of `peers` and the router is not
+    /// consulted. The router keys next hops by node ID, which a TCP node cannot address.
+    pub use_router: bool,
     pub sybil_guard: crate::sybil::SybilGuard,
     pub sybil_banned_events: u64,
     pub sybil_rate_limited_events: u64,
@@ -189,6 +192,7 @@ impl NodeRuntime {
             divergence_log: Vec::new(),
             divergence_tx: None,
             router: crate::routing::TemporalRouter::new(),
+            use_router: true,
             sybil_guard: crate::sybil::SybilGuard::new(4),
             sybil_banned_events: 0,
             sybil_rate_limited_events: 0,
@@ -322,7 +326,12 @@ impl NodeRuntime {
         let now_ms = crate::message::now_ts();
         self.router.evict_stale(now_ms);
 
-        if let Some(best) = self.router.best_next_hop(&[], now_ms) {
+        let next_hop = if self.use_router {
+            self.router.best_next_hop(&[], now_ms)
+        } else {
+            None
+        };
+        if let Some(best) = next_hop {
             self.transport.send(&best.peer_id, &payload);
         } else {
             for peer in &self.peers.clone() {
@@ -341,8 +350,15 @@ impl NodeRuntime {
     }
 
     pub fn process_inbox(&mut self) {
+        let _ = self.process_inbox_delivered();
+    }
+
+    /// Process the inbox like `process_inbox` and return the messages that passed every
+    /// check and were accepted, in arrival order (chain-head announcements excluded).
+    pub fn process_inbox_delivered(&mut self) -> Vec<WireMessage> {
+        let mut delivered = Vec::new();
         if !self.is_online {
-            return;
+            return delivered;
         }
         let messages: Vec<(String, Vec<u8>)> = {
             let mut inbox = match self.inbox.lock() {
@@ -403,14 +419,13 @@ impl NodeRuntime {
             // token bucket above (it refills over time), and each invalid signature strikes
             // that sender. The claimed origin is not used: it is unauthenticated, so budgeting
             // by it would let any peer spend an honest origin's budget with forgeries.
-            if wire.message_type != "mce" {
-                self.metrics
-                    .sig_verifications_performed
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            }
+            self.metrics
+                .sig_verifications_performed
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-            // Step 1: verify cryptographic signature
-            if wire.message_type != "mce" && !wire.verify_signature() {
+            // Step 1: verify cryptographic signature. Every message type is checked,
+            // mass-casualty events included.
+            if !wire.verify_signature() {
                 println!(
                     "  ⚠ [{}] INVALID SIGNATURE on '{}' — dropped!",
                     self.id, wire.id
@@ -471,29 +486,27 @@ impl NodeRuntime {
             self.seen_messages.insert(wire.id.clone(), new_senders);
 
             // Step 2: pubkey consistency check — reject impersonation
-            if wire.message_type != "mce" {
-                if let Some(known) = self.known_keys.get(&wire.origin) {
-                    if *known != wire.origin_pubkey {
-                        println!(
-                            "  ⚠ [{}] PUBKEY MISMATCH on '{}' — impersonation dropped!",
-                            self.id, wire.id
-                        );
-                        self.byzantine_events += 1;
-                        self.metrics
-                            .byzantine_detected
-                            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                        self.metrics
-                            .messages_rejected
-                            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                        // Defend against signature-invalidation attacks:
-                        // Penalise the RELAYING NEIGHBOR, NOT the claimed origin node.
-                        self.sybil_guard.report_violation(&sender_id);
-                        continue;
-                    }
-                } else {
-                    self.known_keys
-                        .insert(wire.origin.clone(), wire.origin_pubkey.clone());
+            if let Some(known) = self.known_keys.get(&wire.origin) {
+                if *known != wire.origin_pubkey {
+                    println!(
+                        "  ⚠ [{}] PUBKEY MISMATCH on '{}' — impersonation dropped!",
+                        self.id, wire.id
+                    );
+                    self.byzantine_events += 1;
+                    self.metrics
+                        .byzantine_detected
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    self.metrics
+                        .messages_rejected
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    // Defend against signature-invalidation attacks:
+                    // Penalise the RELAYING NEIGHBOR, NOT the claimed origin node.
+                    self.sybil_guard.report_violation(&sender_id);
+                    continue;
                 }
+            } else {
+                self.known_keys
+                    .insert(wire.origin.clone(), wire.origin_pubkey.clone());
             }
 
             let verdict = self
@@ -609,6 +622,7 @@ impl NodeRuntime {
             self.metrics
                 .messages_accepted
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            delivered.push(wire.clone());
 
             let payload = match serde_json::to_vec(&wire) {
                 Ok(bytes) => bytes,
@@ -617,7 +631,12 @@ impl NodeRuntime {
 
             self.router.evict_stale(now_ms);
 
-            if let Some(best) = self.router.best_next_hop(&[&wire.origin], now_ms) {
+            let next_hop = if self.use_router {
+                self.router.best_next_hop(&[&wire.origin], now_ms)
+            } else {
+                None
+            };
+            if let Some(best) = next_hop {
                 self.transport.send(&best.peer_id, &payload);
             } else {
                 for peer in &self.peers.clone() {
@@ -688,6 +707,7 @@ impl NodeRuntime {
             };
             self.originate(announcement);
         }
+        delivered
     }
 
     pub fn status(&self) {

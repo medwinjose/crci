@@ -49,7 +49,7 @@ CRCI moves misbehaviour isolation **into the gossip layer itself** and makes it 
 Interactive version: [docs/architecture/crci-architecture.html](docs/architecture/crci-architecture.html) ·
 written description: [docs/architecture.md](docs/architecture.md).
 
-Every incoming message passes through the same local pipeline in `NodeRuntime`:
+Every incoming message, in-process or over TCP, passes through the same local pipeline in `NodeRuntime`:
 
 ```
 admission (ban list, token bucket) → Ed25519 verification → duplicate check per neighbour
@@ -121,11 +121,11 @@ A Docker Compose demo (two honest nodes, one adversarial node, and the dashboard
 
 ## Research status and roadmap
 
-CRCI is an active research project. The isolation pipeline is implemented and evaluated in the node
-runtime that the test suite and benchmarks drive; the networked TCP node currently exchanges messages
-without it. Current work, in order:
+CRCI is an active research project. The isolation pipeline runs in the node runtime used by both the
+networked TCP node and the test suite; the benchmarks so far drive it in-process. Current work, in order:
 
-1. Signed messages and the isolation pipeline on the TCP transport, with an authenticated peer handshake.
+1. Signatures over every message field, and an authenticated peer handshake so that strikes on TCP bind to
+   a verified neighbour.
 2. Strike-damped recovery to close the paced-attack evasion.
 3. Anti-entropy re-synchronisation after network partitions.
 4. A 20–50 node network-emulation testbed (loss, delay, reordering, link flapping) and comparison against

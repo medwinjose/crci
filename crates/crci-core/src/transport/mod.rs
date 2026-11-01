@@ -5,7 +5,8 @@ pub mod sim;
 pub mod tcp;
 
 pub type NodeId = String;
-pub type NetworkMessage = crate::integration::PipelineMessage;
+/// Messages carried by every transport: the origin-signed `WireMessage`.
+pub type NetworkMessage = crate::runtime::WireMessage;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TransportType {

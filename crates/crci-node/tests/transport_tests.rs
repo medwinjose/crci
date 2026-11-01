@@ -1,23 +1,46 @@
-use crci_core::integration::{MessageKind, PipelineMessage};
+use crci_core::identity::Identity;
+use crci_core::message::{Message, Signal, Visibility};
 use crci_core::transport::{
-    BleConfig, BleTransport, LoraConfig, LoraTransport, TcpTransport, Transport, TransportError,
-    TransportMultiplexer,
+    BleConfig, BleTransport, LoraConfig, LoraTransport, NetworkMessage, TcpTransport, Transport,
+    TransportError, TransportMultiplexer,
 };
 use std::net::SocketAddr;
 use tokio::time::Duration;
 
-fn dummy_message(origin: &str) -> PipelineMessage {
-    PipelineMessage {
-        id: format!("msg-{}", origin),
-        origin_node: origin.to_string(),
-        zone: "zone-a".to_string(),
-        severity: 3,
-        kind: MessageKind::Normal,
-        payload_bytes: 10,
-        reputation: 1.0,
-        round: 1,
-        seq: 1,
-    }
+fn dummy_message(origin: &str) -> NetworkMessage {
+    let mut msg = Message::new(
+        &format!("msg-{}", origin),
+        origin,
+        Signal::new(3, false, false, true, 3, Visibility::Direct),
+        None,
+    );
+    msg.seq = 1;
+    NetworkMessage::from_message(&msg, &Identity::new(origin))
+}
+
+#[tokio::test]
+async fn tcp_frame_sender_is_the_transport_not_the_message_origin() {
+    let tcp1 = TcpTransport::bind("relay-1".to_string(), "127.0.0.1:0".parse().unwrap())
+        .await
+        .unwrap();
+    let tcp2 = TcpTransport::bind("node-2".to_string(), "127.0.0.1:0".parse().unwrap())
+        .await
+        .unwrap();
+
+    // relay-1 forwards a message authored and signed by alice.
+    let msg = dummy_message("alice");
+    tcp1.send(&tcp2.listen_addr.to_string(), &msg)
+        .await
+        .unwrap();
+
+    let (sender, received) = tokio::time::timeout(Duration::from_secs(2), tcp2.receive())
+        .await
+        .expect("Timeout waiting for message")
+        .expect("Receive failed");
+
+    assert_eq!(sender, "relay-1");
+    assert_eq!(received.origin, "alice");
+    assert!(received.verify_signature());
 }
 
 #[tokio::test]

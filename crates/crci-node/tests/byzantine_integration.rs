@@ -6,6 +6,25 @@ use std::sync::{Arc, Mutex};
 use tokio::io::AsyncWriteExt;
 use tokio::time::Duration;
 
+fn signed_message(id: &str, origin: &str) -> NetworkMessage {
+    let key = crci_core::identity::Identity::new(origin);
+    let mut msg = crci_core::message::Message::new(
+        id,
+        origin,
+        crci_core::message::Signal::new(
+            1,
+            false,
+            false,
+            true,
+            1,
+            crci_core::message::Visibility::Direct,
+        ),
+        None,
+    );
+    msg.seq = 1;
+    NetworkMessage::from_message(&msg, &key)
+}
+
 #[tokio::test]
 async fn byzantine_peer_does_not_corrupt_honest_connection(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -40,17 +59,7 @@ async fn byzantine_peer_does_not_corrupt_honest_connection(
         nb.add_peer(&addr_a.to_string());
     }
 
-    let handshake_msg = NetworkMessage {
-        id: "handshake-b".to_string(),
-        origin_node: "node-b".to_string(),
-        zone: "zone-b".to_string(),
-        severity: 1,
-        kind: crci_core::integration::MessageKind::Normal,
-        payload_bytes: 0,
-        reputation: 1.0,
-        round: 1,
-        seq: 1,
-    };
+    let handshake_msg = signed_message("handshake-b", "node-b");
     tcp_b.send(&addr_a.to_string(), &handshake_msg).await?;
 
     // Wait for legitimate handshake

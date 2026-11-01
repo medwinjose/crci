@@ -13,12 +13,24 @@ git history; `git log` is the complete record.
 - `docs/openapi.json` now describes all 15 HTTP/WebSocket routes; `docs/openapi.yaml` removed.
 - `docs/design-decisions.md` folded into ADR 004 and ADR 005.
 - Evidence reorganised into dated folders with SHA-256 hashes (`docs/evidence/README.md`).
+- `crci-node --listen` carries origin-signed `WireMessage` frames over TCP and runs every received message
+  through `NodeRuntime` (signature check, replay window, strikes, bans). Each frame names the node that sent
+  it separately from the message's author. The frame format is not compatible with earlier versions.
+- `crci-node --send` and `--byzantine` send signed messages; `--byzantine` adds the `bad_signature`,
+  `unsigned` and `unsigned_mce` modes.
+- The 5-second severity-median check in `crci-node` only counts outliers; it no longer publishes
+  placeholder divergence alerts.
+
+### Fixed
+- Messages of type `mce` are no longer accepted without a valid signature.
+- `/chain/head` on a TCP node reports the node's Merkle chain head instead of the latest message ID.
 
 ### Removed
 - The mdBook (`docs/book/`) and its workflow, `docs/fault-model.md`, `docs/chaos/README.md`,
   `docs/dashboard.html`, `docs/architecture.mmd`, the unused `docker/` Prometheus/Grafana config,
   one-off scripts, and two benchmark files that were never compiled.
 - Tracked build products (`libcrci_core.so`) and TLC scratch state.
+- The legacy environment-variable-driven `node` binary and `scripts/run_proof.ps1`.
 
 ## [2.1.0] - 2026-09-29
 
