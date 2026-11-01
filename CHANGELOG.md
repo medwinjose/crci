@@ -1,28 +1,53 @@
-# CRCI Changelog
+# Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Entries before v2.1.0 are reconstructed from the
+git history; `git log` is the complete record.
 
-## Recent History (Derived from Git Log)
+## [Unreleased]
 
-- **2026-09-13** docs(session-181): update BENCHMARKS.md with verified numbers
-- **2026-09-13** docs(session-181): rename and update formal verification doc
-- **2026-09-13** docs(session-181): create design-decisions.md with initial ADRs
-- **2026-09-13** docs(session-181): create STRIDE threat model
-- **2026-09-13** docs(session-181): update ARCHITECTURE.md for post-reorg layout
-- **2026-09-13** docs(session-181): rewrite README.md per recruiter-facing roadmap
-- **2026-09-13** docs(session-179): close item 12 - repo reorg verified, remove stray screenshot
-- **2026-09-13** fix(ci): resolve rustfmt line-length violation in chaos_wan_real_tests.rs
-- **2026-09-13** fix(ci): correct output path in chaos_wan_real_tests.rs for workspace layout
-- **2026-09-13** feat(session-174): close repo reorg hygiene pass, log Session 173 violation, correct PROJECT_RULES.md record, move CURRENT_STATE.md to local tracking
-- **2026-09-13** fix(session-173): phase 0d - add .internal/ and docs/tla/states/ to gitignore
-- **2026-09-13** fix(session-173): phase 0d - remove cited log evidence from repo, retaining in local .internal/
-- **2026-09-13** fix(session-173): phase 0d - delete regenerable tree-dump and scratch files
-- **2026-09-13** fix(session-173): phase 0d - move session planning docs to .internal/, gitignore, untrack
-- **2026-09-13** refactor(session-173): professional workspace reorganization
-- **2026-09-13** docs(session-173): reorg plan for item 12
-- **2026-09-13** fix(session-173): phase 0c - gitignore interview_script.md (local-only prep doc, not for public repo)
-- **2026-09-13** fix(session-173): phase 0b - remove hardcoded python script and gitignore extracted.json
-- **2026-09-13** docs(session-173): phase 0a - stash disposition archived and stash dropped
-- **2026-09-13** feat(session-170): close item 8 - real WAN chaos suite verified via hash-anchored CI log
+### Changed
+- Documentation rewritten to describe the code as it is: two message paths (signed `NodeRuntime` vs.
+  unsigned TCP), the real transport (custom TCP, no libp2p/Noise), the real TLA+ model scope, and every
+  benchmark with its command and raw data. Known gaps are listed in `docs/threat-model.md`.
+- `docs/openapi.json` now describes all 15 HTTP/WebSocket routes; `docs/openapi.yaml` removed.
+- `docs/design-decisions.md` folded into ADR 004 and ADR 005.
+- Evidence reorganised into dated folders with SHA-256 hashes (`docs/evidence/README.md`).
 
-*(For earlier history, refer to `git log`.)*
+### Removed
+- The mdBook (`docs/book/`) and its workflow, `docs/fault-model.md`, `docs/chaos/README.md`,
+  `docs/dashboard.html`, `docs/architecture.mmd`, the unused `docker/` Prometheus/Grafana config,
+  one-off scripts, and two benchmark files that were never compiled.
+- Tracked build products (`libcrci_core.so`) and TLC scratch state.
+
+## [2.1.0] - 2026-09-29
+
+### Added
+- `ablation_bench` (window size vs. reorder depth) and `recovery_bench` (paced attack) harnesses.
+- `CITATION.cff` with the preprint DOI.
+
+### Changed
+- Version bumped to 2.1.0; documentation reframed around local misbehaving-peer isolation.
+- Benchmark CSVs frozen; bench targets no longer run under `cargo test`.
+
+### Fixed
+- Seen-message cache eviction (BFT-046) that caused a test failure.
+- Clippy warnings under `-D warnings`.
+
+## [2.0.0] - 2026-09-15
+
+### Changed
+- Cargo workspace split into `crci-core` and `crci-node`.
+
+### Added
+- 5-node network-namespace WAN smoke test in CI.
+
+## [0.1.0] - 2026-06-09
+
+Initial tagged release: node runtime with reputation scoring, replay filter, TCP transport, HTTP API,
+Android FFI bindings and the web dashboard.
+
+[Unreleased]: https://github.com/medwinjose/crci/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/medwinjose/crci/compare/v2.0.0...v2.1.0
+[2.0.0]: https://github.com/medwinjose/crci/compare/v0.1.0...v2.0.0
+[0.1.0]: https://github.com/medwinjose/crci/releases/tag/v0.1.0

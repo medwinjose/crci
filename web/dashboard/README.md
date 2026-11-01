@@ -2,8 +2,6 @@
 
 A standalone React/Vite dashboard for monitoring a CRCI mesh node in real-time.
 
-*Screenshot will be added once the dashboard UI is finalized.*
-
 ## Quickstart
 
 Run this one-liner to start the dashboard on port 5173:
@@ -31,7 +29,7 @@ The WebSocket URL will automatically be derived from this base URL.
 ## Panels
 
 1. **Mesh Topology**: Live view of connected peers using `/api/v1/peers`.
-2. **Chain Status**: Local node's Merkle chain head index and hash, with divergence tracking using `/chain/head` and `/health`.
+2. **Chain Status**: the head value and sequence from `/chain/head`, plus counters from `/health`. On a `crci-node --listen` node the head value is the latest message ID padded to 32 bytes, not a hash-chain head (see `docs/architecture.md`).
 3. **Message Throughput**: Real-time events/sec charted with Recharts, powered by the live WebSocket feed.
 4. **Byzantine Alerts**: Real-time alerts over `/ws/divergences` for any detected state drifts or bad actors.
 5. **Message Feed**: The latest 50 gossip events, colour-coded by severity.

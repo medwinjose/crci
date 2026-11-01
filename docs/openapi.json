@@ -1,8 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "CRCI API",
-    "version": "0.1.0"
+    "title": "CRCI Node API",
+    "version": "2.1.0",
+    "description": "HTTP and WebSocket API served by crci-node on port 8080 (crates/crci-core/src/api.rs). This file is also served at /api/v1/openapi.json; the node reads it from docs/openapi.json relative to its working directory."
   },
   "servers": [
     {
@@ -10,6 +11,255 @@
     }
   ],
   "paths": {
+    "/health": {
+      "get": {
+        "summary": "Node health",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/status": {
+      "get": {
+        "summary": "Node status (legacy)",
+        "operationId": "getStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/peers": {
+      "get": {
+        "summary": "Known peers (legacy)",
+        "operationId": "listPeers",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages": {
+      "get": {
+        "summary": "Recent messages, newest last (at most 50 kept)",
+        "operationId": "listMessages",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulate/panic": {
+      "post": {
+        "summary": "Queue a simulated panic event",
+        "operationId": "simulatePanic",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanicResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content type must be application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/divergences": {
+      "get": {
+        "summary": "All divergence alerts",
+        "operationId": "listDivergences",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DivergenceAlert"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/divergences/{peer_id}": {
+      "get": {
+        "summary": "Divergence alerts for one peer",
+        "operationId": "listDivergencesByPeer",
+        "parameters": [
+          {
+            "name": "peer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DivergenceAlert"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Peer not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chain/head": {
+      "get": {
+        "summary": "Current chain head",
+        "operationId": "getChainHead",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChainHeadResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ws": {
+      "get": {
+        "summary": "WebSocket stream of recent messages",
+        "operationId": "wsMessages",
+        "responses": {
+          "101": {
+            "description": "Switching Protocols"
+          }
+        }
+      }
+    },
+    "/ws/divergences": {
+      "get": {
+        "summary": "WebSocket stream of divergence alerts (current alerts first, then live)",
+        "operationId": "wsDivergences",
+        "responses": {
+          "101": {
+            "description": "Switching Protocols"
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Counters in Prometheus text format",
+        "operationId": "getMetrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/status": {
       "get": {
         "summary": "Get node status",
@@ -239,6 +489,197 @@
         "required": [
           "code",
           "message"
+        ]
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "node_id": {
+            "type": "string"
+          },
+          "uptime_secs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "byzantine_events": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "divergence_alerts": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "status",
+          "node_id",
+          "uptime_secs",
+          "byzantine_events",
+          "divergence_alerts"
+        ]
+      },
+      "ChainHeadResponse": {
+        "type": "object",
+        "properties": {
+          "head_hash": {
+            "type": "string",
+            "description": "Hex. On the TCP node this is the latest message ID padded to 32 bytes, not a hash-chain head."
+          },
+          "head_seq": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "head_hash",
+          "head_seq"
+        ]
+      },
+      "DivergenceAlert": {
+        "type": "object",
+        "properties": {
+          "peer_id": {
+            "type": "string"
+          },
+          "expected_head_hash": {
+            "type": "string"
+          },
+          "actual_head_hash": {
+            "type": "string"
+          },
+          "divergence_seq": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "detected_at_ms": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "peer_id",
+          "expected_head_hash",
+          "actual_head_hash",
+          "divergence_seq",
+          "detected_at_ms"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "code"
+        ]
+      },
+      "StatusResponse": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "uptime_secs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "node_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "uptime_secs",
+          "node_count",
+          "version"
+        ]
+      },
+      "PeersResponse": {
+        "type": "object",
+        "properties": {
+          "peers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "peers",
+          "count"
+        ]
+      },
+      "ApiMessage": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "content": {
+            "type": "string"
+          },
+          "timestamp_ms": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "from",
+          "severity",
+          "content",
+          "timestamp_ms"
+        ]
+      },
+      "MessagesResponse": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiMessage"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "messages",
+          "count"
+        ]
+      },
+      "PanicResponse": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "queued"
         ]
       }
     }

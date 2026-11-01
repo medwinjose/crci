@@ -1,29 +1,33 @@
 # ADR 001: Custom TCP Transport over rust-libp2p
 
-## Date: 2026-06-05
-## Status: Accepted
+- **Date:** 2026-06-05
+- **Status:** Accepted
 
 ## Context
-CRCI requires a reliable transport layer to gossip state and coordinate the network. Early in development, we considered integrating `rust-libp2p` as it is the industry standard for peer-to-peer networking, providing built-in protocols for mDNS discovery, Kademlia routing, multiplexing, and NAT traversal.
 
-However, incorporating `rust-libp2p` introduces significant complexity. It adds approximately 50MB to the compiled binary size and drastically increases compile times. Furthermore, its event-driven macro-heavy architecture forces application logic to conform tightly to the libp2p swarm behavior, which creates a steep learning curve and obscures the underlying networking principles during the prototyping phase.
+CRCI needs a transport to move messages between nodes. `rust-libp2p` was considered: it provides
+discovery (mDNS, Kademlia), stream multiplexing, NAT traversal and Noise-encrypted, authenticated
+connections. It also brings a large dependency tree, longer compile times, and a swarm/behaviour
+programming model that the rest of the code would have to follow.
 
 ## Decision
-We decided to implement a minimal, custom TCP-based async transport using `tokio::net` instead of adopting `rust-libp2p`.
 
-The custom transport simply frames payloads using a 4-byte length prefix and relies on raw TCP streams for node-to-node connectivity, completely decoupling the GossipPipeline logic from the networking shim.
+Use a small custom transport on `tokio::net::TcpStream` behind a `Transport` trait
+(`crates/crci-core/src/transport/`). Frames are a 4-byte big-endian length prefix followed by a JSON
+payload (at most 1 MiB).
 
-## Tradeoffs
-**Lost:** 
-- Free mDNS local network discovery.
-- Kademlia distributed hash table (DHT) routing.
-- Automatic NAT traversal (STUN/TURN) and relaying.
-- Noise protocol encryption out-of-the-box.
+## Consequences
+
+**Lost (must be built or accepted as missing):**
+- Peer discovery and DHT routing.
+- NAT traversal and relaying.
+- Authenticated and encrypted connections. The custom transport has neither today: the sender identity is
+  the self-declared `origin_node` field of each message (Task 7 adds an authenticated handshake).
 
 **Gained:**
-- Extreme simplicity: The entire transport layer is ~100 lines of code.
-- Lean binaries: Fast compilation and minimal footprint, ideal for constrained edge devices.
-- Direct control: We have explicit, transparent control over framing, connection management, and error handling without fighting framework abstractions.
+- A transport small enough to read in full (`transport/tcp.rs`, about 440 lines including connection
+  limits and timeouts).
+- Direct control over framing, limits and error handling.
+- Other media can implement the same trait (`ble.rs` and `lora.rs` are stubs today).
 
-## Future Path
-This is a calculated prototyping decision. As the system matures toward production physical-layer deployment (e.g., across true LoRa links and public Internet bridges), the custom TCP transport will likely hit scaling and firewall limitations. Because the transport layer is cleanly isolated behind a shim that interfaces with `GossipPipeline::process()`, migrating to `rust-libp2p` in the future is fully documented as a planned upgrade path.
+Moving to `rust-libp2p` later remains possible because callers only depend on the `Transport` trait.

@@ -1,2 +1,2 @@
 [bindings.kotlin]
-package_name = "crci_core"
+package_name = "dev.crci.android.ffi"

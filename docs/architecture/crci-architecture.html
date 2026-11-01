@@ -57,11 +57,11 @@
           <button class="toolbar-toggle" onclick="this.parentElement.classList.toggle('expanded')" title="Export options" aria-label="Export options">⋯</button>
         </div>
       </div>
-      <p class="subtitle">Local fault-isolation mesh network · v2.0.0 · repository layout, subsystem boundaries & message flow</p>
+      <p class="subtitle">Local misbehaving-peer isolation · v2.1.0 · how the code is wired today, including known gaps</p>
     </div>
 
     <div class="diagram-container">
-      <svg viewBox="0 0 1120 1100" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 0 1120 1060" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
         <defs>
           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
             <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
@@ -69,205 +69,185 @@
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
           </marker>
+          <marker id="arrowred" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
+          </marker>
+          <marker id="arrowrose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185"/>
+          </marker>
         </defs>
-        <rect width="1120" height="1100" fill="url(#grid)"/>
+        <rect width="1120" height="1060" fill="url(#grid)"/>
 
-        <!-- ============ OUTER crci-core BOUNDARY ============ -->
-        <rect x="40" y="270" width="700" height="720" rx="14" fill="rgba(167,139,250,0.04)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="8,4"/>
-        <text x="54" y="293" fill="#a78bfa" font-size="10" font-weight="600">crci-core/ — Rust library (protocol logic, zero I/O or CLI awareness)</text>
+        <!-- ── Clients ─────────────────────────────────────────── -->
+        <text x="60" y="20" fill="#64748b" font-size="9" font-weight="600">OUTSIDE THE PROCESS</text>
+        <rect x="60" y="30" width="220" height="76" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="170" y="56" fill="white" font-size="11" font-weight="600" text-anchor="middle">Web Dashboard</text>
+        <text x="170" y="72" fill="#94a3b8" font-size="8" text-anchor="middle">web/dashboard · React + Vite</text>
+        <text x="170" y="86" fill="#94a3b8" font-size="8" text-anchor="middle">reads one node's HTTP + WS API</text>
 
-        <!-- Network Layer group -->
-        <rect x="60" y="310" width="430" height="110" rx="8" fill="rgba(251,191,36,0.05)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,4"/>
-        <text x="70" y="326" fill="#fbbf24" font-size="9" font-weight="600">NETWORK LAYER</text>
+        <rect x="300" y="30" width="220" height="76" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="410" y="56" fill="white" font-size="11" font-weight="600" text-anchor="middle">Other crci-node peers</text>
+        <text x="410" y="72" fill="#94a3b8" font-size="8" text-anchor="middle">or --send / --byzantine clients</text>
+        <text x="410" y="86" fill="#94a3b8" font-size="8" text-anchor="middle">TCP: plaintext, unauthenticated</text>
 
-        <!-- Validation Layer group -->
-        <rect x="60" y="450" width="560" height="120" rx="8" fill="rgba(251,113,133,0.05)" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,4"/>
-        <text x="70" y="466" fill="#fb7185" font-size="9" font-weight="600">VALIDATION LAYER</text>
+        <rect x="760" y="30" width="300" height="76" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="910" y="56" fill="white" font-size="11" font-weight="600" text-anchor="middle">Android demo app</text>
+        <text x="910" y="72" fill="#94a3b8" font-size="8" text-anchor="middle">crci-android · Kotlin / Compose</text>
+        <text x="910" y="86" fill="#94a3b8" font-size="8" text-anchor="middle">calls the library via UniFFI · no network transport</text>
 
-        <!-- Core Routing group -->
-        <rect x="60" y="600" width="640" height="120" rx="8" fill="rgba(148,163,184,0.04)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4"/>
-        <text x="70" y="616" fill="#94a3b8" font-size="9" font-weight="600">CORE ROUTING</text>
+        <!-- ── crci-node binary ───────────────────────────────── -->
+        <rect x="500" y="132" width="320" height="96" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="660" y="154" fill="white" font-size="12" font-weight="600" text-anchor="middle">crci-node (binary crate)</text>
+        <text x="660" y="172" fill="#94a3b8" font-size="8" text-anchor="middle">clap CLI · Tokio · HTTP API on :8080</text>
+        <text x="660" y="186" fill="#94a3b8" font-size="8" text-anchor="middle">--listen · --send · --byzantine · no args = demo</text>
+        <text x="660" y="200" fill="#94a3b8" font-size="8" text-anchor="middle">every 5 s: severity-median check</text>
+        <text x="660" y="214" fill="#94a3b8" font-size="8" text-anchor="middle">→ byzantine_events counter only (no isolation)</text>
 
-        <!-- Consensus Layer group -->
-        <rect x="60" y="750" width="650" height="120" rx="8" fill="rgba(148,163,184,0.04)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4"/>
-        <text x="70" y="766" fill="#94a3b8" font-size="9" font-weight="600">LOCAL REPUTATION LAYER</text>
+        <!-- ── crci-core frame ────────────────────────────────── -->
+        <rect x="40" y="260" width="1040" height="770" rx="14" fill="rgba(167,139,250,0.04)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="56" y="282" fill="#a78bfa" font-size="10" font-weight="600">crci-core/ — Rust library (lib + cdylib)</text>
 
-        <!-- Peer / libp2p swarm region -->
-        <rect x="800" y="300" width="260" height="350" rx="14" fill="rgba(148,163,184,0.04)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="8,4"/>
-        <text x="812" y="316" fill="#94a3b8" font-size="9" font-weight="600">P2P MESH SWARM</text>
-        <text x="812" y="328" fill="#64748b" font-size="7">rust-libp2p</text>
+        <!-- Network path -->
+        <rect x="60" y="300" width="440" height="320" rx="8" fill="rgba(251,191,36,0.05)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="72" y="318" fill="#fbbf24" font-size="9" font-weight="600">NETWORK PATH — used by crci-node --listen</text>
 
-        <!-- Client -> API -->
-        <line x1="165" y1="110" x2="165" y2="150" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="120" y="145" fill="#94a3b8" font-size="8">REST/JSON</text>
+        <rect x="80" y="335" width="400" height="80" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="280" y="358" fill="white" font-size="11" font-weight="600" text-anchor="middle">TcpTransport</text>
+        <text x="280" y="374" fill="#94a3b8" font-size="8" text-anchor="middle">transport/tcp.rs · 4-byte length + JSON · ≤ 1 MiB · ≤ 100 connections</text>
+        <text x="280" y="388" fill="#94a3b8" font-size="8" text-anchor="middle">sender = self-declared origin_node field</text>
+        <text x="280" y="402" fill="#94a3b8" font-size="8" text-anchor="middle">no handshake · no encryption</text>
 
-        <line x1="605" y1="110" x2="605" y2="150" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="555" y="145" fill="#94a3b8" font-size="8">REST/JSON</text>
+        <line x1="280" y1="415" x2="280" y2="476" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="290" y="450" fill="#94a3b8" font-size="7">unsigned PipelineMessage</text>
 
-        <!-- Android bypass via UniFFI -->
-        <path d="M 480 75 L 480 20 L 735 20 L 735 270" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
-        <text x="580" y="14" fill="#a78bfa" font-size="8">UniFFI bindings/ → crci-core.so (bypasses REST)</text>
+        <rect x="80" y="480" width="400" height="100" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="280" y="503" fill="white" font-size="11" font-weight="600" text-anchor="middle">GossipPipeline</text>
+        <text x="280" y="519" fill="#94a3b8" font-size="8" text-anchor="middle">integration.rs</text>
+        <text x="280" y="533" fill="#94a3b8" font-size="8" text-anchor="middle">zone · node-ID · seq overflow · severity · size</text>
+        <text x="280" y="547" fill="#94a3b8" font-size="8" text-anchor="middle">rate limit · duplicate/TTL · battery throttle</text>
+        <text x="280" y="565" fill="#fbbf24" font-size="8" text-anchor="middle">drop / throttle only — no signatures, no strikes</text>
 
-        <!-- API -> core -->
-        <line x1="385" y1="220" x2="385" y2="270" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="392" y="250" fill="#94a3b8" font-size="8">async fn calls (mgmt / query)</text>
+        <text x="280" y="604" fill="#ef4444" font-size="8" font-weight="600" text-anchor="middle">✗ does not feed NodeRuntime yet (Task 32)</text>
+        <path d="M 480 530 L 520 530 L 520 371 L 556 371" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowred)"/>
 
-        <!-- Transport -> Validation -->
-        <line x1="165" y1="410" x2="160" y2="480" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="172" y="442" fill="#94a3b8" font-size="8">Inbound TCP</text>
+        <!-- API -->
+        <rect x="60" y="645" width="440" height="80" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="280" y="669" fill="white" font-size="11" font-weight="600" text-anchor="middle">HTTP + WebSocket API</text>
+        <text x="280" y="685" fill="#94a3b8" font-size="8" text-anchor="middle">api.rs · Axum · port 8080 · 15 routes (docs/openapi.json)</text>
+        <text x="280" y="699" fill="#94a3b8" font-size="8" text-anchor="middle">/metrics in Prometheus text format (metrics.rs)</text>
+        <text x="280" y="713" fill="#94a3b8" font-size="8" text-anchor="middle">/chain/head on the TCP node = latest message ID, not a chain hash</text>
 
-        <!-- Validation -> Identity -->
-        <line x1="240" y1="515" x2="270" y2="515" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <!-- Supporting modules -->
+        <rect x="60" y="745" width="440" height="265" rx="8" fill="rgba(148,163,184,0.04)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="72" y="763" fill="#94a3b8" font-size="9" font-weight="600">SUPPORTING MODULES</text>
 
-        <!-- Identity -> Replay -->
-        <line x1="430" y1="515" x2="460" y2="515" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <rect x="80" y="775" width="195" height="105" rx="6" fill="rgba(76,29,149,0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="177" y="797" fill="white" font-size="10" font-weight="600" text-anchor="middle">Storage</text>
+        <text x="177" y="813" fill="#94a3b8" font-size="7.5" text-anchor="middle">storage/encrypted.rs</text>
+        <text x="177" y="827" fill="#94a3b8" font-size="7.5" text-anchor="middle">AES-256-GCM</text>
+        <text x="177" y="841" fill="#94a3b8" font-size="7.5" text-anchor="middle">Argon2id key derivation</text>
+        <text x="177" y="861" fill="#64748b" font-size="7" text-anchor="middle">not wired to the CLI yet</text>
 
-        <!-- labels for validation-row connectors, placed in the clear gap below the row -->
-        <text x="140" y="585" fill="#94a3b8" font-size="7">Signature Check</text>
-        <text x="370" y="585" fill="#94a3b8" font-size="7">Sliding-Window Check</text>
+        <rect x="285" y="775" width="195" height="105" rx="6" fill="rgba(76,29,149,0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="382" y="797" fill="white" font-size="10" font-weight="600" text-anchor="middle">FFI</text>
+        <text x="382" y="813" fill="#94a3b8" font-size="7.5" text-anchor="middle">ffi.rs · UniFFI exports</text>
+        <text x="382" y="827" fill="#94a3b8" font-size="7.5" text-anchor="middle">start/stop node, peer count</text>
+        <text x="382" y="841" fill="#94a3b8" font-size="7.5" text-anchor="middle">panics → Kotlin exceptions</text>
+        <text x="382" y="861" fill="#64748b" font-size="7" text-anchor="middle">used by crci-android</text>
 
-        <!-- Replay -> Mesh (elbow through clear gap) -->
-        <path d="M 530 550 L 530 596 L 170 596 L 170 630" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="230" y="609" fill="#94a3b8" font-size="7">Valid Message</text>
+        <rect x="80" y="890" width="195" height="105" rx="6" fill="rgba(30,41,59,0.6)" stroke="#475569" stroke-width="1.5"/>
+        <text x="177" y="912" fill="white" font-size="10" font-weight="600" text-anchor="middle">Stubs</text>
+        <text x="177" y="928" fill="#94a3b8" font-size="7.5" text-anchor="middle">ble.rs, lora.rs</text>
+        <text x="177" y="942" fill="#94a3b8" font-size="7.5" text-anchor="middle">return NotAvailable</text>
+        <text x="177" y="956" fill="#94a3b8" font-size="7.5" text-anchor="middle">wasm.rs: no engine linked</text>
+        <text x="177" y="976" fill="#64748b" font-size="7" text-anchor="middle">interfaces only</text>
 
-        <!-- Mesh -> Storage -->
-        <line x1="260" y1="665" x2="290" y2="665" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="160" y="715" fill="#94a3b8" font-size="7">Route + Persist</text>
+        <rect x="285" y="890" width="195" height="105" rx="6" fill="rgba(30,41,59,0.6)" stroke="#475569" stroke-width="1.5"/>
+        <text x="382" y="912" fill="white" font-size="10" font-weight="600" text-anchor="middle">Simulation + demo</text>
+        <text x="382" y="928" fill="#94a3b8" font-size="7.5" text-anchor="middle">mesh, node, discovery, aeda</text>
+        <text x="382" y="942" fill="#94a3b8" font-size="7.5" text-anchor="middle">bench, stress, chaos, crisis</text>
+        <text x="382" y="956" fill="#94a3b8" font-size="7.5" text-anchor="middle">byzantine_behavior (agent)</text>
+        <text x="382" y="976" fill="#64748b" font-size="7" text-anchor="middle">in-process, no real I/O</text>
 
-        <!-- Storage -> Persistent Storage -->
-        <line x1="470" y1="665" x2="500" y2="665" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="405" y="715" fill="#94a3b8" font-size="7">Encrypt + Flush</text>
+        <!-- Signed path -->
+        <rect x="540" y="300" width="520" height="710" rx="8" fill="rgba(251,113,133,0.05)" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="552" y="318" fill="#fb7185" font-size="9" font-weight="600">SIGNED PATH — NodeRuntime (runtime.rs)</text>
+        <text x="552" y="332" fill="#94a3b8" font-size="7.5">simulator · tests · benches · demo · Android FFI</text>
 
-        <!-- Storage -> Consensus Engine (elbow) -->
-        <path d="M 380 700 L 380 740 L 175 740 L 175 780" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="185" y="736" fill="#94a3b8" font-size="7">New State</text>
+        <rect x="560" y="350" width="380" height="42" rx="5" fill="rgba(30,41,59,0.7)" stroke="#94a3b8" stroke-width="1.2"/>
+        <text x="572" y="368" fill="white" font-size="9" font-weight="600">1  SharedInbox</text>
+        <text x="572" y="382" fill="#94a3b8" font-size="7.5">in-memory map of (sender, JSON WireMessage) — no network</text>
 
-        <!-- Consensus Engine -> AEDA -->
-        <line x1="270" y1="815" x2="290" y2="815" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="165" y="866" fill="#94a3b8" font-size="7">Median Calculation</text>
+        <rect x="560" y="402" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
+        <text x="572" y="420" fill="white" font-size="9" font-weight="600">2  Admission — sybil.rs</text>
+        <text x="572" y="434" fill="#94a3b8" font-size="7.5">banned sender → drop · token bucket 20 msgs, +5/s</text>
 
-        <!-- AEDA -> Metrics -->
-        <line x1="375" y1="850" x2="375" y2="900" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="382" y="882" fill="#94a3b8" font-size="7">Escalate</text>
+        <rect x="560" y="454" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
+        <text x="572" y="472" fill="white" font-size="9" font-weight="600">3  Signature-check budget</text>
+        <text x="572" y="486" fill="#94a3b8" font-size="7.5">5 per origin, never reset → later messages dropped (Task 31)</text>
 
-        <!-- Byzantine feedback loop: Consensus <-.-> Reputation -->
-        <path d="M 175 850 Q 375 882 580 850" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowhead)"/>
-        <text x="200" y="897" fill="#fb7185" font-size="7">Anomaly Detected &lt;--&gt; Penalty Applied</text>
+        <rect x="560" y="506" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
+        <text x="572" y="524" fill="white" font-size="9" font-weight="600">4  Ed25519 verify — identity.rs</text>
+        <text x="572" y="538" fill="#94a3b8" font-size="7.5">invalid signature → drop + strike on the sender</text>
 
-        <!-- Network layer -> Peer nodes -->
-        <line x1="460" y1="375" x2="830" y2="375" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="530" y="369" fill="#94a3b8" font-size="7">gossipsub</text>
+        <rect x="560" y="558" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
+        <text x="572" y="576" fill="white" font-size="9" font-weight="600">5  Duplicate message ID</text>
+        <text x="572" y="590" fill="#94a3b8" font-size="7.5">same sender → strike · other sender → ignored (gossip)</text>
 
-        <path d="M 460 393 L 755 393 L 755 485 L 830 485" fill="none" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="590" y="387" fill="#94a3b8" font-size="7">Kademlia DHT</text>
+        <rect x="560" y="610" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
+        <text x="572" y="628" fill="white" font-size="9" font-weight="600">6  Origin key pinning</text>
+        <text x="572" y="642" fill="#94a3b8" font-size="7.5">known origin with a different public key → strike</text>
 
-        <path d="M 460 411 L 790 411 L 790 595 L 830 595" fill="none" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <text x="590" y="425" fill="#94a3b8" font-size="7">TCP / QUIC + Noise</text>
-<!-- ============ CLIENT LAYER ============ -->
-<text x="70" y="28" fill="#64748b" font-size="9" font-weight="600">CLIENT LAYER</text>
-<rect x="70" y="40" width="190" height="70" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
-<text x="165.0" y="66" fill="white" font-size="11" font-weight="600" text-anchor="middle">Web Dashboard</text>
-<text x="165.0" y="82" fill="#94a3b8" font-size="8" text-anchor="middle">web/ — React + TypeScript</text>
-<text x="165.0" y="96" fill="#94a3b8" font-size="8" text-anchor="middle">polls REST for telemetry</text>
-<rect x="290" y="40" width="190" height="70" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
-<text x="385.0" y="66" fill="white" font-size="11" font-weight="600" text-anchor="middle">Android App</text>
-<text x="385.0" y="82" fill="#94a3b8" font-size="8" text-anchor="middle">crci-android/ — Kotlin</text>
-<text x="385.0" y="96" fill="#94a3b8" font-size="8" text-anchor="middle">Jetpack Compose UI</text>
-<rect x="510" y="40" width="190" height="70" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
-<text x="605.0" y="66" fill="white" font-size="11" font-weight="600" text-anchor="middle">CLI / External Tools</text>
-<text x="605.0" y="82" fill="#94a3b8" font-size="8" text-anchor="middle">external REST clients</text>
-<!-- ============ API LAYER ============ -->
-<rect x="70" y="150" width="630" height="70" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
-<text x="385.0" y="176" fill="white" font-size="12" font-weight="600" text-anchor="middle">crci-node</text>
-<text x="385.0" y="192" fill="#94a3b8" font-size="8" text-anchor="middle">Tokio async runtime · Axum REST + WebSocket · clap CLI arg parsing</text>
-<!-- ============ NETWORK LAYER ============ -->
-<rect x="80" y="340" width="170" height="70" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
-<text x="165.0" y="366" fill="white" font-size="11" font-weight="600" text-anchor="middle">Transport</text>
-<text x="165.0" y="382" fill="#94a3b8" font-size="8" text-anchor="middle">transport.rs</text>
-<text x="165.0" y="396" fill="#94a3b8" font-size="8" text-anchor="middle">TCP / QUIC listeners</text>
-<rect x="290" y="340" width="170" height="70" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
-<text x="375.0" y="366" fill="white" font-size="11" font-weight="600" text-anchor="middle">Discovery</text>
-<text x="375.0" y="382" fill="#94a3b8" font-size="8" text-anchor="middle">discovery.rs</text>
-<text x="375.0" y="396" fill="#94a3b8" font-size="8" text-anchor="middle">Kademlia peer discovery</text>
-<!-- ============ VALIDATION LAYER ============ -->
-<rect x="80" y="480" width="160" height="70" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
-<text x="160.0" y="506" fill="white" font-size="11" font-weight="600" text-anchor="middle">Validation</text>
-<text x="160.0" y="522" fill="#94a3b8" font-size="7" text-anchor="middle">validation.rs</text>
-<text x="160.0" y="536" fill="#94a3b8" font-size="7" text-anchor="middle">message schema rules</text>
-<rect x="270" y="480" width="160" height="70" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
-<text x="350.0" y="506" fill="white" font-size="11" font-weight="600" text-anchor="middle">Identity</text>
-<text x="350.0" y="522" fill="#94a3b8" font-size="7" text-anchor="middle">identity.rs</text>
-<text x="350.0" y="536" fill="#94a3b8" font-size="7" text-anchor="middle">Ed25519 sig verify</text>
-<rect x="460" y="480" width="140" height="70" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
-<text x="530.0" y="506" fill="white" font-size="11" font-weight="600" text-anchor="middle">Replay</text>
-<text x="530.0" y="522" fill="#94a3b8" font-size="7" text-anchor="middle">replay.rs</text>
-<text x="530.0" y="536" fill="#94a3b8" font-size="7" text-anchor="middle">sliding-window mechanism</text>
-<!-- ============ CORE ROUTING ============ -->
-<rect x="80" y="630" width="180" height="70" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
-<text x="170.0" y="656" fill="white" font-size="11" font-weight="600" text-anchor="middle">Mesh</text>
-<text x="170.0" y="672" fill="#94a3b8" font-size="7" text-anchor="middle">mesh.rs</text>
-<text x="170.0" y="686" fill="#94a3b8" font-size="7" text-anchor="middle">routing table + forwarding</text>
-<rect x="290" y="630" width="180" height="70" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
-<text x="380.0" y="656" fill="white" font-size="11" font-weight="600" text-anchor="middle">Storage</text>
-<text x="380.0" y="672" fill="#94a3b8" font-size="7" text-anchor="middle">storage.rs</text>
-<text x="380.0" y="686" fill="#94a3b8" font-size="7" text-anchor="middle">state read / write</text>
-<rect x="500" y="630" width="180" height="70" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
-<text x="590.0" y="656" fill="white" font-size="11" font-weight="600" text-anchor="middle">Persistent Storage</text>
-<text x="590.0" y="672" fill="#94a3b8" font-size="7" text-anchor="middle">AES-256-GCM · Argon2id KDF</text>
-<!-- ============ REPUTATION LAYER ============ -->
-<rect x="80" y="780" width="190" height="70" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
-<text x="175.0" y="806" fill="white" font-size="11" font-weight="600" text-anchor="middle">State Machine</text>
-<text x="175.0" y="822" fill="#94a3b8" font-size="7" text-anchor="middle">integration.rs</text>
-<text x="175.0" y="836" fill="#94a3b8" font-size="7" text-anchor="middle">state machine commit</text>
-<rect x="290" y="780" width="170" height="70" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
-<text x="375.0" y="806" fill="white" font-size="11" font-weight="600" text-anchor="middle">AEDA</text>
-<text x="375.0" y="822" fill="#94a3b8" font-size="7" text-anchor="middle">aeda.rs</text>
-<text x="375.0" y="836" fill="#94a3b8" font-size="7" text-anchor="middle">anomaly / median calc</text>
-<rect x="480" y="780" width="200" height="70" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
-<text x="580.0" y="806" fill="white" font-size="11" font-weight="600" text-anchor="middle">Reputation</text>
-<text x="580.0" y="822" fill="#94a3b8" font-size="7" text-anchor="middle">node.rs</text>
-<text x="580.0" y="836" fill="#94a3b8" font-size="7" text-anchor="middle">Byzantine penalty scoring</text>
-<!-- ============ OBSERVABILITY ============ -->
-<rect x="80" y="900" width="600" height="70" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
-<text x="380.0" y="926" fill="white" font-size="12" font-weight="600" text-anchor="middle">Metrics — metrics.rs</text>
-<text x="380.0" y="942" fill="#94a3b8" font-size="8" text-anchor="middle">Prometheus exporter → Grafana dashboards</text>
-<!-- ============ PEER NODES ============ -->
-<rect x="830" y="340" width="200" height="70" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
-<text x="930.0" y="366" fill="white" font-size="11" font-weight="600" text-anchor="middle">Peer Node 1</text>
-<text x="930.0" y="382" fill="#94a3b8" font-size="8" text-anchor="middle">gossipsub relay</text>
-<rect x="830" y="450" width="200" height="70" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
-<text x="930.0" y="476" fill="white" font-size="11" font-weight="600" text-anchor="middle">Peer Node 2</text>
-<text x="930.0" y="492" fill="#94a3b8" font-size="8" text-anchor="middle">TCP + Noise transport</text>
-<rect x="830" y="560" width="200" height="70" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
-<text x="930.0" y="586" fill="white" font-size="11" font-weight="600" text-anchor="middle">Peer Node 3</text>
-<text x="930.0" y="602" fill="#94a3b8" font-size="8" text-anchor="middle">QUIC transport</text>
+        <rect x="560" y="662" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
+        <text x="572" y="680" fill="white" font-size="9" font-weight="600">7  ReplayFilter — replay.rs</text>
+        <text x="572" y="694" fill="#94a3b8" font-size="7.5">seq ≤ highest → strike · W = 64 window only with paper_v2</text>
 
-        <!-- ============ LEGEND ============ -->
-        <text x="60" y="1005" fill="white" font-size="10" font-weight="600">Legend</text>
+        <rect x="560" y="714" width="380" height="42" rx="5" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.2"/>
+        <text x="572" y="732" fill="white" font-size="9" font-weight="600">✓  Accepted</text>
+        <text x="572" y="746" fill="#94a3b8" font-size="7.5">merkle.rs SHA-256 chain · AEDA · battery · TTL</text>
 
-        <rect x="60" y="1017" width="16" height="10" rx="2" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1"/>
-        <text x="82" y="1025" fill="#94a3b8" font-size="8">Frontend / Client</text>
+        <!-- strike feedback -->
+        <line x1="940" y1="527" x2="1000" y2="527" stroke="#fb7185" stroke-width="1.2"/>
+        <line x1="940" y1="579" x2="1000" y2="579" stroke="#fb7185" stroke-width="1.2"/>
+        <line x1="940" y1="631" x2="1000" y2="631" stroke="#fb7185" stroke-width="1.2"/>
+        <line x1="940" y1="683" x2="1000" y2="683" stroke="#fb7185" stroke-width="1.2"/>
+        <line x1="1000" y1="527" x2="1000" y2="786" stroke="#fb7185" stroke-width="1.2" marker-end="url(#arrowrose)"/>
+        <text x="1008" y="600" fill="#fb7185" font-size="8" transform="rotate(90 1008 600)">strike −0.15</text>
 
-        <rect x="290" y="1017" width="16" height="10" rx="2" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1"/>
-        <text x="312" y="1025" fill="#94a3b8" font-size="8">Backend / Core Logic</text>
+        <rect x="560" y="790" width="480" height="90" rx="6" fill="rgba(136,19,55,0.5)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="800" y="812" fill="white" font-size="11" font-weight="600" text-anchor="middle">Local reputation — sybil.rs</text>
+        <text x="800" y="830" fill="#94a3b8" font-size="8" text-anchor="middle">start 0.5 · strike −0.15 · banned below 0.1 → 3 strikes ban</text>
+        <text x="800" y="844" fill="#94a3b8" font-size="8" text-anchor="middle">small recovery while active · decay 0.05/s after 2 s of silence</text>
+        <text x="800" y="858" fill="#94a3b8" font-size="8" text-anchor="middle">per neighbour, per node — no voting, no global state</text>
+        <path d="M 560 835 L 550 835 L 550 423 L 557 423" fill="none" stroke="#fb7185" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrowrose)"/>
 
-        <rect x="520" y="1017" width="16" height="10" rx="2" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1"/>
-        <text x="542" y="1025" fill="#94a3b8" font-size="8">Database / Storage</text>
+        <rect x="560" y="900" width="480" height="95" rx="6" fill="rgba(127,29,29,0.25)" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="572" y="920" fill="#ef4444" font-size="9" font-weight="600">KNOWN GAPS ON THIS PATH</text>
+        <text x="572" y="938" fill="#94a3b8" font-size="7.5">• messages of type mce skip steps 3, 4 and 6 (accepted unsigned)</text>
+        <text x="572" y="952" fill="#94a3b8" font-size="7.5">• idle decay can ban an honest peer silent for ~10 s (Task 4)</text>
+        <text x="572" y="966" fill="#94a3b8" font-size="7.5">• the duplicate-ID cache is cleared at 5 000 entries</text>
+        <text x="572" y="980" fill="#94a3b8" font-size="7.5">• paced replays let an adversary recover between strikes (Task 9)</text>
 
-        <rect x="750" y="1017" width="16" height="10" rx="2" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1"/>
-        <text x="772" y="1025" fill="#94a3b8" font-size="8">Security / Validation</text>
+        <!-- ── Arrows from outside ────────────────────────────── -->
+        <path d="M 100 106 L 100 132 L 50 132 L 50 685 L 58 685" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="106" y="128" fill="#94a3b8" font-size="8">HTTP / WS :8080</text>
 
-        <rect x="60" y="1042" width="16" height="10" rx="2" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1"/>
-        <text x="82" y="1050" fill="#94a3b8" font-size="8">Network / Transport</text>
+        <line x1="410" y1="106" x2="410" y2="333" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="418" y="130" fill="#94a3b8" font-size="8">plaintext TCP</text>
 
-        <rect x="290" y="1042" width="16" height="10" rx="2" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1"/>
-        <text x="312" y="1050" fill="#94a3b8" font-size="8">External / Observability / Peer</text>
+        <path d="M 510 228 L 510 360 L 483 360" fill="none" stroke="#34d399" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+        <text x="516" y="245" fill="#94a3b8" font-size="7">--listen</text>
 
-        <line x1="520" y1="1047" x2="536" y2="1047" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,3"/>
-        <text x="542" y="1050" fill="#94a3b8" font-size="8">FFI / bypass flow</text>
+        <line x1="800" y1="228" x2="800" y2="348" stroke="#34d399" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+        <text x="806" y="240" fill="#94a3b8" font-size="7">no-args demo</text>
+        <text x="806" y="250" fill="#94a3b8" font-size="7">(in-process)</text>
 
-        <line x1="750" y1="1047" x2="766" y2="1047" stroke="#fb7185" stroke-width="1" stroke-dasharray="3,3"/>
-        <text x="772" y="1050" fill="#94a3b8" font-size="8">Byzantine feedback loop</text>
+        <line x1="910" y1="106" x2="910" y2="348" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowhead)"/>
+        <text x="918" y="200" fill="#a78bfa" font-size="8">UniFFI · ffi.rs</text>
+        <text x="918" y="212" fill="#a78bfa" font-size="8">in-process only</text>
+
+        <!-- ── Legend ─────────────────────────────────────────── -->
+        <text x="60" y="1050" fill="#64748b" font-size="8">Solid boxes: implemented · grey: stubs or simulation · red dashed: known gap · stage numbers follow NodeRuntime::process_inbox order</text>
       </svg>
     </div>
 
@@ -275,45 +255,42 @@
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>Core Crates</h3>
+          <h3>Crates</h3>
         </div>
         <ul>
-          <li>• crci-core/ — protocol rules, crypto, routing, Sybil resistance, state, no I/O</li>
-          <li>• crci-node/ — binary: clap CLI, Tokio runtime, Axum REST/WS API</li>
-          <li>• bindings/ — UniFFI scaffolding, auto-generates Kotlin bindings from crci-core</li>
-          <li>• target/ — Cargo build artifacts (gitignored)</li>
+          <li>• crates/crci-core — protocol library (lib + cdylib), HTTP API, UniFFI exports, simulation code</li>
+          <li>• crates/crci-node — crci-node CLI, helper binaries, integration tests, benchmark harnesses</li>
+          <li>• bindings/kotlin/generate.sh — regenerates the Android Kotlin bindings</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>Clients &amp; Interfaces</h3>
+          <h3>Clients</h3>
         </div>
         <ul>
-          <li>• web/ — React + TypeScript dashboard, live telemetry via REST</li>
-          <li>• crci-android/ — Kotlin/Compose app, calls crci-core directly via FFI</li>
-          <li>• docker/ — Dockerfiles + docker-compose.yml for 3-node mesh + dashboard</li>
-          <li>• scripts/ — development and testing tooling</li>
+          <li>• web/dashboard — React + Vite, reads one node's HTTP/WS API</li>
+          <li>• crci-android — Compose demo app, in-process node via UniFFI, no networking</li>
+          <li>• Dockerfile + docker-compose.yml — 2 honest nodes, 1 adversary, dashboard</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <div class="card-dot violet"></div>
-          <h3>Docs, CI &amp; Proofs</h3>
+          <div class="card-dot rose"></div>
+          <h3>Where the paper's mechanism lives</h3>
         </div>
         <ul>
-          <li>• docs/ — paper drafts, benchmark CSVs, TLA+ formal specs, mdBook site</li>
-          <li>• .github/ — CI workflows (ubuntu/windows/cross-compile), issue/PR templates</li>
-          <li>• .cargo/ — toolchain + linker config for cross-compilation targets</li>
-          <li>• Sybil resistance + Byzantine reputation enforced before state surfaces</li>
+          <li>• Strikes, bans and the replay filter run only in NodeRuntime (signed path)</li>
+          <li>• All paper benchmarks drive NodeRuntime in-process (docs/benchmarks.md)</li>
+          <li>• The TCP node does not apply them yet (Tasks 7 and 32)</li>
         </ul>
       </div>
     </div>
 
     <p class="footer">
-      CRCI v2.0.0 · Rust / Cargo workspace · Tokio · Axum · rust-libp2p · Local fault-isolation mesh · diagram reflects repo layout + subsystem message flow
+      CRCI v2.1.0 · diagram of the code as of 2026-11-01 · details in docs/architecture.md
     </p>
   </div>
 

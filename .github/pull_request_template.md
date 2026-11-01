@@ -2,8 +2,8 @@
 <!-- What does this PR do? -->
 
 ## Checklist
-- [ ] `cargo test --all` passes
-- [ ] `cargo clippy --all-targets -- -D warnings` is clean
-- [ ] `cargo fmt --all` applied
-- [ ] CURRENT_STATE.md updated if this completes a session goal
+- [ ] `cargo test --workspace` passes
+- [ ] `cargo clippy --all-targets --all-features -- -D warnings` is clean
+- [ ] `cargo fmt --all -- --check` is clean
+- [ ] `docs/` updated if behaviour or a documented number changed
 - [ ] New public functions have doc comments

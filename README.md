@@ -1,67 +1,88 @@
-# Crisis Response Communication Infrastructure (CRCI)
+# CRCI: Crisis Response Communication Infrastructure
 
-[![CI](https://github.com/medwinjose/crci/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/medwinjose/crci/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23033990.svg)](https://doi.org/10.5281/zenodo.23033990)
+[![CI](https://github.com/medwinjose/crci/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/medwinjose/crci/actions/workflows/ci.yml) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23033990.svg)](https://doi.org/10.5281/zenodo.23033990)
 
-CRCI is a distributed systems framework designed to maintain strict state consistency and network integrity across malicious or failing nodes.
+CRCI is a research prototype, written in Rust, of a peer-to-peer gossip protocol for crisis communication
+when central infrastructure is down. Each node keeps a **local** reputation score for its neighbours and
+stops accepting traffic from a neighbour after repeated, locally verifiable misbehaviour, such as replayed
+messages or invalid Ed25519 signatures. There is no voting and no global consensus: every node decides on
+its own.
 
-## The Problem
+## Status
 
-In distributed systems, trust is often implicitly assumed between nodes on the network. When nodes become malicious or undergo Byzantine faults (e.g., sending conflicting information, forging messages, or dropping traffic), standard consensus protocols can break down, leading to divergent state or network partitions. Securing a network against these faults typically requires heavy cryptographic overhead and rigid topology assumptions, making it difficult to maintain performance under real-world WAN conditions.
+This is a prototype under active research, not deployable software. In particular:
 
-## The Solution
+- The reputation and isolation mechanism runs in `NodeRuntime`, which today is exercised by the in-process
+  simulator, the tests and the benchmarks. The networked `crci-node` binary exchanges unsigned messages over
+  plain TCP and does not apply that mechanism yet.
+- TCP connections are neither authenticated nor encrypted.
+- BLE and LoRa transports are interface stubs.
 
-CRCI introduces a peer-to-peer mesh protocol implemented in Rust that integrates local misbehaving-peer isolation directly into the gossip layer. Rather than attempting to reach globally synchronized Byzantine fault tolerance (BFT) or quorum consensus, CRCI enforces a purely local reputation-based peer eviction mechanism using a deterministic three-strike threshold. By binding authenticated Ed25519 identities to protocol-verifiable behavioral evidence (e.g., detecting explicit message replays or invalid signatures), CRCI allows honest nodes to independently isolate malicious relays without requiring voting rounds or stable membership.
+See [docs/architecture.md](docs/architecture.md) and [docs/threat-model.md](docs/threat-model.md) for
+details and the list of known gaps.
 
 ## Architecture
 
-![CRCI Architecture](docs/architecture/crci-architecture.png)
+![CRCI architecture](docs/architecture/crci-architecture.png)
 
-## Key Results
+Interactive version: [docs/architecture/crci-architecture.html](docs/architecture/crci-architecture.html).
 
-- **Test Suite**: Backed by 195 passed tests.
-- **WAN Chaos Testing**: Runs on an automated 5-node Linux network-namespace testbed (`tc`/`netem`) validating partition tolerance and packet-jitter behavior under real kernel-level network emulation. This is a CI-scale subset of the 100-node target topology, chosen to fit CI runner resource limits.
-- **Continuous Integration**: Green across all jobs (Ubuntu, Windows, and cross-compilation), including the `test_real_wan_chaos_netns` integration test. See the [Actions tab](https://github.com/medwinjose/crci/actions) for current build status.
+## Results
 
-### Byzantine Eviction Benchmarks (100 total runs)
+Recorded measurements, each with its harness, command and raw data, are in
+[docs/benchmarks.md](docs/benchmarks.md). Headline (in-process harness, 50 deterministic trials per
+condition): an adversary replaying a message is banned after exactly 3 strikes, and an honest peer
+sending one valid message is never banned.
 
-| Condition | Strikes to Ban | Eviction Latency (Mean) | Min / Max Latency | Honest Survival Rate |
-| :--- | :--- | :--- | :--- | :--- |
-| **Baseline** | 3 | $< 1$ ms | $< 1$ ms | 50/50 |
-| **Fixed 15 ms Delay** | 3 | 45.8 ms | 45 ms / 46 ms | 50/50 |
+## Quick start
 
-Data source: `crates/crci-node/benches/` test harness.
-
-## Quick Start
-
-CRCI has been reorganized into a Cargo workspace. To build and run the project:
+Requires a stable Rust toolchain.
 
 ```bash
-# Clone the repository
 git clone https://github.com/medwinjose/crci.git
 cd crci
-
-# Build the entire workspace
 cargo build --workspace
-
-# Run the test suite (195 tests)
 cargo test --workspace
-
-# Spin up a local simulated multi-node mesh
-docker compose up --build
-
-# Or run a single local node directly
-cargo run --bin node
 ```
 
-## Documentation & Papers
+Run a node with the HTTP API on port 8080, then send it a message from a second terminal:
 
-- **CRCI Academic Paper**: [Preprint (Zenodo): https://doi.org/10.5281/zenodo.23032042](https://doi.org/10.5281/zenodo.23032042)
-- Archived software (all versions): https://doi.org/10.5281/zenodo.23033990
+```bash
+cargo run -p crci-node --bin crci-node -- --listen 127.0.0.1:7001 --node-id node-a
+cargo run -p crci-node --bin crci-node -- --send "hello" --to 127.0.0.1:7001 --node-id node-b
+```
 
-## Citation
-If you use CRCI, please cite the preprint: https://doi.org/10.5281/zenodo.23032042
-Software archive: https://doi.org/10.5281/zenodo.23033990
+Running `crci-node` with no arguments runs a scripted in-process demonstration instead.
+
+Reproduce the paper benchmarks:
+
+```bash
+cargo bench -p crci-node --bench byzantine_bench
+cargo bench -p crci-node --bench ablation_bench --features paper_v2
+cargo bench -p crci-node --bench recovery_bench --features paper_v2
+```
+
+A Docker Compose demo (two honest nodes, one adversary, the web dashboard) is defined in
+`docker-compose.yml`; see [scripts/README.md](scripts/README.md).
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `crates/crci-core` | Protocol library (also built as the Android shared library) |
+| `crates/crci-node` | CLI binary, integration tests, benchmark harnesses |
+| `crci-android` | Android demo app using the library through UniFFI |
+| `web/dashboard` | React dashboard for one node's HTTP API |
+| `docs` | Documentation, ADRs, TLA+ model, recorded evidence ([index](docs/README.md)) |
+| `scripts` | Demo and build helper scripts |
+
+## Paper and citation
+
+- Preprint: [doi.org/10.5281/zenodo.23032042](https://doi.org/10.5281/zenodo.23032042)
+- Software archive (all versions): [doi.org/10.5281/zenodo.23033990](https://doi.org/10.5281/zenodo.23033990)
+
+Citation metadata is in [CITATION.cff](CITATION.cff).
 
 ## License
 
-This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+Apache License 2.0. See [LICENSE](LICENSE).

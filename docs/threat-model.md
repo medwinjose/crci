@@ -1,40 +1,58 @@
-# CRCI Threat Model (STRIDE)
+# Threat Model
 
-This document provides a formal STRIDE-based threat analysis of the CRCI peer-to-peer network. It evaluates adversarial capabilities and the specific cryptographic or architectural mechanisms CRCI uses to mitigate them.
+What CRCI defends against today, where the defence lives, and what is not defended. "Signed path" and
+"TCP path" refer to the two message paths described in [architecture.md](architecture.md#two-message-paths).
 
-## 1. Spoofing
-**Threat:** An adversary attempts to impersonate another legitimate node on the network to inject false telemetry or sabotage the victim's reputation.
-**Mitigation:** 
-- **Identity Keys:** Every CRCI node identity is bound to an Ed25519 public key.
-- **Message Signing:** The `rust-libp2p` network layer requires all gossip payloads to be cryptographically signed by the originating node's private key. 
-- **Peer Handshake:** Connections use the Noise protocol framework, ensuring that any peer claiming a specific `PeerId` must prove ownership of the corresponding private key during the initial handshake, completely preventing spoofing of in-flight messages or peer identities.
+## Goal and scope
 
-## 2. Tampering
-**Threat:** An adversary or man-in-the-middle (MITM) intercepts and modifies in-flight state transitions or gossip messages before they reach the rest of the network.
-**Mitigation:**
-- **Encrypted Transport:** The Noise protocol handshake establishes an encrypted, authenticated tunnel for all TCP traffic, preventing MITM tampering.
-- **Payload Verification:** Even if a malicious node receives a valid message, tampers with the payload, and re-gossips it, the cryptographic signature validation performed by the receiving peer's local gossip validation layer will fail, causing the tampered message to be dropped and the malicious forwarder to incur a reputation penalty.
+CRCI aims to let each node **locally** isolate a neighbour that commits observable protocol violations,
+without voting rounds or global agreement. It is not a consensus protocol and gives no agreement,
+ordering or safety guarantee across nodes.
 
-## 3. Repudiation
-**Threat:** A malicious node sends a destructive or invalid message and later denies having sent it to avoid a reputation penalty.
-**Mitigation:**
-- **Cryptographic Non-Repudiation:** Because all payloads are signed with Ed25519 keys, the signature itself serves as unforgeable proof of origin. If node A sends an invalid payload to node B, node B can cryptographically verify the authorship and locally penalize the transport peer that delivered it.
+**Adversary considered:** a peer that commits acts of *commission* that a receiver can check by itself:
+replaying messages it already sent, forwarding messages with invalid signatures, or presenting a second
+public key for a known origin. The adversary cannot forge Ed25519 signatures of keys it does not hold.
 
-## 4. Information Disclosure
-**Threat:** An unauthorized entity observes network traffic to discover the topology or read the contents of disaster telemetry (e.g., location data).
-**Mitigation:**
-- **In-Flight Encryption:** All point-to-point connections are encrypted.
-- **Data at Rest:** Persistent state is stored locally using an encrypted RocksDB instance.
-- *Note:* While the payload contents are protected from passive external observers, CRCI is a permissioned-capable P2P network. Any node that successfully completes the handshake and joins the mesh can decrypt the gossip payloads.
+**Not considered:** Sybil attacks at scale (many identities), collusion, majority-Byzantine networks,
+semantically false but correctly signed reports, radio jamming, side channels, compromised devices.
 
-## 5. Denial of Service (DoS)
-**Threat:** A malicious node floods the network with garbage messages, high-frequency state updates, or replay attacks to exhaust network bandwidth and CPU resources.
-**Mitigation:**
-- **Replay Protection:** The system enforces strict sequence number validation using a sliding-window mechanism. Replayed messages are dropped immediately and explicitly penalize the transmitting neighbor.
-- **Reputation-based Eviction:** Nodes that spam invalid messages or flood the mempool are dynamically penalized by the reputation engine. Once a node's reputation drops below the threshold, honest peers sever the TCP connection and drop all future packets from that `PeerId`.
-- **TTL Expiry:** Messages carry a Time-to-Live (TTL). The `rust-libp2p` gossipsub implementation prunes expired messages from the network to prevent infinite routing loops.
+## Defences that exist
 
-## 6. Elevation of Privilege
-**Threat:** A standard node attempts to act as an administrator, forcing state rollbacks or dictating state to the network.
-**Mitigation:**
-- **Decentralized Validation:** CRCI lacks a central authority or "admin" role by design. The validation rules are symmetric and strictly local. A node cannot elevate its privilege because the network does not rely on global state consensus. A single node attempting to dictate state by flooding malformed traffic will simply be ignored and isolated locally by the honest peers it connects to.
+| Threat | Defence | Where | Path |
+|---|---|---|---|
+| Forged message content | Ed25519 signature on every `WireMessage`; invalid → dropped, sender struck | `runtime.rs` | Signed only |
+| Impersonating a known origin | Public key pinned on first sight; a different key → dropped, sender struck | `runtime.rs` | Signed only |
+| Direct replay | Same message ID from the same sender → strike; from a different sender → ignored | `runtime.rs` | Signed only |
+| Sequence replay | Sequence ≤ highest seen → strike (sliding window W = 64 under `paper_v2`) | `replay.rs` | Signed only |
+| Repeat offender | Reputation 0.5, −0.15 per strike, banned below 0.1; banned senders are dropped on admission | `sybil.rs` | Signed only |
+| Message flood | Token bucket per sender (20 messages, +5/s) | `sybil.rs` | Signed only |
+| Malformed input | Severity range, payload size, node-ID format, sequence overflow, rate limit | `validation.rs`, `integration.rs` | Both |
+| Oversized / slow TCP frames | 1 MiB frame limit, 5 s read timeouts, 100 concurrent connections | `transport/tcp.rs` | TCP |
+| Data at rest | AES-256-GCM, key derived with Argon2id | `storage/encrypted.rs` | Local storage |
+| Panics across FFI | Rust panics surface as Kotlin exceptions (recorded run: `docs/evidence/android-bft038-2026-08-23/`) | `ffi.rs` | Android |
+
+## Known gaps (open, with the task that addresses each)
+
+1. **The TCP path has no isolation mechanism.** `crci-node` exchanges unsigned `PipelineMessage` values and
+   never calls `NodeRuntime`; signatures, replay filter, strikes and bans are not applied to network
+   traffic (Task 32).
+2. **The transport sender is self-declared.** The TCP listener uses the message's `origin_node` field as
+   the sender. Any connection can claim any identity, so strikes cannot be bound to a real neighbour
+   (Task 7). There is no handshake, and TCP traffic is neither authenticated nor encrypted.
+3. **Lifetime signature-check cap.** After 5 signature verifications for an origin, all later messages from
+   that origin are dropped, honest or not (Task 31).
+4. **Unsigned mass-casualty events.** Messages of type `mce` skip signature and key checks on the signed
+   path (Task 32).
+5. **Idle peers get banned.** Reputation decays at 0.05/s after 2 s of silence and the decay can cross the
+   ban threshold, so an honest peer silent for about 10 s is banned (Task 4).
+6. **Sliding window is off by default.** The default build rejects any out-of-order sequence as a replay
+   (Task 6).
+7. **Paced replays evade eviction.** An adversary that sends enough valid traffic between replays recovers
+   reputation faster than it loses it (measured in [benchmarks.md](benchmarks.md); Task 9).
+8. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
+   earlier IDs can be replayed once more without a duplicate strike (the sequence check still applies).
+9. **No partition recovery protocol.** There is no anti-entropy or digest exchange after a partition
+   (Task 10).
+10. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
+    "start at 0.2 if the /24 subnet has a banned peer" rule, which only applies to sender IDs that parse
+    as socket addresses. Fresh key pairs are otherwise free (Task 24 measures PoW minting cost).
