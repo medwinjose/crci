@@ -319,7 +319,7 @@ fn test_ffi_catch_unwind_panic_safety() {
     // 1. crci_version
     let v_res = std::panic::catch_unwind(crci_version);
     assert!(v_res.is_ok(), "crci_version panicked under catch_unwind");
-    assert_eq!(v_res.unwrap(), "0.1.0");
+    assert_eq!(v_res.unwrap(), env!("CARGO_PKG_VERSION"));
 
     // 2. validate_node_config (valid & invalid)
     let valid_cfg = FfiNodeConfig {

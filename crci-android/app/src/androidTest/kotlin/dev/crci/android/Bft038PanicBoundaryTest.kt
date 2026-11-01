@@ -18,6 +18,6 @@ class Bft038PanicBoundaryTest {
         assertTrue(exception.message?.contains("panic") == true || exception is InternalException)
         
         val version = crciVersion()
-        assertTrue(version == "0.1.0")
+        assertTrue(Regex("""\d+\.\d+\.\d+""").matches(version))
     }
 }
