@@ -725,6 +725,12 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -742,9 +748,15 @@ internal interface UniffiLib : Library {
 
     fun uniffi_crci_core_fn_func_connect_peer(`addr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
+    fun uniffi_crci_core_fn_func_consensus_rounds(uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
     fun uniffi_crci_core_fn_func_crci_version(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_crci_core_fn_func_force_panic_for_bft038(uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_crci_core_fn_func_list_peers_stub(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_crci_core_fn_func_metrics_snapshot(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_crci_core_fn_func_peer_count(uniffi_out_err: UniffiRustCallStatus, 
     ): Int
@@ -868,9 +880,15 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_crci_core_checksum_func_connect_peer(
     ): Short
+    fun uniffi_crci_core_checksum_func_consensus_rounds(
+    ): Short
     fun uniffi_crci_core_checksum_func_crci_version(
     ): Short
+    fun uniffi_crci_core_checksum_func_force_panic_for_bft038(
+    ): Short
     fun uniffi_crci_core_checksum_func_list_peers_stub(
+    ): Short
+    fun uniffi_crci_core_checksum_func_metrics_snapshot(
     ): Short
     fun uniffi_crci_core_checksum_func_peer_count(
     ): Short
@@ -900,10 +918,19 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_crci_core_checksum_func_connect_peer() != 2030.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_crci_core_checksum_func_consensus_rounds() != 20917.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_crci_core_checksum_func_crci_version() != 4411.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_crci_core_checksum_func_force_panic_for_bft038() != 20635.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_crci_core_checksum_func_list_peers_stub() != 35826.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_crci_core_checksum_func_metrics_snapshot() != 8586.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_crci_core_checksum_func_peer_count() != 46318.toShort()) {
@@ -1221,6 +1248,15 @@ public object FfiConverterSequenceTypeFfiPeerInfo: FfiConverterRustBuffer<List<F
     )
     }
     
+ fun `consensusRounds`(): kotlin.ULong {
+            return FfiConverterULong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_crci_core_fn_func_consensus_rounds(
+        _status)
+}
+    )
+    }
+    
  fun `crciVersion`(): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
@@ -1230,10 +1266,27 @@ public object FfiConverterSequenceTypeFfiPeerInfo: FfiConverterRustBuffer<List<F
     )
     }
     
+ fun `forcePanicForBft038`()
+        = 
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_crci_core_fn_func_force_panic_for_bft038(
+        _status)
+}
+    
+    
  fun `listPeersStub`(): List<FfiPeerInfo> {
             return FfiConverterSequenceTypeFfiPeerInfo.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_crci_core_fn_func_list_peers_stub(
+        _status)
+}
+    )
+    }
+    
+ fun `metricsSnapshot`(): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_crci_core_fn_func_metrics_snapshot(
         _status)
 }
     )
