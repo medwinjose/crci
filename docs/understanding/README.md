@@ -1,8 +1,7 @@
 # Understanding CRCI
 
-This folder will hold a from-zero study guide to CRCI: what the project is, why it exists, and how every
-part of the code works, written so that a reader with no programming background can learn the whole
-project by reading these pages in order.
+A guided walkthrough of CRCI from first principles: why crisis networks need local misbehaviour
+isolation, how the protocol works step by step, and how each part of the code implements it.
 
-It is written **after** the 30-task roadmap is finished, so that it describes the final protocol and the
-final evaluation. Until then this folder is intentionally empty.
+This guide is in preparation and will be published once the protocol and its evaluation are final.
+Until then, start with the [README](../../README.md) and [docs/architecture.md](../architecture.md).

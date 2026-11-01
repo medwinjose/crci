@@ -70,8 +70,6 @@ Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 (* INVARIANT: NoForgedOrigin                                               *)
 (* Property: Cryptographic signatures guarantee that all messages originate*)
 (*           from known entities. Forged messages are impossible.          *)
-(* Session: Implemented in Session 25 (STRIDE Security Hardening).         *)
-(* TLC: Checked easily because the state space is bounded by MaxSeq=4.     *)
 (***************************************************************************)
 NoForgedOrigin ==
     \A m \in MessagePool : m.origin \in Nodes
@@ -80,7 +78,6 @@ NoForgedOrigin ==
 (* INVARIANT: ReplayNeverDeliveredTwice                                    *)
 (* Property: Replay protection ensures a node's inbox never accepts two    *)
 (*           messages with the exact same origin and sequence number.      *)
-(* Session: Implemented in Session 17 (Replay Attack Protection).          *)
 (* TLC: The model checks all interleavings of network delivery.            *)
 (***************************************************************************)
 ReplayNeverDeliveredTwice ==
@@ -92,7 +89,6 @@ ReplayNeverDeliveredTwice ==
 (* INVARIANT: ByzantineContainment                                         *)
 (* Property: Honest nodes never fall below the trusted reputation threshold*)
 (*           despite Byzantine behavior, assuming f < n/2.                 *)
-(* Session: Implemented in Sessions 11-13, 22 (AEDA and MCE).              *)
 (* TLC: Evaluates every state; reputation never artificially decreases.    *)
 (***************************************************************************)
 ByzantineContainment ==
@@ -103,7 +99,6 @@ ByzantineContainment ==
 (* INVARIANT: RescueNeverDropped                                           *)
 (* Property: Critical RESCUE messages are prioritized and immune to        *)
 (*           standard throttling limits, ensuring network-wide retention.  *)
-(* Session: Implemented in Session 23 (Battery-Aware Mode).                *)
 (* TLC: FIX - Changed to check containment since instant network-wide      *)
 (*      delivery violates interleaving semantics.                          *)
 (***************************************************************************)
@@ -113,7 +108,6 @@ RescueNeverDropped ==
 (***************************************************************************)
 (* PROPERTY: RescueLiveness                                                *)
 (* Property: Eventually, every rescue message reaches all online nodes.    *)
-(* Session: Implemented in Session 23 (Battery-Aware Mode).                *)
 (* TLC: Fair execution ensures that Gossip and Receive actions eventually  *)
 (*      propagate the message fully across the bounded model.              *)
 (***************************************************************************)

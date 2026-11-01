@@ -1,7 +1,7 @@
 # Architecture
 
 This page describes the code as it is today. Where the code differs from the design in the preprint, the
-difference is stated and the task that closes it is named (tasks are tracked privately by the author).
+difference is stated and marked as planned work.
 
 Diagram: [`architecture/crci-architecture.html`](architecture/crci-architecture.html)
 (PNG export: `architecture/crci-architecture.png`).
@@ -46,7 +46,7 @@ public key, a signature and a sequence number. `NodeRuntime::process_inbox()` re
 
 A strike is −0.15 reputation (start 0.5, ban below 0.1, so three strikes ban). Reputation also drifts:
 small recovery while a peer is active, and decay of 0.05/s once a peer has been silent for more than 2 s,
-which can ban a peer that was only idle (Task 4).
+which can ban a peer that was only idle (fix planned).
 
 Messages of type `mce` (mass-casualty event) skip steps 2, 3 and 5: they are accepted without a signature.
 
@@ -68,8 +68,8 @@ ID padded to 32 bytes, not a hash-chain head.
 
 There is no handshake on connect, and TCP traffic is not encrypted.
 
-Joining the two paths (signed messages, reputation and strikes on TCP) is Task 32. Authenticating the
-transport peer is Task 7.
+Joining the two paths (signed messages, reputation and strikes on TCP) and authenticating the transport
+peer are the next planned milestones.
 
 ## `crci-core` modules
 
@@ -122,5 +122,5 @@ the Android `.so` as well.
 
 | Feature | Effect |
 |---|---|
-| `paper_v2` | Enables the W = 64 sliding-window replay filter. Not enabled by default or by `cargo test` (Task 6 makes it the default). CI enables it only for Clippy (`--all-features`). |
+| `paper_v2` | Enables the W = 64 sliding-window replay filter. Not enabled by default or by `cargo test` (planned to become the default). CI enables it only for Clippy (`--all-features`). |
 | `test-utils` | Test-only helpers for `EncryptedStore`; enabled for tests through a dev-dependency. |

@@ -18,7 +18,7 @@ fn test_ffi_background_consensus_loop_runs() {
     assert!(started, "Node should start successfully");
 
     // The loop sleeps for 500ms, then processes inbox and increments consensus_rounds.
-    // Let's wait 1.5 seconds to allow it to tick at least twice.
+    // Wait 1.5 seconds so the loop ticks at least twice.
     std::thread::sleep(Duration::from_millis(1500));
 
     let rounds = consensus_rounds();

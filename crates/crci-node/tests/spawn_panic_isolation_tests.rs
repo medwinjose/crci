@@ -1,4 +1,4 @@
-// Session 78 — Part A: Tokio spawned-task panic isolation tests
+// Tokio spawned-task panic isolation tests
 //
 // Verifies that a panic inside a tokio::spawn task does NOT kill the Tokio
 // runtime thread — it surfaces as Err(JoinError::is_panic()) on the JoinHandle
@@ -6,9 +6,9 @@
 //
 // Architectural context:
 // - runtime.rs:566 spawns a storage write task (fire-and-forget).
-// - Session 77's pre-audit found that panics inside spawned tasks bypass
+// - Panics inside spawned tasks bypass
 //   UniFFI's catch_unwind (which only covers the direct FFI call stack).
-// - The fix in Session 78 wraps the JoinHandle with a watcher task that logs
+// - The runtime wraps the JoinHandle with a watcher task that logs
 //   the panic rather than silently dropping it.
 // - These tests prove the isolation mechanism works.
 

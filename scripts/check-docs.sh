@@ -24,6 +24,8 @@ check "hash chain uses SHA-256"                           '\bsha-?3(-256)?\b'
 check "test counts are not hard-coded in prose"           '[0-9]+ passed tests|backed by [0-9]+ tests'
 check "preprint is on Zenodo"                             'arxiv'
 check "vector IDs BFT-011..029 are retired"               'BFT-0(1[1-9]|2[0-9])'
+check "planning notes stay out of the repository"         '\btasks? [0-9]+\b|session[ -_]?[0-9]+|the prompt says|recruiter'
+check "no tool attribution in the repository"             '\bclaude\b|anthropic|antigravity|gemini|chatgpt|copilot'
 
 if [ "$fail" -ne 0 ]; then
   echo "Documentation guard failed."

@@ -1,7 +1,7 @@
 # ADR 004: Network-Namespace Smoke Test in CI instead of a Simulated 100-Node WAN
 
 - **Date:** 2026-09-08
-- **Status:** Accepted (the 5-node limit applies to CI only; the evaluation testbed is Task 12)
+- **Status:** Accepted (the 5-node limit applies to CI only; a larger evaluation testbed is planned)
 
 ## Context
 

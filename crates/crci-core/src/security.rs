@@ -1,7 +1,5 @@
-//! STRIDE security hardening for CRCI.
-//!
-//! Implements defenses against all 6 STRIDE threat categories
-//! as identified in the Session 25 security audit.
+//! Security helpers for CRCI, organised by STRIDE category:
+//! node-ID derivation, payload audit and an append-only audit log.
 //!
 //! Also adds 3 safety features: GOODBYE, priority queue, rescue resolution.
 

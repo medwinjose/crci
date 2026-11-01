@@ -703,7 +703,7 @@ async fn main() {
         println!("\n=== Final State ===");
         sim.print_all();
 
-        // ── Session 10: Save and reload state ────────────────────────────────────
+        // ── Save and reload state ────────────────────────────────────
         println!("\n=== Saving node states to disk ===");
         for id in ["node-001", "node-002", "node-003", "node-006"] {
             if let Some(node) = sim.nodes.get(id) {
@@ -737,9 +737,9 @@ async fn main() {
         crci_core::crisis::scenario_conflict();
         crci_core::crisis::scenario_hazmat();
 
-        // ── Session 17: Replay protection test ───────────────────────────────────
+        // ── Replay protection test ───────────────────────────────────
         println!("\n╔══════════════════════════════════════════════╗");
-        println!("║  SESSION 17 — Replay Attack Protection       ║");
+        println!("║  Replay Attack Protection                    ║");
         println!("╚══════════════════════════════════════════════╝");
 
         let replay_inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
@@ -801,15 +801,15 @@ async fn main() {
                 .unwrap_or(0)
         );
 
-        // ── Session 18: Benchmark harness ────────────────────────────────────
+        // ── Benchmark harness ────────────────────────────────────
         bench::run_benchmarks();
 
         chaos::run_chaos_tests();
 
-        // ── Session 21: Validation + Rate Limiting ────────────────────
+        // ── Validation + Rate Limiting ────────────────────
         println!();
         println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 21 — INPUT VALIDATION + RATE LIMITING           ║");
+        println!("║  INPUT VALIDATION + RATE LIMITING                        ║");
         println!("╚══════════════════════════════════════════════════════════╝");
 
         // Severity validation
@@ -849,12 +849,12 @@ async fn main() {
         let size_result = validation::validate_payload_size(&big);
         println!("  Oversized payload blocked: {}", size_result.is_err());
 
-        println!("  ✅ Session 21 validation tests complete.");
+        println!("  ✅ Validation tests complete.");
 
-        // ── Session 22: AEDA ──────────────────────────────────────────
+        // ── AEDA ──────────────────────────────────────────
         println!();
         println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 22 — AEDA (Autonomous Emergency Decisions)      ║");
+        println!("║  AEDA (Autonomous Emergency Decisions)                   ║");
         println!("╚══════════════════════════════════════════════════════════╝");
 
         let mut aeda = aeda::AedaEngine::new();
@@ -898,12 +898,12 @@ async fn main() {
             println!("  {decision}");
         }
         println!();
-        println!("  ✅ Session 22 AEDA complete.");
+        println!("  ✅ AEDA complete.");
 
-        // ── Session 23: Battery-Aware Mode ───────────────────────────
+        // ── Battery-Aware Mode ───────────────────────────
         println!();
         println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 23A — BATTERY-AWARE GOSSIP THROTTLING           ║");
+        println!("║  BATTERY-AWARE GOSSIP THROTTLING                         ║");
         println!("╚══════════════════════════════════════════════════════════╝");
 
         // Simulate 3 nodes draining from full → critical
@@ -953,12 +953,12 @@ async fn main() {
             summary.min_percent,
             summary.avg_percent
         );
-        println!("  ✅ Session 23A battery tests complete.");
+        println!("  ✅ Battery tests complete.");
 
-        // ── Session 23: TTL Enforcement ──────────────────────────────
+        // ── TTL Enforcement ──────────────────────────────
         println!();
         println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 23B — MESSAGE TTL + STORAGE PRUNING             ║");
+        println!("║  MESSAGE TTL + STORAGE PRUNING                           ║");
         println!("╚══════════════════════════════════════════════════════════╝");
 
         let mut store = ttl::TtlStore::new();
@@ -1007,12 +1007,12 @@ async fn main() {
             "  Total stored: {} | pruned: {} | evicted: {}",
             store.total_stored, store.total_pruned, store.total_evicted
         );
-        println!("  ✅ Session 23B TTL tests complete.");
+        println!("  ✅ TTL tests complete.");
 
-        // ── Session 24: Integration Pipeline ─────────────────────────
+        // ── Integration Pipeline ─────────────────────────
         println!();
         println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 24 — INTEGRATED GOSSIP PIPELINE                 ║");
+        println!("║  INTEGRATED GOSSIP PIPELINE                              ║");
         println!("║  Validation + Battery + TTL + AEDA wired together        ║");
         println!("╚══════════════════════════════════════════════════════════╝");
 
@@ -1163,12 +1163,12 @@ async fn main() {
         );
 
         println!();
-        println!("  ✅ Session 24 integration pipeline complete.");
+        println!("  ✅ Integration pipeline complete.");
 
-        // ── Session 25: STRIDE Security Hardening ────────────────────
+        // ── STRIDE Security Hardening ────────────────────
         println!();
         println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 25 — STRIDE SECURITY HARDENING                  ║");
+        println!("║  STRIDE SECURITY HARDENING                               ║");
         println!("╚══════════════════════════════════════════════════════════╝");
 
         // S: Spoofing — Node ID derivation
@@ -1321,12 +1321,12 @@ async fn main() {
         );
 
         println!();
-        println!("  ✅ Session 25 STRIDE hardening complete.");
+        println!("  ✅ STRIDE hardening complete.");
 
-        // ── Session 27: Node Discovery Protocol ──────────────────────
+        // ── Node Discovery Protocol ──────────────────────
         println!();
         println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 27 — NODE DISCOVERY PROTOCOL                    ║");
+        println!("║  NODE DISCOVERY PROTOCOL                                 ║");
         println!("║  Beacon + Peer Exchange + Zone Bootstrap                 ║");
         println!("╚══════════════════════════════════════════════════════════╝");
 
@@ -1424,15 +1424,15 @@ async fn main() {
         );
 
         println!();
-        println!("  ✅ Session 27 node discovery complete.");
+        println!("  ✅ Node discovery complete.");
 
-        // ── Session 28: Extended Benchmarks ──────────────────────────
+        // ── Extended Benchmarks ──────────────────────────
         bench_extended::run_extended_benchmarks();
 
-        // ── Session 29: Zone Registry + Docker Compose ───────────────
+        // ── Zone Registry + Docker Compose ───────────────
         println!();
         println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 29 — SECURITY WIRING & DOCKER PROOF LOOP        ║");
+        println!("║  SECURITY WIRING & DOCKER PROOF LOOP                     ║");
         println!("╚══════════════════════════════════════════════════════════╝");
 
         let mut pipe29 = integration::GossipPipeline::new();

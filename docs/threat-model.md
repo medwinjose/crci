@@ -35,24 +35,24 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 
 1. **The TCP path has no isolation mechanism.** `crci-node` exchanges unsigned `PipelineMessage` values and
    never calls `NodeRuntime`; signatures, replay filter, strikes and bans are not applied to network
-   traffic (Task 32).
+   traffic (planned).
 2. **The transport sender is self-declared.** The TCP listener uses the message's `origin_node` field as
    the sender. Any connection can claim any identity, so strikes cannot be bound to a real neighbour
-   (Task 7). There is no handshake, and TCP traffic is neither authenticated nor encrypted.
+   (authenticated handshake planned). There is no handshake, and TCP traffic is neither authenticated nor encrypted.
 3. **Lifetime signature-check cap.** After 5 signature verifications for an origin, all later messages from
-   that origin are dropped, honest or not (Task 31).
+   that origin are dropped, honest or not (fix planned).
 4. **Unsigned mass-casualty events.** Messages of type `mce` skip signature and key checks on the signed
-   path (Task 32).
+   path (fix planned).
 5. **Idle peers get banned.** Reputation decays at 0.05/s after 2 s of silence and the decay can cross the
-   ban threshold, so an honest peer silent for about 10 s is banned (Task 4).
+   ban threshold, so an honest peer silent for about 10 s is banned (fix planned).
 6. **Sliding window is off by default.** The default build rejects any out-of-order sequence as a replay
-   (Task 6).
+   (planned).
 7. **Paced replays evade eviction.** An adversary that sends enough valid traffic between replays recovers
-   reputation faster than it loses it (measured in [benchmarks.md](benchmarks.md); Task 9).
+   reputation faster than it loses it (measured in [benchmarks.md](benchmarks.md); strike-damped recovery planned).
 8. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
    earlier IDs can be replayed once more without a duplicate strike (the sequence check still applies).
 9. **No partition recovery protocol.** There is no anti-entropy or digest exchange after a partition
-   (Task 10).
+   (planned).
 10. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
     "start at 0.2 if the /24 subnet has a banned peer" rule, which only applies to sender IDs that parse
-    as socket addresses. Fresh key pairs are otherwise free (Task 24 measures PoW minting cost).
+    as socket addresses. Fresh key pairs are otherwise free.

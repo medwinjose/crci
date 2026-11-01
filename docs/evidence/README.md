@@ -59,9 +59,9 @@ What these files show, stated plainly:
 - Both default-build ablation runs report **Survival in every cell**. In the default build the window
   size is ignored (strict-monotonic replay check), so these runs are the only recorded strict-monotonic
   results, and they do **not** support the preprint's "Strict-Monotonic (W = 0): False-Positive Ban"
-  column. That column has no recorded run (tracked as finding C4 in the task register; to be re-measured).
+  column. That column has no recorded run and is to be re-measured.
 - The logs show `BFT-008 Signature verification limit exceeded … dropping message`, i.e. the per-origin
-  signature-check cap was dropping honest traffic during these runs (finding C1).
+  signature-check cap was dropping honest traffic during these runs.
 - `recovery_paper_v2_run2_0255.txt` is the source of the preprint's paced-attack result
   (Rapid Attack: banned; Paced Attack with 300 recovery packets: not banned).
   `recovery_paper_v2_run1_0243.txt` is an earlier run from a different build that reports different

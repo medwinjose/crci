@@ -77,7 +77,7 @@ must be re-measured before submission.
 | Paced (300 recovery packets between replays) | no |
 
 An earlier run from a different build (`recovery_paper_v2_run1_0243.txt`) reports both conditions not
-banned. The paced-attack result is the known evasion that Task 9 addresses.
+banned. The paced-attack result is a known evasion; strike-damped recovery is planned to address it.
 
 ## WAN smoke test
 
@@ -96,5 +96,5 @@ banned. The paced-attack result is the known evasion that Task 9 addresses.
 
 The following appear in older material but have **no recorded run** in this repository:
 propagation rounds for 10/100/1000 nodes, consensus convergence, replay-filter checks per second,
-pipeline messages per second, discovery convergence time, Ed25519 sign/verify cost (Task 11),
+pipeline messages per second, discovery convergence time, Ed25519 sign/verify cost,
 and any multi-machine or physical-radio measurement.

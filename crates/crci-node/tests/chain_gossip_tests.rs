@@ -146,15 +146,9 @@ fn test_mismatched_head_divergence_alert() {
         seq: 1,
     };
 
-    // We use a different identity for the peer to pass signature verify if needed,
-    // but MCE bypasses it, and for normal messages we sign it with node-a's identity
-    // which fails pubkey check if origin != node-a unless known_keys matches.
-    // Wait, WireMessage::from_message uses node.identity, so pubkey matches.
-    // Wait, if origin is "peer-b", verify_signature checks "peer-b".
-    // Oh, but we used node.identity to sign it, so the pubkey inside is node.identity.
-    // So the origin is "peer-b", pubkey is node.identity.
-    // It will pass verify_signature because verify_signature checks payload using origin_pubkey.
-    // And it will pass pubkey consistency if known_keys is empty for "peer-b".
+    // The message claims origin "peer-b" but is signed with node-a's identity. Signature
+    // verification uses the embedded public key, and no key is pinned for "peer-b" yet,
+    // so the message passes both the signature and the key-consistency checks.
 
     let wire = crci_core::runtime::WireMessage::from_message(&msg, &node.identity);
     let bytes = serde_json::to_vec(&wire).unwrap();

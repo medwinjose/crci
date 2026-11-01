@@ -104,12 +104,6 @@ fun NodeScreen(viewModel: CrciViewModel) {
                 Text("Stop Node")
             }
 
-            // The following Send Message and Refresh Peers buttons are hidden as they don't apply directly to Session 55 spec
-            // but we can leave them if the user didn't ask to remove them, although configValid is gone.
-            // Wait, the prompt says "Edit — add NodeStatus indicator + stop button", didn't say to remove others. 
-            // I should remove configValid references.
-
-
         }
     }
 }

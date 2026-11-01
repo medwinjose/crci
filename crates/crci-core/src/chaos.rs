@@ -552,7 +552,7 @@ struct PartitionResult {
 pub fn run_chaos_tests() {
     println!();
     println!("╔══════════════════════════════════════════════════════════╗");
-    println!("║  SESSION 19 — CHAOS ENGINEERING                          ║");
+    println!("║  CHAOS ENGINEERING                                       ║");
     println!("║  Deterministic seed: 99. Injecting real failure modes.   ║");
     println!("╚══════════════════════════════════════════════════════════╝");
 
@@ -582,8 +582,7 @@ pub fn run_chaos_tests() {
     );
 
     println!();
-    println!("  ✅ Session 19 chaos tests complete.");
-    println!("  Next: Session 20 — research paper draft + library extraction.");
+    println!("  ✅ Chaos tests complete.");
 }
 
 // ── Tests ─────────────────────────────────────────────────────────
@@ -608,7 +607,7 @@ mod tests {
         run_reconnect_storm();
     }
 
-    /// Full network partition scenario (Session 77 — Part C).
+    /// Full network partition scenario.
     ///
     /// A 10-node mesh splits into two isolated halves for 30 rounds.
     /// Each half propagates its own rescue message internally.
@@ -641,7 +640,7 @@ mod tests {
         );
     }
 
-    /// Session 79 Coherence Test:
+    /// Coherence test:
     /// Runs all four scenarios in reverse/mixed order to confirm zero resource collisions,
     /// zero state pollution between runs, and deterministic execution.
     #[test]

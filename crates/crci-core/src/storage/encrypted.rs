@@ -30,12 +30,7 @@ impl EncryptedStore {
             OsRng.fill_bytes(&mut salt_bytes);
 
             let argon2 = Argon2::default();
-            // We use the salt bytes directly. Argon2id requires salt.
-            // We can use hash_password but we need a raw key.
-            // Let's use `argon2.hash_password_into(passphrase.as_bytes(), &salt_bytes, &mut key)`
-            // Wait, does Argon2 expose hash_password_into?
-            // Actually `password-hash` trait `PasswordHasher` doesn't have `hash_password_into` in all versions,
-            // but `Argon2::hash_password_into` is inherent.
+            // Derive the raw 32-byte key with Argon2id (default parameters) and the random salt.
             argon2
                 .hash_password_into(passphrase.as_bytes(), &salt_bytes, &mut key)
                 .map_err(|e| StorageError::KeyDerivation(e.to_string()))?;

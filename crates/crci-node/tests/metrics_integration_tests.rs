@@ -1,4 +1,4 @@
-//! Metrics integration tests (Session 153, Step 10).
+//! Metrics integration tests.
 //!
 //! Verifies that CrciMetrics counters actually increment when real events
 //! occur in NodeRuntime — not just that they exist and are zero.

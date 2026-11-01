@@ -127,7 +127,7 @@
         <text x="280" y="547" fill="#94a3b8" font-size="8" text-anchor="middle">rate limit · duplicate/TTL · battery throttle</text>
         <text x="280" y="565" fill="#fbbf24" font-size="8" text-anchor="middle">drop / throttle only — no signatures, no strikes</text>
 
-        <text x="280" y="604" fill="#ef4444" font-size="8" font-weight="600" text-anchor="middle">✗ does not feed NodeRuntime yet (Task 32)</text>
+        <text x="280" y="604" fill="#ef4444" font-size="8" font-weight="600" text-anchor="middle">✗ does not feed NodeRuntime yet (planned)</text>
         <path d="M 480 530 L 520 530 L 520 371 L 556 371" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowred)"/>
 
         <!-- API -->
@@ -184,7 +184,7 @@
 
         <rect x="560" y="454" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
         <text x="572" y="472" fill="white" font-size="9" font-weight="600">3  Signature-check budget</text>
-        <text x="572" y="486" fill="#94a3b8" font-size="7.5">5 per origin, never reset → later messages dropped (Task 31)</text>
+        <text x="572" y="486" fill="#94a3b8" font-size="7.5">5 per origin, never reset → later messages dropped (fix planned)</text>
 
         <rect x="560" y="506" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
         <text x="572" y="524" fill="white" font-size="9" font-weight="600">4  Ed25519 verify — identity.rs</text>
@@ -224,9 +224,9 @@
         <rect x="560" y="900" width="480" height="95" rx="6" fill="rgba(127,29,29,0.25)" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
         <text x="572" y="920" fill="#ef4444" font-size="9" font-weight="600">KNOWN GAPS ON THIS PATH</text>
         <text x="572" y="938" fill="#94a3b8" font-size="7.5">• messages of type mce skip steps 3, 4 and 6 (accepted unsigned)</text>
-        <text x="572" y="952" fill="#94a3b8" font-size="7.5">• idle decay can ban an honest peer silent for ~10 s (Task 4)</text>
+        <text x="572" y="952" fill="#94a3b8" font-size="7.5">• idle decay can ban an honest peer silent for ~10 s (fix planned)</text>
         <text x="572" y="966" fill="#94a3b8" font-size="7.5">• the duplicate-ID cache is cleared at 5 000 entries</text>
-        <text x="572" y="980" fill="#94a3b8" font-size="7.5">• paced replays let an adversary recover between strikes (Task 9)</text>
+        <text x="572" y="980" fill="#94a3b8" font-size="7.5">• paced replays let an adversary recover between strikes (fix planned)</text>
 
         <!-- ── Arrows from outside ────────────────────────────── -->
         <path d="M 100 106 L 100 132 L 50 132 L 50 685 L 58 685" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead)"/>
@@ -284,7 +284,7 @@
         <ul>
           <li>• Strikes, bans and the replay filter run only in NodeRuntime (signed path)</li>
           <li>• All paper benchmarks drive NodeRuntime in-process (docs/benchmarks.md)</li>
-          <li>• The TCP node does not apply them yet (Tasks 7 and 32)</li>
+          <li>• The TCP node does not apply them yet (planned)</li>
         </ul>
       </div>
     </div>

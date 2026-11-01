@@ -42,10 +42,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        // Wait, the prompt says "Stop CrciService with ACTION_STOP in onStop()".
-        // But if we want the mesh to live in the background, we shouldn't stop it in onStop.
-        // The prompt says "A foreground Service (CrciService) holds the runtime alive while the app is visible."
-        // Oh, "while the app is visible." If the user wants it to stop on background, sure.
+        // The foreground service keeps the node running only while the app is visible.
         val intent = Intent(this, CrciService::class.java).apply {
             action = CrciService.ACTION_STOP
         }

@@ -1,4 +1,4 @@
-// Session 78 — Part B: legacy.rs key derivation tests
+// legacy.rs key derivation tests
 //
 // Verifies:
 // 1. The derived AES key differs from the raw Ed25519 signing key bytes.

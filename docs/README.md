@@ -11,7 +11,7 @@
 | [adr/](adr/) | Architecture decision records 001–005. |
 | [evidence/](evidence/README.md) | Raw outputs of recorded runs, with SHA-256 hashes. |
 | [tla/](tla/) | TLA+ specification and the pinned TLC jar. |
-| [understanding/](understanding/README.md) | From-zero study guide (written after the roadmap is complete). |
+| [understanding/](understanding/README.md) | Guided walkthrough of the project from first principles (in preparation). |
 
 The preprint is published on Zenodo: <https://doi.org/10.5281/zenodo.23032042>. Working drafts are
 kept outside this repository.

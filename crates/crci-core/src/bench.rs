@@ -12,7 +12,7 @@ use std::time::Instant;
 
 // ── Constants ──────────────────────────────────────────────────────
 
-/// Deviation threshold for anomaly detection (established in Session 1).
+/// Deviation threshold for anomaly detection.
 const ANOMALY_THRESHOLD: f32 = 0.41;
 
 /// Number of benchmark repetitions for averaging results.
@@ -522,7 +522,7 @@ fn print_replay_result(r: &ReplayThroughputResult) {
 /// Called from main() after the legacy simulation and crisis scenarios.
 pub fn run_benchmarks() {
     println!("\n╔══════════════════════════════════════════════════════════╗");
-    println!("║  SESSION 18 — CRCI BENCHMARK HARNESS                     ║");
+    println!("║  CRCI BENCHMARK HARNESS                                  ║");
     println!("║  Deterministic seed: 42. All results reproducible.       ║");
     println!("╚══════════════════════════════════════════════════════════╝");
 
@@ -587,8 +587,5 @@ pub fn run_benchmarks() {
     let replay_result = bench_replay_throughput();
     print_replay_result(&replay_result);
 
-    println!("\n  ✅ Session 18 benchmarks complete.");
-    println!("  These numbers are the quantitative claims for the research paper.");
-    println!("  Next: Session 19 — chaos engineering (packet loss, mass restart,");
-    println!("  reconnect storms, memory pressure).");
+    println!("\n  ✅ Benchmarks complete.");
 }

@@ -30,7 +30,7 @@ TLC writes scratch state to `docs/tla/states/` (gitignored).
 
 **Reported result:** 649 states generated, 81 distinct, no violations (2026-09-08, commit `cc5e805`).
 This run has not been repeated in this repository and its output is not in `docs/evidence/`; it is re-run
-and recorded in Task 20.
+and recorded when the specification is updated.
 
 ## What the model does and does not cover
 
@@ -49,5 +49,5 @@ Stated plainly, so that no stronger claim is made from it:
 
 In short, the current specification checks dissemination of one message among 4 nodes. It does **not**
 model the local isolation mechanism that the preprint describes. Bringing the spec in line with the
-final protocol (strikes, ban threshold, sliding window, recovery) is Task 20. The comments inside
-`CRCI.tla` predate this review and overstate what is checked.
+final protocol (strikes, ban threshold, sliding window, recovery) is planned work. The comments inside
+`CRCI.tla` describe the properties more strongly than the model supports.

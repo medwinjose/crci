@@ -78,8 +78,7 @@ impl NodeStorage {
         // Derive the AES-256-GCM key from the Ed25519 signing key using
         // SHA-256 with domain separation rather than using the raw signing key
         // bytes directly. This ensures the AES key is cryptographically
-        // independent of the Ed25519 key material (fixes key-separation concern
-        // identified in Session 77 pre-audit).
+        // independent of the Ed25519 key material (key separation).
         let key_bytes = derive_storage_key(signing_key_bytes);
 
         let key = Key::<Aes256Gcm>::from_slice(&key_bytes);

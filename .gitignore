@@ -1,36 +1,36 @@
-# ── Build outputs (regenerable) ──────────────────────────────────────────────
+# ── Build outputs ────────────────────────────────────────────────────────────
 /target/
 **/*.rs.bk
+*.profraw
 web/dashboard/node_modules/
 web/dashboard/dist/
-web/dashboard/.env
 crci-android/.gradle/
 crci-android/.kotlin/
 crci-android/app/build/
-crci-android/local.properties
 # Native libraries are built with cargo-ndk (see crci-android/README.md)
 crci-android/app/src/main/jniLibs/**/*.so
-/jdk17/
 
-# ── Generated scratch ────────────────────────────────────────────────────────
+# ── Local configuration and secrets ──────────────────────────────────────────
+.env
+web/dashboard/.env
+crci-android/local.properties
+
+# ── Generated at run time ────────────────────────────────────────────────────
 *.log
+/logs/
+*.pcap
 # TLC model-checker state directories
 states/
-extracted.json
-# Stray dumps in the repository root
 /*.txt
 
-# ── Private: paper drafts (author decision; backed up to Overleaf/Drive/Zenodo) ─
+# ── Editors and operating systems ────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+*.swp
+.DS_Store
+Thumbs.db
+
+# ── Working drafts kept outside version control ──────────────────────────────
 docs/preprint/
 paper_workspace/
-docs/interview_script.md
-docs/interview-script.md
-
-# ── Private: working notes ───────────────────────────────────────────────────
-.internal/
-CURRENT_STATE.md
-task.md
-walkthrough.md
-full_prompt.txt
-bench_output.txt
-src/Project rules.md

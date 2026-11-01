@@ -1,7 +1,7 @@
 // ─── Message Types ────────────────────────────────────────────────────────────
 // Every piece of information that flows through the CRCI mesh is a Message.
 // Signals carry the raw sensor reading. Messages wrap signals with identity,
-// routing metadata, and crisis-specific fields added in session 14.
+// routing metadata, and crisis-specific fields.
 
 use ed25519_dalek::Signature;
 use serde::{Deserialize, Serialize};
@@ -86,7 +86,7 @@ pub struct Signal {
     pub location_confirmed: bool,
     pub confidence: u8,
     pub visibility: Visibility,
-    // Session 14 additions
+    // Crisis-specific fields
     pub gps: Option<GpsCoord>,
     pub resource_type: Option<String>,
 }
@@ -161,7 +161,7 @@ pub struct Message {
     pub origin_active: bool,
     #[allow(dead_code)]
     pub signature: Option<Signature>,
-    // Session 14 additions
+    // Crisis-specific fields
     #[allow(dead_code)]
     pub created_at: u64,
     #[allow(dead_code)]

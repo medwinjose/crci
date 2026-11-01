@@ -1,7 +1,7 @@
-// NOTE: this suite is an in-process simulation, not the real tc/netem WAN chaos suite
-// required by locked scope Item 8. Superseded by chaos_wan_real_tests.rs — see CURRENT_STATE.md.
-
-//! 100-node WAN chaos suite (Session 153, Step 8).
+//! 100-node in-process WAN chaos simulation.
+//!
+//! This is a simulation, not real networking; the real-network test is
+//! `chaos_wan_real_tests.rs` (Linux network namespaces with tc/netem).
 //!
 //! Extends the existing `chaos.rs` pattern to 100 in-process nodes with
 //! simulated WAN conditions: variable latency, packet loss, and a deliberate

@@ -22,7 +22,7 @@ themselves are not signed.
 
 **Lost:**
 - Automatic merging. After a partition, missing history has to be exchanged and replayed; no such
-  protocol exists yet (Task 10).
+  protocol exists yet (planned).
 - Compactness: the chain grows with every snapshot.
 
 **Gained:**

@@ -1,7 +1,6 @@
 //! Extended benchmark harness for CRCI.
 //!
-//! Provides the quantitative measurements needed for the research paper
-//! that Session 18's bench.rs did not cover:
+//! In-process measurements that bench.rs does not cover:
 //!   - TTL pruning memory savings
 //!   - Rate limiter throughput under load
 //!   - Discovery convergence time
@@ -409,7 +408,7 @@ fn bench_pipeline_e2e() {
 pub fn run_extended_benchmarks() {
     println!();
     println!("╔══════════════════════════════════════════════════════════════╗");
-    println!("║  SESSION 28 — EXTENDED BENCHMARKS                            ║");
+    println!("║  EXTENDED BENCHMARKS                                         ║");
     println!("║  TTL / RateLimit / Discovery / AEDA / Queue / Pipeline       ║");
     println!("╚══════════════════════════════════════════════════════════════╝");
 
@@ -421,6 +420,6 @@ pub fn run_extended_benchmarks() {
     bench_pipeline_e2e();
 
     println!();
-    println!("  ✅ Session 28 extended benchmarks complete.");
+    println!("  ✅ Extended benchmarks complete.");
     println!("  These numbers complete the quantitative claims for the paper.");
 }

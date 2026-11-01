@@ -45,7 +45,7 @@ pub struct ApiState {
     pub peer_list: Arc<RwLock<Vec<String>>>,
     pub recent_messages: Arc<RwLock<VecDeque<ApiMessage>>>,
     pub ws_tx: broadcast::Sender<String>,
-    // Session 42 fields
+    // Node identity, health counters and divergence state
     pub node_id: String,
     pub start_time: Instant,
     pub byzantine_events: Arc<AtomicU64>,
