@@ -26,13 +26,7 @@ paper_workspace/
 docs/interview_script.md
 docs/interview-script.md
 
-# ── Private: agent working files ─────────────────────────────────────────────
-AGENTS.md
-CLAUDE.md
-STATE.md
-TASKS.md
-.claude/settings.local.json
-# Legacy agent files from earlier tooling
+# ── Private: working notes ───────────────────────────────────────────────────
 .internal/
 CURRENT_STATE.md
 task.md
