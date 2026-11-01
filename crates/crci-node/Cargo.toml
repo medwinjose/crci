@@ -4,9 +4,6 @@ version = "2.1.0"
 edition = "2021"
 autobenches = false
 
-[features]
-paper_v2 = ["crci-core/paper_v2"]
-
 [[bin]]
 name = "crci-node"
 path = "src/main.rs"

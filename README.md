@@ -31,7 +31,8 @@ CRCI moves misbehaviour isolation **into the gossip layer itself** and makes it 
   locally. The same message arriving through a *different* neighbour is ordinary gossip redundancy and is
   never penalised.
 - **Reordering is tolerated.** A sliding-window replay filter (W = 64) accepts late packets inside the
-  window instead of treating them as replays.
+  window; packets older than the window are dropped without a strike, since an honest neighbour can
+  deliver old messages after a partition.
 - **No coordination.** No voting, no membership protocol, no global state: dissemination stays O(n) per
   message, and every node keeps working while partitioned.
 
@@ -66,11 +67,11 @@ measured with the in-process benchmark harness, 50 deterministic trials per cond
 | Replay attack, no delay | 3 | < 1 ms | 0 / 50 |
 | Replay attack, 15 ms between replays | 3 | 45.8 ms | 0 / 50 |
 
-- **Reordering:** with the sliding window, an honest peer survives reordering up to the window size
-  (W = 32 and W = 64 tolerated every depth tested, up to 32).
+- **Reordering:** late or stale packets never count against a neighbour; packets more than W behind
+  are dropped instead of delivered. Measuring delivery under reordering on the network testbed is planned.
 - **Known limit:** an adversary that paces its replays and sends enough valid traffic in between recovers
-  reputation faster than it loses it. This evasion is measured and disclosed, and is the focus of ongoing
-  work on strike-damped recovery.
+  reputation faster than it loses it. This evasion was measured on an earlier build and is disclosed; it
+  is the focus of ongoing work on strike-damped recovery.
 
 Every number above links back to a raw data file and the exact command in
 [docs/benchmarks.md](docs/benchmarks.md).
@@ -111,8 +112,8 @@ Reproduce the benchmarks:
 
 ```bash
 cargo bench -p crci-node --bench byzantine_bench
-cargo bench -p crci-node --bench ablation_bench --features paper_v2
-cargo bench -p crci-node --bench recovery_bench --features paper_v2
+cargo bench -p crci-node --bench ablation_bench
+cargo bench -p crci-node --bench recovery_bench
 ```
 
 A Docker Compose demo (two honest nodes, one adversarial node, and the dashboard) is in
@@ -125,12 +126,11 @@ runtime that the test suite and benchmarks drive; the networked TCP node current
 without it. Current work, in order:
 
 1. Signed messages and the isolation pipeline on the TCP transport, with an authenticated peer handshake.
-2. Sliding-window replay protection as the default, with stale packets dropped without penalty.
-3. Strike-damped recovery to close the paced-attack evasion.
-4. Anti-entropy re-synchronisation after network partitions.
-5. A 20–50 node network-emulation testbed (loss, delay, reordering, link flapping) and comparison against
+2. Strike-damped recovery to close the paced-attack evasion.
+3. Anti-entropy re-synchronisation after network partitions.
+4. A 20–50 node network-emulation testbed (loss, delay, reordering, link flapping) and comparison against
    baselines.
-6. Safety and liveness invariants of the final protocol in TLA+.
+5. Safety and liveness invariants of the final protocol in TLA+.
 
 Out of scope: large-scale Sybil attacks, colluding adversaries, and physical LoRa/BLE radios (the BLE and
 LoRa transports are interface stubs). Known gaps are tracked in [docs/threat-model.md](docs/threat-model.md).

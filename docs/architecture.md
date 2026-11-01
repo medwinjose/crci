@@ -40,9 +40,12 @@ public key, a signature and a sequence number. `NodeRuntime::process_inbox()` re
    different sender it is ignored as normal gossip redundancy. The ID cache is cleared when it reaches
    5 000 entries.
 5. **Key consistency**: a known origin arriving with a different public key is a strike for the sender.
-6. **Replay filter** (`replay.rs`): a sequence number at or below the highest seen from that origin is a
-   strike. With the `paper_v2` feature, a sliding window of W = 64 accepts late packets inside the window
-   instead.
+6. **Replay filter** (`replay.rs`): a sliding window of W = 64 sequence numbers per origin. With `seq_max`
+   the highest sequence accepted from that origin, a packet with `seq < seq_max − W` is stale and dropped
+   without a strike; a late packet inside the window is accepted once; the same sequence number again from
+   the same sender is a strike, from a different sender it is dropped without a strike. A message resent by
+   the same sender after it has left the window is also dropped as stale (step 4 does not strike it). The
+   sequence number is covered by the origin's signature, so a relay cannot move the window.
 
 A strike is −0.15 reputation (start 0.5, ban below 0.1, so three strikes ban). Reputation also drifts:
 small recovery while a peer is active, and decay of 0.05/s once a peer has been silent for more than 2 s,
@@ -77,7 +80,7 @@ peer are the next planned milestones.
 |---|---|
 | `runtime.rs` | `NodeRuntime` and `WireMessage`: the signed message path described above. |
 | `sybil.rs` | `SybilGuard`: per-peer reputation, ban threshold, token bucket, proof-of-work check, subnet correlation. |
-| `replay.rs` | `ReplayFilter`: strict-monotonic by default, sliding window under `paper_v2`. |
+| `replay.rs` | `ReplayFilter`: per-origin sliding window (W = 64); `window_size = 0` gives strict-monotonic delivery. |
 | `identity.rs` | Ed25519 key pair (`ed25519-dalek` 2) and signing. |
 | `message.rs` | Application message and signal types. |
 | `integration.rs` | `PipelineMessage` and `GossipPipeline`: the TCP path's validation pipeline. |
@@ -122,5 +125,4 @@ the Android `.so` as well.
 
 | Feature | Effect |
 |---|---|
-| `paper_v2` | Enables the W = 64 sliding-window replay filter. Not enabled by default or by `cargo test` (planned to become the default). CI enables it only for Clippy (`--all-features`). |
 | `test-utils` | Test-only helpers for `EncryptedStore`; enabled for tests through a dev-dependency. |

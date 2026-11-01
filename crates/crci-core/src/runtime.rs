@@ -32,9 +32,15 @@ pub struct WireMessage {
     pub seq: u64,
 }
 
+/// Bytes covered by the origin's Ed25519 signature. `seq` is included so that a relay
+/// cannot move the origin's replay window.
+pub fn signing_payload(id: &str, origin: &str, severity: u8, seq: u64) -> String {
+    format!("{}:{}:{}:{}", id, origin, severity, seq)
+}
+
 impl WireMessage {
     pub fn from_message(msg: &Message, identity: &Identity) -> WireMessage {
-        let payload = format!("{}:{}:{}", msg.id, msg.origin, msg.signal.severity);
+        let payload = signing_payload(&msg.id, &msg.origin, msg.signal.severity, msg.seq);
         let sig = identity.sign(payload.as_bytes());
         WireMessage {
             id: msg.id.clone(),
@@ -80,7 +86,7 @@ impl WireMessage {
             Err(_) => return false,
         };
         let signature = Signature::from_bytes(&sig_bytes);
-        let payload = format!("{}:{}:{}", self.id, self.origin, self.severity);
+        let payload = signing_payload(&self.id, &self.origin, self.severity, self.seq);
         verifying_key.verify(payload.as_bytes(), &signature).is_ok()
     }
 
@@ -458,8 +464,17 @@ impl NodeRuntime {
             // Step 1.5: Gossip duplicate tracking (Fix for honest relay bans)
             if let Some(senders) = self.seen_messages.get_mut(&wire.id) {
                 if senders.contains(&sender_id) {
-                    // This specific peer has already sent us this exact message!
-                    // This is a malicious direct replay attack, not normal gossip redundancy.
+                    // This specific peer has already sent us this exact message.
+                    // Once the message is older than the origin's replay window it is
+                    // stale (an honest peer may resend after a reconnect): drop, no strike.
+                    if self.replay_filter.is_out_of_window(&wire.origin, wire.seq) {
+                        println!(
+                            "  ⏰ [{}] STALE resend of '{}' from '{}' — out of window, dropped",
+                            self.id, wire.id, sender_id
+                        );
+                        continue;
+                    }
+                    // Inside the window this is a direct replay, not gossip redundancy.
                     println!(
                         "  ⚠ [{}] MALICIOUS REPLAY from '{}' — same message '{}' sent repeatedly!",
                         self.id, sender_id, wire.id
@@ -504,38 +519,36 @@ impl NodeRuntime {
                 }
             }
 
-            let verdict = self.replay_filter.check_and_record(
-                &wire.origin,
-                wire.seq,
-                crate::message::now_ts(),
-            );
+            let verdict = self
+                .replay_filter
+                .check_and_record(&wire.origin, wire.seq, &sender_id);
             if !verdict.is_accept() {
-                // Silently drop severely stale messages (partition heal) or future drift.
-                // Do NOT penalize the relaying neighbor, as honest nodes can deliver stale messages.
                 self.metrics
                     .messages_rejected
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 match &verdict {
-                    crate::replay::ReplayVerdict::Replayed {
-                        received_seq,
-                        expected_min,
-                    } => {
+                    // Only a repeat from the same transport peer inside the window is a strike.
+                    crate::replay::ReplayVerdict::Replayed { received_seq } => {
                         println!(
-                            "  ⛔ [{}] REPLAY dropped from '{}' (claimed '{}') — seq {} already seen (min {})",
-                            self.id, sender_id, wire.origin, received_seq, expected_min
+                            "  ⛔ [{}] REPLAY dropped from '{}' (claimed '{}') — seq {} already delivered by this peer",
+                            self.id, sender_id, wire.origin, received_seq
                         );
                         self.byzantine_events += 1;
                         self.sybil_guard.report_violation(&sender_id);
                     }
-                    crate::replay::ReplayVerdict::Stale { age_seconds } => println!(
-                        "  ⏰ [{}] STALE msg from '{}' — {}s old, dropped",
-                        self.id, wire.origin, age_seconds
+                    crate::replay::ReplayVerdict::Redundant { received_seq } => println!(
+                        "  [{}] duplicate seq {} from '{}' via '{}' — dropped",
+                        self.id, received_seq, wire.origin, sender_id
                     ),
-                    crate::replay::ReplayVerdict::FromFuture { skew_seconds } => println!(
-                        "  ⚠ [{}] FUTURE msg from '{}' — {}s ahead, dropped",
-                        self.id, wire.origin, skew_seconds
+                    // Honest peers can deliver old messages after a partition: no strike.
+                    crate::replay::ReplayVerdict::OutOfWindow {
+                        received_seq,
+                        window_floor,
+                    } => println!(
+                        "  ⏰ [{}] STALE seq {} from '{}' (window floor {}) — dropped",
+                        self.id, received_seq, wire.origin, window_floor
                     ),
-                    _ => {}
+                    crate::replay::ReplayVerdict::Accept => {}
                 }
                 continue;
             }

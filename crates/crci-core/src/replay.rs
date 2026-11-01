@@ -1,145 +1,252 @@
 // ─── Replay Protection ────────────────────────────────────────────────────────
-// Prevents two attacks:
-// 1. Replay attack: attacker captures a legitimate message and re-injects it
-//    hours later to trigger false alarms or burn reputation.
-// 2. Clock drift: two phones with clocks 8 hours apart cause all messages
-//    from one to be rejected as "too old" or "from the future."
+// Per-origin sliding window over signed sequence numbers.
 //
-// Solution: Lamport logical timestamps + a sliding window per origin.
-// Wall clock is used only as a hint — logical sequence is what matters.
+// For each origin we keep the highest accepted sequence number `seq_max` and the
+// set of sequence numbers accepted inside the window [seq_max - W, seq_max],
+// together with the transport peers that delivered each one.
+//
+// - seq > seq_max: accepted; the window slides forward.
+// - seq < seq_max - W: out of window. Dropped without a strike: an honest peer
+//   can deliver an old message after a partition or a reconnect.
+// - inside the window, not seen before: accepted (late or reordered delivery).
+// - inside the window, already delivered by the same transport peer: replay,
+//   the caller strikes that peer.
+// - inside the window, first delivered by a different peer: gossip redundancy,
+//   dropped without a strike.
+//
+// W = 0 gives strict-monotonic delivery: every late packet is dropped as out of
+// window, and only a repeat of seq_max can be a replay.
+//
+// The sequence number must be covered by the origin's signature; otherwise a
+// relay could move seq_max and push an origin's later messages out of window.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-// Per-origin sequence tracking
+pub const DEFAULT_WINDOW_SIZE: u64 = 64;
+
 #[derive(Default)]
+struct OriginWindow {
+    seq_max: u64,
+    // seq -> transport peers that delivered it; only seqs inside the window are kept
+    delivered_by: HashMap<u64, HashSet<String>>,
+}
+
+impl OriginWindow {
+    fn floor(&self, window_size: u64) -> u64 {
+        self.seq_max.saturating_sub(window_size)
+    }
+}
+
 pub struct ReplayFilter {
-    // origin_id -> highest sequence number seen
-    seen_sequences: HashMap<String, u64>,
-    #[cfg(feature = "paper_v2")]
-    sliding_windows: HashMap<String, std::collections::HashSet<u64>>,
-    // origin_id -> last wall-clock time seen (loose bound, not enforced strictly)
-    last_wall: HashMap<String, u64>,
+    windows: HashMap<String, OriginWindow>,
     pub window_size: u64,
+}
+
+impl Default for ReplayFilter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ReplayFilter {
     pub fn new() -> ReplayFilter {
         ReplayFilter {
-            window_size: 64, // Default window size
-            ..Default::default()
+            windows: HashMap::new(),
+            window_size: DEFAULT_WINDOW_SIZE,
         }
     }
 
-    // Returns true if the message should be accepted, false if it should be dropped.
-    // seq: monotonically increasing counter per origin (starts at 1)
-    // wall_ts: unix timestamp from message (advisory only — we tolerate ±2hr drift)
-    #[cfg(not(feature = "paper_v2"))]
-    pub fn check_and_record(&mut self, origin: &str, seq: u64, wall_ts: u64) -> ReplayVerdict {
-        let now = crate::message::now_ts();
-
-        // Wall clock check — advisory only, 2-hour tolerance each direction
-        // This catches obviously stale messages while tolerating clock drift
-        let drift_tolerance: u64 = 7_200; // 2 hours in seconds
-        if wall_ts + drift_tolerance < now {
-            return ReplayVerdict::Stale {
-                age_seconds: now.saturating_sub(wall_ts),
-            };
-        }
-        if wall_ts > now + drift_tolerance {
-            return ReplayVerdict::FromFuture {
-                skew_seconds: wall_ts.saturating_sub(now),
-            };
-        }
-
-        // Sequence check — the core replay guard
-        // We only advance the counter, never go backward
-        if let Some(&last_seq) = self.seen_sequences.get(origin) {
-            if seq <= last_seq {
-                return ReplayVerdict::Replayed {
-                    received_seq: seq,
-                    expected_min: last_seq + 1,
-                };
-            }
-        }
-
-        // Accept and record
-        self.seen_sequences.insert(origin.to_string(), seq);
-        self.last_wall.insert(origin.to_string(), wall_ts);
-        ReplayVerdict::Accept
+    /// True if `seq` is older than the window for `origin`. Does not record anything.
+    pub fn is_out_of_window(&self, origin: &str, seq: u64) -> bool {
+        self.windows
+            .get(origin)
+            .is_some_and(|w| seq < w.floor(self.window_size))
     }
 
-    #[cfg(feature = "paper_v2")]
-    pub fn check_and_record(&mut self, origin: &str, seq: u64, wall_ts: u64) -> ReplayVerdict {
-        let now = crate::message::now_ts();
-
-        let drift_tolerance: u64 = 7_200; // 2 hours in seconds
-        if wall_ts + drift_tolerance < now {
-            return ReplayVerdict::Stale {
-                age_seconds: now.saturating_sub(wall_ts),
-            };
-        }
-        if wall_ts > now + drift_tolerance {
-            return ReplayVerdict::FromFuture {
-                skew_seconds: wall_ts.saturating_sub(now),
-            };
-        }
-
-        let highest_seq = *self.seen_sequences.get(origin).unwrap_or(&0);
+    /// Classifies (`origin`, `seq`) delivered by transport peer `sender` and records it
+    /// if accepted.
+    pub fn check_and_record(&mut self, origin: &str, seq: u64, sender: &str) -> ReplayVerdict {
         let window_size = self.window_size;
+        let Some(window) = self.windows.get_mut(origin) else {
+            let mut window = OriginWindow {
+                seq_max: seq,
+                ..Default::default()
+            };
+            window
+                .delivered_by
+                .insert(seq, HashSet::from([sender.to_string()]));
+            self.windows.insert(origin.to_string(), window);
+            return ReplayVerdict::Accept;
+        };
 
-        if seq <= highest_seq {
-            if highest_seq >= window_size && seq < highest_seq - window_size {
-                return ReplayVerdict::Replayed {
-                    received_seq: seq,
-                    expected_min: highest_seq - window_size,
-                };
-            }
-            let window = self.sliding_windows.entry(origin.to_string()).or_default();
-            if window.contains(&seq) {
-                return ReplayVerdict::Replayed {
-                    received_seq: seq,
-                    expected_min: highest_seq,
-                };
-            }
-            window.insert(seq);
-            self.last_wall.insert(origin.to_string(), wall_ts);
+        if seq > window.seq_max {
+            window.seq_max = seq;
+            let floor = window.floor(window_size);
+            window.delivered_by.retain(|&s, _| s >= floor);
+            window
+                .delivered_by
+                .insert(seq, HashSet::from([sender.to_string()]));
             return ReplayVerdict::Accept;
         }
 
-        self.seen_sequences.insert(origin.to_string(), seq);
-        let window = self.sliding_windows.entry(origin.to_string()).or_default();
-        window.insert(seq);
-        if seq >= window_size {
-            let cutoff = seq - window_size;
-            window.retain(|&s| s >= cutoff);
+        let floor = window.floor(window_size);
+        if seq < floor {
+            return ReplayVerdict::OutOfWindow {
+                received_seq: seq,
+                window_floor: floor,
+            };
         }
-        self.last_wall.insert(origin.to_string(), wall_ts);
-        ReplayVerdict::Accept
+
+        match window.delivered_by.get_mut(&seq) {
+            None => {
+                window
+                    .delivered_by
+                    .insert(seq, HashSet::from([sender.to_string()]));
+                ReplayVerdict::Accept
+            }
+            Some(peers) if peers.contains(sender) => ReplayVerdict::Replayed { received_seq: seq },
+            Some(peers) => {
+                peers.insert(sender.to_string());
+                ReplayVerdict::Redundant { received_seq: seq }
+            }
+        }
     }
 
     // How many unique origins we're tracking
     pub fn tracked_origins(&self) -> usize {
-        self.seen_sequences.len()
+        self.windows.len()
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ReplayVerdict {
     Accept,
+    /// Same (origin, seq) already delivered by this transport peer: strike the peer.
     Replayed {
         received_seq: u64,
-        expected_min: u64,
     },
-    Stale {
-        age_seconds: u64,
+    /// Same (origin, seq) already delivered by another peer: drop, no strike.
+    Redundant {
+        received_seq: u64,
     },
-    FromFuture {
-        skew_seconds: u64,
+    /// Older than the window: drop, no strike.
+    OutOfWindow {
+        received_seq: u64,
+        window_floor: u64,
     },
 }
 
 impl ReplayVerdict {
     pub fn is_accept(&self) -> bool {
         matches!(self, ReplayVerdict::Accept)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn first_message_from_an_origin_is_accepted() {
+        let mut f = ReplayFilter::new();
+        assert_eq!(f.check_and_record("a", 7, "p"), ReplayVerdict::Accept);
+        assert_eq!(f.tracked_origins(), 1);
+    }
+
+    #[test]
+    fn reordered_packet_inside_window_is_accepted() {
+        let mut f = ReplayFilter::new();
+        f.check_and_record("a", 10, "p");
+        assert_eq!(f.check_and_record("a", 5, "p"), ReplayVerdict::Accept);
+    }
+
+    #[test]
+    fn packet_below_window_floor_is_out_of_window() {
+        let mut f = ReplayFilter::new();
+        f.check_and_record("a", 100, "p");
+        assert!(f.is_out_of_window("a", 35));
+        assert_eq!(
+            f.check_and_record("a", 35, "p"),
+            ReplayVerdict::OutOfWindow {
+                received_seq: 35,
+                window_floor: 36
+            }
+        );
+        assert!(!f.is_out_of_window("a", 36));
+        assert_eq!(f.check_and_record("a", 36, "p"), ReplayVerdict::Accept);
+    }
+
+    #[test]
+    fn duplicate_from_same_peer_is_replayed() {
+        let mut f = ReplayFilter::new();
+        f.check_and_record("a", 10, "p");
+        assert_eq!(
+            f.check_and_record("a", 10, "p"),
+            ReplayVerdict::Replayed { received_seq: 10 }
+        );
+        f.check_and_record("a", 12, "p");
+        f.check_and_record("a", 11, "p");
+        assert_eq!(
+            f.check_and_record("a", 11, "p"),
+            ReplayVerdict::Replayed { received_seq: 11 }
+        );
+    }
+
+    #[test]
+    fn duplicate_from_other_peer_is_redundant() {
+        let mut f = ReplayFilter::new();
+        f.check_and_record("a", 10, "p");
+        assert_eq!(
+            f.check_and_record("a", 10, "q"),
+            ReplayVerdict::Redundant { received_seq: 10 }
+        );
+        // q has now delivered it too, so a second copy from q is a replay
+        assert_eq!(
+            f.check_and_record("a", 10, "q"),
+            ReplayVerdict::Replayed { received_seq: 10 }
+        );
+    }
+
+    #[test]
+    fn window_slides_and_forgets_old_entries() {
+        let mut f = ReplayFilter::new();
+        f.check_and_record("a", 1, "p");
+        f.check_and_record("a", 200, "p");
+        assert_eq!(
+            f.check_and_record("a", 1, "p"),
+            ReplayVerdict::OutOfWindow {
+                received_seq: 1,
+                window_floor: 136
+            }
+        );
+        let kept = f.windows.get("a").map(|w| w.delivered_by.len());
+        assert_eq!(kept, Some(1));
+    }
+
+    #[test]
+    fn window_zero_is_strict_monotonic() {
+        let mut f = ReplayFilter::new();
+        f.window_size = 0;
+        f.check_and_record("a", 10, "p");
+        assert_eq!(
+            f.check_and_record("a", 9, "p"),
+            ReplayVerdict::OutOfWindow {
+                received_seq: 9,
+                window_floor: 10
+            }
+        );
+        assert_eq!(
+            f.check_and_record("a", 10, "p"),
+            ReplayVerdict::Replayed { received_seq: 10 }
+        );
+        assert_eq!(f.check_and_record("a", 11, "p"), ReplayVerdict::Accept);
+    }
+
+    #[test]
+    fn origins_are_independent() {
+        let mut f = ReplayFilter::new();
+        f.check_and_record("a", 100, "p");
+        assert_eq!(f.check_and_record("b", 1, "p"), ReplayVerdict::Accept);
+        assert!(!f.is_out_of_window("b", 1));
     }
 }

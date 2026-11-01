@@ -191,18 +191,14 @@ fn test_ed25519_does_not_catch_replay_by_itself() {
 
     // Confirm ReplayFilter catches the replay at sequence level.
     let mut filter = ReplayFilter::new();
-    let now_ts = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
 
-    let first = filter.check_and_record("node-replay", 42, now_ts);
+    let first = filter.check_and_record("node-replay", 42, "relay");
     assert!(
         matches!(first, ReplayVerdict::Accept),
         "first message (seq=42) should be accepted"
     );
 
-    let replay = filter.check_and_record("node-replay", 42, now_ts);
+    let replay = filter.check_and_record("node-replay", 42, "relay");
     assert!(
         matches!(replay, ReplayVerdict::Replayed { .. }),
         "replayed message (seq=42 again) must be rejected by ReplayFilter"

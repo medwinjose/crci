@@ -222,6 +222,7 @@ impl Message {
 
     #[allow(dead_code)]
     pub fn signable_payload(&self) -> Vec<u8> {
-        format!("{}:{}:{}", self.id, self.origin, self.signal.severity).into_bytes()
+        crate::runtime::signing_payload(&self.id, &self.origin, self.signal.severity, self.seq)
+            .into_bytes()
     }
 }

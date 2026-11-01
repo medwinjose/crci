@@ -162,7 +162,7 @@ pub fn test_signature_forgery() {
     println!("Setup: attacker tries to impersonate node-001\n");
 
     let attacker_identity = Identity::new("attacker");
-    let fake_payload = format!("{}:{}:{}", "msg-forged", "node-001", 1u8);
+    let fake_payload = crate::runtime::signing_payload("msg-forged", "node-001", 1, 1);
     let fake_sig = attacker_identity.sign(fake_payload.as_bytes());
 
     let forged = WireMessage {

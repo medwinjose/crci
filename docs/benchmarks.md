@@ -43,7 +43,8 @@ The procedure is deterministic, so 50 trials show the harness is consistent, not
 ## Sliding window vs. reorder depth (preprint Table IV)
 
 - **Harness:** `crates/crci-node/benches/ablation_bench.rs`
-- **Command:** `cargo bench -p crci-node --bench ablation_bench --features paper_v2`
+- **Command (recorded run):** `cargo bench -p crci-node --bench ablation_bench --features paper_v2`
+  (the `paper_v2` feature has since been removed; the sliding window is now always on)
 - **Procedure:** for W ∈ {8, 16, 32, 64} and reorder depth D ∈ {1, 2, 4, 8, 16, 32}, the honest peer
   sends 3 pairs of packets: first sequence s + D, then the delayed sequence s. The cell reads
   "false-positive ban" if the honest peer ends up banned. In the default build `window_size` is ignored
@@ -62,10 +63,15 @@ false-positive ban in every row. The only recorded strict-monotonic runs (defaul
 and `_run2_0235.txt`) report **survival in every cell**. That column is not supported by any recorded run and
 must be re-measured before submission.
 
+**Current rule:** the recorded runs above predate the stale-packet rule. Today a packet more than W behind
+is dropped without a strike, so reordering can no longer ban an honest peer at any W, and this harness
+shows survival in every cell by construction. What W now controls is delivery: packets beyond the window
+are lost. Re-measuring the window ablation as delivered packets, not bans, is planned.
+
 ## Paced attack vs. reputation recovery (preprint §IV-D)
 
 - **Harness:** `crates/crci-node/benches/recovery_bench.rs`
-- **Command:** `cargo bench -p crci-node --bench recovery_bench --features paper_v2`
+- **Command (recorded run):** `cargo bench -p crci-node --bench recovery_bench --features paper_v2`
 - **Procedure:** with `window_size = 0`, the adversary sends 3 replays. "Rapid": back to back. "Paced":
   between replays the adversary itself sends 300 valid, fresh messages 10 ms apart, so its reputation
   recovers before the next strike.
@@ -78,6 +84,11 @@ must be re-measured before submission.
 
 An earlier run from a different build (`recovery_paper_v2_run1_0243.txt`) reports both conditions not
 banned. The paced-attack result is a known evasion; strike-damped recovery is planned to address it.
+
+**Current rule:** each "replay" in this harness is a fresh message carrying an older sequence number, not a
+repeat of an earlier message. Under the stale-packet rule that packet is dropped without a strike, so the
+harness no longer exercises a replay and its output is not a measurement of the evasion. It is planned to be
+rewritten with true duplicate replays together with strike-damped recovery.
 
 ## WAN smoke test
 

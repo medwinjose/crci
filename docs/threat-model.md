@@ -23,7 +23,7 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 | Forged message content | Ed25519 signature on every `WireMessage`; invalid → dropped, sender struck | `runtime.rs` | Signed only |
 | Impersonating a known origin | Public key pinned on first sight; a different key → dropped, sender struck | `runtime.rs` | Signed only |
 | Direct replay | Same message ID from the same sender → strike; from a different sender → ignored | `runtime.rs` | Signed only |
-| Sequence replay | Sequence ≤ highest seen → strike (sliding window W = 64 under `paper_v2`) | `replay.rs` | Signed only |
+| Sequence replay | Sliding window W = 64 per origin: same sequence from the same sender → strike; from another sender → ignored; older than the window → dropped without a strike. The sequence number is signed | `replay.rs` | Signed only |
 | Repeat offender | Reputation 0.5, −0.15 per strike, banned below 0.1; banned senders are dropped on admission | `sybil.rs` | Signed only |
 | Message flood | Token bucket per sender (20 messages, +5/s) | `sybil.rs` | Signed only |
 | Malformed input | Severity range, payload size, node-ID format, sequence overflow, rate limit | `validation.rs`, `integration.rs` | Both |
@@ -45,12 +45,15 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    path (fix planned).
 5. **Idle peers get banned.** Reputation decays at 0.05/s after 2 s of silence and the decay can cross the
    ban threshold, so an honest peer silent for about 10 s is banned (fix planned).
-6. **Sliding window is off by default.** The default build rejects any out-of-order sequence as a replay
-   (planned).
+6. **Stale floods are not penalised.** A packet older than the replay window is dropped without a strike,
+   so an adversary can resend old signed messages without losing reputation. Each one still costs a
+   signature verification; the cost is bounded only by the per-sender token bucket (20 messages, then 5/s)
+   and, today, by the per-origin signature-check cap.
 7. **Paced replays evade eviction.** An adversary that sends enough valid traffic between replays recovers
    reputation faster than it loses it (measured in [benchmarks.md](benchmarks.md); strike-damped recovery planned).
 8. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
-   earlier IDs can be replayed once more without a duplicate strike (the sequence check still applies).
+   earlier IDs can be resent. Inside the replay window the sequence filter still strikes a repeat from the
+   same sender; outside it the packet is dropped without a strike.
 9. **No partition recovery protocol.** There is no anti-entropy or digest exchange after a partition
    (planned).
 10. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
