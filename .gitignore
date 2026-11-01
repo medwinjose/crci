@@ -1,40 +1,42 @@
+# ── Build outputs (regenerable) ──────────────────────────────────────────────
 /target/
 **/*.rs.bk
-docs/interview_script.md
-docs/interview-script.md
-task.md
-walkthrough.md
-bench_output.txt
-full_prompt.txt
-src/Project rules.md
-
 web/dashboard/node_modules/
 web/dashboard/dist/
-docs/book/book/
-
-# Android build and local files
-/jdk17/
-crci-android/local.properties
+web/dashboard/.env
 crci-android/.gradle/
+crci-android/.kotlin/
 crci-android/app/build/
-*.log
+crci-android/local.properties
+# Native libraries are built with cargo-ndk (see crci-android/README.md)
+crci-android/app/src/main/jniLibs/**/*.so
+/jdk17/
 
-# Scratch dumps
+# ── Generated scratch ────────────────────────────────────────────────────────
+*.log
+# TLC model-checker state directories
+states/
+extracted.json
+# Stray dumps in the repository root
 /*.txt
 
-# TLC generated state directories
-states/
-docs/tla/states/
-paper_workspace/tla/states/
-extracted.json
-
-crci-android/.kotlin/
-.internal/
-CURRENT_STATE.md
-docs/understanding/
-paper_workspace/
+# ── Private: paper drafts (author decision; backed up to Overleaf/Drive/Zenodo) ─
 docs/preprint/
+paper_workspace/
+docs/interview_script.md
+docs/interview-script.md
+
+# ── Private: agent working files ─────────────────────────────────────────────
 AGENTS.md
+CLAUDE.md
 STATE.md
 TASKS.md
-CLAUDE.md
+.claude/settings.local.json
+# Legacy agent files from earlier tooling
+.internal/
+CURRENT_STATE.md
+task.md
+walkthrough.md
+full_prompt.txt
+bench_output.txt
+src/Project rules.md

@@ -1,0 +1,12 @@
+# scripts/
+
+Helper scripts. None of them produce numbers used in the paper; paper numbers come from
+`cargo bench` (see [docs/benchmarks.md](../docs/benchmarks.md)).
+
+| Script | Platform | What it does |
+|---|---|---|
+| `cross_build.sh` | Linux | Cross-compiles `crci-node` for `armv7` / `aarch64` (see [docs/cross-compilation.md](../docs/cross-compilation.md)). |
+| `demo.sh` / `demo.ps1` | Linux / Windows | Starts `node-alpha`, `node-beta` and the web dashboard (Docker Compose, or native with `--native`), sends two messages and starts the Byzantine agent. |
+| `test_demo.sh` / `test_demo.ps1` | Linux / Windows | Checks that `docker-compose.yml` parses and the demo scripts exist. |
+| `chaos.sh` | Linux + Docker | Runs `cargo test --lib chaos`, then disconnects/kills containers of the Compose mesh and checks the logs for panics. Manual tool; no recorded results. |
+| `run_proof.ps1` | Windows | Starts 5 local processes of the legacy `node` binary and collects their `JSON_SUMMARY` lines into `proof_run.log`. Superseded by the multi-node testbed (Task 12). |
