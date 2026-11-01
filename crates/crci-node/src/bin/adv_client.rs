@@ -2,35 +2,30 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-fn main() {
-    let t_start = SystemTime::now()
+fn now_ms() -> u128 {
+    SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis();
+        .map(|d| d.as_millis())
+        .unwrap_or(0)
+}
+
+fn main() {
+    let t_start = now_ms();
     let mut stream = match TcpStream::connect("127.0.0.1:8000") {
         Ok(s) => s,
         Err(_) => {
-            let t_end = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis();
+            let t_end = now_ms();
             println!("{} {} {} connect_err 0", t_start, t_end, t_end - t_start);
             return;
         }
     };
 
-    let local_port = stream.local_addr().unwrap().port();
+    let local_port = stream.local_addr().map(|a| a.port()).unwrap_or(0);
 
-    let t_send = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis();
+    let t_send = now_ms();
     let payload = b"\x00\x00\x00\xFFMALFORMED_DATA";
     if stream.write_all(payload).is_err() {
-        let t_end = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
+        let t_end = now_ms();
         println!(
             "{} {} {} write_err {}",
             t_send,
@@ -58,10 +53,7 @@ fn main() {
             }
         }
     }
-    let t_end = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis();
+    let t_end = now_ms();
     println!(
         "{} {} {} {} {}",
         t_send,

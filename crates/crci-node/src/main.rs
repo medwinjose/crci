@@ -20,10 +20,10 @@ async fn main() {
     }
 
     if let Some(byz_mode) = args.byzantine.clone() {
-        let target = args
-            .to
-            .clone()
-            .expect("Byzantine mode requires a target peer via --to");
+        let Some(target) = args.to.clone() else {
+            eprintln!("Byzantine mode requires a target peer via --to");
+            std::process::exit(1);
+        };
         let node_id = args.node_id.clone().unwrap_or_else(|| {
             let mut rng = rand::thread_rng();
             use rand::Rng;
@@ -76,12 +76,22 @@ async fn main() {
             .listen
             .clone()
             .unwrap_or_else(|| "127.0.0.1:0".to_string());
-        let listen_socket: std::net::SocketAddr =
-            listen_addr.parse().expect("Invalid listen/bind address");
+        let listen_socket: std::net::SocketAddr = match listen_addr.parse() {
+            Ok(a) => a,
+            Err(e) => {
+                eprintln!("Invalid listen/bind address {listen_addr}: {e}");
+                std::process::exit(1);
+            }
+        };
 
-        let tcp = crci_core::transport::TcpTransport::bind(node_id.clone(), listen_socket)
-            .await
-            .expect("Failed to bind TcpTransport");
+        let tcp =
+            match crci_core::transport::TcpTransport::bind(node_id.clone(), listen_socket).await {
+                Ok(t) => t,
+                Err(e) => {
+                    eprintln!("Failed to bind TcpTransport on {listen_socket}: {e}");
+                    std::process::exit(1);
+                }
+            };
 
         let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
         let mut node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
@@ -195,12 +205,20 @@ async fn main() {
         });
 
         let tcp_arc = if let Some(ref listen) = args.listen {
-            let addr = listen
-                .parse::<std::net::SocketAddr>()
-                .expect("Invalid listen address");
-            let tcp = crci_core::transport::TcpTransport::bind(node_id.clone(), addr)
-                .await
-                .expect("Failed to bind TcpTransport");
+            let addr = match listen.parse::<std::net::SocketAddr>() {
+                Ok(a) => a,
+                Err(e) => {
+                    eprintln!("Invalid listen address {listen}: {e}");
+                    std::process::exit(1);
+                }
+            };
+            let tcp = match crci_core::transport::TcpTransport::bind(node_id.clone(), addr).await {
+                Ok(t) => t,
+                Err(e) => {
+                    eprintln!("Failed to bind TcpTransport on {addr}: {e}");
+                    std::process::exit(1);
+                }
+            };
             let tcp_arc = Arc::new(tcp);
 
             let node_arc_clone = node_arc.clone();
@@ -435,8 +453,6 @@ async fn main() {
         }
         return;
     }
-    // TODO: Wire args.argon2_memory and args.config to EncryptedStore / Configuration when integrated.
-
     let (ws_tx, _) = tokio::sync::broadcast::channel(100);
     let (divergence_tx, _) = tokio::sync::broadcast::channel(100);
     let state = Arc::new(crci_core::api::ApiState {
