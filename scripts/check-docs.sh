@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # Files allowed to name these technologies because they discuss them as alternatives or history.
-ALLOW=':!docs/adr/001-custom-transport-over-libp2p.md :!CHANGELOG.md :!scripts/check-docs.sh'
+ALLOW=':!docs/adr/001-custom-tcp-transport.md :!CHANGELOG.md :!scripts/check-docs.sh'
 
 fail=0
 check() {
