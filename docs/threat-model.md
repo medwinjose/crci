@@ -43,19 +43,17 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    that origin are dropped, honest or not (fix planned).
 4. **Unsigned mass-casualty events.** Messages of type `mce` skip signature and key checks on the signed
    path (fix planned).
-5. **Idle peers get banned.** Reputation decays at 0.05/s after 2 s of silence and the decay can cross the
-   ban threshold, so an honest peer silent for about 10 s is banned (fix planned).
-6. **Stale floods are not penalised.** A packet older than the replay window is dropped without a strike,
+5. **Stale floods are not penalised.** A packet older than the replay window is dropped without a strike,
    so an adversary can resend old signed messages without losing reputation. Each one still costs a
    signature verification; the cost is bounded only by the per-sender token bucket (20 messages, then 5/s)
    and, today, by the per-origin signature-check cap.
-7. **Paced replays evade eviction.** An adversary that sends enough valid traffic between replays recovers
+6. **Paced replays evade eviction.** An adversary that sends enough valid traffic between replays recovers
    reputation faster than it loses it (measured in [benchmarks.md](benchmarks.md); strike-damped recovery planned).
-8. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
+7. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
    earlier IDs can be resent. Inside the replay window the sequence filter still strikes a repeat from the
    same sender; outside it the packet is dropped without a strike.
-9. **No partition recovery protocol.** There is no anti-entropy or digest exchange after a partition
+8. **No partition recovery protocol.** There is no anti-entropy or digest exchange after a partition
    (planned).
-10. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
+9. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
     "start at 0.2 if the /24 subnet has a banned peer" rule, which only applies to sender IDs that parse
     as socket addresses. Fresh key pairs are otherwise free.

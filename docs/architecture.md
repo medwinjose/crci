@@ -48,8 +48,8 @@ public key, a signature and a sequence number. `NodeRuntime::process_inbox()` re
    sequence number is covered by the origin's signature, so a relay cannot move the window.
 
 A strike is −0.15 reputation (start 0.5, ban below 0.1, so three strikes ban). Reputation also drifts:
-small recovery while a peer is active, and decay of 0.05/s once a peer has been silent for more than 2 s,
-which can ban a peer that was only idle (fix planned).
+small recovery while a peer is active, and decay of 0.05/s once a peer has been silent for more than 2 s.
+Idle decay stops at the ban threshold and never bans; only a strike can.
 
 Messages of type `mce` (mass-casualty event) skip steps 2, 3 and 5: they are accepted without a signature.
 
