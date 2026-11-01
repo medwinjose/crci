@@ -53,6 +53,9 @@ impl Default for PeerReputation {
     }
 }
 
+/// Lowest score idle decay can reach; equal to the ban threshold (`score < 0.1`).
+const IDLE_DECAY_FLOOR: f32 = 0.1;
+
 fn round_to_3_dec_f32(val: f32) -> f32 {
     (val * 1000.0).round() / 1000.0
 }
@@ -105,13 +108,12 @@ impl PeerReputation {
             let idle_time_to_decay = now.duration_since(self.last_updated).as_secs_f32();
             if idle_time_to_decay >= 0.01 {
                 let decay = idle_time_to_decay * 0.05;
-                let new_score = self.score - decay;
+                // Inactivity is not evidence of misbehaviour: idle decay stops at the
+                // ban threshold and never sets `banned`. Only `penalise` can ban.
+                let floor = self.score.min(IDLE_DECAY_FLOOR);
+                let new_score = (self.score - decay).max(floor);
                 self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
                 self.last_updated = now;
-
-                if self.score < 0.1 {
-                    self.banned = true;
-                }
             }
         } else {
             let elapsed = now.duration_since(self.last_updated).as_secs_f32();

@@ -225,6 +225,32 @@ fn test_bft_reputation_decay() {
 }
 
 #[test]
+fn test_idle_peer_is_never_banned_by_inactivity() {
+    // An honest peer that is silent for a long time must not be banned when it
+    // sends its next message: only evidenced misbehaviour may ban.
+    let mut rep = PeerReputation::new();
+    let now = std::time::Instant::now();
+    rep.last_activity = now - Duration::from_secs(60);
+    rep.last_updated = now - Duration::from_secs(60);
+
+    rep.decay_recover();
+
+    assert!(!rep.is_banned(), "idle decay produced a ban");
+}
+
+#[test]
+fn test_idle_peer_passes_sybil_guard() {
+    use crci_core::sybil::SybilGuard;
+    let mut guard = SybilGuard::new(0);
+    let peer = "honest-peer".to_string();
+    assert!(guard.check(&peer).is_ok());
+    std::thread::sleep(Duration::from_millis(2100));
+    for _ in 0..3 {
+        assert!(guard.check(&peer).is_ok());
+    }
+}
+
+#[test]
 fn test_bft_reputation_recovery() {
     // Verify recovery rate is slower than decay rate
     let mut rep = PeerReputation::new(); // Starts at 0.5
