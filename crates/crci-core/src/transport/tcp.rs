@@ -310,36 +310,95 @@ async fn accept_handshake(
     })
 }
 
+/// An authenticated outgoing connection: the handshake is done and frames can be sent.
+pub struct DialedConnection {
+    stream: TcpStream,
+    key: SigningKey,
+    session: [u8; 32],
+    next_counter: u64,
+    /// The listener's authenticated identity (`node_id#key`), as its frames to this node
+    /// will be attributed.
+    pub peer: NodeId,
+}
+
+impl DialedConnection {
+    /// Dial `target` and authenticate as `node_id` with `key`; the listener must prove its
+    /// own key before this returns.
+    pub async fn connect(
+        target: &str,
+        node_id: &str,
+        key: &SigningKey,
+    ) -> Result<DialedConnection, TransportError> {
+        let mut stream = match tokio::time::timeout(IO_TIMEOUT, TcpStream::connect(target)).await {
+            Ok(Ok(s)) => s,
+            Ok(Err(e)) => return Err(map_send_error(e)),
+            Err(_) => return Err(TransportError::ConnectionFailed("Connect timed out".into())),
+        };
+        if let Err(e) = configure_socket(&stream) {
+            return Err(TransportError::ConnectionFailed(format!(
+                "Socket configuration failed: {}",
+                e
+            )));
+        }
+        match dialer_handshake(&mut stream, node_id, key).await {
+            Ok((peer, session)) => Ok(DialedConnection {
+                stream,
+                key: key.clone(),
+                session,
+                next_counter: 0,
+                peer,
+            }),
+            Err(e) => {
+                let _ = stream.shutdown().await;
+                Err(e)
+            }
+        }
+    }
+
+    /// Send `message` as the next signed frame.
+    pub async fn send(&mut self, message: &NetworkMessage) -> Result<(), TransportError> {
+        let frame = sign_frame(&self.key, &self.session, self.next_counter, message);
+        write_json(&mut self.stream, &frame)
+            .await
+            .map_err(map_send_error)?;
+        self.next_counter += 1;
+        Ok(())
+    }
+
+    /// Close the connection.
+    pub async fn close(mut self) {
+        let _ = self.stream.shutdown().await;
+    }
+}
+
 /// Dial `target`, authenticate as `node_id` with `key`, check the listener's proof of its
-/// own key, and send `messages` as signed frames on that one connection.
+/// own key, and send `messages` as signed frames on that one connection. Returns the
+/// listener's authenticated identity.
 pub async fn send_authenticated(
     target: &str,
     node_id: &str,
     key: &SigningKey,
     messages: &[NetworkMessage],
-) -> Result<(), TransportError> {
-    let mut stream = match tokio::time::timeout(IO_TIMEOUT, TcpStream::connect(target)).await {
-        Ok(Ok(s)) => s,
-        Ok(Err(e)) => return Err(map_send_error(e)),
-        Err(_) => return Err(TransportError::ConnectionFailed("Connect timed out".into())),
-    };
-    if let Err(e) = configure_socket(&stream) {
-        return Err(TransportError::ConnectionFailed(format!(
-            "Socket configuration failed: {}",
-            e
-        )));
+) -> Result<NodeId, TransportError> {
+    let mut conn = DialedConnection::connect(target, node_id, key).await?;
+    let mut result = Ok(());
+    for message in messages {
+        result = conn.send(message).await;
+        if result.is_err() {
+            break;
+        }
     }
-    let result = dialer_session(&mut stream, node_id, key, messages).await;
-    let _ = stream.shutdown().await;
-    result
+    let peer = conn.peer.clone();
+    conn.close().await;
+    result.map(|()| peer)
 }
 
-async fn dialer_session(
+/// Dialer side of the handshake; returns the listener's identity and the session ID.
+async fn dialer_handshake(
     stream: &mut TcpStream,
     node_id: &str,
     key: &SigningKey,
-    messages: &[NetworkMessage],
-) -> Result<(), TransportError> {
+) -> Result<(NodeId, [u8; 32]), TransportError> {
     let own_key = key.verifying_key();
     let hello: ServerHello = read_json(stream, MAX_HANDSHAKE_BYTES)
         .await
@@ -383,13 +442,10 @@ async fn dialer_session(
             "listener handshake signature invalid".into(),
         ));
     }
-
-    let session = session_id(&transcript);
-    for (counter, message) in (0u64..).zip(messages) {
-        let frame = sign_frame(key, &session, counter, message);
-        write_json(stream, &frame).await.map_err(map_send_error)?;
-    }
-    Ok(())
+    Ok((
+        peer_identity(&hello.node_id, &listener_key),
+        session_id(&transcript),
+    ))
 }
 
 pub struct TcpTransport {
@@ -529,6 +585,11 @@ impl TcpTransport {
     /// The public key this transport proves to its peers.
     pub fn public_key(&self) -> VerifyingKey {
         self.signing_key.verifying_key()
+    }
+
+    /// Open an authenticated connection to `addr` as this node.
+    pub async fn dial(&self, addr: &str) -> Result<DialedConnection, TransportError> {
+        DialedConnection::connect(addr, &self.node_id, &self.signing_key).await
     }
 }
 
@@ -756,6 +817,7 @@ impl Transport for TcpTransport {
             std::slice::from_ref(message),
         )
         .await
+        .map(|_| ())
     }
 
     async fn receive(&self) -> Result<(NodeId, NetworkMessage), TransportError> {

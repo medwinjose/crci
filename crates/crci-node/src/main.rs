@@ -1349,7 +1349,7 @@ async fn run_node(
         merkle_head: Arc::new(std::sync::RwLock::new(([0; 32], 0))),
     });
 
-    for peer in dial {
+    for peer in dial.clone() {
         match tokio::net::TcpStream::connect(&peer).await {
             Ok(_) => {
                 node.add_peer(&peer);
@@ -1377,6 +1377,54 @@ async fn run_node(
     });
 
     let node_arc = Arc::new(Mutex::new(node));
+
+    // Anti-entropy: ask every dialed peer for the messages this node is missing, at
+    // start-up and every SYNC_INTERVAL; a peer that could not be reached is retried every
+    // SYNC_RETRY, so a healed link is re-synchronised within seconds. The session is opened
+    // once the listener's identity is authenticated and before the request is sent, so its
+    // answers can never arrive first.
+    const SYNC_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
+    const SYNC_RETRY: std::time::Duration = std::time::Duration::from_secs(5);
+    let sync_tcp = tcp.clone();
+    let sync_node = node_arc.clone();
+    let sync_id = node_id.clone();
+    let reply_to = tcp.listen_addr.to_string();
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        let mut next_due: HashMap<String, std::time::Instant> = HashMap::new();
+        loop {
+            let now = std::time::Instant::now();
+            for peer in &dial {
+                if next_due.get(peer).is_some_and(|due| *due > now) {
+                    continue;
+                }
+                let mut conn = match sync_tcp.dial(peer).await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        log::warn!("sync: {} unreachable: {}", peer, e);
+                        next_due.insert(peer.clone(), now + SYNC_RETRY);
+                        continue;
+                    }
+                };
+                let request = {
+                    let mut n = sync_node.lock().unwrap_or_else(|e| e.into_inner());
+                    let request = n.build_sync_request(Some(reply_to.clone()));
+                    n.open_sync_session(&conn.peer, &request);
+                    request
+                };
+                match conn.send(&request).await {
+                    Ok(()) => println!(
+                        "Node {} requested sync from {} ({})",
+                        sync_id, peer, conn.peer
+                    ),
+                    Err(e) => log::warn!("sync request to {} failed: {}", peer, e),
+                }
+                conn.close().await;
+                next_due.insert(peer.clone(), now + SYNC_INTERVAL);
+            }
+            tokio::time::sleep(SYNC_RETRY).await;
+        }
+    });
     let pipeline = Arc::new(Mutex::new(pipeline));
 
     let recv_tcp = tcp.clone();

@@ -34,6 +34,8 @@ CRCI moves misbehaviour isolation **into the gossip layer itself** and makes it 
 - **Reordering is tolerated.** A sliding-window replay filter (W = 64) accepts late packets inside the
   window; packets older than the window are dropped without a strike, since an honest neighbour can
   deliver old messages after a partition.
+- **Partitions heal without penalties.** After a partition a node asks its neighbours for what it missed
+  with a signed digest; their answers never count against them, while unsolicited repeats still do.
 - **No coordination.** No voting, no membership protocol, no global state: dissemination stays O(n) per
   message, and every node keeps working while partitioned.
 
@@ -128,11 +130,10 @@ A Docker Compose demo (two honest nodes, one adversarial node, and the dashboard
 CRCI is an active research project. The isolation pipeline runs in the node runtime used by both the
 networked TCP node and the test suite; the benchmarks so far drive it in-process. Current work, in order:
 
-1. Anti-entropy re-synchronisation after network partitions.
-2. A 20–50 node network-emulation testbed (loss, delay, reordering, link flapping) and comparison against
+1. A 20–50 node network-emulation testbed (loss, delay, reordering, link flapping) and comparison against
    baselines.
-3. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
-4. Safety and liveness invariants of the final protocol in TLA+.
+2. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
+3. Safety and liveness invariants of the final protocol in TLA+.
 
 Out of scope: large-scale Sybil attacks, colluding adversaries, and physical LoRa/BLE radios (the BLE and
 LoRa transports are interface stubs). Known gaps are tracked in [docs/threat-model.md](docs/threat-model.md).

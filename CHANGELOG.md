@@ -50,6 +50,15 @@ git history; `git log` is the complete record.
   removed: inactivity no longer changes a score. Banned peers recover at the same rate and are readmitted
   at 0.25.
 - `recovery_bench` rewritten: exact duplicate replays on a simulated clock, sweeping the replay period.
+- Anti-entropy after a partition: a node asks a neighbour for what it missed with a signed digest
+  (`sync_request`), and the neighbour answers with up to 16 recent messages the digest lacks, at most
+  once per 5 s per requester and about once per second in total. Answers
+  that cross with ordinary gossip are not struck; unsolicited duplicates still are. `crci-node` requests
+  from its `--peers` at start-up, every 30 s, and within 5 s of an unreachable peer coming back.
+  `MeshSimulator` gains `disconnect` and `heal`. `TcpTransport::dial` opens an authenticated connection
+  and reports the listener's identity.
+- A node no longer announces its chain head after a pass that only received announcements; two flooding
+  neighbours used to echo announcements until their rate limits dropped real messages.
 - `crci_version()` reports the crate version instead of a hard-coded `0.1.0`.
 - The TCP transport no longer panics on clock errors and logs through `log` instead of standard output.
 - `/chain/head` on a TCP node reports the node's Merkle chain head instead of the latest message ID.

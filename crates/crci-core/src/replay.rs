@@ -112,6 +112,23 @@ impl ReplayFilter {
         }
     }
 
+    /// For each tracked origin (at most `max_origins`, highest `seq_max` first, then by
+    /// origin): `seq_max` and the sequence numbers accepted inside the window, ascending.
+    pub fn digest(&self, max_origins: usize) -> Vec<(String, u64, Vec<u64>)> {
+        let mut out: Vec<(String, u64, Vec<u64>)> = self
+            .windows
+            .iter()
+            .map(|(origin, w)| {
+                let mut held: Vec<u64> = w.delivered_by.keys().copied().collect();
+                held.sort_unstable();
+                (origin.clone(), w.seq_max, held)
+            })
+            .collect();
+        out.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        out.truncate(max_origins);
+        out
+    }
+
     // How many unique origins we're tracking
     pub fn tracked_origins(&self) -> usize {
         self.windows.len()

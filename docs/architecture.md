@@ -119,7 +119,32 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
 Every 5 s the binary advances the pipeline round and compares the severities reported by verified zone
 members with their median (anchored at 3), treating deviations ≥ 2 as outliers unless 3f ≥ n. An outlier
 is only logged and counted in `byzantine_events`; a validly signed report never changes reputation.
-`/chain/head` reports the node's Merkle chain head.
+`/chain/head` reports the node's Merkle chain head. A node announces its chain head to its peers after an
+inbox pass that delivered at least one message; receiving an announcement never triggers one, so
+neighbours do not echo announcements back and forth.
+
+### Re-synchronisation after a partition (anti-entropy)
+
+`NodeRuntime` (`runtime.rs`) keeps the last W accepted messages of each origin (at most 1 024 origins).
+To catch up, a node sends a neighbour a signed `sync_request`: a `WireMessage` whose `sync` digest lists,
+per origin, the highest accepted sequence number and every sequence number held inside the window
+(at most 256 origins), plus an optional `reply_to` address. The digest is covered by the requester's
+signature. The neighbour answers only if the request came straight from its author (a relayed copy is
+ignored, so a captured request cannot be used to flood its author), at most once per 5 s per requester
+and about once per second in total (burst 4), with up to 16 of its recent messages that the digest lacks, oldest first, as ordinary signed messages.
+Requests are never delivered, stored or forwarded.
+
+The requester holds a 30 s sync session with the neighbour it asked. During the session a duplicate from
+that neighbour of a message the digest did **not** list as held is dropped without a strike, once per
+message: it can be an answer that crossed with the same message relayed as ordinary gossip. A duplicate
+of a message the digest listed as held, a second duplicate, and duplicates from any other peer follow the
+normal rules and strike.
+
+In-process, `MeshSimulator::heal(a, b)` restores a link and has both ends request. A TCP node requests
+from every `--peers` / `--dial` address 0.5 s after start and every 30 s, and retries an unreachable peer
+every 5 s, so a healed link is re-synchronised within about 5 s. The session is opened after the
+listener's identity has been authenticated and before the request frame is sent. `reply_to` is the
+node's listen address, so the listen address must be reachable by its peers (not `0.0.0.0`).
 
 ## `crci-core` modules
 

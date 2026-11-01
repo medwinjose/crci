@@ -56,6 +56,28 @@ impl MeshSimulator {
         }
     }
 
+    /// Cut the link between `a` and `b` (a partition, if it was the only path).
+    pub fn disconnect(&mut self, a: &str, b: &str) {
+        if let Some(node) = self.nodes.get_mut(a) {
+            node.peers.retain(|p| p != b);
+        }
+        if let Some(node) = self.nodes.get_mut(b) {
+            node.peers.retain(|p| p != a);
+        }
+    }
+
+    /// Restore the link between `a` and `b` and have each side ask the other for the
+    /// messages it missed (anti-entropy). Call `drain` afterwards to deliver them.
+    pub fn heal(&mut self, a: &str, b: &str) {
+        self.connect(a, b);
+        if let Some(node) = self.nodes.get_mut(a) {
+            node.request_sync(b);
+        }
+        if let Some(node) = self.nodes.get_mut(b) {
+            node.request_sync(a);
+        }
+    }
+
     // A node originates a message
     pub fn originate(&mut self, node_id: &str, msg: Message) {
         if let Some(node) = self.nodes.get_mut(node_id) {

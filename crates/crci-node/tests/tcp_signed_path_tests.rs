@@ -342,3 +342,55 @@ fn adversary_claiming_an_honest_id_cannot_get_it_banned() {
         log
     );
 }
+
+/// A node that starts after messages were sent catches up through anti-entropy: it asks
+/// its dialed peer with a digest, the peer answers with what it lacks, and nobody is
+/// struck.
+#[test]
+fn late_node_catches_up_through_anti_entropy() {
+    let a = start_receiver("tcp-sa");
+    for origin in ["node-x1", "node-x2", "node-x3"] {
+        send_signed(&a.addr, origin);
+    }
+    let b = start_node("tcp-sb", &["--peers", &a.addr]);
+    std::thread::sleep(std::time::Duration::from_secs(2));
+    let b_log = b.finish();
+    let a_log = a.finish();
+
+    assert!(
+        b_log.contains("requested sync from"),
+        "late node log:\n{}",
+        b_log
+    );
+    assert!(
+        a_log.contains("answering sync request from 'tcp-sb#")
+            && a_log.contains("with 3 message(s)"),
+        "first node log:\n{}",
+        a_log
+    );
+    for origin in ["node-x1", "node-x2", "node-x3"] {
+        assert!(
+            b_log.contains(&format!("(origin {origin}, via tcp-sa#")),
+            "late node log:\n{}",
+            b_log
+        );
+    }
+    assert_eq!(
+        count(&b_log, "MALICIOUS REPLAY"),
+        0,
+        "late node log:\n{}",
+        b_log
+    );
+    assert_eq!(
+        count(&a_log, "MALICIOUS REPLAY"),
+        0,
+        "first node log:\n{}",
+        a_log
+    );
+    assert_eq!(
+        count(&b_log, "REPLAY dropped"),
+        0,
+        "late node log:\n{}",
+        b_log
+    );
+}

@@ -18,6 +18,7 @@ async fn send_msg(
         std::slice::from_ref(msg),
     )
     .await
+    .map(|_| ())
 }
 
 /// A message from `origin`, signed with `key`.
