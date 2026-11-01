@@ -51,9 +51,8 @@ file crci-node
 ```
 
 > [!NOTE]
-> `crci-node` accepts `--argon2-memory <KiB>` (default 65536), but the value is **not used yet**: the
-> encrypted store is not wired to the CLI (see the `TODO` in `crates/crci-node/src/main.rs`). Memory use
-> on 1 GB devices has not been measured.
+> The encrypted store is not wired to the `crci-node` CLI, so there is no Argon2 memory option
+> there. Memory use on 1 GB devices has not been measured.
 
 ## 5. Running as a Daemon
 

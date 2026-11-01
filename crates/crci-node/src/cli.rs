@@ -19,14 +19,6 @@ pub struct Cli {
     #[arg(long)]
     pub dial: Option<String>,
 
-    /// Path to config file (TOML)
-    #[arg(long, default_value = "crci.toml")]
-    pub config: String,
-
-    /// Argon2id memory cost in KiB (lower on memory-constrained devices)
-    #[arg(long, default_value_t = 65536)]
-    pub argon2_memory: u32,
-
     /// Enable verbose logging
     #[arg(short, long)]
     pub verbose: bool,

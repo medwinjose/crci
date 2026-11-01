@@ -105,7 +105,7 @@ the Android `.so` as well.
 
 | Binary | Purpose |
 |---|---|
-| `crci-node` | Main CLI. `--listen` (+ `--peers`/`--dial`) runs a TCP node with the HTTP API on port 8080. `--send … --to …` sends one message. `--byzantine <mode> --to …` runs an adversary (`replay`, `false_allclear`, `sybil`, `flood`, `partition_heal`). With no arguments it runs a scripted in-process demonstration and serves the API. `--argon2-memory` and `--config` are parsed but not used yet. |
+| `crci-node` | Main CLI. `--listen` (+ `--peers`/`--dial`) runs a TCP node with the HTTP API on port 8080. `--send … --to …` sends one message. `--byzantine <mode> --to …` runs an adversary (`replay`, `false_allclear`, `sybil`, `flood`, `partition_heal`). With no arguments it runs a scripted in-process demonstration and serves the API. |
 | `node` | Older environment-variable-driven node (`NODE_ID`, `LISTEN_PORT`, `PEERS`, …); used by `scripts/run_proof.ps1`. |
 | `byzantine_agent`, `adv_client` | Stand-alone adversary clients. |
 | `uniffi-bindgen` (in `crci-core`) | Generates Kotlin bindings. |
