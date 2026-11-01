@@ -51,7 +51,6 @@ fn test_reorder(window: u64, depth: u64) -> bool {
             .or_insert_with(Vec::new)
             .push(("node-h".to_string(), raw_reordered));
         node.process_inbox();
-        node.sig_verifications_count.clear();
 
         current_seq += depth + 1;
     }

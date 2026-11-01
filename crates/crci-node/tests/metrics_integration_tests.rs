@@ -70,14 +70,14 @@ fn test_metrics_messages_accepted_increments() {
 }
 
 #[test]
-fn test_metrics_byzantine_detected_on_bft008_throttle() {
+fn test_metrics_byzantine_detected_on_invalid_signature() {
     let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
     let mut node = NodeRuntime::new("bft008-metrics-node", "zone-alpha", inbox.clone());
 
-    // Send 10 messages from the same peer — BFT-008 limit is 5,
-    // so messages 6-10 should trigger byzantine_detected increments
+    // Send 3 messages with corrupted signatures from the same peer: each one is
+    // checked, rejected and counted as Byzantine (the third strike bans the peer).
     let mut payloads = Vec::new();
-    for i in 1..=10u64 {
+    for i in 1..=3u64 {
         let msg = Message {
             id: format!("bft008-msg-{}", i),
             origin: "attacker-peer".to_string(),
@@ -92,7 +92,8 @@ fn test_metrics_byzantine_detected_on_bft008_throttle() {
             origin_active: true,
             signature: None,
         };
-        let wire = WireMessage::from_message(&msg, &node.identity);
+        let mut wire = WireMessage::from_message(&msg, &node.identity);
+        wire.signature_bytes[0] ^= 0xFF;
         payloads.push(serde_json::to_vec(&wire).unwrap());
     }
 
@@ -110,9 +111,9 @@ fn test_metrics_byzantine_detected_on_bft008_throttle() {
     node.process_inbox();
 
     let byzantine = node.metrics.byzantine_detected.load(Ordering::Relaxed);
-    assert!(
-        byzantine >= 5,
-        "Expected byzantine_detected >= 5 after BFT-008 throttle, got {}",
+    assert_eq!(
+        byzantine, 3,
+        "Expected byzantine_detected == 3 after 3 invalid signatures, got {}",
         byzantine
     );
 
@@ -120,16 +121,16 @@ fn test_metrics_byzantine_detected_on_bft008_throttle() {
         .metrics
         .sig_verifications_performed
         .load(Ordering::Relaxed);
-    assert!(
-        sig_verifs >= 5,
-        "Expected sig_verifications_performed >= 5 (the first 5 messages pass), got {}",
+    assert_eq!(
+        sig_verifs, 3,
+        "Expected sig_verifications_performed == 3, got {}",
         sig_verifs
     );
 
     let rejected = node.metrics.messages_rejected.load(Ordering::Relaxed);
-    assert!(
-        rejected >= 5,
-        "Expected messages_rejected >= 5 after BFT-008 throttle, got {}",
+    assert_eq!(
+        rejected, 3,
+        "Expected messages_rejected == 3 after 3 invalid signatures, got {}",
         rejected
     );
 }

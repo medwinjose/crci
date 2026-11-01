@@ -152,7 +152,9 @@ impl CrciMetrics {
             self.seen_messages_evictions.load(Ordering::Relaxed)
         ));
 
-        out.push_str("# HELP crci_sig_verifications_performed Total BFT-008 signature verifications performed\n");
+        out.push_str(
+            "# HELP crci_sig_verifications_performed Total signature verifications performed\n",
+        );
         out.push_str("# TYPE crci_sig_verifications_performed counter\n");
         out.push_str(&format!(
             "crci_sig_verifications_performed {}\n",

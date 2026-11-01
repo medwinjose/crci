@@ -176,6 +176,11 @@ impl TokenBucket {
 }
 
 // ── SybilGuard ────────────────────────────────────────────────────────────────
+/// Messages a transport sender may deliver in a burst before it is rate-limited.
+pub const SENDER_BURST: f32 = 20.0;
+/// Messages per second added back to a transport sender's budget.
+pub const SENDER_REFILL_PER_SEC: f32 = 5.0;
+
 fn get_subnet(id: &str) -> Option<String> {
     if let Ok(addr) = id.parse::<std::net::SocketAddr>() {
         match addr.ip() {
@@ -251,12 +256,18 @@ impl SybilGuard {
         let bucket = self
             .buckets
             .entry(peer.clone())
-            .or_insert_with(|| TokenBucket::new(20.0, 5.0));
+            .or_insert_with(|| TokenBucket::new(SENDER_BURST, SENDER_REFILL_PER_SEC));
         if !bucket.try_consume() {
             return Err(SybilError::RateLimited(peer.clone()));
         }
 
         Ok(())
+    }
+
+    /// Tokens left in `peer`'s budget as last recorded (no refill is applied), or `None`
+    /// if the peer has not been seen.
+    pub fn available_tokens(&self, peer: &NodeId) -> Option<f32> {
+        self.buckets.get(peer).map(|b| b.tokens)
     }
 
     pub fn report_violation(&mut self, peer: &NodeId) {

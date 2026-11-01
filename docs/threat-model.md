@@ -25,7 +25,8 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 | Direct replay | Same message ID from the same sender → strike; from a different sender → ignored | `runtime.rs` | Signed only |
 | Sequence replay | Sliding window W = 64 per origin: same sequence from the same sender → strike; from another sender → ignored; older than the window → dropped without a strike. The sequence number is signed | `replay.rs` | Signed only |
 | Repeat offender | Reputation 0.5, −0.15 per strike, banned below 0.1; banned senders are dropped on admission | `sybil.rs` | Signed only |
-| Message flood | Token bucket per sender (20 messages, +5/s) | `sybil.rs` | Signed only |
+| Message flood | Token bucket per sender (20 messages, +5/s), applied before the signature check | `sybil.rs` | Signed only |
+| Signature-verification flood | Verifications bounded by the sender's token bucket; each invalid signature is a strike, so three bad signatures ban the sender | `runtime.rs`, `sybil.rs` | Signed only |
 | Malformed input | Severity range, payload size, node-ID format, sequence overflow, rate limit | `validation.rs`, `integration.rs` | Both |
 | Oversized / slow TCP frames | 1 MiB frame limit, 5 s read timeouts, 100 concurrent connections | `transport/tcp.rs` | TCP |
 | Data at rest | AES-256-GCM, key derived with Argon2id | `storage/encrypted.rs` | Local storage |
@@ -37,23 +38,21 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    never calls `NodeRuntime`; signatures, replay filter, strikes and bans are not applied to network
    traffic (planned).
 2. **The transport sender is self-declared.** The TCP listener uses the message's `origin_node` field as
-   the sender. Any connection can claim any identity, so strikes cannot be bound to a real neighbour
-   (authenticated handshake planned). There is no handshake, and TCP traffic is neither authenticated nor encrypted.
-3. **Lifetime signature-check cap.** After 5 signature verifications for an origin, all later messages from
-   that origin are dropped, honest or not (fix planned).
-4. **Unsigned mass-casualty events.** Messages of type `mce` skip signature and key checks on the signed
+   the sender. Any connection can claim any identity, so strikes and per-sender budgets cannot be bound to a
+   real neighbour (authenticated handshake planned). There is no handshake, and TCP traffic is neither
+   authenticated nor encrypted.
+3. **Unsigned mass-casualty events.** Messages of type `mce` skip signature and key checks on the signed
    path (fix planned).
-5. **Stale floods are not penalised.** A packet older than the replay window is dropped without a strike,
+4. **Stale floods are not penalised.** A packet older than the replay window is dropped without a strike,
    so an adversary can resend old signed messages without losing reputation. Each one still costs a
-   signature verification; the cost is bounded only by the per-sender token bucket (20 messages, then 5/s)
-   and, today, by the per-origin signature-check cap.
-6. **Paced replays evade eviction.** An adversary that sends enough valid traffic between replays recovers
+   signature verification; the cost is bounded only by the per-sender token bucket (20 messages, then 5/s).
+5. **Paced replays evade eviction.** An adversary that sends enough valid traffic between replays recovers
    reputation faster than it loses it (measured in [benchmarks.md](benchmarks.md); strike-damped recovery planned).
-7. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
+6. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
    earlier IDs can be resent. Inside the replay window the sequence filter still strikes a repeat from the
    same sender; outside it the packet is dropped without a strike.
-8. **No partition recovery protocol.** There is no anti-entropy or digest exchange after a partition
+7. **No partition recovery protocol.** There is no anti-entropy or digest exchange after a partition
    (planned).
-9. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
+8. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
     "start at 0.2 if the /24 subnet has a banned peer" rule, which only applies to sender IDs that parse
     as socket addresses. Fresh key pairs are otherwise free.

@@ -4,6 +4,7 @@ use crci_core::runtime::{NodeRuntime, WireMessage};
 use crci_core::sybil::{PeerReputation, SybilGuard};
 use crci_core::transport::SharedInbox;
 use std::collections::HashMap;
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -82,7 +83,7 @@ fn test_bft_pruning_banned_records() {
 }
 
 #[test]
-fn test_bft_signature_verification_rate_limit() {
+fn test_bft_signature_checks_do_not_cap_an_honest_origin() {
     let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
     let mut node = NodeRuntime::new("my-node-id", "zone-alpha", inbox.clone());
 
@@ -113,8 +114,9 @@ fn test_bft_signature_verification_rate_limit() {
 
     node.process_inbox();
 
-    // We expect at least 5 messages to trigger the BFT-008 limit and increment byzantine events.
-    assert!(node.byzantine_events >= 5);
+    // Ten validly signed messages fit inside the sender's burst budget: all are accepted.
+    assert_eq!(node.messages_handled, 10);
+    assert_eq!(node.byzantine_events, 0);
 }
 
 #[test]
@@ -576,8 +578,11 @@ fn test_bft008_persists_across_bft046_eviction() {
     let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
     let mut node = NodeRuntime::new("bft-008-046-node", "zone-alpha", inbox.clone());
 
+    // Spend the spammy peer's whole per-sender budget.
     let peer = "spammy-peer".to_string();
-    node.sig_verifications_count.insert(peer.clone(), 3);
+    while node.sybil_guard.check(&peer).is_ok() {}
+    let drained = node.sybil_guard.available_tokens(&peer).unwrap();
+    assert!(drained < 1.0);
 
     for i in 0..5000 {
         node.seen_messages
@@ -603,14 +608,14 @@ fn test_bft008_persists_across_bft046_eviction() {
     }
 
     node.process_inbox();
-
-    let count = node
-        .sig_verifications_count
-        .get(&peer)
-        .copied()
-        .unwrap_or(0);
     assert_eq!(
-        count, 3,
-        "BFT-008 throttle should persist across BFT-046 eviction"
+        node.metrics.seen_messages_evictions.load(Ordering::Relaxed),
+        1
+    );
+
+    assert_eq!(
+        node.sybil_guard.available_tokens(&peer),
+        Some(drained),
+        "BFT-008 per-sender budget should persist across BFT-046 eviction"
     );
 }

@@ -156,7 +156,6 @@ pub struct NodeRuntime {
     pub sybil_banned_events: u64,
     pub sybil_rate_limited_events: u64,
     pub sybil_pow_failed_events: u64,
-    pub sig_verifications_count: HashMap<String, usize>,
     pub metrics: CrciMetrics,
 }
 
@@ -194,7 +193,6 @@ impl NodeRuntime {
             sybil_banned_events: 0,
             sybil_rate_limited_events: 0,
             sybil_pow_failed_events: 0,
-            sig_verifications_count: HashMap::new(),
             metrics: CrciMetrics::new(),
         }
     }
@@ -401,27 +399,11 @@ impl NodeRuntime {
                 }
             }
 
-            // BFT-008: Bounded local signature verification count per peer to prevent signature check DoS
+            // BFT-008: signature checks are bounded per transport sender by the SybilGuard
+            // token bucket above (it refills over time), and each invalid signature strikes
+            // that sender. The claimed origin is not used: it is unauthenticated, so budgeting
+            // by it would let any peer spend an honest origin's budget with forgeries.
             if wire.message_type != "mce" {
-                let sig_checks = self
-                    .sig_verifications_count
-                    .entry(wire.origin.clone())
-                    .or_insert(0);
-                if *sig_checks >= 5 {
-                    println!(
-                        "  ⚠ [{}] BFT-008 Signature verification limit exceeded for {}, dropping message '{}'",
-                        self.id, wire.origin, wire.id
-                    );
-                    self.byzantine_events += 1;
-                    self.metrics
-                        .byzantine_detected
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    self.metrics
-                        .messages_rejected
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    continue;
-                }
-                *sig_checks += 1;
                 self.metrics
                     .sig_verifications_performed
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -446,14 +428,9 @@ impl NodeRuntime {
                 continue;
             }
 
-            // BFT-046: Hard ceiling on observed message ID cache
-            // NOTE: sig_verifications_count (BFT-008) is intentionally NOT cleared here.
-            // These are two independent concerns: BFT-046 bounds the message-ID dedup cache,
-            // BFT-008 throttles per-origin signature checks. Clearing the throttle counters
-            // on this unrelated eviction previously allowed a peer to reset its own BFT-008
-            // count by flooding traffic to trip the 5000-entry ceiling. sig_verifications_count
-            // currently has no independent eviction policy of its own — tracked separately as
-            // BFT-052 (not in scope for this session).
+            // BFT-046: Hard ceiling on observed message ID cache.
+            // This eviction must not touch the per-sender budget (BFT-008): otherwise a peer
+            // could refill its own budget by flooding enough IDs to trip the ceiling (BFT-047).
             if self.seen_messages.len() >= 5000 {
                 self.seen_messages.clear();
                 self.metrics

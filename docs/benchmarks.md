@@ -15,10 +15,13 @@ Two harness details affect what the results mean:
 
 - The harnesses register **one honest peer that sends a single message** per trial. "Honest survival"
   means that peer is not banned after that message.
-- `recovery_bench` and `ablation_bench` call `node.sig_verifications_count.clear()` between messages.
-  Without that call, `NodeRuntime` drops every message from an origin after its 5th signature check
-  (`crates/crci-core/src/runtime.rs`, the BFT-008 throttle, which is never reset). The results of those two
-  harnesses therefore describe the reputation logic with that throttle bypassed.
+- The recorded runs of `recovery_bench` and `ablation_bench` below reset a per-origin signature-check
+  counter between messages, because `NodeRuntime` then dropped every message from an origin after its 5th
+  signature check. That counter has been removed (signature checks are now bounded by the per-sender token
+  bucket) and the harnesses no longer reset anything.
+- The per-sender token bucket (20 messages, then 5 per second) applies in every harness. `recovery_bench`
+  sends 100 messages per second from one sender in its paced condition, so most of those messages are
+  dropped as rate-limited; reputation recovery is credited before the rate check.
 
 Bench targets have `test = false`, so `cargo test` never runs them or rewrites their CSVs.
 

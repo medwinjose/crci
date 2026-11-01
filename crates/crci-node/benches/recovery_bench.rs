@@ -98,7 +98,6 @@ fn inject_replay(
         .or_insert_with(Vec::new)
         .push(("node-h".to_string(), raw_max));
     node.process_inbox();
-    node.sig_verifications_count.clear();
 
     let mut msg_reordered = Message::new(
         &format!("msg-reordered-{}", replay_seq),
@@ -116,7 +115,6 @@ fn inject_replay(
         .or_insert_with(Vec::new)
         .push(("node-h".to_string(), raw_reordered));
     node.process_inbox();
-    node.sig_verifications_count.clear();
 }
 
 fn inject_honest(
@@ -141,5 +139,4 @@ fn inject_honest(
         .or_insert_with(Vec::new)
         .push(("node-h".to_string(), raw));
     node.process_inbox();
-    node.sig_verifications_count.clear();
 }

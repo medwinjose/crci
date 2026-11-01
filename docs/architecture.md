@@ -33,8 +33,10 @@ public key, a signature and a sequence number. `NodeRuntime::process_inbox()` re
 
 1. **Admission** (`sybil.rs`, `SybilGuard::check`): reject banned senders; token bucket of 20 messages,
    refilled at 5 per second.
-2. **Signature-check budget**: at most 5 signature verifications per origin, counted over the node's
-   lifetime and never reset. After that every message from that origin is dropped.
+2. **Signature-check budget**: no separate counter. Every message that reaches the signature check has
+   passed the sender's token bucket in step 1, so verifications are bounded per transport sender (20, then
+   5 per second), and every invalid signature is a strike, so a sender of bad signatures is banned after
+   three checks. The claimed origin is not used for budgeting, because it is not authenticated.
 3. **Ed25519 signature check**: an invalid signature costs the *sender* (relaying neighbour) one strike.
 4. **Duplicate check**: the same message ID received again from the same sender is a strike; from a
    different sender it is ignored as normal gossip redundancy. The ID cache is cleared when it reaches
