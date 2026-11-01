@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="dev.crci.android.Bft038PanicBoundaryTest" tests="1" failures="0" errors="0" skipped="0" time="0.821" timestamp="2026-08-23T10:25:25" hostname="localhost">
+  <properties>
+    <property name="device" value="medium_phone(AVD) - 16" />
+    <property name="flavor" value="" />
+    <property name="project" value=":app" />
+  </properties>
+  <testcase name="testBft038_FfiPanicDoesNotCrashJvm" classname="dev.crci.android.Bft038PanicBoundaryTest" time="0.032" />
+</testsuite>

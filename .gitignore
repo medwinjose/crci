@@ -25,6 +25,7 @@ crci-android/app/build/
 # TLC generated state directories
 states/
 docs/tla/states/
+paper_workspace/tla/states/
 extracted.json
 
 crci-android/.kotlin/
@@ -32,5 +33,8 @@ crci-android/.kotlin/
 CURRENT_STATE.md
 docs/understanding/
 paper_workspace/
-crates/crci-node/benches/results/
 docs/preprint/
+AGENTS.md
+STATE.md
+TASKS.md
+CLAUDE.md

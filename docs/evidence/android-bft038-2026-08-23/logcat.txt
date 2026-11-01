@@ -1,0 +1,3 @@
+08-23 15:55:24.738 10385 10399 I TestRunner: started: testBft038_FfiPanicDoesNotCrashJvm(dev.crci.android.Bft038PanicBoundaryTest)
+08-23 15:55:24.764 10385 10399 D nativeloader: Load /data/app/~~AluKPQk4qzox8WEKQlSudw==/dev.crci.android-XZBD8m4RrAd98e9G1oge5w==/lib/x86_64/libjnidispatch.so using class loader ns clns-9 (caller=/data/app/~~AluKPQk4qzox8WEKQlSudw==/dev.crci.android-XZBD8m4RrAd98e9G1oge5w==/base.apk!classes6.dex): ok
+08-23 15:55:24.810 10385 10399 I TestRunner: finished: testBft038_FfiPanicDoesNotCrashJvm(dev.crci.android.Bft038PanicBoundaryTest)

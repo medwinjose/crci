@@ -5,3 +5,6 @@
 *.so binary
 *.jar binary
 *.ico binary
+
+# Evidence logs are kept byte-exact (SHA-256 anchored)
+docs/evidence/ci-wan-smoke-2026-09-13/ubuntu_log.txt binary
