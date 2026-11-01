@@ -28,7 +28,8 @@ TLC writes scratch state to `docs/tla/states/` (gitignored).
 - **Temporal property:** `RescueLiveness`. `GossipProgress` is **not** checked by `MC.cfg`.
 - **Fairness:** `Spec` uses weak fairness on the whole next-state relation, `WF_vars(Next)`.
 
-**Reported result:** 649 states generated, 81 distinct, no violations (2026-09-08, commit `cc5e805`).
+**Reported result:** 649 states generated, 81 distinct, no violations (2026-09-08, recorded in earlier
+project notes; no output file was kept).
 This run has not been repeated in this repository and its output is not in `docs/evidence/`; it is re-run
 and recorded when the specification is updated.
 
