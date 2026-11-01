@@ -23,6 +23,13 @@ git history; `git log` is the complete record.
 
 ### Fixed
 - Messages of type `mce` are no longer accepted without a valid signature.
+- Idle peers are no longer banned: inactivity decay stops at the ban threshold, and only a strike bans.
+- Packets older than the replay window are dropped without a strike; the W = 64 sliding window is always
+  on, and the sequence number is covered by the origin's signature.
+- Signature checks are bounded per sender by the token bucket instead of a lifetime cap of five per
+  claimed origin, which dropped every later message from an honest node.
+- `crci_version()` reports the crate version instead of a hard-coded `0.1.0`.
+- The TCP transport no longer panics on clock errors and logs through `log` instead of standard output.
 - `/chain/head` on a TCP node reports the node's Merkle chain head instead of the latest message ID.
 
 ### Removed
@@ -31,6 +38,8 @@ git history; `git log` is the complete record.
   one-off scripts, and two benchmark files that were never compiled.
 - Tracked build products (`libcrci_core.so`) and TLC scratch state.
 - The legacy environment-variable-driven `node` binary and `scripts/run_proof.ps1`.
+- The `paper_v2` build feature (the sliding window is always on).
+- The unused `--config` and `--argon2-memory` command-line options.
 
 ## [2.1.0] - 2026-09-29
 
