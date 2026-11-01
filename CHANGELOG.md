@@ -41,6 +41,8 @@ git history; `git log` is the complete record.
 - A message whose origin is pinned to another public key is dropped without a strike on the relay. The
   receiver cannot tell which key is genuine, and the strike let an adversary that announced an honest
   node's ID first get that node's honest relays banned.
+- Property-based tests (proptest) of the replay window: with reordering depth at most W, every honest
+  message is accepted once and no relay loses reputation; at any depth, no honest relay is struck.
 - `crci_version()` reports the crate version instead of a hard-coded `0.1.0`.
 - The TCP transport no longer panics on clock errors and logs through `log` instead of standard output.
 - `/chain/head` on a TCP node reports the node's Merkle chain head instead of the latest message ID.

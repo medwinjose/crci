@@ -36,6 +36,7 @@ tempfile = "3.27.0"
 # Activate test-utils feature for integration tests that use EncryptedStore helpers.
 crci-core = { path = "../crci-core", features = ["test-utils"] }
 hdrhistogram = "7.6.0"
+proptest = "1"
 
 [[bench]]
 name = "byzantine_bench"

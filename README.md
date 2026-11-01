@@ -85,7 +85,8 @@ Every number above links back to a raw data file and the exact command in
   Argon2id-derived key, per-neighbour rate limiting.
 - **Interfaces:** HTTP + WebSocket API ([OpenAPI](docs/openapi.json)), Prometheus metrics, a React
   dashboard, and an Android app that calls the Rust core directly through UniFFI-generated Kotlin bindings.
-- **Verification:** unit and integration test suite, a TLA+ model of message dissemination
+- **Verification:** unit and integration test suite, property-based tests (proptest) showing that honest
+  reordering within the replay window never costs a relay reputation or loses a message, a TLA+ model of message dissemination
   ([docs/formal-verification.md](docs/formal-verification.md)), and a Linux network-namespace test with
   `tc netem` delay and loss in CI.
 - **CI:** formatting, Clippy with warnings denied, the full test suite on Ubuntu and Windows,
