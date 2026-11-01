@@ -70,7 +70,7 @@ impl PeerReputation {
 
     pub fn penalise(&mut self, amount: f32) {
         let new_score = self.score - amount;
-        // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
+        // Clamp to [0.0, 1.0] and round to 3 decimal places
         self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
         self.last_updated = Instant::now();
         if self.score < 0.1 {
@@ -82,7 +82,7 @@ impl PeerReputation {
         let now = Instant::now();
         let elapsed = now.duration_since(self.last_updated).as_secs_f32();
         if elapsed >= 0.01 {
-            // BFT-013: Sub-linear recovery curve
+            // Sub-linear recovery curve
             let recovery = elapsed.sqrt() * 0.005;
             let new_score = self.score + recovery;
             self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
@@ -90,7 +90,7 @@ impl PeerReputation {
         }
         self.last_activity = now;
 
-        // BFT-020: Hysteresis unbanning threshold
+        // Hysteresis: unban only once the score recovers to 0.25
         if self.banned && self.score >= 0.25 {
             self.banned = false;
         }
@@ -101,7 +101,7 @@ impl PeerReputation {
         let inactive_dur = now.duration_since(self.last_activity).as_secs_f32();
 
         if inactive_dur > 2.0 {
-            // BFT-011: Idle decay curve
+            // Idle decay curve
             let idle_time_to_decay = now.duration_since(self.last_updated).as_secs_f32();
             if idle_time_to_decay >= 0.01 {
                 let decay = idle_time_to_decay * 0.05;
@@ -219,7 +219,7 @@ impl SybilGuard {
     pub fn check(&mut self, peer: &NodeId) -> Result<(), SybilError> {
         let is_new = !self.reputations.contains_key(peer);
         if is_new {
-            // BFT-019: Sybil cluster reputation correlation
+            // Sybil cluster correlation: new peers from a subnet with a banned peer start penalised
             if let Some(subnet) = get_subnet(peer) {
                 let has_banned_in_subnet = self.reputations.iter().any(|(other_id, other_rep)| {
                     other_rep.is_banned() && get_subnet(other_id) == Some(subnet.clone())

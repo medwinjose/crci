@@ -1485,48 +1485,15 @@ async fn main() {
         let verdict = pipe29.process(&vouched_msg);
         println!("  Vouched node accepted → {:?}", verdict);
 
-        println!("\n  docker-compose.yml written — ready for Proof Loop");
-
-        // ── Session 30: Docker Proof Loop ────────────────────────────
+        // ── WASM stand-in: priority scorer ──────────────────────────
         println!();
         println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 30 — DOCKER PROOF LOOP                          ║");
+        println!("║  WASM STAND-IN — PRIORITY SCORER (no engine linked)      ║");
         println!("╚══════════════════════════════════════════════════════════╝");
-        println!("  TCP transport layer: ADDED (crates/crci-core/src/transport/mod.rs)");
-        println!("  Docker node binary: ADDED (crates/crci-node/src/bin/node.rs)");
-        println!("  Benchmark 6 pruning fix: increased store capacity in benchmark so messages expire naturally by TTL rather than getting evicted early by the storage capacity cap");
-        println!("  Docker Proof Loop: READY — run `docker compose up` to execute");
-
-        // ── Session 31: Async Transport + Docker Proof Loop ──────────
-        println!();
-        println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 31 — ASYNC TRANSPORT & PROOF LOOP               ║");
-        println!("╚══════════════════════════════════════════════════════════╝");
-        println!("  Async Tokio Transport: IMPLEMENTED");
-        println!("  Docker Proof Loop Output: GENERATED & LOGGED");
-        println!("  Discovery Convergence Accelerator: K-BUCKET XOR DISTANCE ADDED");
-
-        // ── Session 32: Real Proof Loop & Documentation ──────────────
-        println!();
-        println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 32 — REAL PROOF LOOP & DOCUMENTATION            ║");
-        println!("╚══════════════════════════════════════════════════════════╝");
-        println!("  Real Proof Loop: EXECUTED (proof_run.log written)");
-        println!("  Research Paper: COMPLETED (docs/paper.md)");
-        println!("  Fault Model: COMPLETED (docs/fault-model.md)");
-        println!("  Architecture Decision Records: COMPLETED (docs/adr/)");
-
-        // ── Session 33: Metrics, Dashboard, Wasm, Interview ──────────
-        println!();
-        println!("╔══════════════════════════════════════════════════════════╗");
-        println!("║  SESSION 33 — METRICS, DASHBOARD, WASM, INTERVIEW        ║");
-        println!("╚══════════════════════════════════════════════════════════╝");
-        println!("  Prometheus metrics: crates/crci-core/src/metrics.rs wired to node binary");
-        println!("  Live dashboard: web/dashboard.html (open in browser)");
 
         let mut runtime = crci_core::wasm::WasmRuntime::new(10 * 1024 * 1024, 100);
         runtime.register(Box::new(crci_core::wasm::PriorityScorer));
-        println!("  Wasmtime stub: WasmRuntime registered 1 module (priority_scorer)");
+        println!("  WasmRuntime stand-in: registered 1 module (priority_scorer)");
 
         let input = [4, 0, 0, 0, 0];
         if let Ok(result) = runtime.execute("priority_scorer", &input) {
@@ -1536,8 +1503,6 @@ async fn main() {
                 result[0]
             );
         }
-
-        println!("  Interview script: docs/interview-script.md");
     });
 
     let api_task = tokio::spawn(async move {

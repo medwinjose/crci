@@ -236,7 +236,7 @@ impl NodeRuntime {
     pub fn load_state(&mut self) {
         match self.storage.load() {
             Ok(state) => {
-                // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
+                // Clamp to [0.0, 1.0] and round to 3 decimal places
                 self.reputation = round_to_3_dec(state.reputation.clamp(0.0, 1.0));
                 self.peers = state.peers;
                 println!(
@@ -260,13 +260,13 @@ impl NodeRuntime {
     }
 
     pub fn is_trusted(&self) -> bool {
-        // BFT-014: non-zero MinTrustedRep floor enforced via MIN_TRUSTED_REP
+        // Non-zero trust floor enforced via MIN_TRUSTED_REP
         self.reputation > MIN_TRUSTED_REP
     }
 
     pub fn penalize(&mut self) {
         let new_rep = self.reputation - 0.2;
-        // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
+        // Clamp to [0.0, 1.0] and round to 3 decimal places
         self.reputation = round_to_3_dec(new_rep.clamp(0.0, 1.0));
     }
 
@@ -434,7 +434,7 @@ impl NodeRuntime {
                 self.metrics
                     .messages_rejected
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                // BFT-019: Defend against signature-invalidation attacks.
+                // Defend against signature-invalidation attacks:
                 // Penalise the RELAYING NEIGHBOR for forwarding cryptographically invalid data.
                 self.sybil_guard.report_violation(&sender_id);
                 continue;
@@ -493,7 +493,7 @@ impl NodeRuntime {
                         self.metrics
                             .messages_rejected
                             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                        // BFT-019: Defend against signature-invalidation attacks.
+                        // Defend against signature-invalidation attacks:
                         // Penalise the RELAYING NEIGHBOR, NOT the claimed origin node.
                         self.sybil_guard.report_violation(&sender_id);
                         continue;

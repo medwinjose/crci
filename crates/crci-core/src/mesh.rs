@@ -185,14 +185,14 @@ impl MeshSimulator {
                 }
             }
 
-            // Fixed-point math using 3-decimal precision rounding (BFT-016)
+            // Fixed-point math using 3-decimal precision rounding
             let w_total = (w_total * 1000.0).round() / 1000.0;
             let w_faulty = (w_faulty * 1000.0).round() / 1000.0;
 
-            // BFT-001 / BFT-005 / BFT-016: Reputation-weighted Byzantine quorum check
+            // BFT-001 / BFT-005: Reputation-weighted Byzantine quorum check
             if 3.0 * w_faulty >= w_total {
                 println!(
-                    "  [Zone {}] ⚠ Byzantine Quorum Failure (BFT-001/BFT-016): 3 * w_faulty >= w_total (w_faulty: {:.3}, w_total: {:.3}, f: {}), consensus aborted.",
+                    "  [Zone {}] ⚠ Byzantine Quorum Failure (BFT-001): 3 * w_faulty >= w_total (w_faulty: {:.3}, w_total: {:.3}, f: {}), consensus aborted.",
                     zone, w_faulty, w_total, faulty_count
                 );
                 continue;

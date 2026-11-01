@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Fails if tracked files reintroduce claims that were removed because they are false
+# (see docs/architecture.md and docs/threat-model.md). Run from the repository root.
+set -euo pipefail
+
+# Files allowed to name these technologies because they discuss them as alternatives or history.
+ALLOW=':!docs/adr/001-custom-transport-over-libp2p.md :!CHANGELOG.md :!scripts/check-docs.sh'
+
+fail=0
+check() {
+  local label="$1" pattern="$2"
+  # shellcheck disable=SC2086
+  if hits=$(git grep -n -I -i -E "$pattern" -- . $ALLOW); then
+    echo "✗ $label"
+    echo "$hits" | sed 's/^/    /'
+    fail=1
+  fi
+}
+
+check "transport is custom TCP, not libp2p/QUIC/Noise" '(rust-)?libp2p|\bquic\b|noise (protocol|handshake)|gossipsub|kademlia'
+check "storage is AES-256-GCM files, not RocksDB"         'rocksdb'
+check "no consensus protocol is implemented"              'pbft variant|variant of (practical )?byzantine fault tolerance'
+check "hash chain uses SHA-256"                           '\bsha-?3(-256)?\b'
+check "test counts are not hard-coded in prose"           '[0-9]+ passed tests|backed by [0-9]+ tests'
+check "preprint is on Zenodo"                             'arxiv'
+check "vector IDs BFT-011..029 are retired"               'BFT-0(1[1-9]|2[0-9])'
+
+if [ "$fail" -ne 0 ]; then
+  echo "Documentation guard failed."
+  exit 1
+fi
+echo "Documentation guard passed."

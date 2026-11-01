@@ -119,7 +119,7 @@ fn test_bft_signature_verification_rate_limit() {
 
 #[test]
 fn test_bft_reputation_bounds_clamping() {
-    // BFT-011: Verify reputation is strictly clamped between 0.0 and 1.0
+    // Verify reputation is strictly clamped between 0.0 and 1.0
     let mut rep = PeerReputation::new();
 
     // Penalize repeatedly to force score below 0.0
@@ -136,7 +136,7 @@ fn test_bft_reputation_bounds_clamping() {
 
 #[test]
 fn test_bft_reputation_fixed_point_rounding() {
-    // BFT-016: Verify reputation math uses 3 decimal places fixed-precision rounding
+    // Verify reputation math uses 3 decimal places fixed-precision rounding
     let mut rep = PeerReputation::new(); // Starts at 0.5
 
     rep.penalise(0.12345);
@@ -197,7 +197,7 @@ fn test_bft_reputation_persistence_clamping() {
     // Load state
     node.load_state();
 
-    // Reputation must be clamped to 1.0 (BFT-011) and rounded
+    // Reputation must be clamped to 1.0 and rounded
     assert_eq!(node.reputation, 1.0);
 
     // Clean up state file
@@ -206,7 +206,7 @@ fn test_bft_reputation_persistence_clamping() {
 
 #[test]
 fn test_bft_reputation_decay() {
-    // BFT-011: Verify idle nodes decay reputation score over time
+    // Verify idle nodes decay reputation score over time
     let mut rep = PeerReputation::new(); // Starts at 0.5
 
     // Simulate inactivity by setting last_activity to 3 seconds ago
@@ -226,7 +226,7 @@ fn test_bft_reputation_decay() {
 
 #[test]
 fn test_bft_reputation_recovery() {
-    // BFT-012: Verify recovery rate is slower than decay rate
+    // Verify recovery rate is slower than decay rate
     let mut rep = PeerReputation::new(); // Starts at 0.5
     rep.penalise(0.4); // Drop to 0.1
     assert_eq!(rep.score, 0.1);
@@ -244,7 +244,7 @@ fn test_bft_reputation_recovery() {
 
 #[test]
 fn test_bft_reputation_weighted_quorum() {
-    // BFT-016: Verify low-reputation majority cannot out-vote high-reputation minority
+    // Verify low-reputation majority cannot out-vote high-reputation minority
     use crci_core::mesh::MeshSimulator;
 
     let mut mesh = MeshSimulator::new();

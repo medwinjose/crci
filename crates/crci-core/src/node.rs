@@ -53,12 +53,12 @@ impl Node {
 
     pub fn penalize(&mut self) {
         let new_rep = self.reputation - 0.2;
-        // BFT-011: clamp to [0.0, 1.0] and BFT-016: fixed precision rounding
+        // Clamp to [0.0, 1.0] and round to 3 decimal places
         self.reputation = round_to_3_dec(new_rep.clamp(0.0, 1.0));
     }
 
     pub fn is_trusted(&self) -> bool {
-        // BFT-014: non-zero MinTrustedRep floor enforced via MIN_TRUSTED_REP constant
+        // Non-zero trust floor enforced via the MIN_TRUSTED_REP constant
         self.reputation > MIN_TRUSTED_REP
     }
 
