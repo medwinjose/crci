@@ -55,8 +55,11 @@ A strike is −0.15 reputation (start 0.5, ban below 0.1, so three strikes ban).
 small recovery while a peer is active, and decay of 0.05/s once a peer has been silent for more than 2 s.
 Idle decay stops at the ban threshold and never bans; only a strike can.
 
-The signature covers `id`, `origin`, `severity` and `seq` only; the other `WireMessage` fields (note,
-message type, confidence, flags) are not signed yet, so a relay can change them (planned).
+The signature covers every `WireMessage` field except the signature itself (`WireMessage::signing_bytes`):
+a domain tag (`CRCI-WIRE-MESSAGE-v1`), then each field in declaration order, variable-length fields with a
+64-bit length prefix and the optional note with a presence byte. No two distinct messages encode to the
+same bytes, so a relay cannot change any field, including the message type, note, flags or sequence
+number, without the signature failing. Signer and verifier use the same function.
 
 ### Over TCP: the `crci-node` binary
 

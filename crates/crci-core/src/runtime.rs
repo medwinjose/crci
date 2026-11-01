@@ -32,17 +32,67 @@ pub struct WireMessage {
     pub seq: u64,
 }
 
-/// Bytes covered by the origin's Ed25519 signature. `seq` is included so that a relay
-/// cannot move the origin's replay window.
-pub fn signing_payload(id: &str, origin: &str, severity: u8, seq: u64) -> String {
-    format!("{}:{}:{}:{}", id, origin, severity, seq)
+/// Domain-separation tag at the start of the bytes an origin signs for a `WireMessage`.
+/// A signature made for any other purpose (with another tag) never verifies as a message.
+pub const WIRE_SIGNING_DOMAIN: &[u8] = b"CRCI-WIRE-MESSAGE-v1\0";
+
+fn put_bytes(out: &mut Vec<u8>, bytes: &[u8]) {
+    out.extend_from_slice(&(bytes.len() as u64).to_be_bytes());
+    out.extend_from_slice(bytes);
+}
+
+fn put_bool(out: &mut Vec<u8>, value: bool) {
+    out.push(u8::from(value));
 }
 
 impl WireMessage {
+    /// Bytes covered by the origin's Ed25519 signature: the domain tag, then every field
+    /// except the signature itself, in declaration order. Variable-length fields are
+    /// prefixed with their length (u64, big-endian) and `note` with a presence byte, so
+    /// no two distinct messages encode to the same bytes. A relay cannot change any field
+    /// without the signature failing; `seq` in particular cannot be moved, so a relay
+    /// cannot shift the origin's replay window.
+    pub fn signing_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::with_capacity(
+            WIRE_SIGNING_DOMAIN.len()
+                + 64
+                + self.id.len()
+                + self.origin.len()
+                + self.origin_pubkey.len()
+                + self.visibility.len()
+                + self.note.as_ref().map_or(0, String::len)
+                + self.message_type.len(),
+        );
+        out.extend_from_slice(WIRE_SIGNING_DOMAIN);
+        put_bytes(&mut out, self.id.as_bytes());
+        put_bytes(&mut out, self.origin.as_bytes());
+        put_bytes(&mut out, &self.origin_pubkey);
+        out.push(self.severity);
+        out.push(self.confidence);
+        put_bool(&mut out, self.needs_help);
+        put_bool(&mut out, self.can_help_others);
+        put_bool(&mut out, self.location_confirmed);
+        put_bytes(&mut out, self.visibility.as_bytes());
+        match &self.note {
+            None => out.push(0),
+            Some(note) => {
+                out.push(1);
+                put_bytes(&mut out, note.as_bytes());
+            }
+        }
+        put_bytes(&mut out, self.message_type.as_bytes());
+        put_bool(&mut out, self.origin_active);
+        out.extend_from_slice(&self.seq.to_be_bytes());
+        out
+    }
+
+    /// Replaces `signature_bytes` with `identity`'s signature over `signing_bytes()`.
+    pub fn sign_with(&mut self, identity: &Identity) {
+        self.signature_bytes = identity.sign(&self.signing_bytes()).to_bytes().to_vec();
+    }
+
     pub fn from_message(msg: &Message, identity: &Identity) -> WireMessage {
-        let payload = signing_payload(&msg.id, &msg.origin, msg.signal.severity, msg.seq);
-        let sig = identity.sign(payload.as_bytes());
-        WireMessage {
+        let mut wire = WireMessage {
             id: msg.id.clone(),
             origin: msg.origin.clone(),
             origin_pubkey: identity.verifying_key.to_bytes().to_vec(),
@@ -67,9 +117,11 @@ impl WireMessage {
                 }
             },
             origin_active: msg.origin_active,
-            signature_bytes: sig.to_bytes().to_vec(),
+            signature_bytes: Vec::new(),
             seq: msg.seq,
-        }
+        };
+        wire.sign_with(identity);
+        wire
     }
 
     pub fn verify_signature(&self) -> bool {
@@ -86,8 +138,9 @@ impl WireMessage {
             Err(_) => return false,
         };
         let signature = Signature::from_bytes(&sig_bytes);
-        let payload = signing_payload(&self.id, &self.origin, self.severity, self.seq);
-        verifying_key.verify(payload.as_bytes(), &signature).is_ok()
+        verifying_key
+            .verify(&self.signing_bytes(), &signature)
+            .is_ok()
     }
 
     #[allow(dead_code)]

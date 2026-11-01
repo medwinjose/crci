@@ -20,7 +20,7 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 
 | Threat | Defence | Where |
 |---|---|---|
-| Forged message content | Ed25519 signature on every `WireMessage`, every message type included; invalid → dropped, sender struck | `runtime.rs` |
+| Forged or altered message content | Ed25519 signature on every `WireMessage`, every message type included, covering every field in an unambiguous, domain-separated encoding; invalid → dropped, sender struck | `runtime.rs` |
 | Impersonating a known origin | Public key pinned on first sight; a different key → dropped, sender struck | `runtime.rs` |
 | Direct replay | Same message ID from the same sender → strike; from a different sender → ignored | `runtime.rs` |
 | Sequence replay | Sliding window W = 64 per origin: same sequence from the same sender → strike; from another sender → ignored; older than the window → dropped without a strike. The sequence number is signed | `replay.rs` |
@@ -39,18 +39,16 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    strikes and bans that ID, but nothing on the connection proves it. An adversary can change its sender ID
    to escape a ban, or claim an honest neighbour's ID so that its own replays are struck against that
    neighbour (authenticated handshake planned). TCP traffic is neither authenticated nor encrypted.
-2. **Only some fields are signed.** The signature covers a message's ID, origin, severity and sequence
-   number. A relay can change the note, message type, confidence and flags without breaking it (planned).
-3. **Stale floods are not penalised.** A packet older than the replay window is dropped without a strike,
+2. **Stale floods are not penalised.** A packet older than the replay window is dropped without a strike,
    so an adversary can resend old signed messages without losing reputation. Each one still costs a
    signature verification; the cost is bounded only by the per-sender token bucket (20 messages, then 5/s).
-4. **Paced replays evade eviction.** An adversary that sends enough valid traffic between replays recovers
+3. **Paced replays evade eviction.** An adversary that sends enough valid traffic between replays recovers
    reputation faster than it loses it (measured in [benchmarks.md](benchmarks.md); strike-damped recovery planned).
-5. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
+4. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
    earlier IDs can be resent. Inside the replay window the sequence filter still strikes a repeat from the
    same sender; outside it the packet is dropped without a strike.
-6. **No partition recovery protocol.** There is no anti-entropy or digest exchange after a partition
+5. **No partition recovery protocol.** There is no anti-entropy or digest exchange after a partition
    (planned).
-7. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
+6. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
    "start at 0.2 if the /24 subnet has a banned peer" rule, which only applies to sender IDs that parse
    as socket addresses. Fresh key pairs are otherwise free.

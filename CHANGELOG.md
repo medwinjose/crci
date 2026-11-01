@@ -28,6 +28,10 @@ git history; `git log` is the complete record.
   on, and the sequence number is covered by the origin's signature.
 - Signature checks are bounded per sender by the token bucket instead of a lifetime cap of five per
   claimed origin, which dropped every later message from an honest node.
+- The origin's signature covers every `WireMessage` field (note, message type, confidence, flags,
+  visibility and sequence number included) in a length-prefixed, domain-separated encoding. Before, it
+  covered only the ID, origin, severity and sequence number joined with `:`, so a relay could change the
+  other fields, and IDs containing `:` were ambiguous. Signatures made by earlier versions do not verify.
 - `crci_version()` reports the crate version instead of a hard-coded `0.1.0`.
 - The TCP transport no longer panics on clock errors and logs through `log` instead of standard output.
 - `/chain/head` on a TCP node reports the node's Merkle chain head instead of the latest message ID.

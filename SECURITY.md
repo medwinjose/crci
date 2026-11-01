@@ -23,8 +23,6 @@ The full list, with the code location of each defence and gap, is in
 - TCP connections are neither authenticated nor encrypted, and the sender identity is self-declared.
 - Strikes and bans on a TCP node attach to the sender ID each frame declares, which nothing verifies: a
   peer can escape a ban by changing ID, or get another node struck by claiming its ID.
-- The signature covers only a message's ID, origin, severity and sequence number; a relay can change the
-  other fields.
 - Sybil resistance is minimal: new key pairs are free.
 - Keys are held in process memory; there is no hardware-backed key storage.
 - BLE and LoRa transports are stubs.

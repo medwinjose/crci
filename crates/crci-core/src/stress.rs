@@ -162,10 +162,7 @@ pub fn test_signature_forgery() {
     println!("Setup: attacker tries to impersonate node-001\n");
 
     let attacker_identity = Identity::new("attacker");
-    let fake_payload = crate::runtime::signing_payload("msg-forged", "node-001", 1, 1);
-    let fake_sig = attacker_identity.sign(fake_payload.as_bytes());
-
-    let forged = WireMessage {
+    let mut forged = WireMessage {
         id: "msg-forged".to_string(),
         origin: "node-001".to_string(),
         origin_pubkey: attacker_identity.verifying_key.to_bytes().to_vec(),
@@ -178,9 +175,10 @@ pub fn test_signature_forgery() {
         note: Some("FORGED: all clear".to_string()),
         message_type: "normal".to_string(),
         origin_active: true,
-        signature_bytes: fake_sig.to_bytes().to_vec(),
+        signature_bytes: Vec::new(),
         seq: 1,
     };
+    forged.sign_with(&attacker_identity);
 
     let raw = serde_json::to_vec(&forged).unwrap_or_default();
     {

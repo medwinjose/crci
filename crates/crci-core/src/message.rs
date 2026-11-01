@@ -219,10 +219,4 @@ impl Message {
     pub fn age_seconds(&self) -> u64 {
         now_ts().saturating_sub(self.created_at)
     }
-
-    #[allow(dead_code)]
-    pub fn signable_payload(&self) -> Vec<u8> {
-        crate::runtime::signing_payload(&self.id, &self.origin, self.signal.severity, self.seq)
-            .into_bytes()
-    }
 }
