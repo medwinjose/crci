@@ -351,6 +351,8 @@ fn test_bft_reputation_weighted_quorum() {
 fn test_bft_reputation_persistence_across_reconnect() {
     // BFT-040: Verify a node's reputation survives disconnect/reconnect cycles
     let mut guard = SybilGuard::new(4);
+    // Freeze the clock: recovery is continuous in time, so exact scores need no time to pass.
+    guard.use_manual_clock();
     let peer = "peer-127.0.0.1:9091".to_string();
 
     // Initialize/check once
@@ -370,6 +372,8 @@ fn test_bft_reputation_persistence_across_reconnect() {
 fn test_bft_reputation_isolation_per_peer_view() {
     // BFT-041: Verify local reputation table is isolated and cannot be overridden by self-reported values
     let mut guard = SybilGuard::new(4);
+    // Freeze the clock: recovery is continuous in time, so exact scores need no time to pass.
+    guard.use_manual_clock();
     let peer = "peer-127.0.0.1:9092".to_string();
 
     // Check node
@@ -392,6 +396,8 @@ fn test_bft_reputation_isolation_per_peer_view() {
 fn test_bft_sybil_cluster_reputation_correlation() {
     // BFT-043: Verify new peers joining from a banned subnet start with a penalty
     let mut guard = SybilGuard::new(4);
+    // Freeze the clock: recovery is continuous in time, so exact scores need no time to pass.
+    guard.use_manual_clock();
 
     let banned_peer = "192.168.2.1:8080".to_string();
     let new_peer_same_subnet = "192.168.2.2:8080".to_string();
