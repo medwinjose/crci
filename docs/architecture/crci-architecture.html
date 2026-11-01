@@ -184,7 +184,7 @@
 
         <rect x="560" y="454" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
         <text x="572" y="472" fill="white" font-size="9" font-weight="600">3  Signature-check budget</text>
-        <text x="572" y="486" fill="#94a3b8" font-size="7.5">5 per origin, never reset → later messages dropped (fix planned)</text>
+        <text x="572" y="486" fill="#94a3b8" font-size="7.5">no separate cap: bounded by the sender's token bucket (step 2)</text>
 
         <rect x="560" y="506" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
         <text x="572" y="524" fill="white" font-size="9" font-weight="600">4  Ed25519 verify — identity.rs</text>
@@ -200,7 +200,7 @@
 
         <rect x="560" y="662" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
         <text x="572" y="680" fill="white" font-size="9" font-weight="600">7  ReplayFilter — replay.rs</text>
-        <text x="572" y="694" fill="#94a3b8" font-size="7.5">seq ≤ highest → strike · W = 64 window only with paper_v2</text>
+        <text x="572" y="694" fill="#94a3b8" font-size="7.5">W = 64 window · repeat from same sender → strike · too old → drop</text>
 
         <rect x="560" y="714" width="380" height="42" rx="5" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.2"/>
         <text x="572" y="732" fill="white" font-size="9" font-weight="600">✓  Accepted</text>
@@ -217,14 +217,14 @@
         <rect x="560" y="790" width="480" height="90" rx="6" fill="rgba(136,19,55,0.5)" stroke="#fb7185" stroke-width="1.5"/>
         <text x="800" y="812" fill="white" font-size="11" font-weight="600" text-anchor="middle">Local reputation — sybil.rs</text>
         <text x="800" y="830" fill="#94a3b8" font-size="8" text-anchor="middle">start 0.5 · strike −0.15 · banned below 0.1 → 3 strikes ban</text>
-        <text x="800" y="844" fill="#94a3b8" font-size="8" text-anchor="middle">small recovery while active · decay 0.05/s after 2 s of silence</text>
+        <text x="800" y="844" fill="#94a3b8" font-size="8" text-anchor="middle">small recovery while active · idle decay 0.05/s after 2 s, stops at 0.1 (never bans)</text>
         <text x="800" y="858" fill="#94a3b8" font-size="8" text-anchor="middle">per neighbour, per node — no voting, no global state</text>
         <path d="M 560 835 L 550 835 L 550 423 L 557 423" fill="none" stroke="#fb7185" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrowrose)"/>
 
         <rect x="560" y="900" width="480" height="95" rx="6" fill="rgba(127,29,29,0.25)" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
         <text x="572" y="920" fill="#ef4444" font-size="9" font-weight="600">KNOWN GAPS ON THIS PATH</text>
-        <text x="572" y="938" fill="#94a3b8" font-size="7.5">• messages of type mce skip steps 3, 4 and 6 (accepted unsigned)</text>
-        <text x="572" y="952" fill="#94a3b8" font-size="7.5">• idle decay can ban an honest peer silent for ~10 s (fix planned)</text>
+        <text x="572" y="938" fill="#94a3b8" font-size="7.5">• messages of type mce skip steps 4 and 6 (accepted unsigned)</text>
+        <text x="572" y="952" fill="#94a3b8" font-size="7.5">• stale resends drop without a strike but each costs a signature check</text>
         <text x="572" y="966" fill="#94a3b8" font-size="7.5">• the duplicate-ID cache is cleared at 5 000 entries</text>
         <text x="572" y="980" fill="#94a3b8" font-size="7.5">• paced replays let an adversary recover between strikes (fix planned)</text>
 
@@ -290,7 +290,7 @@
     </div>
 
     <p class="footer">
-      CRCI v2.1.0 · diagram of the code as of 2026-11-01 · details in docs/architecture.md
+      CRCI v2.1.0 · diagram of the code as of 2026-11-02 · details in docs/architecture.md
     </p>
   </div>
 
