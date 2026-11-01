@@ -33,7 +33,12 @@ async fn byzantine_peer_does_not_corrupt_honest_connection(
     let node_a = Arc::new(Mutex::new(NodeRuntime::new("node-a", "zone-a", inbox_a)));
 
     let addr_a_req: SocketAddr = "127.0.0.1:0".parse()?;
-    let tcp_a = TcpTransport::bind("node-a".to_string(), addr_a_req).await?;
+    let tcp_a = TcpTransport::bind(
+        "node-a".to_string(),
+        addr_a_req,
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await?;
     let addr_a = tcp_a.listen_addr;
 
     let node_a_clone = node_a.clone();
@@ -50,7 +55,12 @@ async fn byzantine_peer_does_not_corrupt_honest_connection(
     let node_b = Arc::new(Mutex::new(NodeRuntime::new("node-b", "zone-b", inbox_b)));
 
     let addr_b_req: SocketAddr = "127.0.0.1:0".parse()?;
-    let tcp_b = TcpTransport::bind("node-b".to_string(), addr_b_req).await?;
+    let tcp_b = TcpTransport::bind(
+        "node-b".to_string(),
+        addr_b_req,
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await?;
     let _addr_b = tcp_b.listen_addr;
 
     // Node B dials Node A

@@ -20,9 +20,9 @@ Please do not open public issues for security bugs.
 The full list, with the code location of each defence and gap, is in
 [docs/threat-model.md](docs/threat-model.md). The most important ones:
 
-- TCP connections are neither authenticated nor encrypted, and the sender identity is self-declared.
-- Strikes and bans on a TCP node attach to the sender ID each frame declares, which nothing verifies: a
-  peer can escape a ban by changing ID, or get another node struck by claiming its ID.
+- TCP connections are authenticated (Ed25519 challenge-response, signed frames) but not encrypted.
+- Origin IDs are pinned to the first key seen, not derived from keys: an adversary that announces an
+  honest node's ID first can make a receiver drop that node's messages (no strike is applied).
 - Sybil resistance is minimal: new key pairs are free.
 - Keys are held in process memory; there is no hardware-backed key storage.
 - BLE and LoRa transports are stubs.

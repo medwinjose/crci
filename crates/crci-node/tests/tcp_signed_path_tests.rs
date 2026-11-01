@@ -151,12 +151,12 @@ fn accepted_messages_are_relayed_to_a_dialed_peer() {
     );
     assert_eq!(count(&log, "accepted '"), 2, "downstream log:\n{}", log);
     assert!(
-        log.contains("origin node-a, via tcp-b"),
+        log.contains("origin node-a, via tcp-b#"),
         "downstream log:\n{}",
         log
     );
     assert!(
-        log.contains("origin node-x, via tcp-b"),
+        log.contains("origin node-x, via tcp-b#"),
         "downstream log:\n{}",
         log
     );
@@ -170,7 +170,7 @@ fn honest_signed_message_is_accepted_over_tcp() {
 
     assert_eq!(count(&log, "accepted '"), 1, "receiver log:\n{}", log);
     assert!(
-        log.contains("origin node-a, via node-a"),
+        log.contains("origin node-a, via node-a#"),
         "receiver log:\n{}",
         log
     );
@@ -191,13 +191,14 @@ fn signed_replay_over_tcp_bans_the_sender_after_three_strikes() {
     // The first copy is accepted; the next three are strikes; the third strike bans.
     assert_eq!(count(&log, "accepted '"), 1, "receiver log:\n{}", log);
     assert_eq!(
-        count(&log, "MALICIOUS REPLAY from 'byz-replay'"),
+        count(&log, "MALICIOUS REPLAY from 'byz-replay#"),
         3,
         "receiver log:\n{}",
         log
     );
     assert!(
-        log.contains("peer byz-replay is banned"),
+        log.lines()
+            .any(|l| l.contains("peer byz-replay#") && l.contains("is banned")),
         "receiver log:\n{}",
         log
     );
@@ -216,7 +217,8 @@ fn bad_signature_over_tcp_is_rejected() {
         log
     );
     assert!(
-        log.contains("peer byz-badsig is banned"),
+        log.lines()
+            .any(|l| l.contains("peer byz-badsig#") && l.contains("is banned")),
         "receiver log:\n{}",
         log
     );
@@ -246,6 +248,97 @@ fn unsigned_mass_casualty_event_over_tcp_is_rejected() {
     assert!(
         count(&log, "INVALID SIGNATURE") >= 1,
         "receiver log:\n{}",
+        log
+    );
+}
+
+/// Identity (`node-id#key`) the receiver attributed message `id` to, from its log.
+fn sender_of(log: &str, id: &str) -> String {
+    let line = log
+        .lines()
+        .find(|l| l.contains("received message from") && l.contains(&format!("id={id},")))
+        .unwrap_or_else(|| {
+            panic!(
+                "no receive line for {id}:
+{log}"
+            )
+        });
+    let after = line.split("received message from ").nth(1).unwrap_or("");
+    after.split(':').next().unwrap_or("").to_string()
+}
+
+/// An adversary that claims an honest node's ID and replays must not get that node
+/// penalised: strikes bind to the key the connection authenticated, not to a claimed ID.
+#[test]
+fn adversary_claiming_an_honest_id_cannot_get_it_banned() {
+    let receiver = start_receiver("tcp-r6");
+    // The real node-a sends one honest message.
+    send_signed(&receiver.addr, "node-a");
+    // An adversary then declares itself "node-a" and replays until it is banned.
+    run_adversary(&receiver.addr, "node-a", "replay");
+    let log = receiver.finish();
+
+    let honest_line = log
+        .lines()
+        .find(|l| l.contains("accepted '") && !l.contains("replayed-msg-1"))
+        .unwrap_or_else(|| {
+            panic!(
+                "honest message not accepted:
+{log}"
+            )
+        });
+    let honest = honest_line
+        .split("via ")
+        .nth(1)
+        .unwrap_or("")
+        .trim_end_matches(')')
+        .to_string();
+    let adversary = sender_of(&log, "replayed-msg-1");
+    assert!(
+        honest.starts_with("node-a#"),
+        "receiver log:
+{}",
+        log
+    );
+    assert!(
+        adversary.starts_with("node-a#"),
+        "receiver log:
+{}",
+        log
+    );
+    assert_ne!(
+        honest, adversary,
+        "receiver log:
+{}",
+        log
+    );
+
+    // Three strikes and a ban, all on the adversary's identity.
+    assert_eq!(
+        count(&log, &format!("MALICIOUS REPLAY from '{adversary}'")),
+        3,
+        "receiver log:
+{}",
+        log
+    );
+    assert!(
+        log.contains(&format!("peer {adversary} is banned")),
+        "receiver log:
+{}",
+        log
+    );
+    assert_eq!(
+        count(&log, &format!("from '{honest}'")),
+        0,
+        "receiver log:
+{}",
+        log
+    );
+    assert_eq!(
+        count(&log, &format!("peer {honest} is banned")),
+        0,
+        "receiver log:
+{}",
         log
     );
 }

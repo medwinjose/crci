@@ -38,7 +38,14 @@ async fn four_node_mesh_integration() -> Result<(), Box<dyn std::error::Error>> 
         let node = Arc::new(Mutex::new(NodeRuntime::new(&node_id, &zone, inbox)));
 
         let addr_req: SocketAddr = "127.0.0.1:0".parse()?;
-        let tcp = Arc::new(TcpTransport::bind(node_id.clone(), addr_req).await?);
+        let tcp = Arc::new(
+            TcpTransport::bind(
+                node_id.clone(),
+                addr_req,
+                crci_core::identity::Identity::new("transport").signing_key,
+            )
+            .await?,
+        );
         addrs.push(tcp.listen_addr);
         tcps.push(tcp);
         nodes.push(node);

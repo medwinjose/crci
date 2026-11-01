@@ -538,12 +538,16 @@ impl NodeRuntime {
             new_senders.insert(sender_id.clone());
             self.seen_messages.insert(wire.id.clone(), new_senders);
 
-            // Step 2: pubkey consistency check — reject impersonation
+            // Step 2: pubkey consistency check. The first key seen for an origin ID is pinned;
+            // a validly signed message claiming that origin with another key is dropped.
+            // It is not a strike: the receiver cannot tell which key is the genuine one, so
+            // the relay is not at fault. Striking it would let an adversary that announces an
+            // honest node's ID first get every honest relay of that node's messages banned.
             if let Some(known) = self.known_keys.get(&wire.origin) {
                 if *known != wire.origin_pubkey {
                     println!(
-                        "  ⚠ [{}] PUBKEY MISMATCH on '{}' — impersonation dropped!",
-                        self.id, wire.id
+                        "  ⚠ [{}] PUBKEY MISMATCH on '{}' (origin '{}' is pinned to another key) — dropped, no strike",
+                        self.id, wire.id, wire.origin
                     );
                     self.byzantine_events += 1;
                     self.metrics
@@ -552,9 +556,6 @@ impl NodeRuntime {
                     self.metrics
                         .messages_rejected
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    // Defend against signature-invalidation attacks:
-                    // Penalise the RELAYING NEIGHBOR, NOT the claimed origin node.
-                    self.sybil_guard.report_violation(&sender_id);
                     continue;
                 }
             } else {

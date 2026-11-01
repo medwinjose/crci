@@ -21,12 +21,12 @@ payload (at most 1 MiB).
 **Lost (must be built or accepted as missing):**
 - Peer discovery and DHT routing.
 - NAT traversal and relaying.
-- Authenticated and encrypted connections. The custom transport has neither today: the sender identity is
-  a self-declared `sender` field in each frame (an authenticated handshake is planned).
+- Encrypted connections. The custom transport authenticates both ends with an Ed25519 challenge-response
+  and signs every frame for the session, but does not encrypt; confidentiality is not a goal today.
 
 **Gained:**
-- A transport small enough to read in full (`transport/tcp.rs`, about 440 lines including connection
-  limits and timeouts).
+- A transport small enough to read in full (`transport/tcp.rs`, about 750 lines including the
+  handshake, connection limits and timeouts).
 - Direct control over framing, limits and error handling.
 - Other media can implement the same trait (`ble.rs` and `lora.rs` are stubs today).
 

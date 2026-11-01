@@ -23,6 +23,8 @@ pub enum TransportError {
     ConnectionFailed(String),
     #[error("serialisation error: {0}")]
     Serialisation(String),
+    #[error("peer authentication failed: {0}")]
+    Authentication(String),
 }
 
 #[async_trait::async_trait]

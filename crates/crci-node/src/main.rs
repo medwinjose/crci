@@ -84,17 +84,23 @@ async fn main() {
             }
         };
 
-        let tcp =
-            match crci_core::transport::TcpTransport::bind(node_id.clone(), listen_socket).await {
-                Ok(t) => t,
-                Err(e) => {
-                    eprintln!("Failed to bind TcpTransport on {listen_socket}: {e}");
-                    std::process::exit(1);
-                }
-            };
-
         let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
         let mut node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
+
+        // The transport authenticates connections with the same key that signs messages.
+        let tcp = match crci_core::transport::TcpTransport::bind(
+            node_id.clone(),
+            listen_socket,
+            node.identity.signing_key.clone(),
+        )
+        .await
+        {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("Failed to bind TcpTransport on {listen_socket}: {e}");
+                std::process::exit(1);
+            }
+        };
 
         // Originate a message signed with this node's key.
         let mut msg = Message::new(
@@ -146,7 +152,13 @@ async fn main() {
                     std::process::exit(1);
                 }
             };
-            match crci_core::transport::TcpTransport::bind(node_id.clone(), addr).await {
+            match crci_core::transport::TcpTransport::bind(
+                node_id.clone(),
+                addr,
+                node.identity.signing_key.clone(),
+            )
+            .await
+            {
                 Ok(t) => Some(Arc::new(t)),
                 Err(e) => {
                     eprintln!("Failed to bind TcpTransport on {addr}: {e}");

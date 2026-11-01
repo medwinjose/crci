@@ -32,6 +32,15 @@ git history; `git log` is the complete record.
   visibility and sequence number included) in a length-prefixed, domain-separated encoding. Before, it
   covered only the ID, origin, severity and sequence number joined with `:`, so a relay could change the
   other fields, and IDs containing `:` were ambiguous. Signatures made by earlier versions do not verify.
+- TCP connections start with a mutual Ed25519 challenge-response, and every frame is signed by the dialer
+  for the session and numbered. Strikes and bans attach to the dialer's authenticated identity (declared
+  node ID plus proved key) instead of a self-declared sender ID, so a peer can no longer get another node
+  struck by claiming its ID, and frames cannot be injected, altered or replayed on the path.
+  `TcpTransport::bind` takes the node's signing key. The frame format is not compatible with earlier
+  versions.
+- A message whose origin is pinned to another public key is dropped without a strike on the relay. The
+  receiver cannot tell which key is genuine, and the strike let an adversary that announced an honest
+  node's ID first get that node's honest relays banned.
 - `crci_version()` reports the crate version instead of a hard-coded `0.1.0`.
 - The TCP transport no longer panics on clock errors and logs through `log` instead of standard output.
 - `/chain/head` on a TCP node reports the node's Merkle chain head instead of the latest message ID.

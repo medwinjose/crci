@@ -2,17 +2,22 @@ use crate::identity::Identity;
 use crate::message::{Message, MessageType, Signal, Visibility};
 use crate::runtime::WireMessage;
 use std::time::Duration;
-use tokio::io::AsyncWriteExt;
-use tokio::net::TcpStream;
 use tokio::time::sleep;
 
-/// Send one TCP frame to `target`, declaring `sender` as the transport sender.
-async fn send_msg(target: &str, sender: &str, msg: &WireMessage) -> std::io::Result<()> {
-    let mut stream = TcpStream::connect(target).await?;
-    let payload = crate::transport::tcp::encode_frame(sender, msg)?;
-    stream.write_u32(payload.len() as u32).await?;
-    stream.write_all(&payload).await?;
-    Ok(())
+/// Send one message to `target` over an authenticated connection, as `sender` with `key`.
+async fn send_msg(
+    target: &str,
+    sender: &str,
+    key: &Identity,
+    msg: &WireMessage,
+) -> Result<(), crate::transport::TransportError> {
+    crate::transport::tcp::send_authenticated(
+        target,
+        sender,
+        &key.signing_key,
+        std::slice::from_ref(msg),
+    )
+    .await
 }
 
 /// A message from `origin`, signed with `key`.
@@ -83,7 +88,7 @@ pub async fn run_byzantine_behavior(
             .unwrap_or_default()
             .as_millis();
 
-        // Messages for this round, all delivered with `my_node_id` as the transport sender.
+        // Messages for this round, all sent over connections authenticated with `key`.
         let batch: Vec<WireMessage> = match mode {
             "replay" => vec![replayed.clone()],
             "false_allclear" => vec![signed(
@@ -163,7 +168,7 @@ pub async fn run_byzantine_behavior(
 
         let mut sent = 0;
         for msg in &batch {
-            if send_msg(target, my_node_id, msg).await.is_ok() {
+            if send_msg(target, my_node_id, &key, msg).await.is_ok() {
                 sent += 1;
             } else {
                 failures += 1;

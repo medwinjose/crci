@@ -25,8 +25,9 @@ CRCI moves misbehaviour isolation **into the gossip layer itself** and makes it 
 - **Every message is signed.** Each node has an Ed25519 identity; messages carry the author's public key,
   a signature and a sequence number.
 - **Each node keeps its own reputation score for each neighbour.** Only violations a receiver can verify
-  by itself count against a neighbour: replaying a message it already sent, forwarding an invalid
-  signature, or presenting a second public key for a known author.
+  by itself count against a neighbour: replaying a message it already sent or forwarding an invalid
+  signature. On TCP a neighbour is identified by the key it proves in a challenge-response handshake, so
+  one peer cannot get another struck by claiming its ID.
 - **Three strikes isolate.** A neighbour starts at 0.5 and loses 0.15 per strike; below 0.1 it is banned
   locally. The same message arriving through a *different* neighbour is ordinary gossip redundancy and is
   never penalised.
@@ -124,12 +125,11 @@ A Docker Compose demo (two honest nodes, one adversarial node, and the dashboard
 CRCI is an active research project. The isolation pipeline runs in the node runtime used by both the
 networked TCP node and the test suite; the benchmarks so far drive it in-process. Current work, in order:
 
-1. Signatures over every message field, and an authenticated peer handshake so that strikes on TCP bind to
-   a verified neighbour.
-2. Strike-damped recovery to close the paced-attack evasion.
-3. Anti-entropy re-synchronisation after network partitions.
-4. A 20–50 node network-emulation testbed (loss, delay, reordering, link flapping) and comparison against
+1. Strike-damped recovery to close the paced-attack evasion.
+2. Anti-entropy re-synchronisation after network partitions.
+3. A 20–50 node network-emulation testbed (loss, delay, reordering, link flapping) and comparison against
    baselines.
+4. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
 5. Safety and liveness invariants of the final protocol in TLA+.
 
 Out of scope: large-scale Sybil attacks, colluding adversaries, and physical LoRa/BLE radios (the BLE and

@@ -43,7 +43,10 @@ applies, in order:
 4. **Duplicate check**: the same message ID received again from the same sender is a strike; from a
    different sender it is ignored as normal gossip redundancy. The ID cache is cleared when it reaches
    5 000 entries.
-5. **Key consistency**: a known origin arriving with a different public key is a strike for the sender.
+5. **Key consistency**: the first public key seen for an origin ID is pinned; a message claiming that origin
+   with another key is dropped. It is not a strike: the receiver cannot tell which key is genuine, so the
+   relay that delivered it is not at fault (a strike here would let an adversary that announces an honest
+   node's ID first get that node's honest relays banned).
 6. **Replay filter** (`replay.rs`): a sliding window of W = 64 sequence numbers per origin. With `seq_max`
    the highest sequence accepted from that origin, a packet with `seq < seq_max − W` is stale and dropped
    without a strike; a late packet inside the window is accepted once; the same sequence number again from
@@ -63,13 +66,37 @@ number, without the signature failing. Signer and verifier use the same function
 
 ### Over TCP: the `crci-node` binary
 
-`crates/crci-core/src/transport/tcp.rs`. Each frame is a 4-byte big-endian length prefix followed by a JSON
-`TcpFrame { sender, message }` (at most 1 MiB, 5 s read timeouts, at most 100 concurrent connections).
-`message` is the origin-signed `WireMessage`. `sender` is the node that sent the frame, the relaying
-neighbour, and it is what `NodeRuntime` admits, strikes and bans. It is kept separate from the message's
-author so that a replay of an honest node's message is charged to whoever replayed it. The sender is
-**self-declared**: there is no handshake on connect, and TCP traffic is neither authenticated nor
-encrypted, so a connection can claim any sender ID (authenticated handshake planned).
+`crates/crci-core/src/transport/tcp.rs`. Every message travels as a 4-byte big-endian length prefix
+followed by JSON (handshake messages at most 4 KiB, frames at most 1 MiB, 5 s read timeouts, at most 100
+concurrent connections). Each connection starts with a mutual Ed25519 challenge-response, using the same
+key the node signs its messages with:
+
+```
+listener -> dialer    ServerHello { node_id, public_key, nonce_L }
+dialer   -> listener  ClientAuth  { node_id, public_key, nonce_D, sig_D(transcript) }
+listener -> dialer    ServerAuth  { sig_L(transcript) }
+dialer   -> listener  TcpFrame    { counter, message, sig_D(session, counter, message) }  ...
+```
+
+The transcript is a domain tag followed by both node IDs, both public keys and both fresh 32-byte nonces,
+length-prefixed; each side also signs its role, so one side's signature cannot be presented as the
+other's. The listener drops the connection, before reading any frame, if the dialer's signature is invalid,
+if its key is the listener's own, or if a field is malformed; the dialer likewise refuses a listener whose
+signature does not verify. A signature from one connection is useless on another, because the listener's
+nonce is fresh.
+
+After the handshake the listener attributes every frame to the dialer's **authenticated identity**:
+`peer_identity(node_id, key)` = the declared node ID, `#`, and the hex of the key the dialer proved it
+holds. This identity, not a claimed ID and never the message's origin, is what `NodeRuntime` admits,
+strikes and bans. A peer that declares an honest node's ID has a different key and so a different identity:
+its strikes never reach the honest node. Each frame is signed by the dialer over a domain tag, the session
+ID (SHA-256 of the transcript), the frame counter (0, 1, ... within the connection) and the whole message
+(every signed field and the origin's signature). A party on the path can drop frames but cannot inject,
+alter, reorder or replay them, so it cannot make the dialer appear to have sent an invalid or repeated
+message. A frame with a wrong counter or signature closes the connection. Nothing is encrypted.
+
+`message` is the origin-signed `WireMessage`; its author (`origin`) is kept separate from the connection's
+identity, so a replay of an honest node's message is charged to whoever replayed it.
 
 For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`):
 

@@ -1,5 +1,6 @@
 use crci_core::identity::Identity;
 use crci_core::message::{Message, Signal, Visibility};
+use crci_core::transport::tcp::peer_identity;
 use crci_core::transport::{
     BleConfig, BleTransport, LoraConfig, LoraTransport, NetworkMessage, TcpTransport, Transport,
     TransportError, TransportMultiplexer,
@@ -20,12 +21,20 @@ fn dummy_message(origin: &str) -> NetworkMessage {
 
 #[tokio::test]
 async fn tcp_frame_sender_is_the_transport_not_the_message_origin() {
-    let tcp1 = TcpTransport::bind("relay-1".to_string(), "127.0.0.1:0".parse().unwrap())
-        .await
-        .unwrap();
-    let tcp2 = TcpTransport::bind("node-2".to_string(), "127.0.0.1:0".parse().unwrap())
-        .await
-        .unwrap();
+    let tcp1 = TcpTransport::bind(
+        "relay-1".to_string(),
+        "127.0.0.1:0".parse().unwrap(),
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await
+    .unwrap();
+    let tcp2 = TcpTransport::bind(
+        "node-2".to_string(),
+        "127.0.0.1:0".parse().unwrap(),
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await
+    .unwrap();
 
     // relay-1 forwards a message authored and signed by alice.
     let msg = dummy_message("alice");
@@ -38,7 +47,8 @@ async fn tcp_frame_sender_is_the_transport_not_the_message_origin() {
         .expect("Timeout waiting for message")
         .expect("Receive failed");
 
-    assert_eq!(sender, "relay-1");
+    // The sender is relay-1's authenticated identity, not the message's author.
+    assert_eq!(sender, peer_identity("relay-1", &tcp1.public_key()));
     assert_eq!(received.origin, "alice");
     assert!(received.verify_signature());
 }
@@ -48,12 +58,20 @@ async fn tcp_transport_send_receive_roundtrip() {
     let addr1: SocketAddr = "127.0.0.1:0".parse().unwrap();
     let addr2: SocketAddr = "127.0.0.1:0".parse().unwrap();
 
-    let tcp1 = TcpTransport::bind("node-1".to_string(), addr1)
-        .await
-        .unwrap();
-    let tcp2 = TcpTransport::bind("node-2".to_string(), addr2)
-        .await
-        .unwrap();
+    let tcp1 = TcpTransport::bind(
+        "node-1".to_string(),
+        addr1,
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await
+    .unwrap();
+    let tcp2 = TcpTransport::bind(
+        "node-2".to_string(),
+        addr2,
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await
+    .unwrap();
 
     let dest_node_id = tcp2.listen_addr.to_string();
     let msg = dummy_message("node-1");
@@ -68,7 +86,7 @@ async fn tcp_transport_send_receive_roundtrip() {
         .expect("Timeout waiting for message")
         .expect("Receive failed");
 
-    assert_eq!(sender, "node-1");
+    assert_eq!(sender, peer_identity("node-1", &tcp1.public_key()));
     assert_eq!(received.id, "msg-node-1");
 }
 
@@ -108,12 +126,20 @@ async fn multiplexer_falls_through_to_tcp() {
     let addr1: SocketAddr = "127.0.0.1:0".parse().unwrap();
     let addr2: SocketAddr = "127.0.0.1:0".parse().unwrap();
 
-    let tcp1 = TcpTransport::bind("node-1".to_string(), addr1)
-        .await
-        .unwrap();
-    let tcp2 = TcpTransport::bind("node-2".to_string(), addr2)
-        .await
-        .unwrap();
+    let tcp1 = TcpTransport::bind(
+        "node-1".to_string(),
+        addr1,
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await
+    .unwrap();
+    let tcp2 = TcpTransport::bind(
+        "node-2".to_string(),
+        addr2,
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await
+    .unwrap();
 
     let lora = LoraTransport::new(LoraConfig {
         frequency_hz: 915_000_000,
@@ -122,6 +148,7 @@ async fn multiplexer_falls_through_to_tcp() {
         coding_rate: 5,
     });
 
+    let tcp1_identity = peer_identity("node-1", &tcp1.public_key());
     let multiplexer = TransportMultiplexer::new(vec![Box::new(lora), Box::new(tcp1)]);
     let dest_node_id = tcp2.listen_addr.to_string();
     let msg = dummy_message("node-1");
@@ -137,7 +164,7 @@ async fn multiplexer_falls_through_to_tcp() {
         .expect("Timeout waiting for message")
         .expect("Receive failed");
 
-    assert_eq!(sender, "node-1");
+    assert_eq!(sender, tcp1_identity);
     assert_eq!(received.id, "msg-node-1");
 }
 
@@ -166,9 +193,13 @@ async fn multiplexer_all_fail_returns_error() {
 #[tokio::test]
 async fn test_tcp_transport_cancellation() {
     let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
-    let tcp = TcpTransport::bind("node-1".to_string(), addr)
-        .await
-        .unwrap();
+    let tcp = TcpTransport::bind(
+        "node-1".to_string(),
+        addr,
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await
+    .unwrap();
     let bound_addr = tcp.listen_addr;
 
     // Drop the transport
@@ -178,7 +209,12 @@ async fn test_tcp_transport_cancellation() {
     tokio::time::sleep(Duration::from_millis(50)).await;
 
     // Attempt to bind to the same exact port again. If port was freed, it should succeed!
-    let tcp2 = TcpTransport::bind("node-2".to_string(), bound_addr).await;
+    let tcp2 = TcpTransport::bind(
+        "node-2".to_string(),
+        bound_addr,
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await;
     assert!(
         tcp2.is_ok(),
         "Failed to re-bind to freed port: {:?}",
@@ -189,9 +225,13 @@ async fn test_tcp_transport_cancellation() {
 #[tokio::test]
 async fn test_tcp_transport_connection_limit() {
     let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
-    let tcp = TcpTransport::bind("node-alpha".to_string(), addr)
-        .await
-        .unwrap();
+    let tcp = TcpTransport::bind(
+        "node-alpha".to_string(),
+        addr,
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await
+    .unwrap();
     let target_addr = tcp.listen_addr;
 
     // Dial the listener 101 times
@@ -226,9 +266,13 @@ async fn test_tcp_transport_connection_limit() {
 async fn test_tcp_transport_handshake_timeout() {
     use tokio::io::AsyncReadExt;
     let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
-    let tcp = TcpTransport::bind("node-alpha".to_string(), addr)
-        .await
-        .unwrap();
+    let tcp = TcpTransport::bind(
+        "node-alpha".to_string(),
+        addr,
+        crci_core::identity::Identity::new("transport").signing_key,
+    )
+    .await
+    .unwrap();
     let target_addr = tcp.listen_addr;
 
     // Connect to the transport but send absolutely nothing
@@ -254,8 +298,8 @@ async fn test_tcp_transport_handshake_timeout() {
         0
     );
 
-    // Assert that the stream was closed (read returns 0/EOF)
-    let mut buf = [0u8; 10];
-    let read_bytes = stream.read(&mut buf).await.unwrap_or(0);
-    assert_eq!(read_bytes, 0, "Stream should be closed by remote timeout");
+    // The listener sent its handshake hello, then closed the stream (EOF) on timeout.
+    let mut buf = Vec::new();
+    let closed = tokio::time::timeout(Duration::from_secs(1), stream.read_to_end(&mut buf)).await;
+    assert!(closed.is_ok(), "Stream should be closed by remote timeout");
 }
