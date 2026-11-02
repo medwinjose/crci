@@ -1603,6 +1603,7 @@ async fn run_node(
         // Peers this node has banned, so each ban (and readmission) is printed once.
         let mut banned: std::collections::HashSet<String> = std::collections::HashSet::new();
         while let Ok((sender_id, wire)) = recv_tcp.receive().await {
+            let dequeued = std::time::Instant::now();
             println!(
                 "Node {} received message from {}: id={}, type={}, origin={}",
                 recv_id, sender_id, wire.id, wire.message_type, wire.origin
@@ -1614,6 +1615,13 @@ async fn run_node(
                 );
                 continue;
             }
+            // An answer to this node's sync request, or ordinary gossip (for experiments
+            // that attribute late deliveries).
+            let path = if wire.answers_sync.is_some() {
+                "answer"
+            } else {
+                "gossip"
+            };
             let bytes = match serde_json::to_vec(&wire) {
                 Ok(b) => b,
                 Err(_) => continue,
@@ -1643,6 +1651,9 @@ async fn run_node(
                     sender_banned,
                 )
             };
+            // Protocol compute for this frame (checks, signature, replay window, strikes); the
+            // frame signature (verified by the transport) is not included.
+            let proc_us = dequeued.elapsed().as_micros();
             // Strikes are always charged to the sender of the frame just processed, so a
             // ban can only start here.
             if sender_banned && banned.insert(sender_id.clone()) {
@@ -1664,12 +1675,14 @@ async fn run_node(
 
             for msg in &delivered {
                 println!(
-                    "Node {} accepted '{}' (origin {}, via {}) at_ms={}",
+                    "Node {} accepted '{}' (origin {}, via {}) at_ms={} path={} proc_us={}",
                     recv_id,
                     msg.id,
                     msg.origin,
                     sender_id,
-                    unix_ms()
+                    unix_ms(),
+                    path,
+                    proc_us
                 );
                 let verdict = {
                     let mut p = recv_pipeline.lock().unwrap_or_else(|e| e.into_inner());
@@ -1757,9 +1770,30 @@ async fn run_node(
     let cons_pipeline = pipeline.clone();
     let cons_node_id = node_id.clone();
     let cons_api = api_state.clone();
+    let stats_tcp = tcp.clone();
     tokio::spawn(async move {
+        let mut last_stats = (0, 0);
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            // Relayed frames that never left this node; anti-entropy is their only recovery.
+            let stats = (
+                stats_tcp
+                    .relay_failures
+                    .load(std::sync::atomic::Ordering::Relaxed),
+                stats_tcp
+                    .relay_queue_full
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            );
+            if stats != last_stats {
+                last_stats = stats;
+                println!(
+                    "Node {} relay drops: failed={} queue_full={} at_ms={}",
+                    cons_node_id,
+                    stats.0,
+                    stats.1,
+                    unix_ms()
+                );
+            }
             let mut flagged = Vec::new();
             {
                 let mut p = cons_pipeline.lock().unwrap_or_else(|e| e.into_inner());

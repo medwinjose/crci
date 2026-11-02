@@ -127,6 +127,27 @@ async fn frames_to_one_peer_stay_in_order_when_relayed() {
     assert_eq!(receiver.accepted_count.load(Ordering::SeqCst), 1);
 }
 
+/// A relayed frame that cannot be delivered is counted, so experiments can report it.
+#[tokio::test]
+async fn undeliverable_relays_are_counted() {
+    let addr = unused_addr();
+    let sender = listener("sender").await;
+    let id = Identity::new("author");
+    sender
+        .relay(&addr.to_string(), signed(&id, "lost", "author", 1))
+        .unwrap();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    while sender.relay_failures.load(Ordering::SeqCst) == 0 {
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "failure not counted"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(sender.relay_failures.load(Ordering::SeqCst), 1);
+    assert_eq!(sender.relay_queue_full.load(Ordering::SeqCst), 0);
+}
+
 #[tokio::test]
 async fn a_peer_that_starts_later_receives_later_frames() {
     let addr = unused_addr();

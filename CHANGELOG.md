@@ -14,7 +14,8 @@ git history; `git log` is the complete record.
   signed messages), `--replay-after-ms`, `--replay-copies` (fault injection) and
   `--experiment-epoch-unix-ms` (a shared time origin for those schedules). Origination, acceptance
   and bans are logged with a Unix-millisecond timestamp. `--sender-refill-per-sec` sets the per-neighbour
-  budget refill for experiments.
+  budget refill for experiments. Accepted messages are logged with their path (gossip or sync answer) and
+  the protocol compute time; relay frames dropped by a failed delivery or a full queue are counted.
 
 ### Changed
 - The per-neighbour budget refills at 20 messages per second instead of 5, and only messages the

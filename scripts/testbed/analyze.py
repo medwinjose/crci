@@ -29,7 +29,10 @@ import sys
 from collections import defaultdict, deque
 
 ORIGINATED = re.compile(r"Node (n\d+) originated '([^']+)' at_ms=(\d+)")
-ACCEPTED = re.compile(r"Node (n\d+) accepted '([^']+)' \(origin (\S+), via ([^#]+)#\S*\) at_ms=(\d+)")
+ACCEPTED = re.compile(r"Node (n\d+) accepted '([^']+)' \(origin (\S+), via ([^#]+)#\S*\) at_ms=(\d+)"
+                      r"(?: path=(\w+))?(?: proc_us=(\d+))?")
+RECEIVED = re.compile(r"Node (n\d+) received message from ([^#]+)#")
+RELAY_DROPS = re.compile(r"Node (n\d+) relay drops: failed=(\d+) queue_full=(\d+)")
 BANNED = re.compile(r"Node (n\d+) banned ([^#]+)#\S+ at_ms=(\d+)")
 READMITTED = re.compile(r"Node (n\d+) readmitted ([^#]+)#\S+ at_ms=(\d+)")
 FAULT = re.compile(r"Node (n\d+) fault: .* at_ms=(\d+)")
@@ -112,6 +115,8 @@ def main():
     originated, accepted, bans, readmits = {}, defaultdict(dict), [], []
     via = []
     rate_drops = defaultdict(int)
+    relay_drops = {}
+    proc_us = []
     fault_ms = None
     counters = defaultdict(int)
     for i in range(n):
@@ -120,18 +125,26 @@ def main():
                 if m := ORIGINATED.search(line):
                     originated[m[2]] = (m[1], int(m[3]))
                 elif m := ACCEPTED.search(line):
-                    accepted[m[2]].setdefault(m[1], (int(m[5]), m[4], m[3]))
+                    accepted[m[2]].setdefault(m[1], (int(m[5]), m[4], m[3], m[6] or "gossip"))
                     via.append((m[1], m[2], m[4], int(m[5])))
+                    if m[7]:
+                        proc_us.append(int(m[7]))
                 elif m := BANNED.search(line):
                     bans.append((m[1], m[2], int(m[3])))
                 elif m := READMITTED.search(line):
                     readmits.append((m[1], m[2], int(m[3])))
                 elif m := FAULT.search(line):
                     fault_ms = int(m[2])
+                elif m := RELAY_DROPS.search(line):
+                    relay_drops[m[1]] = (int(m[2]), int(m[3]))  # cumulative: keep the last
                 elif m := RATE.search(line):
                     rate_drops["from_byzantine" if m[2] == byz else "from_honest"] += 1
-                if "received message from" in line:
+                if m := RECEIVED.search(line):
                     counters["frames_received"] += 1
+                    # The overlay is enforced by configuration only (one shared L2 segment):
+                    # count frames from nodes that are not overlay neighbours.
+                    if m[2] not in adj[m[1]]:
+                        counters["frames_from_non_neighbours"] += 1
                     if "id=head-" in line:
                         counters["chain_head_frames"] += 1
                 for key in ("MALICIOUS REPLAY", "REPLAY dropped", "INVALID SIGNATURE",
@@ -169,15 +182,16 @@ def main():
         if origin == src:
             for x in downstream:
                 downstream_delivery[p].append(1 if x in got else 0)
-        for x, (t_acc, sender, _) in got.items():
+        for x, (t_acc, sender, _, path) in got.items():
             if x == byz or x == origin:
                 continue
             h = hops[origin].get(x)
-            rows.append((mid, origin, x, h, t_acc - t_emit, p, x in downstream and origin == src))
+            rows.append((mid, origin, x, h, t_acc - t_emit, p, x in downstream and origin == src, path))
 
     with open(f"{out}/latency.csv", "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["message", "origin", "receiver", "hops", "latency_ms", "period", "downstream_of_byzantine"])
+        w.writerow(["message", "origin", "receiver", "hops", "latency_ms", "period", "downstream_of_byzantine",
+                    "path"])
         w.writerows(rows)
     with open(f"{out}/bans.csv", "w", newline="") as f:
         w = csv.writer(f)
@@ -188,7 +202,12 @@ def main():
     lat = defaultdict(list)
     per_hop_excess = []
     down_lat = defaultdict(list)
-    for mid, origin, x, h, l, p, is_down in rows:
+    late = defaultdict(int)  # deliveries more than 5 s after origination, by path
+    by_path = defaultdict(int)
+    for mid, origin, x, h, l, p, is_down, path in rows:
+        by_path[path] += 1
+        if l > 5000:
+            late[path] += 1
         lat[p].append(l)
         if h:
             per_hop_excess.append(round((l - h * mean_hop) / h, 2))
@@ -245,6 +264,9 @@ def main():
         "messages_fully_delivered": {p: sum(1 for d in v if d == 1.0) for p, v in delivery.items()},
         "latency_ms": {p: stats(v) for p, v in lat.items()},
         "per_hop_excess_ms": stats(per_hop_excess),
+        # Protocol compute per delivering hop, measured inside crci-node (excludes the frame
+        # signature check, about 37 us); the rest of the per-hop excess is host and kernel time.
+        "protocol_compute_us_per_hop": stats(proc_us),
         "downstream_delivery": {p: (sum(v), len(v)) for p, v in downstream_delivery.items()},
         "downstream_latency_ms": {p: stats(v) for p, v in down_lat.items()},
         "accepted_via_byzantine": dict(via_byz),
@@ -256,7 +278,13 @@ def main():
         "honest_nodes": len(honest),
         "readmissions": len(readmits),
         "rate_limit_drops": dict(rate_drops),
+        "relay_drops": {"failed": sum(f for f, _ in relay_drops.values()),
+                        "queue_full": sum(q for _, q in relay_drops.values()),
+                        "nodes_with_drops": len(relay_drops)},
+        "deliveries_by_path": dict(by_path),
+        "late_deliveries_over_5s_by_path": dict(late),
         "log_counters": dict(counters),
+        "frames_from_non_neighbours": counters["frames_from_non_neighbours"],
         "frames_received_per_message": round(
             counters["frames_received"] / max(1, len(originated)), 2),
         "host": {"cpu_busy_pct": stats(cpu),

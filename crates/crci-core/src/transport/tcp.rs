@@ -505,6 +505,7 @@ struct Outbound {
     links: std::sync::Mutex<HashMap<String, Arc<tokio::sync::Mutex<Option<DialedConnection>>>>>,
     queues: std::sync::Mutex<HashMap<String, mpsc::Sender<NetworkMessage>>>,
     handshakes: Arc<AtomicU64>,
+    failures: Arc<AtomicU64>,
 }
 
 impl Outbound {
@@ -550,6 +551,10 @@ pub struct TcpTransport {
     pub auth_failures: Arc<AtomicU64>,
     /// Outgoing handshakes started by this transport (one per new connection).
     pub dialed_handshakes: Arc<AtomicU64>,
+    /// Relayed frames dropped because the peer could not be reached or the write failed.
+    pub relay_failures: Arc<AtomicU64>,
+    /// Relayed frames dropped because the peer's queue was full.
+    pub relay_queue_full: Arc<AtomicU64>,
     pub node_id: String,
     signing_key: SigningKey,
     outbound: Arc<Outbound>,
@@ -664,12 +669,14 @@ impl TcpTransport {
         });
 
         let dialed_handshakes = Arc::new(AtomicU64::new(0));
+        let relay_failures = Arc::new(AtomicU64::new(0));
         let outbound = Arc::new(Outbound {
             node_id: node_id.clone(),
             key: signing_key.clone(),
             links: std::sync::Mutex::new(HashMap::new()),
             queues: std::sync::Mutex::new(HashMap::new()),
             handshakes: dialed_handshakes.clone(),
+            failures: relay_failures.clone(),
         });
 
         Ok(Self {
@@ -680,6 +687,8 @@ impl TcpTransport {
             active_connections: active,
             auth_failures,
             dialed_handshakes,
+            relay_failures,
+            relay_queue_full: Arc::new(AtomicU64::new(0)),
             node_id,
             signing_key,
             outbound,
@@ -720,6 +729,7 @@ impl TcpTransport {
                                 _ = cancel.cancelled() => break,
                             };
                             if let Err(e) = outbound.send(&target, &message).await {
+                                outbound.failures.fetch_add(1, Ordering::Relaxed);
                                 log::warn!("relay of '{}' to {} failed: {}", message.id, target, e);
                             }
                         }
@@ -730,6 +740,7 @@ impl TcpTransport {
             }
         };
         sender.try_send(message).map_err(|_| {
+            self.relay_queue_full.fetch_add(1, Ordering::Relaxed);
             TransportError::ConnectionFailed(format!("relay queue for {} is full or closed", addr))
         })
     }
