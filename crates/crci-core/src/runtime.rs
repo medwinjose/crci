@@ -807,7 +807,75 @@ impl NodeRuntime {
             // The answer tag belongs to this hop only: it is never stored or relayed.
             let answers = wire.answers_sync.take();
 
-            // Sybil admission check
+            // A banned sender's frames are dropped by the admission check below.
+            if !self.sybil_guard.is_banned(&sender_id) {
+                // BFT-046: Hard ceiling on observed message ID cache.
+                // This eviction must not touch the per-sender budget (BFT-008): otherwise a peer
+                // could refill its own budget by flooding enough IDs to trip the ceiling (BFT-047).
+                if self.seen_messages.len() >= 5000 {
+                    self.seen_messages.clear();
+                    self.metrics
+                        .seen_messages_evictions
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                }
+
+                // Copies of messages already received are judged by ID first, before the sender's
+                // budget and before any signature check: every link carries every message, so these
+                // copies are most of the traffic. A copy from another path is dropped for free; a
+                // repeat from the same sender is a replay whatever its budget, so a sender that
+                // keeps its budget empty cannot hide replays behind the rate limit. An honest node
+                // sends each message ID to a neighbour once (sync answers are tagged).
+                let repeat_from_sender = self
+                    .seen_messages
+                    .get(&wire.id)
+                    .map(|senders| senders.contains(&sender_id));
+                match repeat_from_sender {
+                    Some(true) => {
+                        // This specific peer has already sent us this exact message.
+                        // Once the message is older than the origin's replay window it is
+                        // stale (an honest peer may resend after a reconnect): drop, no strike.
+                        if self.replay_filter.is_out_of_window(&wire.origin, wire.seq) {
+                            println!(
+                                "  ⏰ [{}] STALE resend of '{}' from '{}' — out of window, dropped",
+                                self.id, wire.id, sender_id
+                            );
+                            continue;
+                        }
+                        // A message this node asked the sender for may cross with the same
+                        // message relayed as ordinary gossip: drop, no strike (once).
+                        if self.excused_as_sync_answer(
+                            &sender_id,
+                            answers.as_deref(),
+                            &wire.origin,
+                            wire.seq,
+                        ) {
+                            println!(
+                                "  🔄 [{}] repeat of '{}' from '{}' answers a sync request — dropped, no strike",
+                                self.id, wire.id, sender_id
+                            );
+                            continue;
+                        }
+                        // Inside the window this is a direct replay, not gossip redundancy.
+                        println!(
+                            "  ⚠ [{}] MALICIOUS REPLAY from '{}' — same message '{}' sent repeatedly!",
+                            self.id, sender_id, wire.id
+                        );
+                        self.byzantine_events += 1;
+                        self.sybil_guard.report_violation(&sender_id);
+                        continue;
+                    }
+                    Some(false) => {
+                        // Normal gossip duplicate from a DIFFERENT path. Silently drop without penalty.
+                        if let Some(senders) = self.seen_messages.get_mut(&wire.id) {
+                            senders.insert(sender_id.clone());
+                        }
+                        continue;
+                    }
+                    None => {}
+                }
+            }
+
+            // Sybil admission check (new messages only)
             match self.sybil_guard.check(&sender_id) {
                 Ok(()) => { /* proceed */ }
                 Err(crate::sybil::SybilError::Banned(peer)) => {
@@ -845,8 +913,8 @@ impl NodeRuntime {
                 }
             }
 
-            // BFT-008: signature checks are bounded per transport sender by the SybilGuard
-            // token bucket above (it refills over time), and each invalid signature strikes
+            // BFT-008: signature checks of new messages are bounded per transport sender by the
+            // SybilGuard token bucket above (it refills over time), and each invalid signature strikes
             // that sender. The claimed origin is not used: it is unauthenticated, so budgeting
             // by it would let any peer spend an honest origin's budget with forgeries.
             self.metrics
@@ -871,66 +939,6 @@ impl NodeRuntime {
                 // Penalise the RELAYING NEIGHBOR for forwarding cryptographically invalid data.
                 self.sybil_guard.report_violation(&sender_id);
                 continue;
-            }
-
-            // BFT-046: Hard ceiling on observed message ID cache.
-            // This eviction must not touch the per-sender budget (BFT-008): otherwise a peer
-            // could refill its own budget by flooding enough IDs to trip the ceiling (BFT-047).
-            if self.seen_messages.len() >= 5000 {
-                self.seen_messages.clear();
-                self.metrics
-                    .seen_messages_evictions
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            }
-
-            // Step 1.5: Gossip duplicate tracking (Fix for honest relay bans)
-            let repeat_from_sender = self
-                .seen_messages
-                .get(&wire.id)
-                .map(|senders| senders.contains(&sender_id));
-            match repeat_from_sender {
-                Some(true) => {
-                    // This specific peer has already sent us this exact message.
-                    // Once the message is older than the origin's replay window it is
-                    // stale (an honest peer may resend after a reconnect): drop, no strike.
-                    if self.replay_filter.is_out_of_window(&wire.origin, wire.seq) {
-                        println!(
-                            "  ⏰ [{}] STALE resend of '{}' from '{}' — out of window, dropped",
-                            self.id, wire.id, sender_id
-                        );
-                        continue;
-                    }
-                    // A message this node asked the sender for may cross with the same
-                    // message relayed as ordinary gossip: drop, no strike (once).
-                    if self.excused_as_sync_answer(
-                        &sender_id,
-                        answers.as_deref(),
-                        &wire.origin,
-                        wire.seq,
-                    ) {
-                        println!(
-                            "  🔄 [{}] repeat of '{}' from '{}' answers a sync request — dropped, no strike",
-                            self.id, wire.id, sender_id
-                        );
-                        continue;
-                    }
-                    // Inside the window this is a direct replay, not gossip redundancy.
-                    println!(
-                        "  ⚠ [{}] MALICIOUS REPLAY from '{}' — same message '{}' sent repeatedly!",
-                        self.id, sender_id, wire.id
-                    );
-                    self.byzantine_events += 1;
-                    self.sybil_guard.report_violation(&sender_id);
-                    continue;
-                }
-                Some(false) => {
-                    // Normal gossip duplicate from a DIFFERENT path. Silently drop without penalty.
-                    if let Some(senders) = self.seen_messages.get_mut(&wire.id) {
-                        senders.insert(sender_id.clone());
-                    }
-                    continue;
-                }
-                None => {}
             }
 
             // First time seeing this message. Record the sender.

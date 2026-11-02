@@ -169,3 +169,54 @@ fn valid_signature_burst_is_bounded_by_sender_budget() {
     );
     assert!(node.sybil_rate_limited_events >= 100 - bound);
 }
+
+/// Every link carries every message, so most frames a node receives are copies of messages
+/// it already has from another neighbour. Those copies are dropped before admission: they
+/// spend neither the sender's budget nor a signature check, so the budget limits only new
+/// messages and the network-wide rate is not capped by one link's budget.
+#[test]
+fn copies_already_received_from_another_neighbour_spend_no_budget() {
+    let (mut node, inbox) = receiver();
+    node.sybil_guard.use_manual_clock();
+    let alice = Identity::new("alice");
+    let total = 2 * SENDER_BURST as u64;
+    let wires: Vec<WireMessage> = (1..=total)
+        .map(|seq| signed(&alice, &format!("m-{seq}"), "alice", seq))
+        .collect();
+    for chunk in wires.chunks(SENDER_BURST as usize / 2) {
+        deliver(&inbox, "first-path", chunk);
+        deliver(&inbox, "second-path", chunk);
+        node.process_inbox();
+        node.sybil_guard.advance_time(Duration::from_secs(2));
+    }
+    let verified = node
+        .metrics
+        .sig_verifications_performed
+        .load(Ordering::Relaxed);
+    assert_eq!(verified, total, "one signature check per new message");
+    assert_eq!(node.sybil_rate_limited_events, 0);
+    assert_eq!(
+        node.sybil_guard
+            .available_tokens(&"second-path".to_string()),
+        None,
+        "the second path never touched its budget"
+    );
+}
+
+/// A sender that keeps its budget empty cannot hide replays behind the rate limit: a
+/// repeat of a message it already delivered is judged before admission and struck.
+#[test]
+fn a_replay_over_budget_is_still_struck() {
+    let (mut node, inbox) = receiver();
+    node.sybil_guard.use_manual_clock();
+    let mallory = Identity::new("mallory");
+    let wires: Vec<WireMessage> = (1..=SENDER_BURST as u64)
+        .map(|seq| signed(&mallory, &format!("m-{seq}"), "mallory", seq))
+        .collect();
+    deliver(&inbox, "mallory", &wires); // spends the whole burst
+    node.process_inbox();
+    deliver(&inbox, "mallory", &wires[..3]); // replays with no budget left
+    node.process_inbox();
+    assert_eq!(node.byzantine_events, 3);
+    assert!(node.sybil_guard.is_banned(&"mallory".to_string()));
+}

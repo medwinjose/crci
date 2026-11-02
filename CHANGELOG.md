@@ -39,6 +39,12 @@ git history; `git log` is the complete record.
   as replays (measured at 10–20 % loss); and before that, a 30 s session renewed by the 30 s sync loop
   let a neighbour repeat every message it relayed once without a strike. Untagged repeats are no longer
   excused at all.
+- A repeat of a message from the same sender is judged before the sender's rate limit, so it is struck
+  even when the sender is over budget. Before, a sender that kept its budget empty had its replays
+  dropped by the rate limit without a strike.
+- A copy of a message already received from another neighbour is dropped before the rate limit and the
+  signature check. Before, every such copy spent a token and a signature check, so honest gossip
+  redundancy alone exhausted the per-neighbour budget.
 - `crci-node` no longer delays start-up while probing its peers: the probes run concurrently with a 2 s
   timeout. Before, each unreachable peer was probed in turn (about 21 s each on Windows) before the node
   processed any traffic.

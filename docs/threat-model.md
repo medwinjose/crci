@@ -21,12 +21,12 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 |---|---|---|
 | Forged or altered message content | Ed25519 signature on every `WireMessage`, every message type included, covering every field in an unambiguous, domain-separated encoding; invalid → dropped, sender struck | `runtime.rs` |
 | Impersonating a known origin | Public key pinned on first sight; a different key → dropped (no strike: the receiver cannot tell which key is genuine) | `runtime.rs` |
-| Direct replay | Same message ID from the same sender → strike; from a different sender → ignored | `runtime.rs` |
+| Direct replay | Same message ID from the same sender → strike, judged before the rate limit so a sender over budget cannot hide it; from a different sender → ignored | `runtime.rs` |
 | Sequence replay | Sliding window W = 64 per origin: same sequence from the same sender → strike; from another sender → ignored; older than the window → dropped without a strike. The sequence number is signed | `replay.rs` |
 | Repeat offender | Reputation 0.5, −0.15 per strike, banned below 0.1; banned senders are dropped on admission | `sybil.rs` |
 | Paced replays | Recovery depends on elapsed time only (0.0005/s, capped at the initial 0.5, so credit cannot be banked); two strikes within 300 s cap recovery at 0.18 | `sybil.rs` |
 | Strikes for honest re-sync after a partition | Digest-based anti-entropy: a node asks for what it lacks; answers are tagged with the request (covered by the TCP frame signature) and a tagged answer that repeats gossip is excused once, however late it arrives; untagged and unsolicited duplicates still strike. Requests are signed, answered only from their author, rate-limited and batched | `runtime.rs` |
-| Message flood | Token bucket per sender (20 messages, +5/s), applied before the signature check | `sybil.rs` |
+| Message flood | Token bucket per sender (20 messages, +5/s) for messages not seen before, applied before the signature check; copies of known messages are dropped by ID first | `sybil.rs`, `runtime.rs` |
 | Signature-verification flood | Verifications bounded by the sender's token bucket; each invalid signature is a strike, so three bad signatures ban the sender | `runtime.rs`, `sybil.rs` |
 | Malformed input | Origin-ID length, severity range, sequence overflow and note size checked before `NodeRuntime` on a TCP node | `validation.rs`, `crci-node` `main.rs` |
 | Framing an author by replaying its message | Strikes fall on the connection that delivered a message, never on the message's author | `runtime.rs`, `transport/tcp.rs` |
@@ -64,12 +64,16 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    requester can aim an answer (at most 16 messages) at a third party. Answers are limited per requester
    (one per 5 s) and in total (a burst of 4, then one per second), which bounds that reflection but does
    not remove it.
-6. **A replay above the rate limit is throttled, not struck.** Frames beyond a neighbour's token bucket
-   (20, then 5 per second) are dropped before any other check and without a strike, so that honest bursts
-   (for example after a partition) are never punished. A neighbour that replays faster than its budget
-   loses the excess at the cost of one bucket check per frame; the copies that are admitted are struck as
-   usual. Because the excess also crowds out the neighbour's own relays, persistent over-budget sending
-   degrades it to an omission fault, which the mesh tolerates only through path redundancy.
+6. **New messages above the rate limit are throttled, not struck.** New messages beyond a neighbour's
+   token bucket are dropped without a strike, so that honest bursts (for example after a partition) are
+   never punished. Repeats are judged before the bucket, so a replay is struck whether or not the sender
+   is over budget. A neighbour that floods new messages faster than its budget loses the excess, which also
+   crowds out its own relays: persistent over-budget sending degrades it to an omission fault, which the
+   mesh tolerates only through path redundancy.
+   On TCP every frame's session signature is verified before any of these checks, so a neighbour with an
+   authenticated connection can make the receiver spend one signature verification (about 37 µs) per
+   frame at line rate. Copies of known messages cost that verification but no strike. Bounding this cost
+   per connection is open (invalid-signature flood experiment).
 7. **Aggregate gossip rate is bounded by the per-neighbour budget.** Every node relays every new message
    to all its neighbours, so each link carries every message once. The token bucket therefore caps the
    network-wide sustained message rate at about 5 per second, whatever the number of nodes; beyond it,

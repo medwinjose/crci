@@ -55,7 +55,7 @@ written description: [docs/architecture.md](docs/architecture.md).
 Every incoming message, in-process or over TCP, passes through the same local pipeline in `NodeRuntime`:
 
 ```
-admission (ban list, token bucket) → Ed25519 verification → duplicate check per neighbour
+ban list → duplicate check per neighbour → token bucket → Ed25519 verification
   → author-key pinning → replay filter → accept
                  └──── each verifiable violation: −0.15 reputation for the sending neighbour ────┘
 ```

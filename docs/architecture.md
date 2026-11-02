@@ -32,26 +32,32 @@ whether messages arrive in-process (simulator, tests, benchmarks, Android FFI) o
 `process_inbox()` reads `(sender_id, bytes)` pairs from a shared inbox (`transport::SharedInbox`) and
 applies, in order:
 
-1. **Admission** (`sybil.rs`, `SybilGuard::check`): reject banned senders; token bucket of 20 messages,
-   refilled at 5 per second.
-2. **Signature-check budget**: no separate counter. Every message that reaches the signature check has
-   passed the sender's token bucket in step 1, so verifications are bounded per transport sender (20, then
-   5 per second), and every invalid signature is a strike, so a sender of bad signatures is banned after
-   three checks. The claimed origin is not used for budgeting, because it is not authenticated.
-3. **Ed25519 signature check**: an invalid signature costs the *sender* (relaying neighbour) one strike.
-   Every message type is checked, mass-casualty events (`mce`) included.
-4. **Duplicate check**: the same message ID received again from the same sender is a strike; from a
-   different sender it is ignored as normal gossip redundancy. The ID cache is cleared when it reaches
+1. **Ban list** (`sybil.rs`, `SybilGuard`): frames from a banned sender are dropped.
+2. **Duplicate check**, by message ID, before the sender's budget and before any signature check: a copy
+   of a message already received from a *different* sender is dropped as gossip redundancy, spending no
+   budget and no signature check; the same ID again from the *same* sender is a strike, unless it is older
+   than the replay window (dropped) or a tagged answer to this node's sync request (see anti-entropy
+   below). Every link carries every message, so these copies are most of the traffic; and because repeats
+   are judged before the rate limit, a sender that keeps its budget empty cannot hide replays behind it.
+   An honest node sends each message ID to a neighbour once. The ID cache is cleared when it reaches
    5 000 entries.
-5. **Key consistency**: the first public key seen for an origin ID is pinned; a message claiming that origin
+3. **Admission** (`SybilGuard::check`), for messages not seen before: token bucket of 20 messages per
+   transport sender, refilled at 5 per second.
+4. **Signature-check budget**: no separate counter. Every message that reaches the signature check has
+   passed the sender's token bucket in step 3, so verifications are bounded per transport sender, and every
+   invalid signature is a strike, so a sender of bad signatures is banned after three checks. The claimed
+   origin is not used for budgeting, because it is not authenticated.
+5. **Ed25519 signature check**: an invalid signature costs the *sender* (relaying neighbour) one strike.
+   Every message type is checked, mass-casualty events (`mce`) included.
+6. **Key consistency**: the first public key seen for an origin ID is pinned; a message claiming that origin
    with another key is dropped. It is not a strike: the receiver cannot tell which key is genuine, so the
    relay that delivered it is not at fault (a strike here would let an adversary that announces an honest
    node's ID first get that node's honest relays banned).
-6. **Replay filter** (`replay.rs`): a sliding window of W = 64 sequence numbers per origin. With `seq_max`
+7. **Replay filter** (`replay.rs`): a sliding window of W = 64 sequence numbers per origin. With `seq_max`
    the highest sequence accepted from that origin, a packet with `seq < seq_max − W` is stale and dropped
    without a strike; a late packet inside the window is accepted once; the same sequence number again from
    the same sender is a strike, from a different sender it is dropped without a strike. A message resent by
-   the same sender after it has left the window is also dropped as stale (step 4 does not strike it). The
+   the same sender after it has left the window is also dropped as stale (step 2 does not strike it). The
    sequence number is covered by the origin's signature, so a relay cannot move the window.
 
 A strike is −0.15 reputation (start 0.5, ban below 0.1, so three strikes ban). Between strikes a score
