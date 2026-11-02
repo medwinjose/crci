@@ -1,4 +1,4 @@
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 
 // ─── Identity ────────────────────────────────────────────────────────────────
@@ -32,6 +32,6 @@ impl Identity {
     // Verify a signature against this identity's public key
     #[allow(dead_code)]
     pub fn verify(&self, payload: &[u8], signature: &Signature) -> bool {
-        self.verifying_key.verify(payload, signature).is_ok()
+        self.verifying_key.verify_strict(payload, signature).is_ok()
     }
 }

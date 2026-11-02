@@ -1,4 +1,4 @@
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::time::{Duration, Instant};
@@ -244,8 +244,10 @@ impl WireMessage {
             Err(_) => return false,
         };
         let signature = Signature::from_bytes(&sig_bytes);
+        // Strict verification rejects small-order keys and non-canonical signatures, for
+        // which one signature can verify for many messages.
         verifying_key
-            .verify(&self.signing_bytes(), &signature)
+            .verify_strict(&self.signing_bytes(), &signature)
             .is_ok()
     }
 

@@ -199,3 +199,20 @@ fn signature_over_another_domain_does_not_verify() {
     wire.signature_bytes = alice.sign(&other_domain).to_bytes().to_vec();
     assert!(!wire.verify_signature());
 }
+
+/// A small-order public key (here the identity point) lets one signature verify for every
+/// message under non-strict verification: R = identity, s = 0. Such a key must be rejected,
+/// or a relay could rewrite any field of that origin's messages.
+#[test]
+fn small_order_key_does_not_verify_any_message() {
+    let mut wire = signed();
+    let mut identity_point = [0u8; 32];
+    identity_point[0] = 1;
+    wire.origin_pubkey = identity_point.to_vec();
+    let mut forged = [0u8; 64];
+    forged[0] = 1; // R = identity point, s = 0
+    wire.signature_bytes = forged.to_vec();
+    assert!(!wire.verify_signature());
+    wire.note = Some("rewritten by a relay".to_string());
+    assert!(!wire.verify_signature());
+}
