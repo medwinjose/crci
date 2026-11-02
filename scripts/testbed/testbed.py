@@ -181,6 +181,8 @@ def main():
     ap.add_argument("--fault-at", type=int, default=20)
     ap.add_argument("--no-fault", action="store_true")
     ap.add_argument("--replay-copies", type=int, default=2)
+    ap.add_argument("--refill", type=float, default=None,
+                    help="per-neighbour budget refill (messages/s); default: the protocol's")
     ap.add_argument("--settle", type=int, default=20)
     ap.add_argument("--drain", type=int, default=5)
     ap.add_argument("--pings", type=int, default=10)
@@ -240,6 +242,8 @@ def main():
         if i == roles["byzantine"] and not args.no_fault:
             cmd += ["--replay-after-ms", str(args.fault_at * 1000),
                     "--replay-copies", str(args.replay_copies)]
+        if args.refill is not None:
+            cmd += ["--sender-refill-per-sec", str(args.refill)]
         log = open(f"{args.out}/logs/n{i}.log", "w")
         procs.append(subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, env=env))
         log.close()
@@ -311,7 +315,7 @@ def main():
         "topology": {k: topo[k] for k in ("kind", "seed", "params", "metrics", "roles")},
         "config": {k: getattr(args, k) for k in (
             "delay_ms", "jitter_ms", "loss", "reorder", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies",
-            "settle", "drain", "pings", "worker_threads", "backlog")},
+            "refill", "settle", "drain", "pings", "worker_threads", "backlog")},
         "t0_ms": int(t0 * 1000),
         "fault_ms": None if args.no_fault else int((t0 + args.fault_at) * 1000),
         "end_ms": int((t0 + args.window) * 1000),

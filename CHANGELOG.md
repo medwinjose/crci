@@ -13,9 +13,14 @@ git history; `git log` is the complete record.
 - `crci-node` experiment options: `--emit-count`, `--emit-interval-ms`, `--emit-delay-ms` (periodic
   signed messages), `--replay-after-ms`, `--replay-copies` (fault injection) and
   `--experiment-epoch-unix-ms` (a shared time origin for those schedules). Origination, acceptance
-  and bans are logged with a Unix-millisecond timestamp.
+  and bans are logged with a Unix-millisecond timestamp. `--sender-refill-per-sec` sets the per-neighbour
+  budget refill for experiments.
 
 ### Changed
+- The per-neighbour budget refills at 20 messages per second instead of 5, and only messages the
+  receiver has not seen spend it. Chosen from a testbed sweep (refill 5/10/20/50 per second, offered load
+  4–32 messages/s): 20 is the lowest rate with no honest frame dropped at 16 messages/s. Before, the
+  network as a whole could sustain about 5 messages per second.
 - Documentation rewritten to describe the code as it is: two message paths (signed `NodeRuntime` vs.
   unsigned TCP), the real transport (custom TCP, no libp2p/Noise), the real TLA+ model scope, and every
   benchmark with its command and raw data. Known gaps are listed in `docs/threat-model.md`.

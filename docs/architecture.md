@@ -42,7 +42,8 @@ applies, in order:
    An honest node sends each message ID to a neighbour once. The ID cache is cleared when it reaches
    5 000 entries.
 3. **Admission** (`SybilGuard::check`), for messages not seen before: token bucket of 20 messages per
-   transport sender, refilled at 5 per second.
+   transport sender, refilled at 20 per second (chosen from a testbed sweep: the lowest of 5, 10, 20
+   and 50 per second with no honest frame dropped at 16 messages/s network-wide).
 4. **Signature-check budget**: no separate counter. Every message that reaches the signature check has
    passed the sender's token bucket in step 3, so verifications are bounded per transport sender, and every
    invalid signature is a strike, so a sender of bad signatures is banned after three checks. The claimed
@@ -136,7 +137,8 @@ inbox pass that delivered at least one message, if the head changed since its la
 snapshot is appended every 50 delivered messages); receiving an announcement never triggers one, so
 neighbours do not echo announcements back and forth. Announcing only a changed head keeps the frames on
 each link close to one per gossip message: every node relays every new message to all its neighbours, so
-the per-neighbour token bucket (5 per second) bounds the network-wide sustained message rate.
+the per-neighbour token bucket (20 per second, spent only by messages the receiver has not seen) bounds
+the network-wide sustained message rate.
 
 ### Re-synchronisation after a partition (anti-entropy)
 

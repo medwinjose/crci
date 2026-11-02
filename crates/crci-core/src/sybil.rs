@@ -228,8 +228,11 @@ impl TokenBucket {
 // ── SybilGuard ────────────────────────────────────────────────────────────────
 /// Messages a transport sender may deliver in a burst before it is rate-limited.
 pub const SENDER_BURST: f32 = 20.0;
-/// Messages per second added back to a transport sender's budget.
-pub const SENDER_REFILL_PER_SEC: f32 = 5.0;
+/// Messages per second added back to a transport sender's budget. Only messages not seen
+/// before spend it. Chosen from a testbed sweep (5/10/20/50 per s): the lowest rate with no
+/// honest frame dropped at 16 messages/s network-wide; at most 20 × 37 µs of signature
+/// checks per second per neighbour.
+pub const SENDER_REFILL_PER_SEC: f32 = 20.0;
 
 fn get_subnet(id: &str) -> Option<String> {
     if let Ok(addr) = id.parse::<std::net::SocketAddr>() {
@@ -252,6 +255,9 @@ pub struct SybilGuard {
     reputations: HashMap<NodeId, PeerReputation>,
     buckets: HashMap<NodeId, TokenBucket>,
     pub difficulty: u8,
+    /// Messages per second added back to each sender's budget (`SENDER_REFILL_PER_SEC`
+    /// unless an experiment sets another rate before the first message arrives).
+    pub sender_refill_per_sec: f32,
     /// Added to the clock. Zero in normal operation; simulations and tests advance it to
     /// run hours of reputation dynamics without waiting.
     clock_offset: Duration,
@@ -276,6 +282,7 @@ impl SybilGuard {
             reputations: HashMap::new(),
             buckets: HashMap::new(),
             difficulty,
+            sender_refill_per_sec: SENDER_REFILL_PER_SEC,
             clock_offset: Duration::ZERO,
             manual_epoch: None,
         }
@@ -338,7 +345,7 @@ impl SybilGuard {
             .or_insert_with(|| TokenBucket {
                 tokens: SENDER_BURST,
                 capacity: SENDER_BURST,
-                refill_rate: SENDER_REFILL_PER_SEC,
+                refill_rate: self.sender_refill_per_sec,
                 last_refill: now,
             });
         if !bucket.try_consume_at(now) {

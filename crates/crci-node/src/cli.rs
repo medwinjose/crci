@@ -80,4 +80,9 @@ pub struct Cli {
     /// Fault injection for experiments: copies of each message sent once the fault is active
     #[arg(long, default_value_t = 2)]
     pub replay_copies: usize,
+
+    /// Experiments: messages per second added back to each neighbour's budget (default:
+    /// the protocol's rate)
+    #[arg(long)]
+    pub sender_refill_per_sec: Option<f32>,
 }

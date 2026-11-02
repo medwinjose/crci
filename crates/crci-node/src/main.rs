@@ -151,7 +151,10 @@ async fn main() {
             .clone()
             .unwrap_or_else(|| "cli-node".to_string());
         let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
-        let node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
+        let mut node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
+        if let Some(rate) = args.sender_refill_per_sec {
+            node.sybil_guard.sender_refill_per_sec = rate;
+        }
 
         let tcp = if let Some(ref listen) = args.listen {
             let addr = match listen.parse::<std::net::SocketAddr>() {

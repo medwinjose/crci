@@ -19,7 +19,9 @@ Two harness details affect what the results mean:
   counter between messages, because `NodeRuntime` then dropped every message from an origin after its 5th
   signature check. That counter has been removed (signature checks are now bounded by the per-sender token
   bucket) and the harnesses no longer reset anything.
-- The per-sender token bucket (20 messages, then 5 per second) applies in every harness.
+- The per-sender token bucket (20 messages, then a refill per second) applies in every harness. The
+  in-process results below were recorded with a refill of 5 per second; the default is 20 per second since
+  the testbed refill sweep (see the emulation testbed section).
 - `recovery_bench` runs on a simulated clock (`SybilGuard::use_manual_clock` and `advance_time`), so it
   covers six hours per condition in seconds and produces byte-identical output on every run.
 
