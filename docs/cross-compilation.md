@@ -72,7 +72,7 @@ After=network.target
 [Service]
 Type=simple
 User=pi
-ExecStart=/home/pi/crci-node --listen 0.0.0.0:7001 --node-id pi-node
+ExecStart=/home/pi/crci-node --listen 192.168.1.50:7001 --node-id pi-node
 Restart=on-failure
 RestartSec=5
 WorkingDirectory=/home/pi/
@@ -80,6 +80,8 @@ WorkingDirectory=/home/pi/
 [Install]
 WantedBy=multi-user.target
 ```
+
+Use the Pi's own LAN address in `--listen` (here `192.168.1.50`), not `0.0.0.0`: peers answer anti-entropy requests at the listen address, and a node listening on `0.0.0.0` turns anti-entropy off.
 
 3. Enable and start the service:
 ```bash

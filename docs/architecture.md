@@ -144,7 +144,8 @@ In-process, `MeshSimulator::heal(a, b)` restores a link and has both ends reques
 from every `--peers` / `--dial` address 0.5 s after start and every 30 s, and retries an unreachable peer
 every 5 s, so a healed link is re-synchronised within about 5 s. The session is opened after the
 listener's identity has been authenticated and before the request frame is sent. `reply_to` is the
-node's listen address, so the listen address must be reachable by its peers (not `0.0.0.0`).
+node's listen address, so it must be an address the peers can reach: a node listening on `0.0.0.0` or
+`::` prints a warning and does not request sync.
 
 ## `crci-core` modules
 

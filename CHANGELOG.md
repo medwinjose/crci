@@ -24,6 +24,8 @@ git history; `git log` is the complete record.
 ### Fixed
 - Message and identity signatures are checked with strict Ed25519 verification: a small-order public key
   with a fixed signature previously verified for every message.
+- A node listening on `0.0.0.0` or `::` warns that anti-entropy is off instead of sending sync requests
+  whose answers could not reach it.
 - Messages of type `mce` are no longer accepted without a valid signature.
 - Idle peers are no longer banned: inactivity decay stops at the ban threshold, and only a strike bans.
 - Packets older than the replay window are dropped without a strike; the W = 64 sliding window is always

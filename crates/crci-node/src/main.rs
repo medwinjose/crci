@@ -1305,6 +1305,16 @@ fn to_pipeline_message(
     }
 }
 
+/// The address sync answers should be sent to: the listen address, unless it is unspecified
+/// (`0.0.0.0` or `::`), which a peer cannot dial back.
+fn sync_reply_address(listen: std::net::SocketAddr) -> Option<String> {
+    if listen.ip().is_unspecified() {
+        None
+    } else {
+        Some(listen.to_string())
+    }
+}
+
 /// Remove and return everything `NodeRuntime` queued for other nodes (gossip relays and
 /// chain-head announcements), keyed by destination.
 fn take_outbound(node: &runtime::NodeRuntime) -> Vec<(String, Vec<u8>)> {
@@ -1388,8 +1398,18 @@ async fn run_node(
     let sync_tcp = tcp.clone();
     let sync_node = node_arc.clone();
     let sync_id = node_id.clone();
-    let reply_to = tcp.listen_addr.to_string();
+    let reply_to = sync_reply_address(tcp.listen_addr);
+    if reply_to.is_none() {
+        eprintln!(
+            "Warning: listening on {}: peers answer sync requests at the listen address, so \
+             anti-entropy is off. Listen on an address the peers can reach.",
+            tcp.listen_addr
+        );
+    }
     tokio::spawn(async move {
+        let Some(reply_to) = reply_to else {
+            return;
+        };
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         let mut next_due: HashMap<String, std::time::Instant> = HashMap::new();
         loop {
@@ -1620,5 +1640,20 @@ fn add_api_peer(api_state: &api::ApiState, peer: &str) {
     }
     if let Ok(mut node_count) = api_state.node_count.write() {
         *node_count = api_state.peer_list.read().map(|l| l.len()).unwrap_or(0);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sync_reply_address;
+
+    #[test]
+    fn sync_answers_are_not_sent_to_an_unspecified_listen_address() {
+        assert_eq!(sync_reply_address("0.0.0.0:7001".parse().unwrap()), None);
+        assert_eq!(sync_reply_address("[::]:7001".parse().unwrap()), None);
+        assert_eq!(
+            sync_reply_address("10.0.0.3:7001".parse().unwrap()),
+            Some("10.0.0.3:7001".to_string())
+        );
     }
 }
