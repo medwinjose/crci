@@ -87,6 +87,26 @@ What these files show, stated plainly:
   `cargo test --release -p crci-node --test paced_before -- --nocapture` (lines matching `^P=` and the
   test result).
 
+## `testbed-2026-11-02/`
+
+| File | SHA-256 |
+|---|---|
+| `results.csv` | `695aa8ef9c2c2df41d48ae306bd8582e8e2024f0c4f6d688f9052ffdca253b11` |
+| `rgg-50-raw.tar.gz` | `d3e07fc73f51d999e9c45331ac9b4f5ca89d0c545f28796438d9057c789cc19e` |
+| `run_all.txt` | `38a719d24473cf81ebf9611a58760b241f4fd65fdef147b561a439707206e9d6` |
+| `binary.sha256` | `6ab3bfda37f5d5bed46ef7cdf13c90dfdd2ccac3214fd68a81ad3a7bf8919382` |
+
+- **What it is:** the emulation testbed runs of 2026-11-02 (`scripts/testbed/run_all.sh`, WSL2 on the
+  i5-12450HX host): RGG and 4-regular mesh at N = 20, 50, 100, a capacity sweep at N = 200, 300, 500,
+  and load runs at 4 and 6 messages/s. `run_all.txt` is the script's console output (renamed from
+  `.log`); `binary.sha256` is the hash of the `crci-node` release binary every run used.
+- `runs/<run>/`: `summary.json` (every metric and the fidelity verdict), `bans.csv`, `meta.json`
+  (configuration, timings, roles, traffic plan) and `topology.txt` (generator output).
+- `rgg-50-raw.tar.gz`: the complete raw output of the N = 50 eviction run (every node's log, ping output,
+  host samples, per-node RSS); `scripts/testbed/analyze.py` regenerates that run's summary from it.
+  Raw logs of the other runs (about 530 MB) are not committed.
+- **What it shows and does not show:** see [benchmarks.md](../benchmarks.md#emulation-testbed-real-processes-one-host).
+
 ## `archive/`
 
 | File | SHA-256 |

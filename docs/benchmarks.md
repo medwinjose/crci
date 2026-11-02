@@ -116,6 +116,62 @@ The 2026-09-25 runs (`recovery_paper_v2_*` in
 harness (fresh messages with an older sequence number, which the current rules drop without a strike) and
 are kept as history only.
 
+## Emulation testbed (real processes, one host)
+
+- **Harness:** `scripts/testbed/` (see its [README](../scripts/testbed/README.md)): one `crci-node` process
+  per Linux network namespace, one veth link each to a shared bridge, `tc netem` 10 ms one-way delay per
+  hop (20 ms round trip), the overlay topology given with `--peers`. Emulated on one host (WSL2 on an
+  Intel i5-12450HX, 12 logical CPUs, 7.6 GiB), not on separate machines or radios.
+- **Command:** `make testbed OUT=…` (= `sudo scripts/testbed/run_all.sh OUT target/release/crci-node`;
+  one build for every run; SHA-256 of the binary in the evidence folder).
+- **Each run:** seed 1, a 60 s window. Traffic 1 signed message/s in total unless stated (0.5/s from a
+  source S, 0.5/s from the other nodes). A relay B whose removal keeps the graph connected, chosen to
+  maximise the set D of nodes whose every shortest path from S runs through B, repeats every message once
+  from 20 s on. Fidelity criteria (all must hold): every node listening at the start, mean host CPU below
+  70 %, no swap activity, no kernel input-backlog drops, ICMP RTT on 10 sampled overlay links with median
+  within 10 % and 95th percentile within 25 % of 20 ms. **Every run below met all of them.**
+- **Recorded runs (2026-11-02):** [`evidence/testbed-2026-11-02/`](evidence/testbed-2026-11-02/).
+
+| Run | N | Topology (mean/max degree, diameter, avg. path, clustering) | Delivery after eviction | Latency median / p95 after eviction | B banned by | Eviction latency (median) | Honest false evictions | Host CPU mean / max | RSS per node |
+|---|---|---|---|---|---|---|---|---|---|
+| rgg-20 | 20 | 4.4 / 7, 6, 2.56, 0.50 | 100 % | 42 / 64 ms | 6/6 | 4.0 s | 0 | 0.3 / 1.9 % | 6.7 MiB |
+| rgg-50 | 50 | 6.0 / 11, 10, 3.67, 0.58 | 100 % | 42 / 74 ms | 10/10 | 4.0 s | 0 | 0.9 / 4.4 % | 6.9 MiB |
+| rgg-100 | 100 | 7.6 / 15, 12, 4.79, 0.60 | 100 % | 48 / 92 ms | 14/14 | 2.0 s | 0 | 2.3 / 8.8 % | 6.9 MiB |
+| mesh-20 | 20 | 4 / 4, 4, 2.16, 0.10 | 100 % | 21 / 42 ms | 4/4 | 4.0 s | 0 | 0.3 / 1.6 % | 6.7 MiB |
+| mesh-50 | 50 | 4 / 4, 5, 2.93, 0.03 | 100 % | 32 / 52 ms | 4/4 | 2.0 s | 0 | 0.8 / 3.8 % | 6.7 MiB |
+| mesh-100 | 100 | 4 / 4, 6, 3.58, 0.04 | 100 % | 43 / 58 ms | 4/4 | 2.0 s | 0 | 1.1 / 5.9 % | 6.7 MiB |
+| sweep-rgg-200 | 200 | 9.1 / 19, 14, 6.17, 0.66 | 100 % | 74 / 127 ms | 16/16 | 2.0 s | 0 | 5.3 / 19.6 % | 7.0 MiB |
+| sweep-rgg-300 | 300 | 10.6 / 22, 16, 6.56, 0.63 | 100 % | 91 / 171 ms | 22/22 | 2.0 s | 0 | 9.5 / 37.5 % | 7.1 MiB |
+| sweep-rgg-500 | 500 | 11.2 / 20, 20, 7.98, 0.62 | 100 % | 140 / 280 ms | 18/18 | 2.0 s | 0 | 17.0 / 76.9 % | 7.3 MiB |
+| stress4-rgg-500 (4 msg/s) | 500 | as above | 100 % | 140 / 296 ms | 18/18 | 0.5 s | 0 | 63.7 / 99.9 % | 8.3 MiB |
+| load4-rgg-50 (4 msg/s) | 50 | as rgg-50 | 100 % | 42 / 74 ms | 10/10 | 1.0 s | 0 | 2.7 / 5.6 % | 7.3 MiB |
+| load6-rgg-50 (6 msg/s) | 50 | as rgg-50 | 86 % (mean per message) | 42 / 94 ms | 10/10 | 2.7 s | 0 | 3.8 / 6.7 % | 7.4 MiB |
+
+What the runs show, stated plainly:
+
+- **Eviction at an intermediate hop.** In every run all of B's neighbours banned it, no honest node was
+  banned, and after the ban no node accepted anything relayed by B. S's messages still reached every node
+  of D (e.g. rgg-50: 306/306 deliveries to the 18 downstream nodes after the ban; their median latency rose
+  from 44 to 54 ms because the alternate paths are longer). Eviction latency is the time for B to relay
+  three repeated messages to a neighbour, so it depends on the message rate (about 2 s at 1 msg/s, 0.5 s at
+  4 msg/s). Some neighbours needed about 4 s: a repeat that arrives within 10 s of a sync request is
+  excused once (at most 16 per request) as a possible sync answer. In rgg-50 the five neighbours that
+  banned B at 4 s are exactly the five that excused two of its repeats.
+- **Capacity sweep.** At 1 msg/s every N up to 500 met every fidelity criterion (mean CPU 17 % at
+  N = 500). At 4 msg/s, close to the protocol's capacity (below), N = 500 still met them but with mean CPU
+  64 % and peaks at 100 %: 500 nodes is the practical ceiling of this host. Larger N was not tried.
+- **Host effects grow with N.** The median latency above the configured delay per hop is 0.5–1.0 ms up to
+  N = 100, 1.4 ms at 200, 3.0 ms at 300 and 6.8 ms at 500. Part of that is processing in the protocol and
+  part is many processes sharing one host; the runs cannot separate the two.
+- **Capacity is set by the per-neighbour budget.** Every link carries every message, so the token bucket
+  (20, then 5 per second per neighbour) caps the network-wide message rate at about 5 per second for any
+  N. At 6 msg/s, 7 397 honest frames were dropped by rate limiting (no strikes, no false evictions) and
+  messages reached 86 % of nodes on average within the window after the eviction. 241 deliveries arrived
+  more than 5 s after origination (at most 28 s), consistent with recovery by the 30 s anti-entropy
+  exchange; the logs do not record which path delivered them.
+- **Not shown:** loss, jitter, reordering or link failures (all runs use a fixed delay and no loss), more
+  than one seed per configuration, and any result beyond one host.
+
 ## WAN smoke test
 
 - **Test:** `crates/crci-node/tests/chaos_wan_real_tests.rs::test_real_wan_chaos_netns` (`#[ignore]`,

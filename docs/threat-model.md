@@ -63,6 +63,16 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    requester can aim an answer (at most 16 messages) at a third party. Answers are limited per requester
    (one per 5 s) and in total (a burst of 4, then one per second), which bounds that reflection but does
    not remove it.
-6. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
+6. **A replay above the rate limit is throttled, not struck.** Frames beyond a neighbour's token bucket
+   (20, then 5 per second) are dropped before any other check and without a strike, so that honest bursts
+   (for example after a partition) are never punished. A neighbour that replays faster than its budget
+   loses the excess at the cost of one bucket check per frame; the copies that are admitted are struck as
+   usual. Because the excess also crowds out the neighbour's own relays, persistent over-budget sending
+   degrades it to an omission fault, which the mesh tolerates only through path redundancy.
+7. **Aggregate gossip rate is bounded by the per-neighbour budget.** Every node relays every new message
+   to all its neighbours, so each link carries every message once. The token bucket therefore caps the
+   network-wide sustained message rate at about 5 per second, whatever the number of nodes; beyond it,
+   honest frames are dropped (without strikes) and delivery relies on redundant paths.
+8. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
    "start at 0.2 if the /24 subnet has a banned peer" rule, which only applies to sender IDs that parse
    as socket addresses. Fresh key pairs are otherwise free.
