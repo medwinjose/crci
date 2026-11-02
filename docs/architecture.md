@@ -72,8 +72,8 @@ number, without the signature failing. Signer and verifier use the same function
 ### Over TCP: the `crci-node` binary
 
 `crates/crci-core/src/transport/tcp.rs`. Every message travels as a 4-byte big-endian length prefix
-followed by JSON (handshake messages at most 4 KiB, frames at most 1 MiB, 5 s read timeouts, at most 100
-concurrent connections). Each connection starts with a mutual Ed25519 challenge-response, using the same
+followed by JSON (handshake messages at most 4 KiB, frames at most 1 MiB, 5 s to read a value once it has started,
+at most 100 concurrent connections; an authenticated connection may stay idle for 10 min). Each connection starts with a mutual Ed25519 challenge-response, using the same
 key the node signs its messages with:
 
 ```
@@ -114,9 +114,12 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
    registered in the node's zone;
 4. relays what `NodeRuntime` queued for other nodes over TCP, to every peer address given with
    `--peers` / `--dial` except the message's origin. The in-process router is switched off on a TCP node,
-   because it picks next hops by node ID, which TCP cannot address. Today each relayed message opens a
-   new authenticated connection (handshake, one frame, close), sent one destination at a time;
-   planned: one persistent authenticated connection per peer.
+   because it picks next hops by node ID, which TCP cannot address. Every configured peer is a relay
+   target from start-up, whether or not it is reachable yet. Each peer has one persistent authenticated
+   connection and its own send queue (1 024 frames), so frames to a peer stay in order, a slow or
+   unreachable peer delays only its own frames, and the receive loop never waits on the network. A
+   connection the peer closed is detected before the next write and re-established with a new
+   handshake; a frame that cannot be delivered is logged and dropped, and anti-entropy recovers it.
 
 Every 5 s the binary advances the pipeline round and compares the severities reported by verified zone
 members with their median (anchored at 3), treating deviations ≥ 2 as outliers unless 3f ≥ n. An outlier

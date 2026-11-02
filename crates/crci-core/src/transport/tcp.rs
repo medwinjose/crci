@@ -4,6 +4,7 @@ use rand::RngCore;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -43,6 +44,11 @@ pub const MAX_NODE_ID_LEN: usize = 64;
 const MAX_HANDSHAKE_BYTES: u32 = 4 * 1024;
 const MAX_FRAME_BYTES: u32 = 1024 * 1024;
 const IO_TIMEOUT: Duration = Duration::from_secs(5);
+/// How long the listener waits for the next frame on an authenticated connection. A
+/// frame that has started must still arrive within `IO_TIMEOUT`.
+const FRAME_IDLE_TIMEOUT: Duration = Duration::from_secs(600);
+/// Frames queued per peer for `TcpTransport::relay`; further frames are dropped and logged.
+const RELAY_QUEUE_LEN: usize = 1024;
 
 /// Handshake message 1, listener → dialer.
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -231,8 +237,31 @@ pub async fn read_json<T: DeserializeOwned>(
     stream: &mut TcpStream,
     max_len: u32,
 ) -> std::io::Result<T> {
+    read_json_after_idle(stream, max_len, IO_TIMEOUT).await
+}
+
+/// Like `read_json`, but waits up to `idle` for the first byte of the value; once it has
+/// started, the rest must arrive within `IO_TIMEOUT`.
+async fn read_json_after_idle<T: DeserializeOwned>(
+    stream: &mut TcpStream,
+    max_len: u32,
+    idle: Duration,
+) -> std::io::Result<T> {
+    let mut first = [0u8; 1];
+    match tokio::time::timeout(idle, stream.read_exact(&mut first)).await {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => return Err(e),
+        Err(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::TimedOut,
+                "read timeout",
+            ))
+        }
+    }
     let read = async {
-        let len = stream.read_u32().await?;
+        let mut rest = [0u8; 3];
+        stream.read_exact(&mut rest).await?;
+        let len = u32::from_be_bytes([first[0], rest[0], rest[1], rest[2]]);
         if len > max_len {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
@@ -365,6 +394,17 @@ impl DialedConnection {
         Ok(())
     }
 
+    /// True when the listener has closed the connection (or sent anything at all: it never
+    /// does after the handshake). Checked before a frame is written, because a write to a
+    /// connection the peer already closed can succeed locally and lose the frame.
+    pub fn is_closed(&self) -> bool {
+        let mut probe = [0u8; 1];
+        match self.stream.try_read(&mut probe) {
+            Ok(_) => true,
+            Err(e) => e.kind() != std::io::ErrorKind::WouldBlock,
+        }
+    }
+
     /// Close the connection.
     pub async fn close(mut self) {
         let _ = self.stream.shutdown().await;
@@ -448,6 +488,49 @@ async fn dialer_handshake(
     ))
 }
 
+/// One authenticated outgoing connection per peer address, reused for every frame and
+/// re-established when it has closed. Sends to different peers take different locks, so a
+/// slow or unreachable peer delays only its own frames.
+struct Outbound {
+    node_id: String,
+    key: SigningKey,
+    links: std::sync::Mutex<HashMap<String, Arc<tokio::sync::Mutex<Option<DialedConnection>>>>>,
+    queues: std::sync::Mutex<HashMap<String, mpsc::Sender<NetworkMessage>>>,
+    handshakes: Arc<AtomicU64>,
+}
+
+impl Outbound {
+    async fn send(&self, addr: &str, message: &NetworkMessage) -> Result<(), TransportError> {
+        let slot = {
+            let mut links = self.links.lock().unwrap_or_else(|e| e.into_inner());
+            links.entry(addr.to_string()).or_default().clone()
+        };
+        let mut link = slot.lock().await;
+        // A write that fails on an established connection is retried once on a new one.
+        let mut last_err = TransportError::ConnectionFailed("no attempt made".into());
+        for _ in 0..2 {
+            if link.as_ref().is_some_and(DialedConnection::is_closed) {
+                *link = None;
+            }
+            if link.is_none() {
+                self.handshakes.fetch_add(1, Ordering::SeqCst);
+                *link = Some(DialedConnection::connect(addr, &self.node_id, &self.key).await?);
+            }
+            let Some(conn) = link.as_mut() else {
+                continue;
+            };
+            match conn.send(message).await {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    *link = None;
+                    last_err = e;
+                }
+            }
+        }
+        Err(last_err)
+    }
+}
+
 pub struct TcpTransport {
     pub listen_addr: SocketAddr,
     pub rx: tokio::sync::Mutex<mpsc::Receiver<(NodeId, NetworkMessage)>>,
@@ -457,8 +540,11 @@ pub struct TcpTransport {
     /// Connections closed because the handshake failed or a frame's signature, counter or
     /// size was wrong. No frame from such a connection reaches `receive`.
     pub auth_failures: Arc<AtomicU64>,
+    /// Outgoing handshakes started by this transport (one per new connection).
+    pub dialed_handshakes: Arc<AtomicU64>,
     pub node_id: String,
     signing_key: SigningKey,
+    outbound: Arc<Outbound>,
     pub cancel_token: CancellationToken,
 }
 
@@ -569,6 +655,15 @@ impl TcpTransport {
             }
         });
 
+        let dialed_handshakes = Arc::new(AtomicU64::new(0));
+        let outbound = Arc::new(Outbound {
+            node_id: node_id.clone(),
+            key: signing_key.clone(),
+            links: std::sync::Mutex::new(HashMap::new()),
+            queues: std::sync::Mutex::new(HashMap::new()),
+            handshakes: dialed_handshakes.clone(),
+        });
+
         Ok(Self {
             listen_addr: actual_addr,
             rx: tokio::sync::Mutex::new(rx),
@@ -576,8 +671,10 @@ impl TcpTransport {
             rejected_count: rejected,
             active_connections: active,
             auth_failures,
+            dialed_handshakes,
             node_id,
             signing_key,
+            outbound,
             cancel_token,
         })
     }
@@ -585,6 +682,48 @@ impl TcpTransport {
     /// The public key this transport proves to its peers.
     pub fn public_key(&self) -> VerifyingKey {
         self.signing_key.verifying_key()
+    }
+
+    /// Queue `message` for `addr` without waiting. A task per peer sends the queue in
+    /// order over that peer's persistent connection, so a slow or unreachable peer delays
+    /// only its own frames. A frame that cannot be delivered is logged and dropped;
+    /// anti-entropy recovers it. Must be called inside a Tokio runtime.
+    pub fn relay(&self, addr: &str, message: NetworkMessage) -> Result<(), TransportError> {
+        let sender = {
+            let mut queues = self
+                .outbound
+                .queues
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            match queues.get(addr) {
+                Some(tx) => tx.clone(),
+                None => {
+                    let (tx, mut rx) = mpsc::channel::<NetworkMessage>(RELAY_QUEUE_LEN);
+                    let outbound = self.outbound.clone();
+                    let cancel = self.cancel_token.clone();
+                    let target = addr.to_string();
+                    tokio::spawn(async move {
+                        loop {
+                            let message = tokio::select! {
+                                m = rx.recv() => match m {
+                                    Some(m) => m,
+                                    None => break,
+                                },
+                                _ = cancel.cancelled() => break,
+                            };
+                            if let Err(e) = outbound.send(&target, &message).await {
+                                log::warn!("relay of '{}' to {} failed: {}", message.id, target, e);
+                            }
+                        }
+                    });
+                    queues.insert(addr.to_string(), tx.clone());
+                    tx
+                }
+            }
+        };
+        sender.try_send(message).map_err(|_| {
+            TransportError::ConnectionFailed(format!("relay queue for {} is full or closed", addr))
+        })
     }
 
     /// Open an authenticated connection to `addr` as this node.
@@ -674,7 +813,7 @@ async fn handle_connection(
     loop {
         // Shutdown immediately on any failure (ASYNC-013).
         let frame_res = tokio::select! {
-            res = read_json::<TcpFrame>(&mut stream, MAX_FRAME_BYTES) => res,
+            res = read_json_after_idle::<TcpFrame>(&mut stream, MAX_FRAME_BYTES, FRAME_IDLE_TIMEOUT) => res,
             _ = cancel_token.cancelled() => break,
         };
         let frame = match frame_res {
@@ -810,14 +949,7 @@ impl Transport for TcpTransport {
         let addr: SocketAddr = peer.parse().map_err(|_| {
             TransportError::ConnectionFailed(format!("Invalid SocketAddr: {}", peer))
         })?;
-        send_authenticated(
-            &addr.to_string(),
-            &self.node_id,
-            &self.signing_key,
-            std::slice::from_ref(message),
-        )
-        .await
-        .map(|_| ())
+        self.outbound.send(&addr.to_string(), message).await
     }
 
     async fn receive(&self) -> Result<(NodeId, NetworkMessage), TransportError> {

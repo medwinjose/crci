@@ -1359,10 +1359,13 @@ async fn run_node(
         merkle_head: Arc::new(std::sync::RwLock::new(([0; 32], 0))),
     });
 
+    // Every configured peer is a relay target from the start, whether or not it is up yet:
+    // the persistent connection to it is opened on the first relay and re-opened when it
+    // drops. Only a reachable peer joins the zone and the API peer list now.
     for peer in dial.clone() {
+        node.add_peer(&peer);
         match tokio::net::TcpStream::connect(&peer).await {
             Ok(_) => {
-                node.add_peer(&peer);
                 pipeline.register_bootstrap("zone-host", &peer);
                 add_api_peer(&api_state, &peer);
                 println!("Successfully dialed peer: {}", peer);
@@ -1544,8 +1547,8 @@ async fn run_node(
                 let Ok(out) = serde_json::from_slice::<runtime::WireMessage>(&bytes) else {
                     continue;
                 };
-                if let Err(e) = recv_tcp.send(&dest, &out).await {
-                    log::warn!("relay of '{}' to {} failed: {}", out.id, dest, e);
+                if let Err(e) = recv_tcp.relay(&dest, out.clone()) {
+                    log::warn!("relay of '{}' to {} dropped: {}", out.id, dest, e);
                 }
             }
         }

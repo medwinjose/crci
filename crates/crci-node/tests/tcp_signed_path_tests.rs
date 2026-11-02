@@ -394,3 +394,50 @@ fn late_node_catches_up_through_anti_entropy() {
         b_log
     );
 }
+
+/// A node started before its peer still relays to it once the peer is up: relay targets
+/// are the configured list, not the peers that answered at start-up.
+#[test]
+fn node_started_before_its_peer_relays_to_it_once_it_is_up() {
+    let downstream_addr = free_addr();
+    let relay = start_node("tcp-early", &["--peers", &downstream_addr]);
+
+    // The peer is not running yet.
+    send_signed(&relay.addr, "node-before");
+    std::thread::sleep(Duration::from_millis(500));
+
+    let mut downstream = Command::new(bin_path())
+        .args(["--listen", &downstream_addr, "--node-id", "tcp-late"])
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("failed to start downstream node");
+    let mut reader = BufReader::new(downstream.stdout.take().unwrap());
+    let mut line = String::new();
+    let start = Instant::now();
+    while start.elapsed() < Duration::from_secs(10) {
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) => break,
+            Ok(_) if line.contains("listening on") => break,
+            _ => {}
+        }
+    }
+
+    send_signed(&relay.addr, "node-after");
+    std::thread::sleep(Duration::from_millis(1000));
+    let _ = downstream.kill();
+    let _ = downstream.wait();
+    let mut log = String::new();
+    let _ = reader.read_to_string(&mut log);
+    let relay_log = relay.finish();
+
+    assert!(
+        log.contains("(origin node-after, via tcp-early#"),
+        "downstream log:
+{}
+relay log:
+{}",
+        log,
+        relay_log
+    );
+}
