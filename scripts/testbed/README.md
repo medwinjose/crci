@@ -23,6 +23,8 @@ Linux only, run as root. Tested in WSL2 (Ubuntu 26.04, kernel 6.6, iproute2 6.19
 | `analyze.py DIR` | Computes delivery ratio, dissemination latency (overall, per hop, for the downstream set), bans, eviction latency, honest false evictions, rate-limit drops, host load and link RTT, and checks the fidelity criteria. Writes `summary.json`, `latency.csv`, `bans.csv`. |
 | `report.py OUT` | Collects every run's `summary.json` into `results.csv`. |
 | `run_all.sh OUT [BIN]` | The full experiment set (see the header of the script). |
+| `run_netem.sh OUT [BIN] [SEEDS] [SIZES]` | The impairment set: one-way delay 40 ms ± 15 ms (uniform) on every egress, with loss 0/5/10/15/20 %, reordering 5/10/15 % and loss 10 % + reordering 10 %; rgg and mesh, N = 20/50/100, seeds 1–3. Resumable. |
+| `netem_table.py OUT` | One CSV per condition, `summary.csv` (mean over seeds) and `table.md` under `OUT/netem/`. |
 
 ```bash
 make testbed OUT=/tmp/crci-testbed
@@ -62,7 +64,7 @@ criteria were fixed before the first run; the listening and backlog criteria wer
   but do not remove, that effect. The median latency above the configured delay per hop grows with N
   (about 1 ms up to N = 100, 6.8 ms at N = 500 in the recorded runs), and protocol cost cannot be
   separated from host contention.
-- Fixed delay only: no loss, jitter, reordering or link failures yet. One seed per configuration so far.
+- `run_all.sh` uses a fixed delay; `run_netem.sh` adds loss, jitter and reordering (below). No link failures yet.
 - The overlay runs on one shared link layer; nodes are kept to their neighbours by configuration, not by
   filtering.
 - `crci-node` logs relay failures through the `log` crate, which the binary does not print, so failed relays

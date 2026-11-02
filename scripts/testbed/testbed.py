@@ -58,6 +58,12 @@ def cleanup():
         if name.startswith(NS) and name[len(NS):].isdigit():
             sh("ip", "netns", "del", name, check=False)
     sh("ip", "link", "del", BRIDGE, check=False)
+    # A veth whose namespace is already gone can survive; it would block the next run.
+    links = subprocess.run(["ip", "-o", "link"], capture_output=True, text=True).stdout
+    for line in links.splitlines():
+        name = line.split(":")[1].strip().split("@")[0] if ":" in line else ""
+        if name.startswith("vh") and name[2:].isdigit():
+            sh("ip", "link", "del", name, check=False)
 
 
 def batch(cmd, lines):
@@ -65,7 +71,20 @@ def batch(cmd, lines):
                    stdout=subprocess.DEVNULL)
 
 
-def setup_network(n, delay_ms, nbrs):
+def netem_args(delay_ms, jitter_ms, loss_pct, reorder_pct):
+    """tc netem options for one node's egress. Jitter is uniform in +-jitter_ms around the delay;
+    reordering sends that percentage of packets without delay (netem needs a delay for it)."""
+    args = ["delay", f"{delay_ms}ms"]
+    if jitter_ms:
+        args.append(f"{jitter_ms}ms")
+    if loss_pct:
+        args += ["loss", f"{loss_pct}%"]
+    if reorder_pct:
+        args += ["reorder", f"{reorder_pct}%"]
+    return args + ["limit", "100000"]
+
+
+def setup_network(n, netem, nbrs):
     sh("ip", "link", "add", BRIDGE, "type", "bridge")
     sh("ip", "link", "set", BRIDGE, "up")
     for i in range(n):
@@ -78,8 +97,7 @@ def setup_network(n, delay_ms, nbrs):
         sh("ip", "-n", ns, "link", "set", "eth0", "up")
         sh("ip", "-n", ns, "link", "set", "lo", "up")
         # One-way delay on the node's egress: every overlay hop crosses exactly one.
-        sh("tc", "-n", ns, "qdisc", "add", "dev", "eth0", "root", "netem",
-           "delay", f"{delay_ms}ms", "limit", "100000")
+        sh("tc", "-n", ns, "qdisc", "add", "dev", "eth0", "root", "netem", *netem)
     # Static neighbour and bridge entries: no ARP broadcast or unknown-unicast flooding, which
     # at start-up (every node resolving its neighbours at once) overflows the kernel backlog.
     for i in range(n):
@@ -153,6 +171,10 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--bin", required=True)
     ap.add_argument("--delay-ms", type=int, default=10)
+    ap.add_argument("--jitter-ms", type=int, default=0, help="uniform +- jitter around the delay")
+    ap.add_argument("--loss", type=float, default=0, help="packet loss, percent per egress")
+    ap.add_argument("--reorder", type=float, default=0,
+                    help="percent of packets sent without delay (reordered)")
     ap.add_argument("--window", type=int, default=60)
     ap.add_argument("--source-rate", type=float, default=0.5)
     ap.add_argument("--bg-rate", type=float, default=0.5)
@@ -190,7 +212,7 @@ def main():
     with open(BACKLOG, "w") as f:
         f.write(str(args.backlog))
     t_setup = time.time()
-    setup_network(n, args.delay_ms, nbrs)
+    setup_network(n, netem_args(args.delay_ms, args.jitter_ms, args.loss, args.reorder), nbrs)
     setup_s = time.time() - t_setup
     print(f"network: {n} namespaces up in {setup_s:.1f} s", flush=True)
 
@@ -288,7 +310,7 @@ def main():
     meta = {
         "topology": {k: topo[k] for k in ("kind", "seed", "params", "metrics", "roles")},
         "config": {k: getattr(args, k) for k in (
-            "delay_ms", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies",
+            "delay_ms", "jitter_ms", "loss", "reorder", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies",
             "settle", "drain", "pings", "worker_threads", "backlog")},
         "t0_ms": int(t0 * 1000),
         "fault_ms": None if args.no_fault else int((t0 + args.fault_at) * 1000),

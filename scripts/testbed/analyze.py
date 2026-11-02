@@ -7,7 +7,10 @@ window (persistent connections are opened by the first messages), "pre"
 before the fault starts, "post" after every neighbour of the relay B has
 banned it; messages in between are reported as "during".
 
-Fidelity criteria: every node listening at T0, mean host CPU busy < 70 %
+With impairments the configured round trip is the distribution of two egress delays (uniform in
+delay +- jitter, zero for the reordered share), computed by Monte Carlo; the RTT median must lie within
++-10 % and the p95 within +25 % of that distribution's median and p95. Packet loss does not change the
+configured RTT of the packets that arrive. Fidelity criteria: every node listening at T0, mean host CPU busy < 70 %
 over the window, no swap-in or swap-out and no kernel backlog drops during
 the window, and ICMP RTT on sampled overlay links with median <= 1.10x and
 p95 <= 1.25x the configured round trip (2 x netem delay). The CPU, swap and
@@ -20,6 +23,7 @@ Usage: analyze.py OUT
 
 import csv
 import json
+import random
 import re
 import sys
 from collections import defaultdict, deque
@@ -53,6 +57,20 @@ def stats(values):
     }
 
 
+def expected_rtt(delay, jitter, reorder, seed=1, samples=200000):
+    """Median and p95 of the configured round trip: two egress delays, each uniform in
+    delay +- jitter, or zero for the reordered share of packets (netem reorder)."""
+    rng = random.Random(seed)
+
+    def one():
+        if reorder and rng.random() < reorder / 100:
+            return 0.0
+        return rng.uniform(delay - jitter, delay + jitter) if jitter else float(delay)
+
+    rtts = [one() + one() for _ in range(samples)]
+    return pct(rtts, 50), pct(rtts, 95)
+
+
 def bfs(adj, src):
     dist = {src: 0}
     q = deque([src])
@@ -75,7 +93,11 @@ def main():
     name = lambda i: f"n{i:03d}"
     src, byz = name(roles["source"]), name(roles["byzantine"])
     downstream = {name(x) for x in roles["downstream"]}
-    delay = meta["config"]["delay_ms"]
+    cfg = meta["config"]
+    delay = cfg["delay_ms"]
+    jitter, loss, reorder = cfg.get("jitter_ms", 0), cfg.get("loss", 0), cfg.get("reorder", 0)
+    # Mean one-way delay per hop (the reordered share skips the delay).
+    mean_hop = delay * (1 - reorder / 100)
     t0, end = meta["t0_ms"], meta["end_ms"]
 
     # Topology hop counts from every node (for latency per hop).
@@ -169,7 +191,7 @@ def main():
     for mid, origin, x, h, l, p, is_down in rows:
         lat[p].append(l)
         if h:
-            per_hop_excess.append(round((l - h * delay) / h, 2))
+            per_hop_excess.append(round((l - h * mean_hop) / h, 2))
         if is_down:
             down_lat[p].append(l)
     via_byz = defaultdict(int)
@@ -198,14 +220,15 @@ def main():
         with open(f"{out}/ping/{a}-{b}.txt") as f:
             rtts += [float(x) for x in RTT.findall(f.read())]
     rtt = stats(rtts)
-    configured_rtt = 2 * delay
+    exp_med, exp_p95 = expected_rtt(delay, jitter, reorder)
     fidelity = {
         "all_nodes_listening_at_t0": meta["listening_at_t0"] == n,
         "cpu_mean_below_70": bool(cpu) and sum(cpu) / len(cpu) < 70,
         "no_kernel_backlog_drops": kernel_drops == 0,
         "no_swap_io": swap_io == 0,
-        "rtt_median_within_10pct": rtt.get("median") is not None and rtt["median"] <= 1.10 * configured_rtt,
-        "rtt_p95_within_25pct": rtt.get("p95") is not None and rtt["p95"] <= 1.25 * configured_rtt,
+        "rtt_median_within_10pct": rtt.get("median") is not None
+        and 0.90 * exp_med <= rtt["median"] <= 1.10 * exp_med,
+        "rtt_p95_within_25pct": rtt.get("p95") is not None and rtt["p95"] <= 1.25 * exp_p95,
     }
     fidelity["pass"] = all(fidelity.values())
 
@@ -229,6 +252,8 @@ def main():
         "byzantine_banned_by": f"{len(byz_bans)}/{len(byz_neighbours)}",
         "eviction_latency_ms": stats([t - fault_ms for t in byz_bans.values()]) if fault_ms else None,
         "honest_false_evictions": len(false_evictions),
+        "honest_nodes_banned_by_anyone": len({b for _, b, _ in false_evictions}),
+        "honest_nodes": len(honest),
         "readmissions": len(readmits),
         "rate_limit_drops": dict(rate_drops),
         "log_counters": dict(counters),
@@ -242,7 +267,7 @@ def main():
         "rss_kib_per_node": stats(rss),
         "rss_total_mib": round(sum(rss) / 1024, 1),
         "ping_rtt_ms": rtt,
-        "configured_rtt_ms": configured_rtt,
+        "configured_rtt_ms": {"median": exp_med, "p95": exp_p95},
         "fidelity": fidelity,
     }
     with open(f"{out}/summary.json", "w") as f:
