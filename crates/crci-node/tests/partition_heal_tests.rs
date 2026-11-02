@@ -1,13 +1,15 @@
 //! Partition heal with anti-entropy (digest exchange).
 //!
 //! After a partition, each side asks the other for what it missed with a signed digest.
-//! Answers never strike an honest node, including an answer that crosses with the same
-//! message relayed as ordinary gossip; unsolicited duplicates still strike.
+//! Answers never strike an honest node, including an answer that repeats the same message
+//! relayed as ordinary gossip, however late it arrives; unsolicited duplicates still strike.
 
 use crci_core::identity::Identity;
 use crci_core::mesh::MeshSimulator;
 use crci_core::message::{Message, Signal, Visibility};
-use crci_core::runtime::{NodeRuntime, WireMessage, SYNC_MAX_BATCH, SYNC_REQUEST_TYPE};
+use crci_core::runtime::{
+    NodeRuntime, WireMessage, SYNC_MAX_BATCH, SYNC_REQUEST_TYPE, SYNC_SESSION_TTL,
+};
 use crci_core::transport::SharedInbox;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -208,9 +210,79 @@ fn answer_crossing_with_gossip_is_not_struck() {
     }
 }
 
+/// Under packet loss a sync request can reach the asked peer seconds late, after the
+/// peer has already relayed the messages the (now stale) digest lacks as ordinary gossip.
+/// Its answer then repeats them, long after the request was sent. The answer names the
+/// request it answers, so it is still not struck.
+#[test]
+fn late_answer_to_a_stale_digest_is_not_struck() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 3);
+
+    pair.b.request_sync("a"); // digest lists nothing from a
+    let request = pair.take("a");
+    for wire in &sent {
+        pair.inject("a", "b", wire); // gossip overtakes the delayed request
+    }
+    pair.b.process_inbox();
+
+    pair.b.sybil_guard.advance_time(Duration::from_secs(15));
+    pair.requeue("a", &request); // the request finally arrives
+    pair.a.process_inbox();
+    let answer = pair.take("b");
+    assert_eq!(answer.len(), 3);
+    pair.requeue("b", &answer);
+    pair.b.process_inbox();
+
+    assert_eq!(pair.b.byzantine_events, 0);
+    assert_eq!(pair.b.sync_excused_duplicates, 3);
+    assert!(!pair.b.sybil_guard.is_banned(&"a".to_string()));
+}
+
+/// The answer tag belongs to one hop: a message received as an answer is relayed and
+/// kept for later answers without it.
+#[test]
+fn answer_tag_is_not_relayed() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    pair.b.add_peer("c");
+    pair.b.use_router = false;
+    let request = pair.b.request_sync("a");
+    pair.take("a");
+    pair.inject("a", "b", &answer(&sent[0], &request));
+    pair.b.process_inbox();
+    let relayed = pair.take("c");
+    assert!(relayed.iter().any(|(_, w)| w.id == sent[0].id));
+    assert!(relayed.iter().all(|(_, w)| w.answers_sync.is_none()));
+    assert!(pair.b.recent_messages["a"]
+        .values()
+        .all(|w| w.answers_sync.is_none()));
+}
+
+/// Only a frame that answers a request is excused. A plain repeat from the asked peer
+/// inside the session is a replay: an open session is no licence to repeat gossip.
+#[test]
+fn untagged_repeat_inside_a_session_strikes() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    pair.b.request_sync("a"); // digest lists nothing from a
+    pair.inject("a", "b", &sent[0]);
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.sync_excused_duplicates, 0);
+    assert_eq!(pair.b.byzantine_events, 1);
+}
+
+/// `wire` as `from` sends it in answer to sync request `request`.
+fn answer(wire: &WireMessage, request: &str) -> WireMessage {
+    let mut copy = wire.clone();
+    copy.answers_sync = Some(request.to_string());
+    copy
+}
+
 /// Unsolicited duplicates during a heal still strike: a repeat of a message the digest
 /// listed as held, a second repeat of an excused message, and a repeat from a peer that
-/// was not asked.
+/// was not asked, even when tagged as answers.
 #[test]
 fn unsolicited_duplicates_during_heal_still_strike() {
     let mut pair = Pair::new();
@@ -218,16 +290,18 @@ fn unsolicited_duplicates_during_heal_still_strike() {
 
     pair.inject("a", "b", &sent[0]);
     pair.b.process_inbox(); // b holds message 1 from a
-    pair.b.request_sync("a"); // digest lists message 1
+    let request = pair.b.request_sync("a"); // digest lists message 1
 
-    // Message 1 was listed as held: repeating it is a replay.
-    pair.inject("a", "b", &sent[0]);
+    // Message 1 was listed as held: repeating it is a replay, tag or not.
+    pair.inject("a", "b", &answer(&sent[0], &request));
     pair.b.process_inbox();
     assert_eq!(pair.b.byzantine_events, 1);
 
-    // Message 2: first copy accepted, the crossing repeat excused once, the next struck.
-    for _ in 0..3 {
-        pair.inject("a", "b", &sent[1]);
+    // Message 2: first copy accepted, one tagged repeat excused, the next struck.
+    pair.inject("a", "b", &sent[1]);
+    pair.b.process_inbox();
+    for _ in 0..2 {
+        pair.inject("a", "b", &answer(&sent[1], &request));
         pair.b.process_inbox();
     }
     assert_eq!(pair.b.sync_excused_duplicates, 1);
@@ -236,7 +310,7 @@ fn unsolicited_duplicates_during_heal_still_strike() {
     // A peer that was not asked gets no excuse.
     pair.inject("c", "b", &sent[1]);
     pair.b.process_inbox();
-    pair.inject("c", "b", &sent[1]);
+    pair.inject("c", "b", &answer(&sent[1], &request));
     pair.b.process_inbox();
     assert_eq!(pair.b.byzantine_events, 3);
 }
@@ -246,29 +320,30 @@ fn unsolicited_duplicates_during_heal_still_strike() {
 fn excuse_expires_with_the_session() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    pair.b.request_sync("a");
+    let request = pair.b.request_sync("a");
     pair.inject("a", "b", &sent[0]);
     pair.b.process_inbox();
-    pair.b.sybil_guard.advance_time(Duration::from_secs(31));
-    pair.inject("a", "b", &sent[0]);
+    pair.b
+        .sybil_guard
+        .advance_time(SYNC_SESSION_TTL + Duration::from_secs(1));
+    pair.inject("a", "b", &answer(&sent[0], &request));
     pair.b.process_inbox();
     assert_eq!(pair.b.sync_excused_duplicates, 0);
     assert_eq!(pair.b.byzantine_events, 1);
 }
 
-/// A session excuses at most one answer batch: a peer cannot replay every message it relays
-/// once for free while sessions are renewed by periodic sync requests.
+/// A request excuses at most one answer batch.
 #[test]
-fn a_session_excuses_at_most_one_answer_batch() {
+fn a_request_excuses_at_most_one_answer_batch() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 20);
-    pair.b.request_sync("a"); // digest lists nothing from a
+    let request = pair.b.request_sync("a"); // digest lists nothing from a
 
-    // Every message arrives twice from a, inside the session; the clock advances so the
+    // Every message arrives as gossip and again as an answer; the clock advances so the
     // token bucket never drops a frame.
     for wire in &sent {
         pair.inject("a", "b", wire);
-        pair.inject("a", "b", wire);
+        pair.inject("a", "b", &answer(wire, &request));
         pair.b.process_inbox();
         pair.b.sybil_guard.advance_time(Duration::from_millis(400));
     }
@@ -281,19 +356,19 @@ fn a_session_excuses_at_most_one_answer_batch() {
     assert!(pair.b.sybil_guard.is_banned(&"a".to_string()));
 }
 
-/// The excuse covers only the time an answer needs to arrive, not the whole sync interval.
+/// The tag must name a request this node sent to the sender: a request sent to another
+/// peer, or an invented one, excuses nothing.
 #[test]
-fn excuse_window_is_shorter_than_the_sync_interval() {
+fn answer_tag_must_name_a_request_to_the_sender() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    pair.b.request_sync("a");
+    let to_c = pair.b.request_sync("c");
     pair.inject("a", "b", &sent[0]);
-    pair.b.process_inbox();
-    pair.b.sybil_guard.advance_time(Duration::from_secs(11));
-    pair.inject("a", "b", &sent[0]);
+    pair.inject("a", "b", &answer(&sent[0], &to_c));
+    pair.inject("a", "b", &answer(&sent[0], "sync-b-999"));
     pair.b.process_inbox();
     assert_eq!(pair.b.sync_excused_duplicates, 0);
-    assert_eq!(pair.b.byzantine_events, 1);
+    assert_eq!(pair.b.byzantine_events, 2);
 }
 
 /// A request is answered only when it comes from its author; a copy relayed by another

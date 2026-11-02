@@ -31,9 +31,14 @@ git history; `git log` is the complete record.
   placeholder divergence alerts.
 
 ### Fixed
-- A sync session now lasts 10 s and excuses at most one answer batch (16 messages). Before, the 30 s
-  session was renewed by the 30 s sync loop, so a neighbour could repeat every message it relayed once
-  without a strike.
+- Honest neighbours are no longer banned for late sync answers under packet loss. A sync answer is tagged
+  with the request it answers (covered by the TCP frame signature, removed on receipt), and only a tagged
+  answer to a request this node sent to that neighbour, for a message the request did not list as held, is
+  excused, once, within 120 s. Before, a request delayed by retransmissions was answered after the
+  requester's 10 s session had expired, and the answer's repeats of already-relayed messages were struck
+  as replays (measured at 10–20 % loss); and before that, a 30 s session renewed by the 30 s sync loop
+  let a neighbour repeat every message it relayed once without a strike. Untagged repeats are no longer
+  excused at all.
 - `crci-node` no longer delays start-up while probing its peers: the probes run concurrently with a 2 s
   timeout. Before, each unreachable peer was probed in turn (about 21 s each on Windows) before the node
   processed any traffic.

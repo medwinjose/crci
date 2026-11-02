@@ -140,21 +140,28 @@ per origin, the highest accepted sequence number and every sequence number held 
 (at most 256 origins), plus an optional `reply_to` address. The digest is covered by the requester's
 signature. The neighbour answers only if the request came straight from its author (a relayed copy is
 ignored, so a captured request cannot be used to flood its author), at most once per 5 s per requester
-and about once per second in total (burst 4), with up to 16 of its recent messages that the digest lacks, oldest first, as ordinary signed messages.
-Requests are never delivered, stored or forwarded.
+and about once per second in total (burst 4), with up to 16 of its recent messages that the digest lacks,
+oldest first, as ordinary signed messages, each tagged with the request's ID (`answers_sync`). The tag is
+per hop: it is not covered by the origin's signature (each hop sets its own) but by the TCP frame
+signature, so only the answering neighbour can set it, and it is removed on receipt and never stored or
+relayed. Requests are never delivered, stored or forwarded.
 
-The requester holds a 10 s sync session with the neighbour it asked. During the session a duplicate from
-that neighbour of a message the digest did **not** list as held is dropped without a strike, once per
-message and for at most 16 messages (one answer batch): it can be an answer that crossed with the same
-message relayed as ordinary gossip. A duplicate of a message the digest listed as held, a second
-duplicate, any duplicate beyond the first 16, and duplicates from any other peer follow the normal rules
-and strike. The session is short and bounded so that periodic sync requests do not let a neighbour repeat
-every message it relays once without a strike.
+An answer often repeats a message the same neighbour already relayed as gossip: the digest is a snapshot,
+and under packet loss the request itself can arrive seconds late (measured: honest neighbours were banned
+for such answers at 10–20 % loss before the tag existed). The requester keeps a sync session per request
+(120 s, at most 4 per neighbour). A repeat from the asked neighbour is dropped without a strike only if it
+is tagged with that request, the request's digest did **not** list the message as held, and it is the
+first such repeat of that message under the request, for at most 16 messages per request. An untagged
+repeat, a repeat of a message the digest listed as held, a second repeat, any repeat beyond the first 16,
+and repeats from any other peer follow the normal rules and strike. An open session therefore excuses only
+answers, never ordinary gossip.
 
 In-process, `MeshSimulator::heal(a, b)` restores a link and has both ends request. A TCP node requests
 from every `--peers` / `--dial` address 0.5 s after start and every 30 s, and retries an unreachable peer
 every 5 s, so a healed link is re-synchronised within about 5 s. The session is opened after the
-listener's identity has been authenticated and before the request frame is sent. `reply_to` is the
+listener's identity has been authenticated and before the request frame is sent. Answers travel on the
+same ordered connection as the neighbour's gossip, so an answer never arrives before the neighbour's
+own gossip copy of the same message. `reply_to` is the
 node's listen address, so it must be an address the peers can reach: a node listening on `0.0.0.0` or
 `::` prints a warning and does not request sync.
 

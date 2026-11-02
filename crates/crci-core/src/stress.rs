@@ -178,6 +178,7 @@ pub fn test_signature_forgery() {
         signature_bytes: Vec::new(),
         seq: 1,
         sync: None,
+        answers_sync: None,
     };
     forged.sign_with(&attacker_identity);
 

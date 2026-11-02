@@ -18,25 +18,28 @@ pub const MIN_TRUSTED_REP: f64 = 0.41;
 // and every sequence number it holds inside the window. The neighbour answers with the
 // messages it keeps (the last W per origin) that the digest lacks, oldest first.
 //
-// The requester then holds a sync session with that neighbour: a duplicate from it of a
-// message the digest did *not* list as held may be an answer that crossed with ordinary
-// gossip, so it is dropped without a strike, once per message, while the session lasts.
-// A session lasts only as long as an answer needs to arrive (`SYNC_SESSION_TTL`) and
-// excuses at most one answer batch (`SYNC_MAX_BATCH` messages): an answer cannot carry
-// more, and periodic sync requests must not turn into a standing licence to replay every
-// relayed message once.
-// Duplicates of messages the digest listed, and duplicates from any other peer, are
-// judged by the normal rules. A request is answered only when it comes straight from its
-// author (a relayed copy is ignored), at most once per `SYNC_COOLDOWN` per requester.
+// Every answer names the request it answers (`answers_sync`, a per-hop tag covered by the
+// TCP frame signature, not by the origin's). An answer often repeats a message the same
+// neighbour already relayed as gossip: the digest is a snapshot, and under packet loss the
+// request can arrive seconds late. The requester therefore keeps a sync session per
+// request and drops such a repeat without a strike if it is tagged with a request this
+// node sent to that neighbour, the request's digest did *not* list the message as held,
+// and the message was not excused under that request before; at most `SYNC_MAX_BATCH`
+// per request (an answer cannot carry more). A repeat without the tag is never excused,
+// so an open session is no licence to replay gossip. Sessions last `SYNC_SESSION_TTL`.
+// Other duplicates are judged by the normal rules. A request is answered only when it
+// comes straight from its author (a relayed copy is ignored), at most once per
+// `SYNC_COOLDOWN` per requester.
 
 /// Most messages one sync answer carries; below the token-bucket burst (20).
 pub const SYNC_MAX_BATCH: usize = 16;
 /// A requester answered less than this long ago gets no new answer.
 pub const SYNC_COOLDOWN: Duration = Duration::from_secs(5);
-/// How long a requester treats duplicates from the asked peer as possible answers. An
-/// answer is sent as soon as the request arrives, so this only has to cover the round trip
-/// and queueing; it is kept well below the TCP node's 30 s sync interval.
-pub const SYNC_SESSION_TTL: Duration = Duration::from_secs(10);
+/// How long a request's answers are excused. Only frames tagged as answers benefit, so this
+/// covers a request delayed by TCP retransmissions under heavy loss, not just a round trip.
+pub const SYNC_SESSION_TTL: Duration = Duration::from_secs(120);
+/// Open sessions kept per asked peer (the newest); bounds the digests held in memory.
+pub const SYNC_SESSIONS_PER_PEER: usize = 4;
 /// Most origins one digest lists.
 pub const SYNC_MAX_ORIGINS: usize = 256;
 /// Most origins whose recent messages a node keeps for answering sync requests.
@@ -52,6 +55,8 @@ const SYNC_ANSWERED_MAX: usize = 1024;
 
 /// A sync request this node sent and is waiting on.
 pub struct SyncSession {
+    /// The peer that was asked; its answers arrive from this identity.
+    pub peer: String,
     pub opened_at: Instant,
     /// (origin, seq) pairs the request declared as already held.
     pub held: HashSet<(String, u64)>,
@@ -96,6 +101,11 @@ pub struct WireMessage {
     /// Present only on a `sync_request` (anti-entropy): what the requester already holds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sync: Option<SyncDigest>,
+    /// Set only by the neighbour that sends this copy as an answer to a sync request:
+    /// the request's ID. Per hop, so not covered by the origin's signature (on TCP the
+    /// frame signature covers it); removed on receipt, never stored or relayed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub answers_sync: Option<String>,
 }
 
 /// Message type of an anti-entropy request. It is answered by its direct recipient and
@@ -231,6 +241,7 @@ impl WireMessage {
             signature_bytes: Vec::new(),
             seq: msg.seq,
             sync: None,
+            answers_sync: None,
         };
         wire.sign_with(identity);
         wire
@@ -329,7 +340,7 @@ pub struct NodeRuntime {
     pub metrics: CrciMetrics,
     /// The last `window_size` accepted messages per origin, kept to answer sync requests.
     pub recent_messages: HashMap<String, BTreeMap<u64, WireMessage>>,
-    /// Open sync sessions, keyed by the peer that was asked.
+    /// Open sync sessions, keyed by request ID.
     pub sync_sessions: HashMap<String, SyncSession>,
     /// When each requester was last answered.
     pub sync_answered: HashMap<String, Instant>,
@@ -455,35 +466,62 @@ impl NodeRuntime {
             .flat_map(|d| d.origins.iter())
             .flat_map(|o| o.held.iter().map(move |seq| (o.origin.clone(), *seq)))
             .collect();
+        let now = self.sybil_guard.now();
+        self.sync_sessions
+            .retain(|_, s| now.saturating_duration_since(s.opened_at) <= SYNC_SESSION_TTL);
+        let mut to_peer: Vec<(Instant, String)> = self
+            .sync_sessions
+            .iter()
+            .filter(|(_, s)| s.peer == peer)
+            .map(|(id, s)| (s.opened_at, id.clone()))
+            .collect();
+        to_peer.sort();
+        let excess = (to_peer.len() + 1).saturating_sub(SYNC_SESSIONS_PER_PEER);
+        for (_, id) in to_peer.into_iter().take(excess) {
+            self.sync_sessions.remove(&id);
+        }
         self.sync_sessions.insert(
-            peer.to_string(),
+            request.id.clone(),
             SyncSession {
-                opened_at: self.sybil_guard.now(),
+                peer: peer.to_string(),
+                opened_at: now,
                 held,
                 exempted: HashSet::new(),
             },
         );
     }
 
-    /// Ask in-process peer `peer` for the messages this node is missing.
-    pub fn request_sync(&mut self, peer: &str) {
+    /// Ask in-process peer `peer` for the messages this node is missing. Returns the
+    /// request's ID.
+    pub fn request_sync(&mut self, peer: &str) -> String {
         let request = self.build_sync_request(None);
         if let Ok(payload) = serde_json::to_vec(&request) {
             self.transport.send(peer, &payload);
         }
         self.open_sync_session(peer, &request);
+        request.id
     }
 
-    /// Whether a same-sender duplicate of (`origin`, `seq`) from `sender` is excused as a
-    /// possible sync answer (at most once per message, and at most `SYNC_MAX_BATCH`
-    /// messages, per session).
-    fn excused_as_sync_answer(&mut self, sender: &str, origin: &str, seq: u64) -> bool {
+    /// Whether a same-sender duplicate of (`origin`, `seq`) from `sender`, tagged as an
+    /// answer to request `answers`, is excused (at most once per message, and at most
+    /// `SYNC_MAX_BATCH` messages, per request).
+    fn excused_as_sync_answer(
+        &mut self,
+        sender: &str,
+        answers: Option<&str>,
+        origin: &str,
+        seq: u64,
+    ) -> bool {
         let now = self.sybil_guard.now();
-        let Some(session) = self.sync_sessions.get_mut(sender) else {
+        let Some(request_id) = answers else {
             return false;
         };
-        if now.saturating_duration_since(session.opened_at) > SYNC_SESSION_TTL {
-            self.sync_sessions.remove(sender);
+        let Some(session) = self.sync_sessions.get_mut(request_id) else {
+            return false;
+        };
+        if session.peer != sender
+            || now.saturating_duration_since(session.opened_at) > SYNC_SESSION_TTL
+        {
             return false;
         }
         let key = (origin.to_string(), seq);
@@ -565,7 +603,9 @@ impl NodeRuntime {
                     Some((seq_max, held)) => *seq + window >= *seq_max && !held.contains(seq),
                 };
                 if wanted {
-                    if let Ok(payload) = serde_json::to_vec(wire) {
+                    let mut answer = wire.clone();
+                    answer.answers_sync = Some(request.id.clone());
+                    if let Ok(payload) = serde_json::to_vec(&answer) {
                         batch.push(payload);
                     }
                     if batch.len() >= SYNC_MAX_BATCH {
@@ -757,13 +797,15 @@ impl NodeRuntime {
             inbox.remove(&self.id).unwrap_or_default()
         };
         for (sender_id, raw) in messages {
-            let wire: WireMessage = match serde_json::from_slice(&raw) {
+            let mut wire: WireMessage = match serde_json::from_slice(&raw) {
                 Ok(w) => w,
                 Err(_) => {
                     println!("  [{}] received malformed bytes — dropped", self.id);
                     continue;
                 }
             };
+            // The answer tag belongs to this hop only: it is never stored or relayed.
+            let answers = wire.answers_sync.take();
 
             // Sybil admission check
             match self.sybil_guard.check(&sender_id) {
@@ -860,7 +902,12 @@ impl NodeRuntime {
                     }
                     // A message this node asked the sender for may cross with the same
                     // message relayed as ordinary gossip: drop, no strike (once).
-                    if self.excused_as_sync_answer(&sender_id, &wire.origin, wire.seq) {
+                    if self.excused_as_sync_answer(
+                        &sender_id,
+                        answers.as_deref(),
+                        &wire.origin,
+                        wire.seq,
+                    ) {
                         println!(
                             "  🔄 [{}] repeat of '{}' from '{}' answers a sync request — dropped, no strike",
                             self.id, wire.id, sender_id
@@ -926,7 +973,12 @@ impl NodeRuntime {
                 match &verdict {
                     // Only a repeat from the same transport peer inside the window is a strike.
                     crate::replay::ReplayVerdict::Replayed { received_seq } => {
-                        if self.excused_as_sync_answer(&sender_id, &wire.origin, wire.seq) {
+                        if self.excused_as_sync_answer(
+                            &sender_id,
+                            answers.as_deref(),
+                            &wire.origin,
+                            wire.seq,
+                        ) {
                             println!(
                                 "  🔄 [{}] seq {} of '{}' again from '{}' answers a sync request — dropped, no strike",
                                 self.id, received_seq, wire.origin, sender_id

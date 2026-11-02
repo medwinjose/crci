@@ -35,7 +35,7 @@ use tokio_util::sync::CancellationToken;
 /// Domain tag for handshake signatures.
 pub const HANDSHAKE_DOMAIN: &[u8] = b"CRCI-TCP-HANDSHAKE-v1\0";
 /// Domain tag for frame signatures.
-pub const FRAME_DOMAIN: &[u8] = b"CRCI-TCP-FRAME-v1\0";
+pub const FRAME_DOMAIN: &[u8] = b"CRCI-TCP-FRAME-v2\0";
 /// Length of each side's handshake nonce, in bytes.
 pub const NONCE_LEN: usize = 32;
 /// Longest node ID accepted in a handshake (same limit as message origins).
@@ -168,13 +168,21 @@ pub fn session_id(transcript: &[u8]) -> [u8; 32] {
 }
 
 /// Bytes the dialer signs for frame `counter`: the domain tag, the session, the counter
-/// and the whole message (every signed field and the origin's signature).
+/// and the whole message (every signed field, the origin's signature and the per-hop
+/// sync-answer tag, which only the sending neighbour can vouch for).
 pub fn frame_signing_bytes(session: &[u8; 32], counter: u64, message: &NetworkMessage) -> Vec<u8> {
     let mut out = FRAME_DOMAIN.to_vec();
     out.extend_from_slice(session);
     out.extend_from_slice(&counter.to_be_bytes());
     put_bytes(&mut out, &message.signing_bytes());
     put_bytes(&mut out, &message.signature_bytes);
+    match &message.answers_sync {
+        None => out.push(0),
+        Some(request) => {
+            out.push(1);
+            put_bytes(&mut out, request.as_bytes());
+        }
+    }
     out
 }
 

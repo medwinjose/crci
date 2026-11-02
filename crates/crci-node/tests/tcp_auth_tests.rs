@@ -230,6 +230,36 @@ async fn altered_frame_is_rejected_and_never_attributed_to_the_dialer() {
     assert_eq!(receiver.auth_failures.load(Ordering::SeqCst), 1);
 }
 
+/// The sync-answer tag is vouched for by the neighbour, not the origin: the frame signature
+/// covers it, so a party on the path cannot add one (or alter one) to get a replay excused.
+#[tokio::test]
+async fn answer_tag_is_covered_by_the_frame_signature() {
+    let receiver = listener("receiver").await;
+    let dialer = Identity::new("dialer");
+    let (mut stream, session) = manual_handshake(receiver.listen_addr, &dialer, "dialer").await;
+
+    let mut tagged = signed(&dialer, "d-1", "dialer", 1);
+    tagged.answers_sync = Some("sync-receiver-1".to_string());
+    let intact = sign_frame(&dialer.signing_key, &session, 0, &tagged);
+    write_json(&mut stream, &intact).await.unwrap();
+    let delivered = receive_n(&receiver, 1).await;
+    assert_eq!(
+        delivered[0].1.answers_sync.as_deref(),
+        Some("sync-receiver-1")
+    );
+
+    let mut added = sign_frame(
+        &dialer.signing_key,
+        &session,
+        1,
+        &signed(&dialer, "d-2", "dialer", 2),
+    );
+    added.message.answers_sync = Some("sync-receiver-1".to_string());
+    write_json(&mut stream, &added).await.unwrap();
+    assert_nothing_delivered(&receiver).await;
+    assert_eq!(receiver.auth_failures.load(Ordering::SeqCst), 1);
+}
+
 #[tokio::test]
 async fn replayed_frame_counter_closes_the_connection() {
     let receiver = listener("receiver").await;
