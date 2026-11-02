@@ -331,6 +331,8 @@ pub struct NodeRuntime {
     pub sync_answer_budget: crate::sybil::TokenBucket,
     /// Same-sender duplicates excused as sync answers.
     pub sync_excused_duplicates: u64,
+    /// The chain head last announced to peers; an unchanged head is not announced again.
+    pub last_announced_head: Option<([u8; 32], u64)>,
 }
 
 impl NodeRuntime {
@@ -377,6 +379,7 @@ impl NodeRuntime {
                 SYNC_ANSWERS_PER_SEC,
             ),
             sync_excused_duplicates: 0,
+            last_announced_head: None,
         }
     }
 
@@ -1093,12 +1096,16 @@ impl NodeRuntime {
             });
         }
 
-        // Announce the chain head after a pass that delivered at least one message. A pass
-        // that only received announcements (or sync traffic) does not announce: otherwise two
-        // neighbours would answer each other's announcements forever and exhaust each
-        // other's rate limits.
-        if !delivered.is_empty() {
-            let (head_hash, head_seq) = self.chain_head();
+        // Announce the chain head after a pass that delivered at least one message, if it
+        // changed since the last announcement (it changes every 50 delivered messages). A
+        // pass that only received announcements (or sync traffic) does not announce:
+        // otherwise two neighbours would answer each other's announcements forever. An
+        // unchanged head is not repeated: it carries no information and would double the
+        // frames on every link, halving the message rate the per-neighbour budget allows.
+        let head = self.chain_head();
+        if !delivered.is_empty() && self.last_announced_head != Some(head) {
+            self.last_announced_head = Some(head);
+            let (head_hash, head_seq) = head;
             let announcement = Message {
                 id: format!("head-{}-{}", self.id, self.seq_counter + 1),
                 origin: self.id.clone(),

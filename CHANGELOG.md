@@ -22,6 +22,8 @@ git history; `git log` is the complete record.
   placeholder divergence alerts.
 
 ### Fixed
+- A node announces its chain head only when it changed. Before, it re-announced an unchanged head to every
+  peer after every delivered message, doubling the frames on every link.
 - Message and identity signatures are checked with strict Ed25519 verification: a small-order public key
   with a fixed signature previously verified for every message.
 - A node listening on `0.0.0.0` or `::` warns that anti-entropy is off instead of sending sync requests

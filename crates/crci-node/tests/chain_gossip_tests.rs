@@ -264,3 +264,57 @@ fn chain_head_announcements_do_not_echo() {
     assert_eq!(sim.nodes["a"].sybil_rate_limited_events, 0);
     assert_eq!(sim.nodes["b"].sybil_rate_limited_events, 0);
 }
+
+/// The chain head is announced when it changes, not after every delivery: repeating an
+/// unchanged head carries no information and used to double the frames on every link.
+#[test]
+fn chain_head_is_announced_only_when_it_changes() {
+    let inbox = create_test_inbox();
+    let mut sim = crci_core::mesh::MeshSimulator::new();
+    sim.add_node("a", "z", inbox.clone());
+    sim.add_node("b", "z", inbox.clone());
+    for node in sim.nodes.values_mut() {
+        node.use_router = false;
+        node.sybil_guard.use_manual_clock();
+    }
+    sim.connect("a", "b");
+
+    // b delivers 49 messages: its head stays at genesis, announced once.
+    for i in 0..49 {
+        sim.originate(
+            "a",
+            Message::new(
+                &format!("m{i}"),
+                "a",
+                Signal::new(3, false, false, true, 3, Visibility::Direct),
+                None,
+            ),
+        );
+        sim.drain();
+        for node in sim.nodes.values_mut() {
+            node.sybil_guard
+                .advance_time(std::time::Duration::from_secs(1));
+        }
+    }
+    assert_eq!(sim.nodes["b"].messages_handled, 49);
+    assert_eq!(
+        sim.nodes["b"].seq_counter, 1,
+        "b announced its unchanged head again"
+    );
+
+    // The 50th delivery appends a snapshot: the new head is announced once.
+    sim.originate(
+        "a",
+        Message::new(
+            "m49",
+            "a",
+            Signal::new(3, false, false, true, 3, Visibility::Direct),
+            None,
+        ),
+    );
+    sim.drain();
+    assert_eq!(sim.nodes["b"].messages_handled, 50);
+    assert_eq!(sim.nodes["b"].seq_counter, 2);
+    assert_eq!(sim.nodes["a"].sybil_rate_limited_events, 0);
+    assert_eq!(sim.nodes["b"].sybil_rate_limited_events, 0);
+}

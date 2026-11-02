@@ -125,8 +125,11 @@ Every 5 s the binary advances the pipeline round and compares the severities rep
 members with their median (anchored at 3), treating deviations ≥ 2 as outliers unless 3f ≥ n. An outlier
 is only logged and counted in `byzantine_events`; a validly signed report never changes reputation.
 `/chain/head` reports the node's Merkle chain head. A node announces its chain head to its peers after an
-inbox pass that delivered at least one message; receiving an announcement never triggers one, so
-neighbours do not echo announcements back and forth.
+inbox pass that delivered at least one message, if the head changed since its last announcement (a
+snapshot is appended every 50 delivered messages); receiving an announcement never triggers one, so
+neighbours do not echo announcements back and forth. Announcing only a changed head keeps the frames on
+each link close to one per gossip message: every node relays every new message to all its neighbours, so
+the per-neighbour token bucket (5 per second) bounds the network-wide sustained message rate.
 
 ### Re-synchronisation after a partition (anti-entropy)
 
