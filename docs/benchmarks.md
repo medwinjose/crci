@@ -180,8 +180,62 @@ What the runs show, stated plainly:
   messages reached 86 % of nodes on average within the window after the eviction. 241 deliveries arrived
   more than 5 s after origination (at most 28 s), consistent with recovery by the 30 s anti-entropy
   exchange; the logs do not record which path delivered them.
-- **Not shown:** loss, jitter, reordering or link failures (all runs use a fixed delay and no loss), more
-  than one seed per configuration, and any result beyond one host.
+- **Not shown:** link failures, more than one seed per configuration in the table above (the impairment
+  runs below use three), and any result beyond one host.
+
+### Packet loss, jitter and reordering
+
+- **Harness:** the same testbed with `tc netem` on every node's egress: one-way delay 40 ms with ±15 ms
+  uniform jitter, plus packet loss and reordering (`netem reorder`: that share of packets skips the delay).
+  Every overlay hop crosses one egress, so loss applies per hop, below the TCP connections the nodes use.
+- **Command:** `make netem OUT=…` (= `sudo scripts/testbed/run_netem.sh OUT-netem target/release/crci-node`).
+  Conditions: loss 0/5/10/15/20 %, reordering 5/10/15 %, and loss 10 % with reordering 10 %; random geometric
+  and 4-regular mesh topologies, N = 20/50/100, seeds 1–3 (the seed selects the topology instance, the roles
+  and the traffic schedule; the kernel's netem randomness is not seeded). 9 conditions × 2 × 3 × 3 = 162
+  runs, 60 s window, 1 message/s, relay B repeating every message from 20 s on, as above. One build, SHA-256
+  in the evidence folder.
+- **Fidelity:** same criteria as above; the round-trip criterion compares the sampled ICMP median and 95th
+  percentile with the median and 95th percentile of the configured two-hop delay distribution (Monte Carlo).
+  **All 162 runs met every criterion** (host CPU mean at most 2.7 %, peak 11.2 %).
+- **Recorded runs (2026-11-02):** [`evidence/netem-2026-11-02/`](evidence/netem-2026-11-02/): per-condition
+  CSVs, `netem/summary.csv`, per-run `summary.json`, and the raw logs of the run with the most false
+  evictions.
+
+Each row aggregates the 18 runs of a condition (2 topologies × 3 sizes × 3 seeds).
+
+| Condition | Runs with a false eviction | Honest false evictions (total, max in one run) | B banned by all its neighbours | Delivery before the fault, mean | Delivery after B is banned, mean (min of a run) | Eviction latency, median of run medians (max) | Frames dropped by the rate limit |
+|---|---|---|---|---|---|---|---|
+| loss 0 % (jitter only) | 0 | 0 | 18/18 | 100 % | 100 % (100 %) | 4.1 s (8.0 s) | 0 |
+| loss 5 % | 0 | 0 | 18/18 | 100 % | 100 % (100 %) | 6.1 s (12.1 s) | 0 |
+| loss 10 % | 2 | 2, 1 | 18/18 | 100 % | 100 % (100 %) | 6.2 s (12.2 s) | 0 |
+| loss 15 % | 2 | 2, 1 | 18/18 | 100 % | 100 % (100 %) | 6.2 s (38.8 s) | 262 |
+| loss 20 % | 9 | 12, 3 | 17/18 | 99.4 % | 96.1 % (63 %) | 7.2 s (33.4 s) | 540 |
+| reordering 5 % | 0 | 0 | 18/18 | 100 % | 100 % (100 %) | 4.1 s (8.1 s) | 0 |
+| reordering 10 % | 0 | 0 | 18/18 | 100 % | 100 % (100 %) | 4.1 s (8.1 s) | 0 |
+| reordering 15 % | 0 | 0 | 18/18 | 100 % | 100 % (100 %) | 4.1 s (8.0 s) | 0 |
+| loss 10 % + reordering 10 % | 0 | 0 | 18/18 | 100 % | 100 % (100 %) | 8.0 s (12.7 s) | 3 |
+
+What the runs show, stated plainly:
+
+- **Reordering is harmless; loss is not.** Reordering of up to 15 % of packets changed nothing measurable
+  (no false evictions, full delivery, eviction latency unchanged). Packet loss makes eviction slower
+  (median about 6 s at 5–15 % loss against 4 s without) and, from 10 % loss on, causes honest nodes to be
+  banned.
+- **Honest nodes were banned.** 13 of the 162 runs banned at least one honest node (2 at 10 % loss,
+  2 at 15 %, 9 at 20 %; up to 3 nodes in one run, at 20 % loss, N = 100). None occurred at 5 % loss or
+  below, nor with reordering alone. In the run with the most (`netem-l20-rgg-100-s1`) an honest neighbour
+  delivered messages it had already delivered, in one burst, and the receiver struck it as a replay and
+  banned it, before B started its fault. The cause of the repeated delivery is not yet established (a
+  hypothesis: frames re-sent after a loss-induced reconnect of the TCP connection); it is a protocol-level
+  weakness, not a testbed artifact, and is not fixed here.
+- **At 20 % loss the network degrades.** Delivery after the ban fell to 96 % on average and to 63 % in the
+  worst run, frames were dropped by the rate limit (540 across the condition; rate-limited frames never strike), and in
+  one run (rgg, N = 20) B was banned by only some of its neighbours.
+- **Eviction of B is robust up to 15 % loss.** In 17 of 18 runs at 20 % and all runs at lower loss every
+  neighbour of B banned it.
+- **Limits.** Loss is applied per egress and independently of the TCP connection; burst loss, asymmetric
+  loss and link failures were not tested. Three seeds per cell is too few for confidence intervals; the table
+  reports means and extremes only.
 
 ## WAN smoke test
 
