@@ -1,10 +1,11 @@
 # scripts/
 
-Helper scripts. None of them produce numbers used in the paper; paper numbers come from
-`cargo bench` (see [docs/benchmarks.md](../docs/benchmarks.md)).
+Helper scripts. Benchmark numbers come from `cargo bench`, emulation results from `testbed/`
+(see [docs/benchmarks.md](../docs/benchmarks.md)).
 
 | Script | Platform | What it does |
 |---|---|---|
+| `testbed/` | Linux, root | Emulation testbed: real `crci-node` processes in network namespaces with netem delay, a replaying relay, and per-run analysis. See [testbed/README.md](testbed/README.md). |
 | `check-docs.sh` | Linux (CI) | Fails if tracked files reintroduce claims known to be false (wrong transport or storage stack, wrong hash, retired BFT IDs, …). Runs in CI. |
 | `cross_build.sh` | Linux | Cross-compiles `crci-node` for `armv7` / `aarch64` (see [docs/cross-compilation.md](../docs/cross-compilation.md)). |
 | `demo.sh` / `demo.ps1` | Linux / Windows | Starts `node-alpha`, `node-beta` and the web dashboard (Docker Compose, or native with `--native`), sends two messages and starts the Byzantine agent. |

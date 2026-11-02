@@ -7,6 +7,9 @@ git history; `git log` is the complete record.
 ## [Unreleased]
 
 ### Added
+- Emulation testbed (`scripts/testbed/`): real `crci-node` processes in Linux network namespaces with
+  netem delay, random geometric and random 4-regular topologies, a replaying relay, per-run analysis and
+  fidelity checks.
 - `crci-node` experiment options: `--emit-count`, `--emit-interval-ms`, `--emit-delay-ms` (periodic
   signed messages), `--replay-after-ms`, `--replay-copies` (fault injection) and
   `--experiment-epoch-unix-ms` (a shared time origin for those schedules). Origination, acceptance
