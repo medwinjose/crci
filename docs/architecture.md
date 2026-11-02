@@ -114,7 +114,9 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
    registered in the node's zone;
 4. relays what `NodeRuntime` queued for other nodes over TCP, to every peer address given with
    `--peers` / `--dial` except the message's origin. The in-process router is switched off on a TCP node,
-   because it picks next hops by node ID, which TCP cannot address.
+   because it picks next hops by node ID, which TCP cannot address. Today each relayed message opens a
+   new authenticated connection (handshake, one frame, close), sent one destination at a time;
+   planned: one persistent authenticated connection per peer.
 
 Every 5 s the binary advances the pipeline round and compares the severities reported by verified zone
 members with their median (anchored at 3), treating deviations ≥ 2 as outliers unless 3f ≥ n. An outlier

@@ -75,7 +75,7 @@ measured with the in-process benchmark harness, 50 deterministic trials per cond
 - **Paced replays:** reputation recovers with elapsed time only (one strike forgiven per 300 s, never
   above the initial score) and two strikes within 300 s damp recovery. In a 6-hour simulated sweep an
   adversary replaying more often than every 300 s is banned; one pacing at 300 s or slower is never banned
-  but lands at most 12 replays per hour. Before this change, an adversary replaying every 20 s was never
+  but gets at most 12 replays per hour past admission, each detected and dropped. Before this change, an adversary replaying every 20 s was never
   banned.
 
 Every number above links back to a raw data file and the exact command in

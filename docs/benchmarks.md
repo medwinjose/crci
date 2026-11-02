@@ -97,11 +97,11 @@ are lost. Re-measuring the window ablation as delivered packets, not bans, is pl
 | 1 200 | 18 | never | 0 % |
 
 The measured threshold is the forgiveness period, *T* = penalty / recovery rate = 0.15 / 0.0005 = 300 s:
-an adversary pacing at *P* ≥ 300 s is never banned and lands at most 12 replays per hour; below it the
+an adversary pacing at *P* ≥ 300 s is never banned and gets at most 12 replays per hour past admission; below it the
 adversary is banned, sooner the faster it replays. Strike damping does not move this threshold; it halves
 the time a sub-threshold adversary survives (net change per period 0.001 *P* − 0.3 instead of
-0.0005 *P* − 0.15). An adversary that keeps replaying through bans (*P* = 1 s) lands about 15 replays per
-hour across ban cycles while being banned 99.6 % of the time. Every replay is dropped and costs one
+0.0005 *P* − 0.15). An adversary that keeps replaying through bans (*P* = 1 s) gets about 15 replays per
+hour past admission across ban cycles while being banned 99.6 % of the time. Every replay is dropped and costs one
 signature check.
 
 **Before this rule** (same commit lineage, previous recovery rules; real-time run, adversary sending valid

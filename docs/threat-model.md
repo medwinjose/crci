@@ -49,7 +49,7 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 3. **Paced replays are bounded, not eliminated.** Recovery forgives one strike per 300 s, so an adversary
    that replays at most once every 300 s is never banned: at most 12 replays per hour per identity. Faster
    pacing is banned (a replay every 290 s after 10 150 s, every 120 s after 480 s). An adversary that keeps
-   replaying through repeated bans lands about 15 replays per hour while banned 99.6 % of the time. Every
+   replaying through repeated bans gets about 15 replays per hour past admission while banned 99.6 % of the time. Every
    replay is dropped and costs one signature check (measured in
    [benchmarks.md](benchmarks.md#paced-attack-vs-reputation-recovery)).
 4. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
