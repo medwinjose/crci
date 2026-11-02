@@ -116,6 +116,17 @@ The 2026-09-25 runs (`recovery_paper_v2_*` in
 harness (fresh messages with an older sequence number, which the current rules drop without a strike) and
 are kept as history only.
 
+## Ed25519 cost
+
+- **Harness:** `crates/crci-node/benches/crypto_bench.rs` (criterion, 100 samples per case; signing and
+  verification go through `WireMessage::sign_with` / `verify_signature`, i.e. `verify_strict` on the
+  canonical signed bytes)
+- **Command:** `cargo bench -p crci-node --bench crypto_bench`
+- **Recorded run (2026-11-02, Intel i5-12450HX, Windows 11, one thread):** keygen 13.4 µs, sign 15.2 µs,
+  verify 37.0 µs for a valid and 36.9 µs for an invalid signature (about 27 000 verifications per second per
+  core), canonical encoding 44 ns. Criterion's console output is not committed; the numbers are for this
+  CPU only.
+
 ## Emulation testbed (real processes, one host)
 
 - **Harness:** `scripts/testbed/` (see its [README](../scripts/testbed/README.md)): one `crci-node` process
@@ -189,5 +200,5 @@ What the runs show, stated plainly:
 
 The following appear in older material but have **no recorded run** in this repository:
 propagation rounds for 10/100/1000 nodes, consensus convergence, replay-filter checks per second,
-pipeline messages per second, discovery convergence time, Ed25519 sign/verify cost,
+pipeline messages per second, discovery convergence time,
 and any multi-machine or physical-radio measurement.
