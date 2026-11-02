@@ -31,6 +31,9 @@ git history; `git log` is the complete record.
 - A sync session now lasts 10 s and excuses at most one answer batch (16 messages). Before, the 30 s
   session was renewed by the 30 s sync loop, so a neighbour could repeat every message it relayed once
   without a strike.
+- `crci-node` no longer delays start-up while probing its peers: the probes run concurrently with a 2 s
+  timeout. Before, each unreachable peer was probed in turn (about 21 s each on Windows) before the node
+  processed any traffic.
 - A node announces its chain head only when it changed. Before, it re-announced an unchanged head to every
   peer after every delivered message, doubling the frames on every link.
 - Message and identity signatures are checked with strict Ed25519 verification: a small-order public key

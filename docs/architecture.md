@@ -115,7 +115,8 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
 4. relays what `NodeRuntime` queued for other nodes over TCP, to every peer address given with
    `--peers` / `--dial` except the message's origin. The in-process router is switched off on a TCP node,
    because it picks next hops by node ID, which TCP cannot address. Every configured peer is a relay
-   target from start-up, whether or not it is reachable yet. Each peer has one persistent authenticated
+   target from start-up, whether or not it is reachable yet; the start-up reachability probes run
+   concurrently with a 2 s timeout, so peers that are down do not delay the node. Each peer has one persistent authenticated
    connection and its own send queue (1 024 frames), so frames to a peer stay in order, a slow or
    unreachable peer delays only its own frames, and the receive loop never waits on the network. A
    connection the peer closed is detected before the next write and re-established with a new

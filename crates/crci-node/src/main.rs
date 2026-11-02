@@ -1475,17 +1475,43 @@ async fn run_node(
 
     // Every configured peer is a relay target from the start, whether or not it is up yet:
     // the persistent connection to it is opened on the first relay and re-opened when it
-    // drops. Only a reachable peer joins the zone and the API peer list now.
-    for peer in dial.clone() {
-        node.add_peer(&peer);
-        match tokio::net::TcpStream::connect(&peer).await {
-            Ok(_) => {
+    // drops. Only a reachable peer joins the zone and the API peer list now. The probes run
+    // concurrently and time out, so peers that are down cannot hold up start-up.
+    const STARTUP_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
+    let probes: Vec<_> = dial
+        .iter()
+        .map(|peer| {
+            node.add_peer(peer);
+            let peer = peer.clone();
+            tokio::spawn(async move {
+                let result = tokio::time::timeout(
+                    STARTUP_PROBE_TIMEOUT,
+                    tokio::net::TcpStream::connect(&peer),
+                )
+                .await;
+                (peer, result)
+            })
+        })
+        .collect();
+    for probe in probes {
+        let Ok((peer, result)) = probe.await else {
+            continue;
+        };
+        match result {
+            Ok(Ok(_)) => {
                 pipeline.register_bootstrap("zone-host", &peer);
                 add_api_peer(&api_state, &peer);
                 println!("Successfully dialed peer: {}", peer);
             }
-            Err(e) => {
+            Ok(Err(e)) => {
                 println!("Warning: Failed to connect to peer {}: {}", peer, e);
+            }
+            Err(_) => {
+                println!(
+                    "Warning: Failed to connect to peer {}: no answer within {} s",
+                    peer,
+                    STARTUP_PROBE_TIMEOUT.as_secs()
+                );
             }
         }
     }

@@ -525,3 +525,49 @@ fn a_replaying_node_is_banned_by_its_peer() {
         log
     );
 }
+
+/// A peer that never answers (192.0.2.1 is reserved for documentation, RFC 5737) must not
+/// hold up start-up: the node listens within a few seconds, whatever its peers do.
+#[test]
+fn an_unreachable_peer_does_not_delay_start_up() {
+    let addr = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .to_string();
+    let started = std::time::Instant::now();
+    let mut child = std::process::Command::new(bin_path())
+        .args([
+            "--listen",
+            &addr,
+            "--node-id",
+            "tcp-startup",
+            "--peers",
+            "192.0.2.1:7000,192.0.2.2:7000",
+        ])
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("failed to start node");
+    let mut reader = std::io::BufReader::new(child.stdout.take().unwrap());
+    let mut listening = None;
+    let mut line = String::new();
+    while started.elapsed() < std::time::Duration::from_secs(30) {
+        line.clear();
+        match std::io::BufRead::read_line(&mut reader, &mut line) {
+            Ok(0) => break,
+            Ok(_) if line.contains("listening on") => {
+                listening = Some(started.elapsed());
+                break;
+            }
+            _ => {}
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    let listening = listening.expect("node never started listening");
+    assert!(
+        listening < std::time::Duration::from_secs(5),
+        "node took {:?} to start listening",
+        listening
+    );
+}
