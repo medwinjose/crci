@@ -6,6 +6,12 @@ git history; `git log` is the complete record.
 
 ## [Unreleased]
 
+### Added
+- `crci-node` experiment options: `--emit-count`, `--emit-interval-ms`, `--emit-delay-ms` (periodic
+  signed messages), `--replay-after-ms`, `--replay-copies` (fault injection) and
+  `--experiment-epoch-unix-ms` (a shared time origin for those schedules). Origination, acceptance
+  and bans are logged with a Unix-millisecond timestamp.
+
 ### Changed
 - Documentation rewritten to describe the code as it is: two message paths (signed `NodeRuntime` vs.
   unsigned TCP), the real transport (custom TCP, no libp2p/Noise), the real TLA+ model scope, and every

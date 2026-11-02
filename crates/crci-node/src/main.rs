@@ -13,6 +13,8 @@ use cli::Cli;
 
 #[tokio::main]
 async fn main() {
+    // Experiment timings (--emit-delay-ms, --replay-after-ms) count from process start.
+    let process_start = std::time::Instant::now();
     let args = Cli::parse();
 
     if args.verbose {
@@ -131,7 +133,14 @@ async fn main() {
         }
 
         if args.listen.is_some() {
-            run_node(node_id, node, Some(Arc::new(tcp)), dial_targets(&args)).await;
+            run_node(
+                node_id,
+                node,
+                Some(Arc::new(tcp)),
+                dial_targets(&args),
+                Experiment::from_args(&args, process_start),
+            )
+            .await;
         }
         return;
     }
@@ -169,7 +178,14 @@ async fn main() {
             None
         };
 
-        run_node(node_id, node, tcp, dial_targets(&args)).await;
+        run_node(
+            node_id,
+            node,
+            tcp,
+            dial_targets(&args),
+            Experiment::from_args(&args, process_start),
+        )
+        .await;
         return;
     }
     let (ws_tx, _) = tokio::sync::broadcast::channel(100);
@@ -1315,6 +1331,101 @@ fn sync_reply_address(listen: std::net::SocketAddr) -> Option<String> {
     }
 }
 
+/// Options for testbed experiments: periodic origination of signed messages, and a fault
+/// mode in which the node replays every gossip message it sends.
+#[derive(Clone, Copy, Debug)]
+struct Experiment {
+    /// The instant the delays below count from: process start, or the shared epoch given
+    /// with --experiment-epoch-unix-ms (which may still be in the future).
+    started: std::time::Instant,
+    emit_count: u64,
+    emit_interval: std::time::Duration,
+    emit_delay: std::time::Duration,
+    replay_after: Option<std::time::Duration>,
+    replay_copies: usize,
+}
+
+impl Experiment {
+    fn from_args(args: &Cli, process_start: std::time::Instant) -> Self {
+        let started = match args.experiment_epoch_unix_ms {
+            Some(epoch) => {
+                let now_instant = std::time::Instant::now();
+                let now_ms = unix_ms() as u64;
+                if epoch >= now_ms {
+                    now_instant
+                        .checked_add(std::time::Duration::from_millis(epoch - now_ms))
+                        .unwrap_or(now_instant)
+                } else {
+                    now_instant
+                        .checked_sub(std::time::Duration::from_millis(now_ms - epoch))
+                        .unwrap_or(now_instant)
+                }
+            }
+            None => process_start,
+        };
+        Experiment {
+            started,
+            emit_count: args.emit_count,
+            emit_interval: std::time::Duration::from_millis(args.emit_interval_ms.max(1)),
+            emit_delay: std::time::Duration::from_millis(args.emit_delay_ms),
+            replay_after: args.replay_after_ms.map(std::time::Duration::from_millis),
+            replay_copies: args.replay_copies.max(1),
+        }
+    }
+}
+
+/// Milliseconds since the Unix epoch, for log lines that experiments correlate across nodes.
+fn unix_ms() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+}
+
+/// Relay messages `NodeRuntime` queued, `copies` times each (more than one only in the
+/// replay fault mode). Destinations are peer addresses from --dial / --peers.
+fn relay_outbound(tcp: &transport::TcpTransport, outbound: Vec<(String, Vec<u8>)>, copies: usize) {
+    for (dest, bytes) in outbound {
+        let Ok(out) = serde_json::from_slice::<runtime::WireMessage>(&bytes) else {
+            continue;
+        };
+        for _ in 0..copies {
+            if let Err(e) = tcp.relay(&dest, out.clone()) {
+                log::warn!("relay of '{}' to {} dropped: {}", out.id, dest, e);
+            }
+        }
+    }
+}
+
+/// How many copies of each outgoing message to send: `replay_copies` once the replay fault
+/// is active.
+/// Prints when the fault starts, so experiments can measure eviction latency from it.
+fn copies_to_send(
+    node_id: &str,
+    experiment: &Experiment,
+    started: std::time::Instant,
+    announced: &std::sync::atomic::AtomicBool,
+) -> usize {
+    match experiment.replay_after {
+        Some(after)
+            if started
+                .checked_add(after)
+                .is_some_and(|at| std::time::Instant::now() >= at) =>
+        {
+            if !announced.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                println!(
+                    "Node {} fault: sending every gossip message {} times from now at_ms={}",
+                    node_id,
+                    experiment.replay_copies,
+                    unix_ms()
+                );
+            }
+            experiment.replay_copies
+        }
+        _ => 1,
+    }
+}
+
 /// Remove and return everything `NodeRuntime` queued for other nodes (gossip relays and
 /// chain-head announcements), keyed by destination.
 fn take_outbound(node: &runtime::NodeRuntime) -> Vec<(String, Vec<u8>)> {
@@ -1337,7 +1448,10 @@ async fn run_node(
     mut node: runtime::NodeRuntime,
     tcp: Option<Arc<transport::TcpTransport>>,
     dial: Vec<String>,
+    experiment: Experiment,
 ) {
+    let started = experiment.started;
+    let fault_announced = Arc::new(std::sync::atomic::AtomicBool::new(false));
     // Forward to every dialed peer: the router's next hops are node IDs, not TCP addresses.
     node.use_router = false;
     let mut pipeline = integration::GossipPipeline::new();
@@ -1455,7 +1569,10 @@ async fn run_node(
     let recv_pipeline = pipeline.clone();
     let recv_api = api_state.clone();
     let recv_id = node_id.clone();
+    let recv_fault = fault_announced.clone();
     tokio::spawn(async move {
+        // Peers this node has banned, so each ban (and readmission) is printed once.
+        let mut banned: std::collections::HashSet<String> = std::collections::HashSet::new();
         while let Ok((sender_id, wire)) = recv_tcp.receive().await {
             println!(
                 "Node {} received message from {}: id={}, type={}, origin={}",
@@ -1474,7 +1591,7 @@ async fn run_node(
             };
 
             // All isolation checks run inside NodeRuntime, as on the in-process path.
-            let (delivered, outbound, head, sender_rep, new_events) = {
+            let (delivered, outbound, head, sender_rep, new_events, sender_banned) = {
                 let mut n = recv_node.lock().unwrap_or_else(|e| e.into_inner());
                 {
                     let mut inbox = n.inbox.lock().unwrap_or_else(|e| e.into_inner());
@@ -1487,14 +1604,28 @@ async fn run_node(
                 let delivered = n.process_inbox_delivered();
                 let outbound = take_outbound(&n);
                 let sender_rep = n.sybil_guard.reputation(&sender_id);
+                let sender_banned = n.sybil_guard.is_banned(&sender_id);
                 (
                     delivered,
                     outbound,
                     n.chain_head(),
                     sender_rep,
                     n.byzantine_events - events_before,
+                    sender_banned,
                 )
             };
+            // Strikes are always charged to the sender of the frame just processed, so a
+            // ban can only start here.
+            if sender_banned && banned.insert(sender_id.clone()) {
+                println!("Node {} banned {} at_ms={}", recv_id, sender_id, unix_ms());
+            } else if !sender_banned && banned.remove(&sender_id) {
+                println!(
+                    "Node {} readmitted {} at_ms={}",
+                    recv_id,
+                    sender_id,
+                    unix_ms()
+                );
+            }
             recv_api
                 .byzantine_events
                 .fetch_add(new_events, std::sync::atomic::Ordering::SeqCst);
@@ -1504,8 +1635,12 @@ async fn run_node(
 
             for msg in &delivered {
                 println!(
-                    "Node {} accepted '{}' (origin {}, via {})",
-                    recv_id, msg.id, msg.origin, sender_id
+                    "Node {} accepted '{}' (origin {}, via {}) at_ms={}",
+                    recv_id,
+                    msg.id,
+                    msg.origin,
+                    sender_id,
+                    unix_ms()
                 );
                 let verdict = {
                     let mut p = recv_pipeline.lock().unwrap_or_else(|e| e.into_inner());
@@ -1543,16 +1678,49 @@ async fn run_node(
 
             // Relay what NodeRuntime queued. Destinations are peer addresses from --dial /
             // --peers; a destination that is a node ID (from the router) has no address yet.
-            for (dest, bytes) in outbound {
-                let Ok(out) = serde_json::from_slice::<runtime::WireMessage>(&bytes) else {
-                    continue;
-                };
-                if let Err(e) = recv_tcp.relay(&dest, out.clone()) {
-                    log::warn!("relay of '{}' to {} dropped: {}", out.id, dest, e);
-                }
-            }
+            let copies = copies_to_send(&recv_id, &experiment, started, &recv_fault);
+            relay_outbound(&recv_tcp, outbound, copies);
         }
     });
+
+    // Experiments: originate `emit_count` signed messages, one per `emit_interval`.
+    if experiment.emit_count > 0 {
+        let emit_tcp = tcp.clone();
+        let emit_node = node_arc.clone();
+        let emit_id = node_id.clone();
+        let emit_fault = fault_announced.clone();
+        tokio::spawn(async move {
+            // The delay counts from the experiment's start, not from the end of the dial
+            // loop above.
+            let Some(first) = started.checked_add(experiment.emit_delay) else {
+                return;
+            };
+            tokio::time::sleep_until(tokio::time::Instant::from_std(first)).await;
+            let mut ticker = tokio::time::interval(experiment.emit_interval);
+            for _ in 0..experiment.emit_count {
+                ticker.tick().await;
+                let msg_id = uuid::Uuid::new_v4().to_string();
+                let outbound = {
+                    let mut n = emit_node.lock().unwrap_or_else(|e| e.into_inner());
+                    n.originate(Message::new(
+                        &msg_id,
+                        &emit_id,
+                        Signal::new(3, false, false, true, 3, Visibility::Direct),
+                        Some("testbed"),
+                    ));
+                    take_outbound(&n)
+                };
+                println!(
+                    "Node {} originated '{}' at_ms={}",
+                    emit_id,
+                    msg_id,
+                    unix_ms()
+                );
+                let copies = copies_to_send(&emit_id, &experiment, started, &emit_fault);
+                relay_outbound(&emit_tcp, outbound, copies);
+            }
+        });
+    }
 
     // Every 5 s: advance the pipeline round (per-round rate limit, TTL) and run the
     // severity-median check. The check only counts outliers: a validly signed report is

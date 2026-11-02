@@ -441,3 +441,87 @@ relay log:
         relay_log
     );
 }
+
+/// `--emit-count` originates signed messages that a peer accepts, with timestamps that
+/// experiments use to measure dissemination latency.
+#[test]
+fn emitted_messages_reach_a_peer_with_timestamps() {
+    let downstream = start_receiver("tcp-emit-sink");
+    let emitter = start_node(
+        "tcp-emitter",
+        &[
+            "--peers",
+            &downstream.addr,
+            "--emit-count",
+            "3",
+            "--emit-interval-ms",
+            "100",
+            "--emit-delay-ms",
+            "200",
+        ],
+    );
+    std::thread::sleep(Duration::from_millis(1000));
+    let emitter_log = emitter.finish();
+    let log = downstream.finish();
+
+    assert_eq!(
+        count(&emitter_log, "originated '"),
+        3,
+        "emitter log:\n{}",
+        emitter_log
+    );
+    let accepted: Vec<&str> = log
+        .lines()
+        .filter(|l| l.contains("accepted '") && l.contains("(origin tcp-emitter, via tcp-emitter#"))
+        .collect();
+    assert_eq!(accepted.len(), 3, "downstream log:\n{}", log);
+    assert!(
+        accepted.iter().all(|l| l.contains(" at_ms=")),
+        "downstream log:\n{}",
+        log
+    );
+}
+
+/// In the replay fault mode a node sends every gossip message twice (the default); its
+/// peer strikes it once per repeat and bans it after the third strike.
+#[test]
+fn a_replaying_node_is_banned_by_its_peer() {
+    let downstream = start_receiver("tcp-fault-sink");
+    let faulty = start_node(
+        "tcp-faulty",
+        &[
+            "--peers",
+            &downstream.addr,
+            "--emit-count",
+            "3",
+            "--emit-interval-ms",
+            "100",
+            "--emit-delay-ms",
+            "200",
+            "--replay-after-ms",
+            "0",
+        ],
+    );
+    std::thread::sleep(Duration::from_millis(1000));
+    let faulty_log = faulty.finish();
+    let log = downstream.finish();
+
+    assert!(
+        faulty_log.contains("fault: sending every gossip message 2 times"),
+        "faulty log:\n{}",
+        faulty_log
+    );
+    assert_eq!(count(&log, "accepted '"), 3, "downstream log:\n{}", log);
+    assert_eq!(
+        count(&log, "MALICIOUS REPLAY from 'tcp-faulty#"),
+        3,
+        "downstream log:\n{}",
+        log
+    );
+    assert_eq!(
+        count(&log, "Node tcp-fault-sink banned tcp-faulty#"),
+        1,
+        "downstream log:\n{}",
+        log
+    );
+}

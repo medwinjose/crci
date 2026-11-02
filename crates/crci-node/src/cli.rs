@@ -54,4 +54,30 @@ pub struct Cli {
     /// Duration for byzantine injection in seconds
     #[arg(long, default_value_t = 30)]
     pub duration: u64,
+
+    /// Experiments: originate this many signed messages from this node (needs --listen)
+    #[arg(long, default_value_t = 0)]
+    pub emit_count: u64,
+
+    /// Experiments: milliseconds between originated messages
+    #[arg(long, default_value_t = 1000)]
+    pub emit_interval_ms: u64,
+
+    /// Experiments: milliseconds after process start before the first originated message
+    #[arg(long, default_value_t = 0)]
+    pub emit_delay_ms: u64,
+
+    /// Fault injection for experiments: this many milliseconds after process start, send every
+    /// outgoing gossip message --replay-copies times, as a replaying relay would
+    #[arg(long)]
+    pub replay_after_ms: Option<u64>,
+
+    /// Experiments: count --emit-delay-ms and --replay-after-ms from this Unix time (ms)
+    /// instead of process start, so nodes started one after another share one schedule
+    #[arg(long)]
+    pub experiment_epoch_unix_ms: Option<u64>,
+
+    /// Fault injection for experiments: copies of each message sent once the fault is active
+    #[arg(long, default_value_t = 2)]
+    pub replay_copies: usize,
 }

@@ -191,7 +191,7 @@ the Android `.so` as well.
 
 | Binary | Purpose |
 |---|---|
-| `crci-node` | Main CLI. `--listen` (+ `--peers`/`--dial`) runs a TCP node with the HTTP API on port 8080. `--send … --to …` sends one message. `--byzantine <mode> --to …` runs an adversary that sends signed frames (`replay`, `false_allclear`, `sybil`, `flood`, `partition_heal`) or frames that must be rejected (`bad_signature`, `unsigned`, `unsigned_mce`). With no arguments it runs a scripted in-process demonstration and serves the API. |
+| `crci-node` | Main CLI. `--listen` (+ `--peers`/`--dial`) runs a TCP node with the HTTP API on port 8080. `--send … --to …` sends one message. `--byzantine <mode> --to …` runs an adversary that sends signed frames (`replay`, `false_allclear`, `sybil`, `flood`, `partition_heal`) or frames that must be rejected (`bad_signature`, `unsigned`, `unsigned_mce`). With no arguments it runs a scripted in-process demonstration and serves the API. Experiment options for a `--listen` node: `--emit-count`/`--emit-interval-ms`/`--emit-delay-ms` originate signed messages periodically; `--replay-after-ms`/`--replay-copies` make the node send every gossip message several times from then on (fault injection); both delays count from process start, or from `--experiment-epoch-unix-ms` so that many nodes share one schedule. Origination, acceptance and bans are logged with a Unix-millisecond timestamp (`at_ms=`). |
 | `byzantine_agent`, `adv_client` | Stand-alone adversary clients. |
 | `uniffi-bindgen` (in `crci-core`) | Generates Kotlin bindings. |
 
