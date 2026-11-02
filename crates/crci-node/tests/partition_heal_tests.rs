@@ -7,7 +7,7 @@
 use crci_core::identity::Identity;
 use crci_core::mesh::MeshSimulator;
 use crci_core::message::{Message, Signal, Visibility};
-use crci_core::runtime::{NodeRuntime, WireMessage, SYNC_REQUEST_TYPE};
+use crci_core::runtime::{NodeRuntime, WireMessage, SYNC_MAX_BATCH, SYNC_REQUEST_TYPE};
 use crci_core::transport::SharedInbox;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -250,6 +250,46 @@ fn excuse_expires_with_the_session() {
     pair.inject("a", "b", &sent[0]);
     pair.b.process_inbox();
     pair.b.sybil_guard.advance_time(Duration::from_secs(31));
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.sync_excused_duplicates, 0);
+    assert_eq!(pair.b.byzantine_events, 1);
+}
+
+/// A session excuses at most one answer batch: a peer cannot replay every message it relays
+/// once for free while sessions are renewed by periodic sync requests.
+#[test]
+fn a_session_excuses_at_most_one_answer_batch() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 20);
+    pair.b.request_sync("a"); // digest lists nothing from a
+
+    // Every message arrives twice from a, inside the session; the clock advances so the
+    // token bucket never drops a frame.
+    for wire in &sent {
+        pair.inject("a", "b", wire);
+        pair.inject("a", "b", wire);
+        pair.b.process_inbox();
+        pair.b.sybil_guard.advance_time(Duration::from_millis(400));
+    }
+
+    assert_eq!(pair.b.sync_excused_duplicates, SYNC_MAX_BATCH as u64);
+    assert_eq!(
+        pair.b.byzantine_events, 3,
+        "repeats after the batch are strikes"
+    );
+    assert!(pair.b.sybil_guard.is_banned(&"a".to_string()));
+}
+
+/// The excuse covers only the time an answer needs to arrive, not the whole sync interval.
+#[test]
+fn excuse_window_is_shorter_than_the_sync_interval() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    pair.b.request_sync("a");
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    pair.b.sybil_guard.advance_time(Duration::from_secs(11));
     pair.inject("a", "b", &sent[0]);
     pair.b.process_inbox();
     assert_eq!(pair.b.sync_excused_duplicates, 0);

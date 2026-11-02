@@ -142,11 +142,13 @@ ignored, so a captured request cannot be used to flood its author), at most once
 and about once per second in total (burst 4), with up to 16 of its recent messages that the digest lacks, oldest first, as ordinary signed messages.
 Requests are never delivered, stored or forwarded.
 
-The requester holds a 30 s sync session with the neighbour it asked. During the session a duplicate from
+The requester holds a 10 s sync session with the neighbour it asked. During the session a duplicate from
 that neighbour of a message the digest did **not** list as held is dropped without a strike, once per
-message: it can be an answer that crossed with the same message relayed as ordinary gossip. A duplicate
-of a message the digest listed as held, a second duplicate, and duplicates from any other peer follow the
-normal rules and strike.
+message and for at most 16 messages (one answer batch): it can be an answer that crossed with the same
+message relayed as ordinary gossip. A duplicate of a message the digest listed as held, a second
+duplicate, any duplicate beyond the first 16, and duplicates from any other peer follow the normal rules
+and strike. The session is short and bounded so that periodic sync requests do not let a neighbour repeat
+every message it relays once without a strike.
 
 In-process, `MeshSimulator::heal(a, b)` restores a link and has both ends request. A TCP node requests
 from every `--peers` / `--dial` address 0.5 s after start and every 30 s, and retries an unreachable peer

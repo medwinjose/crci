@@ -22,6 +22,9 @@ git history; `git log` is the complete record.
   placeholder divergence alerts.
 
 ### Fixed
+- A sync session now lasts 10 s and excuses at most one answer batch (16 messages). Before, the 30 s
+  session was renewed by the 30 s sync loop, so a neighbour could repeat every message it relayed once
+  without a strike.
 - A node announces its chain head only when it changed. Before, it re-announced an unchanged head to every
   peer after every delivered message, doubling the frames on every link.
 - Message and identity signatures are checked with strict Ed25519 verification: a small-order public key

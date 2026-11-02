@@ -21,6 +21,10 @@ pub const MIN_TRUSTED_REP: f64 = 0.41;
 // The requester then holds a sync session with that neighbour: a duplicate from it of a
 // message the digest did *not* list as held may be an answer that crossed with ordinary
 // gossip, so it is dropped without a strike, once per message, while the session lasts.
+// A session lasts only as long as an answer needs to arrive (`SYNC_SESSION_TTL`) and
+// excuses at most one answer batch (`SYNC_MAX_BATCH` messages): an answer cannot carry
+// more, and periodic sync requests must not turn into a standing licence to replay every
+// relayed message once.
 // Duplicates of messages the digest listed, and duplicates from any other peer, are
 // judged by the normal rules. A request is answered only when it comes straight from its
 // author (a relayed copy is ignored), at most once per `SYNC_COOLDOWN` per requester.
@@ -29,8 +33,10 @@ pub const MIN_TRUSTED_REP: f64 = 0.41;
 pub const SYNC_MAX_BATCH: usize = 16;
 /// A requester answered less than this long ago gets no new answer.
 pub const SYNC_COOLDOWN: Duration = Duration::from_secs(5);
-/// How long a requester treats duplicates from the asked peer as possible answers.
-pub const SYNC_SESSION_TTL: Duration = Duration::from_secs(30);
+/// How long a requester treats duplicates from the asked peer as possible answers. An
+/// answer is sent as soon as the request arrives, so this only has to cover the round trip
+/// and queueing; it is kept well below the TCP node's 30 s sync interval.
+pub const SYNC_SESSION_TTL: Duration = Duration::from_secs(10);
 /// Most origins one digest lists.
 pub const SYNC_MAX_ORIGINS: usize = 256;
 /// Most origins whose recent messages a node keeps for answering sync requests.
@@ -469,7 +475,8 @@ impl NodeRuntime {
     }
 
     /// Whether a same-sender duplicate of (`origin`, `seq`) from `sender` is excused as a
-    /// possible sync answer (at most once per message per session).
+    /// possible sync answer (at most once per message, and at most `SYNC_MAX_BATCH`
+    /// messages, per session).
     fn excused_as_sync_answer(&mut self, sender: &str, origin: &str, seq: u64) -> bool {
         let now = self.sybil_guard.now();
         let Some(session) = self.sync_sessions.get_mut(sender) else {
@@ -480,7 +487,10 @@ impl NodeRuntime {
             return false;
         }
         let key = (origin.to_string(), seq);
-        if session.held.contains(&key) || !session.exempted.insert(key) {
+        if session.held.contains(&key)
+            || session.exempted.len() >= SYNC_MAX_BATCH
+            || !session.exempted.insert(key)
+        {
             return false;
         }
         self.sync_excused_duplicates += 1;

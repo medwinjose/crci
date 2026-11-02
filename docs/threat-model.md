@@ -55,10 +55,11 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 4. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
    earlier IDs can be resent. Inside the replay window the sequence filter still strikes a repeat from the
    same sender; outside it the packet is dropped without a strike.
-5. **Re-synchronisation has a small excused set.** During a 30 s sync session the peer that was asked
-   may repeat each message the requester did not list as held once without a strike. A malicious peer
-   that is asked can therefore send at most one unpunished duplicate per such message; it still costs a
-   signature check and is dropped. Answers go to the `reply_to` address named in the signed request, so a
+5. **Re-synchronisation has a small excused set.** For 10 s after a sync request the peer that was asked
+   may repeat a message the requester did not list as held once without a strike, for at most 16
+   messages (one answer batch). A TCP node asks each neighbour every 30 s, so a malicious neighbour can
+   send at most 16 unpunished duplicates per 30 s; each still costs a signature check and is dropped. A
+   further repeat is a strike. Answers go to the `reply_to` address named in the signed request, so a
    requester can aim an answer (at most 16 messages) at a third party. Answers are limited per requester
    (one per 5 s) and in total (a burst of 4, then one per second), which bounds that reflection but does
    not remove it.
