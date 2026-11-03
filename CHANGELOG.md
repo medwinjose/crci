@@ -49,6 +49,12 @@ git history; `git log` is the complete record.
   as replays (measured at 10–20 % loss); and before that, a 30 s session renewed by the 30 s sync loop
   let a neighbour repeat every message it relayed once without a strike. Untagged repeats are no longer
   excused at all.
+- One origin can no longer take the whole network's capacity by flooding fresh, validly signed
+  messages. Each node accepts at most 20 new messages per origin in a burst, then 5 per second; the
+  budget is charged after the signature and pinned-key checks, and excess messages are dropped without a
+  strike and fetched again later by anti-entropy. Before, every neighbour admitted its full budget from
+  the flooder and every honest node relayed it: on the testbed (50 nodes, one node flooding 40 messages/s)
+  honest delivery fell to 82–98 % and the flooder was never struck.
 - A repeat of a message from the same sender is judged before the sender's rate limit, so it is struck
   even when the sender is over budget. Before, a sender that kept its budget empty had its replays
   dropped by the rate limit without a strike.

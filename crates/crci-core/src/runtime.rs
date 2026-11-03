@@ -337,6 +337,12 @@ pub struct NodeRuntime {
     pub sybil_banned_events: u64,
     pub sybil_rate_limited_events: u64,
     pub sybil_pow_failed_events: u64,
+    /// New messages accepted per origin (`ORIGIN_BURST`, `ORIGIN_REFILL_PER_SEC`).
+    /// shortcut: one entry per authenticated origin, like `known_keys`; bounded with the rest
+    /// of the per-node state when that is capped.
+    pub origin_budgets: HashMap<String, crate::sybil::TokenBucket>,
+    /// Messages dropped because their origin was over its budget.
+    pub origin_rate_limited_events: u64,
     pub metrics: CrciMetrics,
     /// The last `window_size` accepted messages per origin, kept to answer sync requests.
     pub recent_messages: HashMap<String, BTreeMap<u64, WireMessage>>,
@@ -387,6 +393,8 @@ impl NodeRuntime {
             sybil_banned_events: 0,
             sybil_rate_limited_events: 0,
             sybil_pow_failed_events: 0,
+            origin_budgets: HashMap::new(),
+            origin_rate_limited_events: 0,
             metrics: CrciMetrics::new(),
             recent_messages: HashMap::new(),
             sync_sessions: HashMap::new(),
@@ -969,6 +977,29 @@ impl NodeRuntime {
             } else {
                 self.known_keys
                     .insert(wire.origin.clone(), wire.origin_pubkey.clone());
+            }
+
+            // Per-origin budget, charged only now that signature and pinned key authenticate
+            // the origin. Over budget: dropped and forgotten, no strike (the relay is not at
+            // fault), so a later copy or sync answer is accepted once the budget refills.
+            let now = self.sybil_guard.now();
+            let origin_budget = self
+                .origin_budgets
+                .entry(wire.origin.clone())
+                .or_insert_with(|| crate::sybil::TokenBucket {
+                    tokens: crate::sybil::ORIGIN_BURST,
+                    capacity: crate::sybil::ORIGIN_BURST,
+                    refill_rate: crate::sybil::ORIGIN_REFILL_PER_SEC,
+                    last_refill: now,
+                });
+            if !origin_budget.try_consume_at(now) {
+                self.seen_messages.remove(&wire.id);
+                self.origin_rate_limited_events += 1;
+                println!(
+                    "  ⚠ [{}] ORIGIN BUDGET DROP: '{}' from origin '{}' via '{}'",
+                    self.id, wire.id, wire.origin, sender_id
+                );
+                continue;
             }
 
             let verdict = self

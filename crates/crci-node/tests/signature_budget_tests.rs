@@ -7,7 +7,9 @@
 use crci_core::identity::Identity;
 use crci_core::message::{Message, Signal, Visibility};
 use crci_core::runtime::{NodeRuntime, WireMessage};
-use crci_core::sybil::{SybilError, SENDER_BURST, SENDER_REFILL_PER_SEC};
+use crci_core::sybil::{
+    SybilError, ORIGIN_BURST, ORIGIN_REFILL_PER_SEC, SENDER_BURST, SENDER_REFILL_PER_SEC,
+};
 use crci_core::transport::SharedInbox;
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
@@ -219,4 +221,80 @@ fn a_replay_over_budget_is_still_struck() {
     node.process_inbox();
     assert_eq!(node.byzantine_events, 3);
     assert!(node.sybil_guard.is_banned(&"mallory".to_string()));
+}
+
+/// Every honest node relays every message it accepts, so the per-neighbour budget alone lets
+/// one origin that floods fresh, validly signed messages take the whole network's capacity.
+/// Each node therefore also limits how many new messages it accepts per origin. Excess
+/// messages are dropped without a strike: the relays that carried them are not at fault.
+#[test]
+fn one_origin_cannot_take_more_than_its_share_through_many_neighbours() {
+    let (mut node, inbox) = receiver();
+    node.sybil_guard.use_manual_clock();
+    let mallory = Identity::new("mallory");
+    let relays = ["r1", "r2", "r3", "r4"];
+    let per_relay = SENDER_BURST as u64; // within every relay's own budget
+    let mut seq = 0;
+    for relay in relays {
+        let wires: Vec<WireMessage> = (0..per_relay)
+            .map(|_| {
+                seq += 1;
+                signed(&mallory, &format!("m-{seq}"), "mallory", seq)
+            })
+            .collect();
+        deliver(&inbox, relay, &wires);
+    }
+    let delivered = node.process_inbox_delivered();
+    assert_eq!(delivered.len(), ORIGIN_BURST as usize);
+    assert_eq!(node.byzantine_events, 0, "no relay is struck");
+    assert_eq!(
+        node.sybil_rate_limited_events, 0,
+        "no relay ran out of budget"
+    );
+}
+
+/// A message dropped for its origin's budget is not recorded, so a later copy (another
+/// path, or a sync answer) is accepted once the budget has refilled.
+#[test]
+fn a_message_dropped_for_its_origins_budget_is_accepted_later() {
+    let (mut node, inbox) = receiver();
+    node.sybil_guard.use_manual_clock();
+    let alice = Identity::new("alice");
+    let n = ORIGIN_BURST as u64 + 1;
+    let wires: Vec<WireMessage> = (1..=n)
+        .map(|seq| signed(&alice, &format!("a-{seq}"), "alice", seq))
+        .collect();
+    deliver(&inbox, "r1", &wires[..ORIGIN_BURST as usize]);
+    deliver(&inbox, "r2", &wires[ORIGIN_BURST as usize..]);
+    assert_eq!(node.process_inbox_delivered().len(), ORIGIN_BURST as usize);
+
+    node.sybil_guard
+        .advance_time(Duration::from_secs_f32(1.0 / ORIGIN_REFILL_PER_SEC));
+    deliver(&inbox, "r3", &wires[ORIGIN_BURST as usize..]);
+    let later = node.process_inbox_delivered();
+    assert_eq!(later.len(), 1);
+    assert_eq!(later[0].id, format!("a-{n}"));
+    assert_eq!(node.byzantine_events, 0);
+}
+
+/// The origin budget is charged only after the signature and the pinned key are checked,
+/// so messages that merely claim an honest origin cannot spend its budget.
+#[test]
+fn messages_claiming_an_origin_do_not_spend_its_budget() {
+    let (mut node, inbox) = receiver();
+    node.sybil_guard.use_manual_clock();
+    let alice = Identity::new("alice");
+    let eve = Identity::new("eve");
+    deliver(&inbox, "r1", &[signed(&alice, "a-1", "alice", 1)]); // pins alice's key
+    let squatted: Vec<WireMessage> = (2..=SENDER_BURST as u64)
+        .map(|seq| signed(&eve, &format!("e-{seq}"), "alice", seq))
+        .collect();
+    deliver(&inbox, "r2", &squatted);
+    assert_eq!(node.process_inbox_delivered().len(), 1);
+
+    let honest: Vec<WireMessage> = (2..ORIGIN_BURST as u64 + 1)
+        .map(|seq| signed(&alice, &format!("a-{seq}"), "alice", seq))
+        .collect();
+    deliver(&inbox, "r3", &honest);
+    assert_eq!(node.process_inbox_delivered().len(), honest.len());
 }

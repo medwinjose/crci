@@ -56,7 +56,7 @@ Every incoming message, in-process or over TCP, passes through the same local pi
 
 ```
 ban list → duplicate check per neighbour → token bucket → Ed25519 verification
-  → author-key pinning → replay filter → accept
+  → author-key pinning → per-origin budget → replay filter → accept
                  └──── each verifiable violation: −0.15 reputation for the sending neighbour ────┘
 ```
 

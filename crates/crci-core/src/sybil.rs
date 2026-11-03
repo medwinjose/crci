@@ -233,6 +233,13 @@ pub const SENDER_BURST: f32 = 20.0;
 /// honest frame dropped at 16 messages/s network-wide; at most 20 × 37 µs of signature
 /// checks per second per neighbour.
 pub const SENDER_REFILL_PER_SEC: f32 = 20.0;
+/// New messages one origin may have accepted at a node in a burst. Every honest node relays
+/// what it accepts, so without this one origin flooding fresh, validly signed messages takes
+/// the whole network's capacity, whatever the per-neighbour budget.
+pub const ORIGIN_BURST: f32 = 20.0;
+/// Messages per second added back to an origin's budget: above any single origin's rate in
+/// the testbed's honest load (4/s), a quarter of the per-neighbour rate.
+pub const ORIGIN_REFILL_PER_SEC: f32 = 5.0;
 
 fn get_subnet(id: &str) -> Option<String> {
     if let Ok(addr) = id.parse::<std::net::SocketAddr>() {

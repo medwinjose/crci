@@ -54,7 +54,13 @@ applies, in order:
    with another key is dropped. It is not a strike: the receiver cannot tell which key is genuine, so the
    relay that delivered it is not at fault (a strike here would let an adversary that announces an honest
    node's ID first get that node's honest relays banned).
-7. **Replay filter** (`replay.rs`): a sliding window of W = 64 sequence numbers per origin. With `seq_max`
+7. **Origin budget**: token bucket of 20 new messages per origin, refilled at 5 per second, charged only
+   now that the signature and the pinned key authenticate the origin (a message merely claiming an origin
+   cannot spend its budget). Every honest node relays what it accepts, so without this one origin
+   flooding fresh, validly signed messages takes the whole network's capacity through its neighbours'
+   budgets. A message over the budget is dropped without a strike (its relay is not at fault) and is not
+   recorded, so a later copy or sync answer is accepted once the budget has refilled.
+8. **Replay filter** (`replay.rs`): a sliding window of W = 64 sequence numbers per origin. With `seq_max`
    the highest sequence accepted from that origin, a packet with `seq < seq_max − W` is stale and dropped
    without a strike; a late packet inside the window is accepted once; the same sequence number again from
    the same sender is a strike, from a different sender it is dropped without a strike. A message resent by
