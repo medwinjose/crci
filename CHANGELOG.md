@@ -37,6 +37,10 @@ git history; `git log` is the complete record.
   placeholder divergence alerts.
 
 ### Fixed
+- A relay connection no longer stalls behind TCP's retransmission backoff under heavy packet loss. On
+  Linux and Android a dialed connection whose data stays unacknowledged for 5 s is aborted
+  (`TCP_USER_TIMEOUT`) and re-established for the next frame. Before, at 20 % loss one connection could
+  deliver nothing for up to 38 s, together with the sync answers meant to repair it.
 - Honest neighbours are no longer banned for late sync answers under packet loss. A sync answer is tagged
   with the request it answers (covered by the TCP frame signature, removed on receipt), and only a tagged
   answer to a request this node sent to that neighbour, for a message the request did not list as held, is

@@ -128,6 +128,11 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
    unreachable peer delays only its own frames, and the receive loop never waits on the network. A
    connection the peer closed is detected before the next write and re-established with a new
    handshake; a frame that cannot be delivered is logged and dropped, and anti-entropy recovers it.
+   On Linux and Android a connection whose sent data stays unacknowledged for 5 s is aborted by the
+   kernel (`TCP_USER_TIMEOUT`) and re-established for the next frame. Without this, TCP's exponential
+   retransmission backoff held single links for up to 38 s at 20 % packet loss, and the sync answers
+   queued behind them could not repair the gap. Frames still in the aborted connection are not re-sent;
+   anti-entropy recovers them.
 
 Every 5 s the binary advances the pipeline round and compares the severities reported by verified zone
 members with their median (anchored at 3), treating deviations ≥ 2 as outliers unless 3f ≥ n. An outlier

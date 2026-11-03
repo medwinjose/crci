@@ -371,7 +371,7 @@ impl DialedConnection {
             Ok(Err(e)) => return Err(map_send_error(e)),
             Err(_) => return Err(TransportError::ConnectionFailed("Connect timed out".into())),
         };
-        if let Err(e) = configure_socket(&stream) {
+        if let Err(e) = configure_socket(&stream).and_then(|()| limit_unacknowledged(&stream)) {
             return Err(TransportError::ConnectionFailed(format!(
                 "Socket configuration failed: {}",
                 e
@@ -791,6 +791,21 @@ fn configure_socket(stream: &tokio::net::TcpStream) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Abort a dialed connection whose sent data stays unacknowledged for `IO_TIMEOUT`, so the
+/// next frame reconnects instead of waiting out TCP's exponential retransmission backoff
+/// (tens of seconds at 20 % packet loss), which would hold up gossip and sync answers alike.
+/// Frames left in the aborted connection are not re-sent; anti-entropy recovers them.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+fn limit_unacknowledged(stream: &tokio::net::TcpStream) -> std::io::Result<()> {
+    let socket = unsafe { get_socket(stream) };
+    socket.set_tcp_user_timeout(Some(IO_TIMEOUT))
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
+fn limit_unacknowledged(_stream: &tokio::net::TcpStream) -> std::io::Result<()> {
+    Ok(())
+}
+
 struct ConnectionContext {
     local_node_id: String,
     key: SigningKey,
@@ -986,5 +1001,30 @@ impl Transport for TcpTransport {
 
     fn is_available(&self) -> bool {
         true
+    }
+}
+
+#[cfg(all(test, any(target_os = "linux", target_os = "android")))]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn dialed_connection_gives_up_on_unacknowledged_data() {
+        let listener = TcpTransport::bind(
+            "listener".to_string(),
+            "127.0.0.1:0".parse().unwrap(),
+            SigningKey::from_bytes(&[7; 32]),
+        )
+        .await
+        .unwrap();
+        let conn = DialedConnection::connect(
+            &listener.listen_addr.to_string(),
+            "dialer",
+            &SigningKey::from_bytes(&[9; 32]),
+        )
+        .await
+        .unwrap();
+        let socket = unsafe { get_socket(&conn.stream) };
+        assert_eq!(socket.tcp_user_timeout().unwrap(), Some(IO_TIMEOUT));
     }
 }
