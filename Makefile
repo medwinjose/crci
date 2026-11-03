@@ -9,7 +9,7 @@ OUT ?= /tmp/crci-testbed
 SUDO ?= sudo
 BIN := target/release/crci-node
 
-.PHONY: build testbed netem reproduce
+.PHONY: build testbed netem attacks reproduce
 
 build:
 	cargo build --release -p crci-node --bin crci-node
@@ -20,4 +20,7 @@ testbed: build
 netem: build
 	$(SUDO) scripts/testbed/run_netem.sh $(OUT)-netem $(BIN)
 
-reproduce: testbed netem
+attacks: build
+	$(SUDO) scripts/testbed/run_attacks.sh $(OUT)-attacks $(BIN)
+
+reproduce: testbed netem attacks

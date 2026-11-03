@@ -20,14 +20,16 @@ Linux only, run as root. Tested in WSL2 (Ubuntu 26.04, kernel 6.6, iproute2 6.19
 |---|---|
 | `topology.py KIND N SEED OUT.json` | Generates a topology and prints its metrics (mean/min/max degree, diameter, average shortest-path length, mean local clustering coefficient). `rgg`: random geometric graph in the unit square, radius `sqrt(2 ln N / (pi N))`, resampled until connected. `mesh`: random 4-regular graph, resampled until simple and connected (diameter 4–6 at N = 20–100). Also picks the roles for the eviction experiment (below). |
 | `testbed.py --topo T.json --out DIR --bin crci-node` | Creates the namespaces, starts one node per namespace (`TOKIO_WORKER_THREADS=2`, listening on the namespace's own address), drives the traffic, samples host CPU / memory / swap / kernel backlog drops every second, pings sampled overlay links, records per-node RSS, then stops everything and removes the namespaces. Every node's schedule counts from T0 (`--experiment-epoch-unix-ms`), because `ip netns exec` delays process start by seconds when hundreds of nodes start at once. |
-| `analyze.py DIR` | Computes delivery ratio, dissemination latency (overall, per hop, for the downstream set), bans, eviction latency, honest false evictions, rate-limit drops, host load and link RTT, and checks the fidelity criteria. Writes `summary.json`, `latency.csv`, `bans.csv`. |
+| `analyze.py DIR` | Computes delivery ratio and dissemination latency of honest-originated messages (overall, per hop, for the downstream set), bans, eviction latency, honest false evictions, rate-limit drops (honest senders' frames separately), per-origin budget drops, relay frames lost, deliveries more than 5 s late by path, host load and link RTT, and checks the fidelity criteria. Writes `summary.json`, `latency.csv`, `bans.csv`. |
 | `report.py OUT` | Collects every run's `summary.json` into `results.csv`. |
 | `run_all.sh OUT [BIN]` | The full experiment set (see the header of the script). |
 | `run_netem.sh OUT [BIN] [SEEDS] [SIZES]` | The impairment set: one-way delay 40 ms ± 15 ms (uniform) on every egress, with loss 0/5/10/15/20 %, reordering 5/10/15 % and loss 10 % + reordering 10 %; rgg and mesh, N = 20/50/100, seeds 1–3. Resumable. |
-| `netem_table.py OUT` | One CSV per condition, `summary.csv` (mean over seeds) and `table.md` under `OUT/netem/`. |
+| `netem_table.py OUT` | One CSV per condition, `summary.csv` (mean over seeds) and `table.md` under `OUT/netem/`, and `conditions.md`: each condition aggregated over all its runs. |
+| `run_attacks.sh OUT [BIN] [SEEDS] [OLD_BIN]` | The attacker set on rgg N = 50: an over-budget replayer (B empties its budget with fresh messages from 10 s before the fault, then sends every frame 8 times; refill 5 and 20, and an older binary for comparison if given), a fresh-message flood (B originates 40 messages/s and never repeats a frame), and the 20 % loss condition with the nodes kept running 60 s after the last message (`--drain 60`). Resumable. |
 
 ```bash
 make testbed OUT=/tmp/crci-testbed
+make attacks OUT=/tmp/crci-testbed   # writes /tmp/crci-testbed-attacks
 # or: cargo build --release -p crci-node --bin crci-node
 #     sudo scripts/testbed/run_all.sh /tmp/crci-testbed target/release/crci-node
 ```
@@ -42,6 +44,9 @@ Each run uses a 60 s measurement window starting at T0, after every node is list
 - **Fault:** a relay B behaves honestly until T0 + 20 s, then sends every gossip message twice, i.e.
   repeats each message once (`crci-node --replay-after-ms`, `--replay-copies`). Its neighbours strike it
   and ban it.
+- **Attacker options:** `--byz-rate R` makes B originate R messages/s of its own from 10 s before the
+  fault; `--replay-copies 1` turns the fault into a pure fresh-message flood; `--refill` sets the
+  per-neighbour budget refill; `--drain S` keeps the nodes running S seconds after the window.
 - **Roles:** B is a node whose removal keeps the graph connected, at least two hops from S, chosen (with S)
   to maximise the downstream set D: the nodes all of whose shortest paths from S pass through B. After B is
   evicted, S's messages must reach D over longer alternate paths.
