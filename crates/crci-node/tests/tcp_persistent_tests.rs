@@ -218,3 +218,35 @@ async fn an_idle_connection_outlives_the_read_timeout() {
         "the idle connection must not have been closed and re-dialled"
     );
 }
+
+/// A new connection is reported as a relay link (its sender may have lost frames) only when
+/// it carries gossip; a sync-only connection is not, so sync requests cannot trigger each
+/// other between two nodes.
+#[tokio::test]
+async fn new_relay_links_are_reported_but_sync_connections_are_not() {
+    let receiver = listener("link-receiver").await;
+    let sender = listener("link-sender").await;
+    let target = receiver.listen_addr.to_string();
+
+    let mut sync = signed(&Identity::new("link-sender"), "sync-1", "link-sender", 1);
+    sync.message_type = crci_core::runtime::SYNC_REQUEST_TYPE.to_string();
+    let mut conn = sender.dial(&target).await.unwrap();
+    conn.send(&sync).await.unwrap();
+    receive_within(&receiver, 2).await;
+    conn.close().await;
+    let mut links = receiver.new_links.lock().await;
+    assert!(
+        links.try_recv().is_err(),
+        "a sync-only connection was reported"
+    );
+
+    let id = Identity::new("author");
+    sender
+        .relay(&target, signed(&id, "gossip-1", "author", 1))
+        .unwrap();
+    let (from, _) = receive_within(&receiver, 2).await;
+    let reported = tokio::time::timeout(Duration::from_secs(2), links.recv())
+        .await
+        .expect("relay link not reported");
+    assert_eq!(reported, Some(from));
+}

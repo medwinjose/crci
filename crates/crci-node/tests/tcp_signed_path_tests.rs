@@ -534,6 +534,109 @@ fn a_replaying_node_is_banned_by_its_peer() {
     );
 }
 
+/// A TCP proxy in front of one listener. While `discard` is set it swallows what the dialer
+/// sends (the dialer's TCP sees it acknowledged, as with frames left in an aborted
+/// connection); `cut` closes every proxied connection and resumes forwarding.
+struct LossyProxy {
+    addr: String,
+    discard: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    open: std::sync::Arc<std::sync::Mutex<Vec<std::net::TcpStream>>>,
+}
+
+impl LossyProxy {
+    fn start(target: std::sync::Arc<std::sync::Mutex<String>>) -> LossyProxy {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::{Arc, Mutex};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap().to_string();
+        let discard = Arc::new(AtomicBool::new(false));
+        let open: Arc<Mutex<Vec<std::net::TcpStream>>> = Arc::new(Mutex::new(Vec::new()));
+        let (d, o) = (discard.clone(), open.clone());
+        std::thread::spawn(move || {
+            for client in listener.incoming().flatten() {
+                let dest = target.lock().unwrap().clone();
+                let Ok(server) = std::net::TcpStream::connect(&dest) else {
+                    continue;
+                };
+                o.lock().unwrap().push(client.try_clone().unwrap());
+                o.lock().unwrap().push(server.try_clone().unwrap());
+                let (mut c_in, mut s_out) =
+                    (client.try_clone().unwrap(), server.try_clone().unwrap());
+                let discard = d.clone();
+                std::thread::spawn(move || {
+                    let mut buf = [0u8; 8192];
+                    while let Ok(n) = c_in.read(&mut buf) {
+                        if n == 0 {
+                            break;
+                        }
+                        if !discard.load(Ordering::SeqCst)
+                            && std::io::Write::write_all(&mut s_out, &buf[..n]).is_err()
+                        {
+                            break;
+                        }
+                    }
+                    let _ = s_out.shutdown(std::net::Shutdown::Both);
+                });
+                let (mut s_in, mut c_out) = (server, client);
+                std::thread::spawn(move || {
+                    let _ = std::io::copy(&mut s_in, &mut c_out);
+                    let _ = c_out.shutdown(std::net::Shutdown::Both);
+                });
+            }
+        });
+        LossyProxy {
+            addr,
+            discard,
+            open,
+        }
+    }
+
+    fn cut(&self) {
+        for s in self.open.lock().unwrap().drain(..) {
+            let _ = s.shutdown(std::net::Shutdown::Both);
+        }
+        self.discard
+            .store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+/// A frame written into a relay connection that is then lost reaches the peer soon after
+/// the connection is re-established: the peer sees the new connection and asks the sender
+/// for a sync, instead of waiting for the next periodic exchange (30 s).
+#[test]
+fn frame_lost_with_a_relay_connection_is_recovered_after_reconnect() {
+    let target = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+    let proxy = LossyProxy::start(target.clone());
+    let a = start_node("tcp-loss-a", &["--peers", &proxy.addr]);
+    let b = start_node("tcp-loss-b", &["--peers", &a.addr]);
+    *target.lock().unwrap() = b.addr.clone();
+    // Let both start-up syncs finish, then open A's relay connection to B.
+    std::thread::sleep(Duration::from_millis(1500));
+    send_signed(&a.addr, "node-before-loss");
+    std::thread::sleep(Duration::from_millis(500));
+
+    proxy
+        .discard
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    send_signed(&a.addr, "node-lost");
+    std::thread::sleep(Duration::from_millis(500));
+    proxy.cut();
+    // The next relay finds the connection closed and dials a new one.
+    send_signed(&a.addr, "node-after-loss");
+    std::thread::sleep(Duration::from_secs(10));
+    let b_log = b.finish();
+    let a_log = a.finish();
+
+    for origin in ["node-before-loss", "node-after-loss", "node-lost"] {
+        assert!(
+            b_log.contains(&format!("(origin {origin}, via tcp-loss-a#")),
+            "{origin} missing at B\nB log:\n{b_log}\nA log:\n{a_log}"
+        );
+    }
+    assert_eq!(count(&b_log, "MALICIOUS REPLAY"), 0, "B log:\n{b_log}");
+    assert_eq!(count(&a_log, "MALICIOUS REPLAY"), 0, "A log:\n{a_log}");
+}
+
 /// A peer that never answers (192.0.2.1 is reserved for documentation, RFC 5737) must not
 /// hold up start-up: the node listens within a few seconds, whatever its peers do.
 #[test]

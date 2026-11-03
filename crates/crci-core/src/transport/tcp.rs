@@ -543,6 +543,10 @@ impl Outbound {
 pub struct TcpTransport {
     pub listen_addr: SocketAddr,
     pub rx: tokio::sync::Mutex<mpsc::Receiver<(NodeId, NetworkMessage)>>,
+    /// Authenticated identity of each dialer that opened a new relay connection (its first
+    /// frame is not a sync request). Frames in the dialer's previous connection may be lost,
+    /// so the node asks that dialer for a sync.
+    pub new_links: tokio::sync::Mutex<mpsc::Receiver<NodeId>>,
     pub accepted_count: Arc<AtomicU64>,
     pub rejected_count: Arc<AtomicU64>,
     pub active_connections: Arc<AtomicU64>,
@@ -571,6 +575,8 @@ impl TcpTransport {
     ) -> std::io::Result<Self> {
         let listener = TcpListener::bind(addr).await?;
         let (tx, rx) = mpsc::channel(1024);
+        // shortcut: a full channel drops the report, the periodic sync still covers the link.
+        let (links_tx, links_rx) = mpsc::channel(256);
         let accepted = Arc::new(AtomicU64::new(0));
         let rejected = Arc::new(AtomicU64::new(0));
         let active = Arc::new(AtomicU64::new(0));
@@ -623,6 +629,7 @@ impl TcpTransport {
                         let active_for_task = active_clone.clone();
                         let auth_failures_for_task = auth_failures_clone.clone();
                         let cancel_for_task = cancel_token_clone.clone();
+                        let links_for_task = links_tx.clone();
 
                         tokio::spawn(async move {
                             // RAII connection guard to decrement count on drop (preventing leaks)
@@ -641,6 +648,7 @@ impl TcpTransport {
                                     local_node_id: node_id_for_task,
                                     key: key_for_task,
                                     auth_failures: auth_failures_for_task,
+                                    new_links: links_for_task,
                                 },
                                 cancel_for_task,
                             )
@@ -682,6 +690,7 @@ impl TcpTransport {
         Ok(Self {
             listen_addr: actual_addr,
             rx: tokio::sync::Mutex::new(rx),
+            new_links: tokio::sync::Mutex::new(links_rx),
             accepted_count: accepted,
             rejected_count: rejected,
             active_connections: active,
@@ -794,7 +803,8 @@ fn configure_socket(stream: &tokio::net::TcpStream) -> std::io::Result<()> {
 /// Abort a dialed connection whose sent data stays unacknowledged for `IO_TIMEOUT`, so the
 /// next frame reconnects instead of waiting out TCP's exponential retransmission backoff
 /// (tens of seconds at 20 % packet loss), which would hold up gossip and sync answers alike.
-/// Frames left in the aborted connection are not re-sent; anti-entropy recovers them.
+/// Frames left in the aborted connection are not re-sent; the peer sees the new connection
+/// (`new_links`) and asks for a sync, which recovers them.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 fn limit_unacknowledged(stream: &tokio::net::TcpStream) -> std::io::Result<()> {
     let socket = unsafe { get_socket(stream) };
@@ -810,6 +820,7 @@ struct ConnectionContext {
     local_node_id: String,
     key: SigningKey,
     auth_failures: Arc<AtomicU64>,
+    new_links: mpsc::Sender<NodeId>,
 }
 
 /// Authenticate the dialer, then deliver its frames, attributed to its authenticated
@@ -844,6 +855,7 @@ async fn handle_connection(
     log::debug!("authenticated TCP peer {}", peer.identity);
 
     let mut expected_counter: u64 = 0;
+    let mut link_reported = false;
     loop {
         // Shutdown immediately on any failure (ASYNC-013).
         let frame_res = tokio::select! {
@@ -886,6 +898,14 @@ async fn handle_connection(
             break;
         }
         expected_counter += 1;
+
+        // A dialer opens a new relay connection only at start-up or after its previous one
+        // was lost, possibly with frames in it. Sync-only connections carry a single request
+        // and are not reported, so two nodes' sync requests cannot trigger each other.
+        if !link_reported && frame.message.message_type != crate::runtime::SYNC_REQUEST_TYPE {
+            link_reported = true;
+            let _ = ctx.new_links.try_send(peer.identity.clone());
+        }
 
         if tx
             .send((peer.identity.clone(), frame.message))

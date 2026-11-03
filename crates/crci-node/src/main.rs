@@ -1552,12 +1552,19 @@ async fn run_node(
             tcp.listen_addr
         );
     }
+    // A peer that opens a new relay connection to this node may have lost frames with its
+    // previous one, so it is asked for a sync as soon as its cooldown allows, not at the next
+    // SYNC_INTERVAL. Its address is known once this node's own sync dial authenticated it.
+    const COOLDOWN_MARGIN: std::time::Duration = std::time::Duration::from_secs(1);
     tokio::spawn(async move {
         let Some(reply_to) = reply_to else {
             return;
         };
+        let mut new_links = sync_tcp.new_links.lock().await;
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         let mut next_due: HashMap<String, std::time::Instant> = HashMap::new();
+        let mut last_sent: HashMap<String, std::time::Instant> = HashMap::new();
+        let mut addr_of: HashMap<String, String> = HashMap::new();
         loop {
             let now = std::time::Instant::now();
             for peer in &dial {
@@ -1585,10 +1592,30 @@ async fn run_node(
                     ),
                     Err(e) => log::warn!("sync request to {} failed: {}", peer, e),
                 }
+                addr_of.insert(conn.peer.clone(), peer.clone());
                 conn.close().await;
+                last_sent.insert(peer.clone(), now);
                 next_due.insert(peer.clone(), now + SYNC_INTERVAL);
             }
-            tokio::time::sleep(SYNC_RETRY).await;
+            let wake = next_due
+                .values()
+                .min()
+                .copied()
+                .unwrap_or(now + SYNC_RETRY)
+                .min(std::time::Instant::now() + SYNC_RETRY);
+            tokio::select! {
+                _ = tokio::time::sleep_until(tokio::time::Instant::from_std(wake)) => {}
+                Some(identity) = new_links.recv() => {
+                    let Some(peer) = addr_of.get(&identity) else {
+                        continue;
+                    };
+                    let earliest = last_sent
+                        .get(peer)
+                        .map_or(now, |t| *t + runtime::SYNC_COOLDOWN + COOLDOWN_MARGIN);
+                    let due = next_due.entry(peer.clone()).or_insert(earliest);
+                    *due = (*due).min(earliest.max(std::time::Instant::now()));
+                }
+            }
         }
     });
     let pipeline = Arc::new(Mutex::new(pipeline));

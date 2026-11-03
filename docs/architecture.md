@@ -138,8 +138,13 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
    On Linux and Android a connection whose sent data stays unacknowledged for 5 s is aborted by the
    kernel (`TCP_USER_TIMEOUT`) and re-established for the next frame. Without this, TCP's exponential
    retransmission backoff held single links for up to 38 s at 20 % packet loss, and the sync answers
-   queued behind them could not repair the gap. Frames still in the aborted connection are not re-sent;
-   anti-entropy recovers them.
+   queued behind them could not repair the gap. Frames still in the aborted connection are not re-sent
+   (the sender cannot tell which of them arrived, and a repeat that did arrive would be struck as a
+   replay). Instead the receiver asks for them: when a peer opens a new relay connection to a node (its
+   first frame is not a sync request), the node sends that peer a sync request as soon as the peer's
+   5 s answer cooldown allows, instead of at the next 30 s exchange. Short sync-only connections are not
+   counted, so two nodes' requests cannot trigger each other; a peer that reconnects constantly gets at
+   most one request per 6 s from each neighbour.
 
 Every 5 s the binary advances the pipeline round and compares the severities reported by verified zone
 members with their median (anchored at 3), treating deviations ≥ 2 as outliers unless 3f ≥ n. An outlier

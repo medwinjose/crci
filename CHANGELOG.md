@@ -43,6 +43,11 @@ git history; `git log` is the complete record.
   placeholder divergence alerts.
 
 ### Fixed
+- Frames lost with an aborted or closed relay connection are recovered within seconds instead of at the
+  next 30 s anti-entropy exchange. When a peer opens a new relay connection, the receiving node asks it
+  for a sync as soon as that peer's answer cooldown allows (about 6 s after the previous request).
+  Sync-only connections do not trigger this. Lost frames are still never re-sent by the sender, so no
+  honest repeat can be struck.
 - A relay connection no longer stalls behind TCP's retransmission backoff under heavy packet loss. On
   Linux and Android a dialed connection whose data stays unacknowledged for 5 s is aborted
   (`TCP_USER_TIMEOUT`) and re-established for the next frame. Before, at 20 % loss one connection could
