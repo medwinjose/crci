@@ -5,7 +5,8 @@ Writes OUT/netem/<condition>.csv (one row per run of that condition: topology ki
 measured values), OUT/netem/summary.csv (mean and min/max over seeds per condition, kind and N) and
 OUT/netem/table.md (the same as a Markdown table). Only runs named netem-* are used; a run that
 fails the fidelity criteria is kept in the per-condition CSV with faithful=False and is excluded from
-summary.csv, and the number excluded is reported.
+summary.csv, and the number excluded is reported. OUT/netem/conditions.md aggregates each condition
+over all its faithful runs (both topologies, every N and seed).
 
 Usage: netem_table.py OUT
 """
@@ -79,7 +80,41 @@ def main():
         f.write("| " + " | ".join(header) + " |\n|" + "---|" * len(header) + "\n")
         for row in table:
             f.write("| " + " | ".join(str(v) for v in row) + " |\n")
+    write_conditions(out, rows)
     print(f"{len(rows)} netem runs, {excluded} unfaithful; wrote {out}/netem/")
+
+
+def write_conditions(out, rows):
+    by_cond = defaultdict(list)
+    for r in rows:
+        if r["faithful"] == "True":
+            by_cond[r["run"].split("-")[1]].append(r)
+    header = ["Condition", "Runs", "Runs with a false eviction", "Honest false evictions (total, max in one run)",
+              "B banned by all its neighbours", "Delivery before the fault, mean",
+              "Delivery after B is banned, mean (min of a run)",
+              "Eviction latency, median of run medians (max)", "Frames dropped by the rate limit",
+              "Relay frames lost (failed delivery)", "Deliveries > 5 s after origination"]
+
+    def total(rs, key):
+        vals = [num(r.get(key)) for r in rs]
+        return "" if any(v is None for v in vals) else int(sum(vals))
+
+    with open(f"{out}/netem/conditions.md", "w") as f:
+        f.write("| " + " | ".join(header) + " |\n|" + "---|" * len(header) + "\n")
+        for cond in sorted(by_cond, key=lambda c: ORDER.index(c) if c in ORDER else 99):
+            rs = by_cond[cond]
+            fe = [int(r["false_evict"]) for r in rs]
+            pre = [num(r["deliv_pre"]) for r in rs if num(r["deliv_pre"]) is not None]
+            post = [num(r["deliv_post"]) for r in rs if num(r["deliv_post"]) is not None]
+            med = [num(r["evict_med_ms"]) for r in rs if num(r["evict_med_ms"]) is not None]
+            mx = [num(r["evict_max_ms"]) for r in rs if num(r["evict_max_ms"]) is not None]
+            full = sum(1 for r in rs if banned_frac(r["banned_by"]) == 1.0)
+            f.write("| " + " | ".join(str(v) for v in [
+                cond, len(rs), sum(1 for x in fe if x), f"{sum(fe)}, {max(fe)}", f"{full}/{len(rs)}",
+                f"{statistics.mean(pre):.1%}" if pre else "",
+                f"{statistics.mean(post):.1%} ({min(post):.0%})" if post else "",
+                f"{statistics.median(med) / 1000:.1f} s ({max(mx) / 1000:.1f} s)" if med else "",
+                total(rs, "rate_drops"), total(rs, "relay_failed"), total(rs, "late_5s")]) + " |\n")
 
 
 if __name__ == "__main__":

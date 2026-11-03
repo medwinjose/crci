@@ -44,6 +44,8 @@ COLUMNS = [
     ("honest_banned", lambda s: s.get("honest_nodes_banned_by_anyone")),
     ("honest_nodes", lambda s: s.get("honest_nodes")),
     ("rate_drops", lambda s: sum(s["rate_limit_drops"].values())),
+    ("relay_failed", lambda s: s.get("relay_drops", {}).get("failed")),
+    ("late_5s", lambda s: sum(s.get("late_deliveries_over_5s_by_path", {}).values())),
     ("cpu_mean", lambda s: s["host"]["cpu_busy_pct"].get("mean")),
     ("cpu_max", lambda s: s["host"]["cpu_busy_pct"].get("max")),
     ("mem_mib", lambda s: s["host"]["mem_used_mib_max"]),
