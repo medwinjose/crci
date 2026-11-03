@@ -13,7 +13,9 @@
 # source S, 0.5/s from the other nodes) and the relay B repeats every message once from
 # 20 s on.
 #   main     rgg and mesh at N = 20, 50, 100
-#   load     rgg N = 50 at 4, 6 and 8 messages/s in total (8 is the design load)
+#   load     rgg N = 50 at 4, 6 and 8 messages/s in total (8 is the design load), and at 16 and
+#            32 messages/s with the source at 4/s and the rest spread over the other nodes
+#   src8     rgg N = 50 with one source at 8 messages/s, above the per-origin budget (5/s)
 #   sweep    rgg at N = 200, 300, 500 (N = 100 is in "main")
 #   stress   rgg N = 500 at 4 messages/s
 # Existing runs (a summary.json in the run directory) are skipped, so an interrupted
@@ -47,6 +49,9 @@ for seed in $SEEDS; do
     run load4-rgg-50 rgg 50 "$seed" --source-rate 2 --bg-rate 2
     run load6-rgg-50 rgg 50 "$seed" --source-rate 3 --bg-rate 3
     run load8-rgg-50 rgg 50 "$seed" --source-rate 4 --bg-rate 4
+    run load16-rgg-50 rgg 50 "$seed" --source-rate 4 --bg-rate 12
+    run load32-rgg-50 rgg 50 "$seed" --source-rate 4 --bg-rate 28
+    run src8-rgg-50 rgg 50 "$seed" --source-rate 8 --bg-rate 8
     for n in 200 300 500; do
         run "sweep-rgg-$n" rgg "$n" "$seed"
     done
