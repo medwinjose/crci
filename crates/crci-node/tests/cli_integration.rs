@@ -188,14 +188,12 @@ async fn test_cli_byzantine_mode() {
 #[tokio::test]
 async fn test_cli_peers_dial() {
     let bin_path = get_bin_path();
-    let port_a = get_free_port();
-    let port_b = get_free_port();
-    let addr_a = format!("127.0.0.1:{}", port_a);
-    let addr_b = format!("127.0.0.1:{}", port_b);
-
-    // Bind two ports so there is something to dial
-    let _listener_a = std::net::TcpListener::bind(&addr_a).unwrap();
-    let _listener_b = std::net::TcpListener::bind(&addr_b).unwrap();
+    // Bind two ports so there is something to dial; binding port 0 and keeping the listeners
+    // leaves no window in which a parallel test can take the port.
+    let _listener_a = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let _listener_b = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr_a = _listener_a.local_addr().unwrap().to_string();
+    let addr_b = _listener_b.local_addr().unwrap().to_string();
 
     // Start a node that dials both A and B (running without --listen exits immediately after dial attempts)
     let output = Command::new(&bin_path)
