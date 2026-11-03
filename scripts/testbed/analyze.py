@@ -37,6 +37,7 @@ BANNED = re.compile(r"Node (n\d+) banned ([^#]+)#\S+ at_ms=(\d+)")
 READMITTED = re.compile(r"Node (n\d+) readmitted ([^#]+)#\S+ at_ms=(\d+)")
 FAULT = re.compile(r"Node (n\d+) fault: .* at_ms=(\d+)")
 RATE = re.compile(r"\[(n\d+)\] SYBIL GUARD DROP: peer ([^#]+)#\S+ exceeded rate limit")
+ORIGIN_DROP = re.compile(r"\[(n\d+)\] ORIGIN BUDGET DROP: '[^']+' from origin '([^']+)'")
 RTT = re.compile(r"time=([\d.]+) ms")
 WARMUP_MS = 5000
 
@@ -115,6 +116,7 @@ def main():
     originated, accepted, bans, readmits = {}, defaultdict(dict), [], []
     via = []
     rate_drops = defaultdict(int)
+    origin_drops = defaultdict(int)
     relay_drops = {}
     proc_us = []
     fault_ms = None
@@ -139,6 +141,8 @@ def main():
                     relay_drops[m[1]] = (int(m[2]), int(m[3]))  # cumulative: keep the last
                 elif m := RATE.search(line):
                     rate_drops["from_byzantine" if m[2] == byz else "from_honest"] += 1
+                elif m := ORIGIN_DROP.search(line):
+                    origin_drops["byzantine_origin" if m[2] == byz else "honest_origin"] += 1
                 if m := RECEIVED.search(line):
                     counters["frames_received"] += 1
                     # The overlay is enforced by configuration only (one shared L2 segment):
@@ -173,7 +177,8 @@ def main():
     delivery = defaultdict(list)
     downstream_delivery = defaultdict(list)
     for mid, (origin, t_emit) in originated.items():
-        if not (t0 - 1000 <= t_emit <= end):
+        # Delivery and latency describe honest traffic; B's own messages are meant to die with it.
+        if origin == byz or not (t0 - 1000 <= t_emit <= end):
             continue
         p = period(t_emit)
         receivers = [x for x in honest if x != origin]
@@ -278,6 +283,7 @@ def main():
         "honest_nodes": len(honest),
         "readmissions": len(readmits),
         "rate_limit_drops": dict(rate_drops),
+        "origin_budget_drops": dict(origin_drops),
         "relay_drops": {"failed": sum(f for f, _ in relay_drops.values()),
                         "queue_full": sum(q for _, q in relay_drops.values()),
                         "nodes_with_drops": len(relay_drops)},
