@@ -56,7 +56,7 @@ fn start_node(node_id: &str, extra_args: &[&str]) -> Receiver {
         line.clear();
         match reader.read_line(&mut line) {
             Ok(0) => break,
-            Ok(_) if line.contains("listening on") => {
+            Ok(_) if line.starts_with("Node ") && line.contains(" listening on ") => {
                 let addr = line
                     .split_whitespace()
                     .last()
@@ -426,7 +426,7 @@ fn node_started_before_its_peer_relays_to_it_once_it_is_up() {
         line.clear();
         match reader.read_line(&mut line) {
             Ok(0) => break,
-            Ok(_) if line.contains("listening on") => break,
+            Ok(_) if line.starts_with("Node ") && line.contains(" listening on ") => break,
             _ => {}
         }
     }
@@ -558,7 +558,7 @@ fn an_unreachable_peer_does_not_delay_start_up() {
         line.clear();
         match std::io::BufRead::read_line(&mut reader, &mut line) {
             Ok(0) => break,
-            Ok(_) if line.contains("listening on") => {
+            Ok(_) if line.starts_with("Node ") && line.contains(" listening on ") => {
                 listening = Some(started.elapsed());
                 break;
             }

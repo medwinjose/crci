@@ -36,7 +36,7 @@ async fn test_cli_message_send_and_receive() {
             if n == 0 {
                 break;
             }
-            if line.contains("listening on") {
+            if line.starts_with("Node ") && line.contains(" listening on ") {
                 listen_addr = line
                     .split_whitespace()
                     .last()
@@ -123,7 +123,7 @@ async fn test_cli_byzantine_mode() {
             if n == 0 {
                 break;
             }
-            if line.contains("listening on") {
+            if line.starts_with("Node ") && line.contains(" listening on ") {
                 listen_addr = line
                     .split_whitespace()
                     .last()
