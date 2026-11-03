@@ -1,0 +1,4 @@
+run,kind,seed,N,delay_ms,jitter_ms,loss_pct,reorder_pct,mean_deg,max_deg,diam,aspl,clust,up,msgs,deliv_pre,deliv_post,lat_med_pre,lat_p95_pre,lat_med_post,lat_p95_post,hop_excess_med,down_pre,down_post,via_byz_post,banned_by,evict_med_ms,evict_max_ms,false_evict,honest_banned,honest_nodes,rate_drops,rate_drops_honest,origin_drops_honest,relay_failed,late_5s,cpu_mean,cpu_max,mem_mib,swap_io,kdrops,rss_mib_node,rtt_med,rtt_p95,faithful
+fl-new-refill20-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,2060,1.0,,41,73,,,1.0,144/144,/,0,0/10,,,0,0,49,10164,0,0,0,0,4.33,14.6,653,0,0,7.33,20.5,20.9,True
+fl-new-refill20-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,2060,1.0,,42,74,,,1.0,84/84,/,0,0/10,,,0,0,49,10081,0,0,0,0,4.64,15.1,665,0,0,7.42,20.5,21.0,True
+fl-new-refill20-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,2060,1.0,,54,86,,,1.0,140/140,/,0,0/10,,,0,0,49,10201,0,0,0,0,4.54,12.9,655,0,0,7.3,20.5,20.9,True

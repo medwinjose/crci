@@ -43,7 +43,8 @@ applies, in order:
    5 000 entries.
 3. **Admission** (`SybilGuard::check`), for messages not seen before: token bucket of 20 messages per
    transport sender, refilled at 20 per second (chosen from a testbed sweep: the lowest of 5, 10, 20
-   and 50 per second with no honest frame dropped at 16 messages/s network-wide).
+   and 50 per second with no honest frame dropped at 16 messages/s network-wide; re-measured with the
+   per-origin budget of step 7: still none at 16 messages/s).
 4. **Signature-check budget**: no separate counter. Every message that reaches the signature check has
    passed the sender's token bucket in step 3, so verifications are bounded per transport sender, and every
    invalid signature is a strike, so a sender of bad signatures is banned after three checks. The claimed

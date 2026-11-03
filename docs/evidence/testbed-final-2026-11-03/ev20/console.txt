@@ -1,0 +1,72 @@
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-rgg-20-s1
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-rgg-50-s1
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-rgg-100-s1
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-mesh-20-s1
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-mesh-50-s1
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-mesh-100-s1
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-rgg-20-s2
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-rgg-50-s2
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-rgg-100-s2
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-mesh-20-s2
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-mesh-50-s2
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-mesh-100-s2
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-rgg-20-s3
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-rgg-50-s3
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-rgg-100-s3
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-mesh-20-s3
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-mesh-50-s3
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/final2-2026-11-03/ev20/ev20-mesh-100-s3

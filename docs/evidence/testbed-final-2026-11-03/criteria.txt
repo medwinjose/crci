@@ -1,0 +1,20 @@
+Final run 2 (binary 3db3e27c, per-origin budget), criteria fixed 2026-11-03 before any data. Same as the
+first final run, plus the flood:
+- fidelity: the 6 analyze.py checks in every run; a failing run is re-run once, both recorded.
+- netem (162): 0 honest false evictions at 10 % and 15 % loss; B banned by all its neighbours in every
+  run; 20 % and all other conditions reported as measured.
+- r4 (39): 0 rate-limit drops of honest senders' frames in load8 runs; rest as measured.
+- r3b (9): new binary (refill 5 and 20) bans B at all neighbours in every run, 0 honest bans; old
+  binary (a296b20) reported as measured.
+- fl (3): honest delivery while B floods >= 0.99, 0 honest-sender rate drops, 0 honest-origin budget
+  drops, 0 honest bans in every run.
+- ev20 (18): every honest post-ban message reaches every honest node (deliv_post = 1.0) in every run;
+  0 honest bans; B banned by all neighbours; report max delivery latency. Any miss: find out why first.
+
+Capacity re-measure on 3db3e27c (added after final run 2, before its data): the earlier refill sweep put
+half the load on one source (8-16 msg/s from one origin), which the per-origin budget (5/s) now caps.
+New r4 configurations, seeds 1-3, rgg-50, no change to the others:
+- load16 (source 4/s + 12/s spread): pass = 0 honest-sender rate drops, 0 honest-origin budget drops,
+  delivery 1.0, faithful. load32 (source 4/s + 28/s spread): reported as measured.
+- src8 (one honest source at 8/s + 8/s spread): reported as measured (expected: the source's messages
+  above 5/s are dropped at every node; this is the cost of the per-origin budget, stated in the docs).

@@ -81,10 +81,12 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    for example) needs that neighbour's budget for the whole network's traffic. The token bucket (20 per
    second) therefore caps the network-wide sustained message rate near its refill rate, whatever the number
    of nodes; beyond it, honest frames are dropped (without strikes) and delivery relies on redundant paths.
-   Measured on the testbed (random geometric graph, 50 nodes): no honest frame dropped at 16 messages/s;
-   at 32 messages/s, 5 534 dropped and a delivery ratio of 0.98. Each origin is limited to 5 new messages
-   per second at every node, so one flooding identity takes at most that share; a node that floods with
-   many fresh identities is not bounded this way (item 8).
+   Measured on the testbed (random geometric graph, 50 nodes, 3 seeds, load spread over many origins): no
+   honest frame dropped at 16 messages/s; at 32 messages/s, 2 343–3 454 dropped per run and 91–99 % of
+   messages delivered. Each origin is limited to 5 new messages per second at every node (burst 20), so one
+   flooding identity takes at most that share, and an honest node cannot sustain more than 5 messages per
+   second either (an honest source at 8 messages/s lost 635–1 684 messages per run). A node that floods
+   with many fresh identities is not bounded this way (item 8).
 8. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
    "start at 0.2 if the /24 subnet has a banned peer" rule, which only applies to sender IDs that parse
    as socket addresses. Fresh key pairs are otherwise free, so the per-origin budget (5 messages per

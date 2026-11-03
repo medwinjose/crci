@@ -106,6 +106,53 @@ What these files show, stated plainly:
   host samples, per-node RSS); `scripts/testbed/analyze.py` regenerates that run's summary from it.
   Raw logs of the other runs (about 530 MB) are not committed.
 - **What it shows and does not show:** see [benchmarks.md](../benchmarks.md#emulation-testbed-real-processes-one-host).
+  **Superseded** by `testbed-final-2026-11-03/` (one seed per configuration, earlier protocol).
+
+## `netem-2026-11-02/`
+
+| File | SHA-256 |
+|---|---|
+| `results.csv` | `56ebbb854c80e6c6bcc3c015c7dacc45c4f0ab74efb7d31b4be3d27a3fbcc785` |
+| `run_netem.txt` | `aa232717124be61ed399e3d461b64fe3d5b499d17628e4aade53545c7b7fe8fc` |
+| `netem-l20-rgg-100-s1-raw.tar.gz` | `5a55ecf254f8052c45801053a60e5744a9d0f110f11288e2fda588febf5eac47` |
+| `netem/summary.csv` | `894ddd638e3a67550002a29fe7d5fec9283c90b165d6cf166dcb360a8653b1d5` |
+| `binary.sha256` | `6ab3bfda37f5d5bed46ef7cdf13c90dfdd2ccac3214fd68a81ad3a7bf8919382` |
+
+- **What it is:** the first packet-loss, jitter and reordering sweep (`scripts/testbed/run_netem.sh`,
+  162 runs) on the protocol of 2026-11-02. `netem/` holds one CSV per condition; `runs/<run>/` the
+  per-run summaries; the tarball is the complete raw output of the run with the most honest bans.
+- **What it shows:** honest nodes were banned from 10 % loss on (13 of 162 runs). The cause, found in the
+  tarball's logs, was a late answer to an anti-entropy request struck as a replay after the requester's
+  10 s session had expired; fixed since (sync answers are tagged with their request). **Superseded** by
+  `testbed-final-2026-11-03/`; kept as the before-state.
+
+## `testbed-final-2026-11-03/`
+
+| File | SHA-256 |
+|---|---|
+| `binary.sha256` | `d0a96f4e9afc89962d44d84f6353f91e57b2303ab4845290bf7ede9d55eb432b` |
+| `criteria.txt` | `343ba3ed5d488a4dc11456cb3888bb91c47f389f8427f60bc474833a52b65156` |
+| `progress.txt` | `a9a12af0ede438a5d7c5d1b7c54725827cbba2aab7fea01bb5e7db7c94493eff` |
+| `r4/results.csv` | `235d2ca2313c63b2947c82d7ae85192d539c5b9e01ece6e998deffc2117978db` |
+| `netem/results.csv` | `7c426235c34dc4ae8c55965ebe12cc7ba361bcfdd864afbeabcaafb86ded0a7d` |
+| `netem/conditions/conditions.md` | `0bd09d8ac82271b20e1ea6547f7d25f8f17b9c72d0f1b3b5d5d68688af288b10` |
+| `r3b/results.csv` | `2d144acd089eb761864f7252ec929f4d896e43b030a7cf155036d79e3d36aa4a` |
+| `fl/results.csv` | `d426469c9c43e435a35035646e89b6b13ce28a9f2156fb9853e097972aaf986e` |
+| `ev20/results.csv` | `6f46131cda53f056ad720552554f4c58c2bcd333e9d89d1a72294dcb60783abe` |
+| `before-origin-budget/fl/results.csv` | `f155cc01007d5437acd0cdd39ab74dc461137927d18ebda81ffdc1a37de2ffe3` |
+| `ev20-rgg-20-s1-raw.tar.gz` | `35610e6ddebdcd1beee6c22c9a36ed2082fe7804ed22e8643ec3fe23aee6e3ff` |
+| `fl-new-refill20-s3-raw.tar.gz` | `aa571f5c2fc841f6ef27201c6819926685fab8a6d04f81a1a30617a0d64d0e63` |
+
+- **What it is:** every testbed number in [benchmarks.md](../benchmarks.md#emulation-testbed-real-processes-one-host),
+  from one `crci-node` build (`binary.sha256`; the second hash is the older build used for the
+  before/after replayer runs). `r4/` = `run_all.sh` (48 runs), `netem/` = `run_netem.sh` (162 runs),
+  `r3b/`, `fl/`, `ev20/` = the over-budget replayer, fresh-message flood and 20 % loss with a 60 s drain
+  (`run_attacks.sh` runs the same configurations), 30 runs. `criteria.txt` holds the pass criteria, written
+  before the runs (one internal label removed). `console.txt` files are the drivers' console output.
+- `runs/<run>/`: `summary.json`, `bans.csv`, `meta.json` per run. Raw logs (about 3 GB) are not committed
+  except the two tarballs: the slowest delivery at 20 % loss (60 s) and one fresh-message flood run.
+- `before-origin-budget/fl/`: the same flood on the build before the per-origin budget (honest delivery
+  82–98 %).
 
 ## `archive/`
 

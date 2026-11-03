@@ -16,12 +16,18 @@ git history; `git log` is the complete record.
   and bans are logged with a Unix-millisecond timestamp. `--sender-refill-per-sec` sets the per-neighbour
   budget refill for experiments. Accepted messages are logged with their path (gossip or sync answer) and
   the protocol compute time; relay frames dropped by a failed delivery or a full queue are counted.
+- Testbed attacker and recovery experiments (`scripts/testbed/run_attacks.sh`, `make attacks`): an
+  over-budget replayer, a fresh-message flood and the 20 % loss condition with a 60 s drain; testbed
+  options `--byz-rate` and `--drain`; the analysis reports honest-only delivery, honest senders' frames
+  dropped by the rate limit, per-origin budget drops, and aggregates the loss runs per condition. Every
+  testbed configuration runs with three seeds, and the load set covers 16 and 32 messages/s.
 
 ### Changed
 - The per-neighbour budget refills at 20 messages per second instead of 5, and only messages the
   receiver has not seen spend it. Chosen from a testbed sweep (refill 5/10/20/50 per second, offered load
   4–32 messages/s): 20 is the lowest rate with no honest frame dropped at 16 messages/s. Before, the
   network as a whole could sustain about 5 messages per second.
+- `scripts/testbed/README.md` is stored as UTF-8 (two characters were in a legacy encoding).
 - Documentation rewritten to describe the code as it is: two message paths (signed `NodeRuntime` vs.
   unsigned TCP), the real transport (custom TCP, no libp2p/Noise), the real TLA+ model scope, and every
   benchmark with its command and raw data. Known gaps are listed in `docs/threat-model.md`.

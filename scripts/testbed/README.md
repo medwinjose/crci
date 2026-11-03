@@ -67,10 +67,13 @@ criteria were fixed before the first run; the listening and backlog criteria wer
 
 - One host: CPU scheduling and the shared bridge are part of every measurement; the fidelity criteria bound,
   but do not remove, that effect. The median latency above the configured delay per hop grows with N
-  (about 1 ms up to N = 100, 6.8 ms at N = 500 in the recorded runs), and protocol cost cannot be
-  separated from host contention.
-- `run_all.sh` uses a fixed delay; `run_netem.sh` adds loss, jitter and reordering (below). No link failures yet.
+  (0.7–1.2 ms up to N = 100, 2.9–3.2 ms at N = 500 in the recorded runs), while the protocol's own compute
+  per accepting hop, logged by each node as `proc_us`, stays at a median of 0.11–0.17 ms at every N; the rest
+  is host cost. `proc_us` includes the node's own logging, so it is an upper bound.
+- Loss, jitter and reordering are applied per egress by netem, independently of the TCP connections; burst
+  loss, asymmetric loss and link failures are not emulated.
 - The overlay runs on one shared link layer; nodes are kept to their neighbours by configuration, not by
-  filtering.
-- `crci-node` logs relay failures through the `log` crate, which the binary does not print, so failed relays
-  are not counted.
+  filtering. The analysis counts frames received from nodes that are not overlay neighbours
+  (`frames_from_non_neighbours` in `summary.json`): 0 in every run of 2026-11-03.
+- The kernel's netem randomness is not seeded, so a run with the same seed gives the same topology, roles
+  and schedule but not the same packet losses.

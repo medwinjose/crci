@@ -71,12 +71,24 @@ measured with the in-process benchmark harness, 50 deterministic trials per cond
 | Replay attack, 15 ms between replays | 3 | 45.8 ms | 0 / 50 |
 
 - **Reordering:** late or stale packets never count against a neighbour; packets more than W behind
-  are dropped instead of delivered. Measuring delivery under reordering on the network testbed is planned.
+  are dropped instead of delivered.
 - **Paced replays:** reputation recovers with elapsed time only (one strike forgiven per 300 s, never
   above the initial score) and two strikes within 300 s damp recovery. In a 6-hour simulated sweep an
   adversary replaying more often than every 300 s is banned; one pacing at 300 s or slower is never banned
   but gets at most 12 replays per hour past admission, each detected and dropped. Before this change, an adversary replaying every 20 s was never
   banned.
+
+**Emulation testbed** (real `crci-node` processes over TCP in Linux network namespaces with `tc netem`,
+emulated on one host; 240 runs, three seeds per configuration, every run within the testbed's fidelity
+checks):
+
+| Setting | Result |
+|---|---|
+| 20–500 nodes, random geometric and 4-regular topologies, a relay replaying every message | Banned by all its neighbours in every run (≈ 2 s at 1 msg/s); 0 honest nodes banned; every honest message delivered after the ban, also to nodes that relied on the evicted relay |
+| Packet loss 0–20 %, delay 40 ± 15 ms, reordering up to 15 % (162 runs) | 0 honest nodes banned at any loss level; median eviction 2.0–2.2 s; with 60 s to recover, every message reached every honest node at 20 % loss (p99 latency 4.7 s, worst 60 s) |
+| A replayer that keeps its rate budget empty | Banned in ≈ 12 ms (before: never banned, honest delivery 32–49 %) |
+| A node flooding fresh, validly signed messages at 40 msg/s | Honest delivery 100 % (before the per-origin budget: 82–98 %) |
+| Offered load | No honest message dropped at 16 msg/s network-wide; one node can sustain at most 5 msg/s |
 
 Every number above links back to a raw data file and the exact command in
 [docs/benchmarks.md](docs/benchmarks.md).
@@ -128,12 +140,13 @@ A Docker Compose demo (two honest nodes, one adversarial node, and the dashboard
 ## Research status and roadmap
 
 CRCI is an active research project. The isolation pipeline runs in the node runtime used by both the
-networked TCP node and the test suite; the benchmarks so far drive it in-process. Current work, in order:
+networked TCP node and the test suite. Done: a network-emulation testbed of real processes (20–500
+nodes, loss, delay, jitter, reordering, attacker variants). Current work, in order:
 
-1. A 20–50 node network-emulation testbed (loss, delay, reordering, link flapping) and comparison against
-   baselines.
-2. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
-3. Safety and liveness invariants of the final protocol in TLA+.
+1. A large-scale in-process simulation (1 000+ nodes), link flapping, a Byzantine-ratio sweep and
+   comparison against baselines.
+2. Safety and liveness invariants of the final protocol in TLA+.
+3. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
 
 Out of scope: large-scale Sybil attacks, colluding adversaries, and physical LoRa/BLE radios (the BLE and
 LoRa transports are interface stubs). Known gaps are tracked in [docs/threat-model.md](docs/threat-model.md).
