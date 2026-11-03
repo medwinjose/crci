@@ -182,8 +182,8 @@ def main():
     ap.add_argument("--no-fault", action="store_true")
     ap.add_argument("--replay-copies", type=int, default=2)
     ap.add_argument("--byz-rate", type=float, default=0,
-                    help="messages/s the Byzantine node originates from the fault on, to keep "
-                         "its neighbours' budget for it empty while it replays")
+                    help="messages/s the Byzantine node originates from 10 s before the fault on, so "
+                         "its neighbours' budget for it is already empty when it starts replaying")
     ap.add_argument("--refill", type=float, default=None,
                     help="per-neighbour budget refill (messages/s); default: the protocol's")
     ap.add_argument("--settle", type=int, default=20)
@@ -227,8 +227,9 @@ def main():
 
     plan = plan_traffic(n, roles, args.window, args.source_rate, args.bg_rate, topo["seed"])
     if args.byz_rate and not args.no_fault:
-        plan[roles["byzantine"]] = (int((args.window - args.fault_at) * args.byz_rate),
-                                    int(1000 / args.byz_rate), args.fault_at * 1000)
+        start = max(0, args.fault_at - 10)
+        plan[roles["byzantine"]] = (int((args.window - start) * args.byz_rate),
+                                    int(1000 / args.byz_rate), start * 1000)
     # T0 leaves room for launching every process plus a settling period.
     t0 = time.time() + 0.05 * n + args.settle
     env = dict(os.environ, TOKIO_WORKER_THREADS=str(args.worker_threads))
