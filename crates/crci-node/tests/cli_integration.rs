@@ -12,23 +12,12 @@ fn get_bin_path() -> std::path::PathBuf {
     path
 }
 
-fn get_free_port() -> u16 {
-    std::net::TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port()
-}
-
 #[tokio::test]
 async fn test_cli_message_send_and_receive() {
     let bin_path = get_bin_path();
-    let port = get_free_port();
-    let listen_addr = format!("127.0.0.1:{}", port);
-
     // 1. Start Node B as a listener
     let mut node_b = Command::new(&bin_path)
-        .args(["--listen", &listen_addr, "--node-id", "node-b"])
+        .args(["--listen", "127.0.0.1:0", "--node-id", "node-b"])
         .stdout(Stdio::piped())
         .spawn()
         .expect("Failed to start node-b");
@@ -39,7 +28,8 @@ async fn test_cli_message_send_and_receive() {
     // Wait until Node B is listening
     let mut line = String::new();
     let start = Instant::now();
-    let mut listening = false;
+    // The node binds port 0 and prints the port it got.
+    let mut listen_addr = String::new();
     while start.elapsed() < Duration::from_secs(5) {
         line.clear();
         if let Ok(n) = reader.read_line(&mut line) {
@@ -47,13 +37,20 @@ async fn test_cli_message_send_and_receive() {
                 break;
             }
             if line.contains("listening on") {
-                listening = true;
+                listen_addr = line
+                    .split_whitespace()
+                    .last()
+                    .unwrap_or_default()
+                    .to_string();
                 break;
             }
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
-    assert!(listening, "Node B did not start listening in time");
+    assert!(
+        !listen_addr.is_empty(),
+        "Node B did not start listening in time"
+    );
 
     // 2. Dispatch message from Node A using --send
     let output_a = Command::new(&bin_path)
@@ -105,12 +102,9 @@ async fn test_cli_message_send_and_receive() {
 #[tokio::test]
 async fn test_cli_byzantine_mode() {
     let bin_path = get_bin_path();
-    let port = get_free_port();
-    let listen_addr = format!("127.0.0.1:{}", port);
-
     // 1. Start Node A as a listener
     let mut node_a = Command::new(&bin_path)
-        .args(["--listen", &listen_addr, "--node-id", "node-a"])
+        .args(["--listen", "127.0.0.1:0", "--node-id", "node-a"])
         .stdout(Stdio::piped())
         .spawn()
         .expect("Failed to start node-a");
@@ -121,7 +115,8 @@ async fn test_cli_byzantine_mode() {
     // Wait until Node A is listening
     let mut line = String::new();
     let start = Instant::now();
-    let mut listening = false;
+    // The node binds port 0 and prints the port it got.
+    let mut listen_addr = String::new();
     while start.elapsed() < Duration::from_secs(5) {
         line.clear();
         if let Ok(n) = reader.read_line(&mut line) {
@@ -129,13 +124,20 @@ async fn test_cli_byzantine_mode() {
                 break;
             }
             if line.contains("listening on") {
-                listening = true;
+                listen_addr = line
+                    .split_whitespace()
+                    .last()
+                    .unwrap_or_default()
+                    .to_string();
                 break;
             }
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
-    assert!(listening, "Node A did not start listening in time");
+    assert!(
+        !listen_addr.is_empty(),
+        "Node A did not start listening in time"
+    );
 
     // 2. Start node-byzantine to flood Node A
     let output_byz = Command::new(&bin_path)

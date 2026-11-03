@@ -18,6 +18,8 @@ fn bin_path() -> std::path::PathBuf {
     path
 }
 
+/// A port free now. Only for a node that must be named before it starts; another test can
+/// take the port in between (shortcut: rare, retry the test; use port 0 wherever possible).
 fn free_addr() -> String {
     let port = std::net::TcpListener::bind("127.0.0.1:0")
         .unwrap()
@@ -38,9 +40,10 @@ fn start_receiver(node_id: &str) -> Receiver {
 }
 
 fn start_node(node_id: &str, extra_args: &[&str]) -> Receiver {
-    let addr = free_addr();
+    // Port 0: the node binds a free port itself and prints it, so no other test can take it
+    // between choosing and binding.
     let mut child = Command::new(bin_path())
-        .args(["--listen", &addr, "--node-id", node_id])
+        .args(["--listen", "127.0.0.1:0", "--node-id", node_id])
         .args(extra_args)
         .stdout(Stdio::piped())
         .spawn()
@@ -54,6 +57,11 @@ fn start_node(node_id: &str, extra_args: &[&str]) -> Receiver {
         match reader.read_line(&mut line) {
             Ok(0) => break,
             Ok(_) if line.contains("listening on") => {
+                let addr = line
+                    .split_whitespace()
+                    .last()
+                    .unwrap_or_default()
+                    .to_string();
                 return Receiver {
                     child,
                     reader,
@@ -530,16 +538,11 @@ fn a_replaying_node_is_banned_by_its_peer() {
 /// hold up start-up: the node listens within a few seconds, whatever its peers do.
 #[test]
 fn an_unreachable_peer_does_not_delay_start_up() {
-    let addr = std::net::TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .to_string();
     let started = std::time::Instant::now();
     let mut child = std::process::Command::new(bin_path())
         .args([
             "--listen",
-            &addr,
+            "127.0.0.1:0",
             "--node-id",
             "tcp-startup",
             "--peers",
