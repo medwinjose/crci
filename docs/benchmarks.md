@@ -149,30 +149,32 @@ are kept as history only.
   **All 240 runs below (48 here, 162 with impairments, 30 attacker and recovery runs) met all of
   them.** Pass criteria for each experiment were written down before its runs (`criteria.txt` in the
   evidence folder).
-- **Recorded runs (2026-11-03):** [`evidence/testbed-final-2026-11-03/`](evidence/testbed-final-2026-11-03/).
-  Superseded: [`evidence/testbed-2026-11-02/`](evidence/testbed-2026-11-02/) and
+- **Recorded runs (2026-11-04):** [`evidence/testbed-fast-recovery-2026-11-04/`](evidence/testbed-fast-recovery-2026-11-04/).
+  Superseded: [`evidence/testbed-final-2026-11-03/`](evidence/testbed-final-2026-11-03/) (the build before
+  frames lost with an aborted connection were recovered quickly; every configuration re-run since),
+  [`evidence/testbed-2026-11-02/`](evidence/testbed-2026-11-02/) and
   [`evidence/netem-2026-11-02/`](evidence/netem-2026-11-02/) (earlier protocol, kept for the record).
 
 Each row covers three seeds; a range is the lowest and highest of the three.
 
 | Run | N | Seeds | Mean degree, diameter | Faithful | Delivery after eviction (min) | Latency median / p95 after eviction | B banned by all neighbours | Eviction latency (median) | Honest false evictions | Honest frames rate-limited | Hop excess (median) | Host CPU mean / max | RSS per node |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| rgg-20 | 20 | 3 | 3.7–4.6, 6–10 | 3/3 | 100% | 33–54 / 65–110 ms | 3/3 | 1999–2013 ms | 0 | 0 | 1.0–1.2 ms | 0.3 / 1.5–1.8 % | 6.7 MiB |
-| rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 100% | 43–65 / 75–92 ms | 3/3 | 1999–2021 ms | 0 | 0 | 1.0 ms | 0.9 / 4.1–4.6 % | 6.9 MiB |
-| rgg-100 | 100 | 3 | 7.1–8.0, 10–12 | 3/3 | 100% | 47–66 / 87–119 ms | 3/3 | 1991–2015 ms | 0 | 0 | 1.1–1.2 ms | 1.7–1.9 / 7.1–8.0 % | 6.9–7.0 MiB |
-| mesh-20 | 20 | 3 | 4.0, 4 | 3/3 | 100% | 22–23 / 42–44 ms | 3/3 | 2002–2022 ms | 0 | 0 | 0.7–1.0 ms | 0.2–0.4 / 1.5–1.7 % | 6.7 MiB |
-| mesh-50 | 50 | 3 | 4.0, 5 | 3/3 | 100% | 33–34 / 53–55 ms | 3/3 | 2008–2012 ms | 0 | 0 | 0.8–1.0 ms | 0.5–0.6 / 3.0–3.3 % | 6.7 MiB |
-| mesh-100 | 100 | 3 | 4.0, 6 | 3/3 | 100% | 44 / 57–58 ms | 3/3 | 2010–2013 ms | 0 | 0 | 1.0–1.2 ms | 1.1 / 4.8–6.2 % | 6.7 MiB |
-| sweep-rgg-200 | 200 | 3 | 8.9–9.5, 14 | 3/3 | 100% | 58–76 / 101–123 ms | 3/3 | 2012–2013 ms | 0 | 0 | 1.2–1.6 ms | 4.1–4.4 / 16.5–17.9 % | 7.0–7.1 MiB |
-| sweep-rgg-300 | 300 | 3 | 9.7–10.6, 16–17 | 3/3 | 100% | 74–82 / 131–153 ms | 3/3 | 2003–2013 ms | 0 | 0 | 1.6–2.0 ms | 6.8–7.2 / 28.4–29.1 % | 7.1–7.2 MiB |
-| sweep-rgg-500 | 500 | 3 | 11.1–11.4, 19–21 | 3/3 | 100% | 111–113 / 203–211 ms | 3/3 | 2014–2017 ms | 0 | 0 | 2.9–3.2 ms | 12.0–12.5 / 59.9–68.6 % | 7.3 MiB |
-| stress4-rgg-500 | 500 | 3 | 11.1–11.4, 19–21 | 3/3 | 100% | 110–115 / 202–206 ms | 3/3 | 512–520 ms | 0 | 0 | 2.9–3.1 ms | 39.9–40.6 / 74.9–79.2 % | 8.5 MiB |
-| load4-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 100% | 43–64 / 75–94 ms | 3/3 | 510–522 ms | 0 | 0 | 1.0 ms | 2.6–2.8 / 5.8–6.8 % | 7.3–7.4 MiB |
-| load6-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 100% | 42–64 / 75–95 ms | 3/3 | 343–344 ms | 0 | 0 | 1.0 ms | 3.7–4.1 / 6.4–6.9 % | 7.6–7.7 MiB |
-| load8-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 100% | 43–64 / 75–95 ms | 3/3 | 258–262 ms | 0 | 0 | 1.0–1.2 ms | 4.6–5.5 / 7.9–8.4 % | 7.8–7.9 MiB |
-| load16-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 100% | 42–62 / 74–96 ms | 3/3 | 104–125 ms | 0 | 0 | 0.8–1.0 ms | 9.2–10.8 / 12.7–17.1 % | 9.2–9.4 MiB |
-| load32-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 91% | 42–53 / 74–94 ms | 3/3 | 57–97 ms | 0 | 9002 | 0.6–0.7 ms | 16.1–18.6 / 20.8–23.9 % | 10.7–11.2 MiB |
-| src8-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 81% | 43–63 / 76–95 ms | 3/3 | 113–169 ms | 0 | 0 | 0.8–1.0 ms | 7.7–9.3 / 11.0–13.3 % | 8.5–8.7 MiB |
+| rgg-20 | 20 | 3 | 3.7–4.6, 6–10 | 3/3 | 100% | 33–53 / 66–108 ms | 3/3 | 2002–2012 ms | 0 | 0 | 1.0 ms | 0.3–0.4 / 1.5–2.1 % | 6.6–6.7 MiB |
+| rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 100% | 43–63 / 75–89 ms | 3/3 | 1999–2023 ms | 0 | 0 | 0.9–1.0 ms | 0.8–1.0 / 3.5–4.1 % | 6.9 MiB |
+| rgg-100 | 100 | 3 | 7.1–8.0, 10–12 | 3/3 | 100% | 47–66 / 87–119 ms | 3/3 | 1990–2010 ms | 0 | 0 | 1.0 ms | 1.8–1.9 / 7.9–8.6 % | 6.9–7.0 MiB |
+| mesh-20 | 20 | 3 | 4.0, 4 | 3/3 | 100% | 22–23 / 42–44 ms | 3/3 | 2001–2019 ms | 0 | 0 | 1.0 ms | 0.3–0.4 / 1.4–3.6 % | 6.6–6.7 MiB |
+| mesh-50 | 50 | 3 | 4.0, 5 | 3/3 | 100% | 33 / 52–54 ms | 3/3 | 2011–2013 ms | 0 | 0 | 1.0 ms | 0.7 / 2.5–3.1 % | 6.7 MiB |
+| mesh-100 | 100 | 3 | 4.0, 6 | 3/3 | 100% | 43–44 / 57–58 ms | 3/3 | 2010–2011 ms | 0 | 0 | 1.0 ms | 1.1–1.6 / 5.1–9.8 % | 6.7 MiB |
+| sweep-rgg-200 | 200 | 3 | 8.9–9.5, 14 | 3/3 | 100% | 58–75 / 102–123 ms | 3/3 | 2010–2014 ms | 0 | 0 | 1.2–1.7 ms | 4.3–4.7 / 17.4–18.1 % | 7.0–7.1 MiB |
+| sweep-rgg-300 | 300 | 3 | 9.7–10.6, 16–17 | 3/3 | 100% | 74–84 / 129–150 ms | 3/3 | 1997–2015 ms | 0 | 0 | 1.6–1.9 ms | 6.8–7.7 / 27.7–32.1 % | 7.2–7.3 MiB |
+| sweep-rgg-500 | 500 | 3 | 11.1–11.4, 19–21 | 3/3 | 100% | 109–113 / 200–211 ms | 3/3 | 2010–2017 ms | 0 | 0 | 2.8–3.0 ms | 12.6–12.8 / 62.8–63.2 % | 7.3–7.4 MiB |
+| stress4-rgg-500 | 500 | 3 | 11.1–11.4, 19–21 | 3/3 | 100% | 109–114 / 202–207 ms | 3/3 | 512–514 ms | 0 | 0 | 2.8–3.1 ms | 40.7–41.4 / 75.5–87.4 % | 8.6 MiB |
+| load4-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 100% | 43–64 / 75–94 ms | 3/3 | 510–526 ms | 0 | 0 | 1.0 ms | 2.4–2.6 / 4.6–5.1 % | 7.3–7.4 MiB |
+| load6-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 100% | 42–64 / 74–94 ms | 3/3 | 342–346 ms | 0 | 0 | 1.0 ms | 3.6–4.0 / 5.1–6.8 % | 7.6–7.8 MiB |
+| load8-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 100% | 43–64 / 75–95 ms | 3/3 | 260–262 ms | 0 | 0 | 1.0 ms | 4.7–5.1 / 6.4–7.9 % | 7.8–8.0 MiB |
+| load16-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 100% | 43–62 / 74–96 ms | 3/3 | 103–126 ms | 0 | 0 | 0.8–0.9 ms | 9.7–10.9 / 11.6–13.6 % | 9.2–9.4 MiB |
+| load32-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 91% | 42–53 / 74–95 ms | 3/3 | 57–95 ms | 0 | 9100 | 0.6–0.7 ms | 15.7–18.6 / 17.9–21.7 % | 10.6–11.2 MiB |
+| src8-rgg-50 | 50 | 3 | 6.0–6.9, 8–10 | 3/3 | 81% | 43–64 / 75–96 ms | 3/3 | 117–168 ms | 0 | 0 | 1.0 ms | 8.2–9.0 / 10.1–11.7 % | 8.5–8.7 MiB |
 
 What the runs show, stated plainly:
 
@@ -180,22 +182,22 @@ What the runs show, stated plainly:
   banned, and every honest message sent after the ban reached every honest node, including every node of D
   over longer alternate paths. Eviction latency is the time for B to relay three repeated messages to a
   neighbour, so it follows the message rate: about 2.0 s at 1 msg/s, 0.5 s at 4 msg/s, 0.26 s at 8 msg/s.
-- **Capacity sweep.** At 1 msg/s every N up to 500 met every fidelity criterion (mean CPU 12 % at N = 500).
-  At 4 msg/s, N = 500 still met them with mean CPU 40 % and peaks of 75–79 %. Larger N was not tried; 500
+- **Capacity sweep.** At 1 msg/s every N up to 500 met every fidelity criterion (mean CPU 13 % at N = 500).
+  At 4 msg/s, N = 500 still met them with mean CPU 41 % and peaks of 76–87 %. Larger N was not tried; 500
   nodes is the practical ceiling of this host.
-- **Host cost against protocol cost.** The median latency above the configured delay per hop is 0.7–1.2 ms
-  up to N = 100, 1.2–1.6 ms at 200, 1.6–2.0 ms at 300 and 2.9–3.2 ms at 500. Each node also logs the time
+- **Host cost against protocol cost.** The median latency above the configured delay per hop is 0.8–1.0 ms
+  up to N = 100, 1.2–1.7 ms at 200, 1.6–1.9 ms at 300 and 2.8–3.1 ms at 500. Each node also logs the time
   from taking a frame off its queue to the end of the protocol checks (`proc_us`; it includes the node's
-  own logging, so it is an upper bound on protocol compute): its median is 0.11–0.17 ms per accepting hop
-  at every N from 20 to 500. At least 0.85–2.9 ms of the per-hop excess is therefore host cost (scheduling
-  of hundreds of processes, the shared bridge, the frame signature check of about 0.04 ms), which grows
-  with N; the protocol's own cost per hop does not.
+  own logging, so it is an upper bound on protocol compute): on the previous build, whose per-frame
+  checks are the same, its median was 0.11–0.17 ms per accepting hop at every N from 20 to 500. Most of
+  the per-hop excess is therefore host cost (scheduling of hundreds of processes, the shared bridge, the
+  frame signature check of about 0.04 ms), which grows with N; the protocol's own cost per hop does not.
 - **Capacity.** Copies of messages a node already has spend no budget, so the per-neighbour token bucket (20, then
   20 per second) limits new messages per link. With the source at 4 msg/s and the rest spread over the
   other nodes, 16 msg/s network-wide dropped no honest frame and delivered every message (3 seeds); at
-  32 msg/s, 2 343–3 454 honest frames per run were rate-limited (never struck) and 91–99 % of messages
+  32 msg/s, 2 704–3 528 honest frames per run were rate-limited (never struck) and 91–99 % of messages
   reached every node within the window. Each origin is also limited to 5 new messages per second at every
-  node (burst 20): in `src8` an honest source sending 8 msg/s had 635–1 684 of its messages dropped per
+  node (burst 20): in `src8` an honest source sending 8 msg/s had 657–1 728 of its messages dropped per
   run, and 81–82 % of all messages were delivered. A single node therefore cannot sustain more than
   5 messages per second; this is the price of bounding one origin's share (see the flood experiment below).
   The refill of 20/s was chosen from an earlier sweep (refill 5/10/20/50, before the per-origin budget):
@@ -215,7 +217,7 @@ What the runs show, stated plainly:
 - **Fidelity:** same criteria as above; the round-trip criterion compares the sampled ICMP median and 95th
   percentile with those of the configured two-hop delay distribution (Monte Carlo). **All 162 runs met every
   criterion.**
-- **Recorded runs (2026-11-03):** [`evidence/testbed-final-2026-11-03/netem/`](evidence/testbed-final-2026-11-03/netem/):
+- **Recorded runs (2026-11-04):** [`evidence/testbed-fast-recovery-2026-11-04/netem/`](evidence/testbed-fast-recovery-2026-11-04/netem/):
   per-condition CSVs and `conditions.md` under `conditions/`, per-run `summary.json`.
 
 Each row aggregates the 18 runs of a condition (2 topologies × 3 sizes × 3 seeds). Delivery after the ban
@@ -223,35 +225,40 @@ counts messages sent after B's last neighbour banned it, within the 60 s window 
 
 | Condition | Runs with a false eviction | B banned by all its neighbours | Delivery after B is banned, mean (min of a run) | Eviction latency, median of run medians (max) | Honest frames rate-limited | Relay frames lost (failed delivery) | Deliveries > 5 s after origination |
 |---|---|---|---|---|---|---|---|
-| loss 0 % (jitter only) | 0 | 18/18 | 100 % (100 %) | 2.0 s (2.1 s) | 0 | 0 | 0 |
-| loss 5 % | 0 | 18/18 | 100 % (100 %) | 2.1 s (2.3 s) | 0 | 5 | 0 |
-| loss 10 % | 0 | 18/18 | 100 % (100 %) | 2.1 s (3.6 s) | 0 | 82 | 37 |
-| loss 15 % | 0 | 18/18 | 99.9 % (98 %) | 2.2 s (9.6 s) | 0 | 309 | 293 |
-| loss 20 % | 0 | 18/18 | 99.8 % (99 %) | 2.2 s (15.2 s) | 0 | 949 | 833 |
+| loss 0 % (jitter only) | 0 | 18/18 | 100 % (100 %) | 2.1 s (2.1 s) | 0 | 0 | 0 |
+| loss 5 % | 0 | 18/18 | 100 % (100 %) | 2.1 s (2.5 s) | 0 | 16 | 2 |
+| loss 10 % | 0 | 18/18 | 100 % (100 %) | 2.1 s (6.5 s) | 0 | 86 | 142 |
+| loss 15 % | 0 | 18/18 | 99.9 % (98 %) | 2.2 s (7.0 s) | 0 | 247 | 156 |
+| loss 20 % | 0 | 18/18 | 99.9 % (99 %) | 2.2 s (13.1 s) | 0 | 713 | 882 |
 | reordering 5 % | 0 | 18/18 | 100 % (100 %) | 2.0 s (2.1 s) | 0 | 0 | 0 |
-| reordering 10 % | 0 | 18/18 | 100 % (100 %) | 2.1 s (2.1 s) | 0 | 0 | 0 |
+| reordering 10 % | 0 | 18/18 | 100 % (100 %) | 2.0 s (2.1 s) | 0 | 0 | 0 |
 | reordering 15 % | 0 | 18/18 | 100 % (100 %) | 2.1 s (2.2 s) | 0 | 0 | 0 |
-| loss 10 % + reordering 10 % | 0 | 18/18 | 100 % (100 %) | 2.1 s (8.0 s) | 0 | 91 | 12 |
+| loss 10 % + reordering 10 % | 0 | 18/18 | 100 % (100 %) | 2.1 s (6.2 s) | 0 | 78 | 2 |
 
 What the runs show, stated plainly:
 
 - **No honest node was banned in any of the 162 runs**, at any loss level up to 20 %, and every neighbour of
   B banned it in every run. Reordering of up to 15 % changed nothing measurable.
-- **Loss slows recovery, not eviction.** The median eviction latency stays at 2.0–2.2 s up to 20 % loss;
-  the slowest neighbour took up to 15 s at 20 % loss. A frame whose TCP connection is aborted under loss
-  (a connection with data unacknowledged for 5 s is closed and re-opened) is not re-sent; the receiver gets
-  it from the 30 s anti-entropy exchange. That is why deliveries later than 5 s appear from 10 % loss on.
+- **Loss slows delivery, not eviction.** The median eviction latency stays at 2.0–2.2 s up to 20 % loss;
+  the slowest neighbour took up to 13 s at 20 % loss. A frame left in a TCP connection that is aborted
+  under loss (data unacknowledged for 5 s) is not re-sent, since a copy that did arrive would be struck as
+  a replay. The sender reconnects at once and tells the receiver, which asks it for a sync as soon as the
+  sender's 5 s answer cooldown allows. The column "Deliveries > 5 s" counts deliveries, not messages: one message delayed at
+  its first hop counts once per node it then reaches. In the 10 % loss row one message from one origin
+  accounts for 96 of the 142 (it left its source 7.7 s late and reached the 96 other nodes of its run).
+  With the build before this recovery, the same column read 37, 293 and 833 at 10, 15 and 20 % loss; the
+  totals vary with a few runs, but deliveries later than 20 s fell from 0 / 51 / 72 to 0 / 0 / 3.
 - **Delivery below 100 % is the window ending, not lost messages.** The same 18 runs at 20 % loss with the
   nodes kept running 60 s after the last message (`make attacks`, `eventual/`) delivered every honest
   message sent after the ban to every honest node in 18/18 runs, 0 honest bans, B banned by all its
-  neighbours in every run. Over 33 396 such deliveries the 99th percentile latency was 4.7 s and the maximum
-  60.0 s: in `l20-rgg-20-s1` a message from a node of degree 1 reached its only neighbour, n001, whose one
-  honest link onward (to n010) was failing under loss. The gossip frame was lost (n001 logged a failed relay).
-  n001's answer to n010's next anti-entropy request carried three messages, oldest first; the two later ones
-  arrived 33.6 s after this message was sent, this one, the first frame of the answer, was lost the same way
-  (a second failed relay). The following exchange delivered it at 59.2 s, and it reached every node within
-  1 s after that. Frames written into a connection that is then aborted are not re-sent; anti-entropy
-  recovers them one exchange (30 s) later, so each loss of the same frame adds up to 30 s.
+  neighbours in every run. Over 31 248 such deliveries the 99th percentile latency was 3.4 s and the maximum
+  25.3 s (the build before: 4.7 s and 60.0 s over 33 396). The maximum is one message in `l20-rgg-20-s3`
+  (raw logs in the evidence folder) that reached its source's neighbour in 55 ms and six nodes within
+  3.5 s, but four nodes 8–10 hops away only after 23.9–25.3 s, by gossip, not by a sync answer; that
+  path was not traced further. No delivery in the other 17 runs took longer than 15 s. Before the
+  recovery, every delivery later than 20 s was a frame
+  lost with an aborted connection shortly before a link fell quiet, recovered only by the next 30 s
+  anti-entropy exchange.
 - **Limits.** Loss is applied per egress and independently of the TCP connection; burst loss, asymmetric
   loss and link failures were not tested. Three seeds per cell is too few for confidence intervals; the
   table reports means and extremes only.
@@ -263,8 +270,8 @@ its fault, so its neighbours' budget for it is already empty when the fault star
 
 | Experiment | Binary | B banned by all its neighbours | Eviction latency (median) | Honest delivery while B is active | Honest frames rate-limited | Honest false evictions |
 |---|---|---|---|---|---|---|
-| Over-budget replayer, refill 5/s (B at 10 msg/s, every frame 8×) | current | 3/3 | 12 ms | 100 % | 98–113 per run | 0 |
-| Over-budget replayer, refill 20/s (B at 40 msg/s, every frame 8×) | current | 3/3 | 12–13 ms | 100 % | 0 | 0 |
+| Over-budget replayer, refill 5/s (B at 10 msg/s, every frame 8×) | current | 3/3 | 12–14 ms | 97.4–100 % | 119–143 per run | 0 |
+| Over-budget replayer, refill 20/s (B at 40 msg/s, every frame 8×) | current | 3/3 | 12–13 ms | 100 % | 0–1 per run | 0 |
 | Over-budget replayer, refill 5/s | before (repeats judged after the rate limit) | 0/3 | never | 32–49 % | 7 806–11 647 per run | 0 |
 | Fresh-message flood (B at 40 msg/s, no repeats) | current | not struck (0/3) | — | 100 % | 0 | 0 |
 | Fresh-message flood | before the per-origin budget | not struck (0/3) | — | 82–98 % | (not separated) | 0 |
@@ -280,8 +287,10 @@ its fault, so its neighbours' budget for it is already empty when the fault star
   its full budget from B and every honest node relayed it: honest delivery fell to 82–98 %. A node that
   signs its flood with many fresh identities is not bounded this way (Sybil identities; see
   [threat-model.md](threat-model.md)).
-- With refill 5/s, the relays of B's admitted messages exceed some honest neighbours' budgets (98–113 honest
-  frames rate-limited per run) without lowering delivery; the default refill is 20/s.
+- With refill 5/s, the relays of B's admitted messages exceed some honest neighbours' budgets (119–143 honest
+  frames rate-limited per run; 98–113 on the previous build, whose runs sent the same number of sync
+  requests and lost no relay frame, so the difference is run-to-run variation) and honest delivery while
+  B is active was 97.4–100 %; the default refill is 20/s.
 
 ## WAN smoke test
 

@@ -85,7 +85,7 @@ checks):
 | Setting | Result |
 |---|---|
 | 20–500 nodes, random geometric and 4-regular topologies, a relay replaying every message | Banned by all its neighbours in every run (≈ 2 s at 1 msg/s); 0 honest nodes banned; every honest message delivered after the ban, also to nodes that relied on the evicted relay |
-| Packet loss 0–20 %, delay 40 ± 15 ms, reordering up to 15 % (162 runs) | 0 honest nodes banned at any loss level; median eviction 2.0–2.2 s; with 60 s to recover, every message reached every honest node at 20 % loss (p99 latency 4.7 s, worst 60 s) |
+| Packet loss 0–20 %, delay 40 ± 15 ms, reordering up to 15 % (162 runs) | 0 honest nodes banned at any loss level; median eviction 2.0–2.2 s; with 60 s to recover, every message reached every honest node at 20 % loss (p99 latency 3.4 s, worst 25.3 s) |
 | A replayer that keeps its rate budget empty | Banned in ≈ 12 ms (before: never banned, honest delivery 32–49 %) |
 | A node flooding fresh, validly signed messages at 40 msg/s | Honest delivery 100 % (before the per-origin budget: 82–98 %) |
 | Offered load | No honest message dropped at 16 msg/s network-wide; one node can sustain at most 5 msg/s |

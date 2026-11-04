@@ -1,0 +1,811 @@
+=== l0 rgg N=20 seed=1 (loss 0 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-rgg-20-s1
+=== l5 rgg N=20 seed=1 (loss 5 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-rgg-20-s1
+=== l10 rgg N=20 seed=1 (loss 10 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-rgg-20-s1
+=== l15 rgg N=20 seed=1 (loss 15 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-rgg-20-s1
+=== l20 rgg N=20 seed=1 (loss 20 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-rgg-20-s1
+=== r5 rgg N=20 seed=1 (loss 0 %, reorder 5 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-rgg-20-s1
+=== r10 rgg N=20 seed=1 (loss 0 %, reorder 10 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-rgg-20-s1
+=== r15 rgg N=20 seed=1 (loss 0 %, reorder 15 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-rgg-20-s1
+=== l10r10 rgg N=20 seed=1 (loss 10 %, reorder 10 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-rgg-20-s1
+=== l0 rgg N=50 seed=1 (loss 0 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-rgg-50-s1
+=== l5 rgg N=50 seed=1 (loss 5 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-rgg-50-s1
+=== l10 rgg N=50 seed=1 (loss 10 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-rgg-50-s1
+=== l15 rgg N=50 seed=1 (loss 15 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-rgg-50-s1
+=== l20 rgg N=50 seed=1 (loss 20 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-rgg-50-s1
+=== r5 rgg N=50 seed=1 (loss 0 %, reorder 5 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-rgg-50-s1
+=== r10 rgg N=50 seed=1 (loss 0 %, reorder 10 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-rgg-50-s1
+=== r15 rgg N=50 seed=1 (loss 0 %, reorder 15 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-rgg-50-s1
+=== l10r10 rgg N=50 seed=1 (loss 10 %, reorder 10 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-rgg-50-s1
+=== l0 rgg N=100 seed=1 (loss 0 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-rgg-100-s1
+=== l5 rgg N=100 seed=1 (loss 5 %, reorder 0 %) ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-rgg-100-s1
+=== l10 rgg N=100 seed=1 (loss 10 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-rgg-100-s1
+=== l15 rgg N=100 seed=1 (loss 15 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-rgg-100-s1
+=== l20 rgg N=100 seed=1 (loss 20 %, reorder 0 %) ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-rgg-100-s1
+=== r5 rgg N=100 seed=1 (loss 0 %, reorder 5 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-rgg-100-s1
+=== r10 rgg N=100 seed=1 (loss 0 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-rgg-100-s1
+=== r15 rgg N=100 seed=1 (loss 0 %, reorder 15 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-rgg-100-s1
+=== l10r10 rgg N=100 seed=1 (loss 10 %, reorder 10 %) ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-rgg-100-s1
+=== l0 mesh N=20 seed=1 (loss 0 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-mesh-20-s1
+=== l5 mesh N=20 seed=1 (loss 5 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-mesh-20-s1
+=== l10 mesh N=20 seed=1 (loss 10 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-mesh-20-s1
+=== l15 mesh N=20 seed=1 (loss 15 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-mesh-20-s1
+=== l20 mesh N=20 seed=1 (loss 20 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-mesh-20-s1
+=== r5 mesh N=20 seed=1 (loss 0 %, reorder 5 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-mesh-20-s1
+=== r10 mesh N=20 seed=1 (loss 0 %, reorder 10 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-mesh-20-s1
+=== r15 mesh N=20 seed=1 (loss 0 %, reorder 15 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-mesh-20-s1
+=== l10r10 mesh N=20 seed=1 (loss 10 %, reorder 10 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-mesh-20-s1
+=== l0 mesh N=50 seed=1 (loss 0 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-mesh-50-s1
+=== l5 mesh N=50 seed=1 (loss 5 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-mesh-50-s1
+=== l10 mesh N=50 seed=1 (loss 10 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-mesh-50-s1
+=== l15 mesh N=50 seed=1 (loss 15 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-mesh-50-s1
+=== l20 mesh N=50 seed=1 (loss 20 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-mesh-50-s1
+=== r5 mesh N=50 seed=1 (loss 0 %, reorder 5 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-mesh-50-s1
+=== r10 mesh N=50 seed=1 (loss 0 %, reorder 10 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-mesh-50-s1
+=== r15 mesh N=50 seed=1 (loss 0 %, reorder 15 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-mesh-50-s1
+=== l10r10 mesh N=50 seed=1 (loss 10 %, reorder 10 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-mesh-50-s1
+=== l0 mesh N=100 seed=1 (loss 0 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-mesh-100-s1
+=== l5 mesh N=100 seed=1 (loss 5 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-mesh-100-s1
+=== l10 mesh N=100 seed=1 (loss 10 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-mesh-100-s1
+=== l15 mesh N=100 seed=1 (loss 15 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-mesh-100-s1
+=== l20 mesh N=100 seed=1 (loss 20 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-mesh-100-s1
+=== r5 mesh N=100 seed=1 (loss 0 %, reorder 5 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-mesh-100-s1
+=== r10 mesh N=100 seed=1 (loss 0 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-mesh-100-s1
+=== r15 mesh N=100 seed=1 (loss 0 %, reorder 15 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-mesh-100-s1
+=== l10r10 mesh N=100 seed=1 (loss 10 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-mesh-100-s1
+=== l0 rgg N=20 seed=2 (loss 0 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-rgg-20-s2
+=== l5 rgg N=20 seed=2 (loss 5 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-rgg-20-s2
+=== l10 rgg N=20 seed=2 (loss 10 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-rgg-20-s2
+=== l15 rgg N=20 seed=2 (loss 15 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-rgg-20-s2
+=== l20 rgg N=20 seed=2 (loss 20 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-rgg-20-s2
+=== r5 rgg N=20 seed=2 (loss 0 %, reorder 5 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-rgg-20-s2
+=== r10 rgg N=20 seed=2 (loss 0 %, reorder 10 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-rgg-20-s2
+=== r15 rgg N=20 seed=2 (loss 0 %, reorder 15 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-rgg-20-s2
+=== l10r10 rgg N=20 seed=2 (loss 10 %, reorder 10 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-rgg-20-s2
+=== l0 rgg N=50 seed=2 (loss 0 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-rgg-50-s2
+=== l5 rgg N=50 seed=2 (loss 5 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-rgg-50-s2
+=== l10 rgg N=50 seed=2 (loss 10 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-rgg-50-s2
+=== l15 rgg N=50 seed=2 (loss 15 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-rgg-50-s2
+=== l20 rgg N=50 seed=2 (loss 20 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-rgg-50-s2
+=== r5 rgg N=50 seed=2 (loss 0 %, reorder 5 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-rgg-50-s2
+=== r10 rgg N=50 seed=2 (loss 0 %, reorder 10 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-rgg-50-s2
+=== r15 rgg N=50 seed=2 (loss 0 %, reorder 15 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-rgg-50-s2
+=== l10r10 rgg N=50 seed=2 (loss 10 %, reorder 10 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-rgg-50-s2
+=== l0 rgg N=100 seed=2 (loss 0 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-rgg-100-s2
+=== l5 rgg N=100 seed=2 (loss 5 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-rgg-100-s2
+=== l10 rgg N=100 seed=2 (loss 10 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-rgg-100-s2
+=== l15 rgg N=100 seed=2 (loss 15 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-rgg-100-s2
+=== l20 rgg N=100 seed=2 (loss 20 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-rgg-100-s2
+=== r5 rgg N=100 seed=2 (loss 0 %, reorder 5 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-rgg-100-s2
+=== r10 rgg N=100 seed=2 (loss 0 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-rgg-100-s2
+=== r15 rgg N=100 seed=2 (loss 0 %, reorder 15 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-rgg-100-s2
+=== l10r10 rgg N=100 seed=2 (loss 10 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-rgg-100-s2
+=== l0 mesh N=20 seed=2 (loss 0 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-mesh-20-s2
+=== l5 mesh N=20 seed=2 (loss 5 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-mesh-20-s2
+=== l10 mesh N=20 seed=2 (loss 10 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-mesh-20-s2
+=== l15 mesh N=20 seed=2 (loss 15 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-mesh-20-s2
+=== l20 mesh N=20 seed=2 (loss 20 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-mesh-20-s2
+=== r5 mesh N=20 seed=2 (loss 0 %, reorder 5 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-mesh-20-s2
+=== r10 mesh N=20 seed=2 (loss 0 %, reorder 10 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-mesh-20-s2
+=== r15 mesh N=20 seed=2 (loss 0 %, reorder 15 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-mesh-20-s2
+=== l10r10 mesh N=20 seed=2 (loss 10 %, reorder 10 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-mesh-20-s2
+=== l0 mesh N=50 seed=2 (loss 0 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-mesh-50-s2
+=== l5 mesh N=50 seed=2 (loss 5 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-mesh-50-s2
+=== l10 mesh N=50 seed=2 (loss 10 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-mesh-50-s2
+=== l15 mesh N=50 seed=2 (loss 15 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-mesh-50-s2
+=== l20 mesh N=50 seed=2 (loss 20 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-mesh-50-s2
+=== r5 mesh N=50 seed=2 (loss 0 %, reorder 5 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-mesh-50-s2
+=== r10 mesh N=50 seed=2 (loss 0 %, reorder 10 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-mesh-50-s2
+=== r15 mesh N=50 seed=2 (loss 0 %, reorder 15 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-mesh-50-s2
+=== l10r10 mesh N=50 seed=2 (loss 10 %, reorder 10 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-mesh-50-s2
+=== l0 mesh N=100 seed=2 (loss 0 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-mesh-100-s2
+=== l5 mesh N=100 seed=2 (loss 5 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-mesh-100-s2
+=== l10 mesh N=100 seed=2 (loss 10 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-mesh-100-s2
+=== l15 mesh N=100 seed=2 (loss 15 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-mesh-100-s2
+=== l20 mesh N=100 seed=2 (loss 20 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-mesh-100-s2
+=== r5 mesh N=100 seed=2 (loss 0 %, reorder 5 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-mesh-100-s2
+=== r10 mesh N=100 seed=2 (loss 0 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-mesh-100-s2
+=== r15 mesh N=100 seed=2 (loss 0 %, reorder 15 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-mesh-100-s2
+=== l10r10 mesh N=100 seed=2 (loss 10 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-mesh-100-s2
+=== l0 rgg N=20 seed=3 (loss 0 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-rgg-20-s3
+=== l5 rgg N=20 seed=3 (loss 5 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-rgg-20-s3
+=== l10 rgg N=20 seed=3 (loss 10 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-rgg-20-s3
+=== l15 rgg N=20 seed=3 (loss 15 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-rgg-20-s3
+=== l20 rgg N=20 seed=3 (loss 20 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-rgg-20-s3
+=== r5 rgg N=20 seed=3 (loss 0 %, reorder 5 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-rgg-20-s3
+=== r10 rgg N=20 seed=3 (loss 0 %, reorder 10 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-rgg-20-s3
+=== r15 rgg N=20 seed=3 (loss 0 %, reorder 15 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-rgg-20-s3
+=== l10r10 rgg N=20 seed=3 (loss 10 %, reorder 10 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-rgg-20-s3
+=== l0 rgg N=50 seed=3 (loss 0 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-rgg-50-s3
+=== l5 rgg N=50 seed=3 (loss 5 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-rgg-50-s3
+=== l10 rgg N=50 seed=3 (loss 10 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-rgg-50-s3
+=== l15 rgg N=50 seed=3 (loss 15 %, reorder 0 %) ===
+network: 50 namespaces up in 7.6 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-rgg-50-s3
+=== l20 rgg N=50 seed=3 (loss 20 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-rgg-50-s3
+=== r5 rgg N=50 seed=3 (loss 0 %, reorder 5 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-rgg-50-s3
+=== r10 rgg N=50 seed=3 (loss 0 %, reorder 10 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-rgg-50-s3
+=== r15 rgg N=50 seed=3 (loss 0 %, reorder 15 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-rgg-50-s3
+=== l10r10 rgg N=50 seed=3 (loss 10 %, reorder 10 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-rgg-50-s3
+=== l0 rgg N=100 seed=3 (loss 0 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-rgg-100-s3
+=== l5 rgg N=100 seed=3 (loss 5 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-rgg-100-s3
+=== l10 rgg N=100 seed=3 (loss 10 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-rgg-100-s3
+=== l15 rgg N=100 seed=3 (loss 15 %, reorder 0 %) ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-rgg-100-s3
+=== l20 rgg N=100 seed=3 (loss 20 %, reorder 0 %) ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-rgg-100-s3
+=== r5 rgg N=100 seed=3 (loss 0 %, reorder 5 %) ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-rgg-100-s3
+=== r10 rgg N=100 seed=3 (loss 0 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-rgg-100-s3
+=== r15 rgg N=100 seed=3 (loss 0 %, reorder 15 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-rgg-100-s3
+=== l10r10 rgg N=100 seed=3 (loss 10 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-rgg-100-s3
+=== l0 mesh N=20 seed=3 (loss 0 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-mesh-20-s3
+=== l5 mesh N=20 seed=3 (loss 5 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-mesh-20-s3
+=== l10 mesh N=20 seed=3 (loss 10 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-mesh-20-s3
+=== l15 mesh N=20 seed=3 (loss 15 %, reorder 0 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-mesh-20-s3
+=== l20 mesh N=20 seed=3 (loss 20 %, reorder 0 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-mesh-20-s3
+=== r5 mesh N=20 seed=3 (loss 0 %, reorder 5 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-mesh-20-s3
+=== r10 mesh N=20 seed=3 (loss 0 %, reorder 10 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-mesh-20-s3
+=== r15 mesh N=20 seed=3 (loss 0 %, reorder 15 %) ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-mesh-20-s3
+=== l10r10 mesh N=20 seed=3 (loss 10 %, reorder 10 %) ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-mesh-20-s3
+=== l0 mesh N=50 seed=3 (loss 0 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-mesh-50-s3
+=== l5 mesh N=50 seed=3 (loss 5 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-mesh-50-s3
+=== l10 mesh N=50 seed=3 (loss 10 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-mesh-50-s3
+=== l15 mesh N=50 seed=3 (loss 15 %, reorder 0 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-mesh-50-s3
+=== l20 mesh N=50 seed=3 (loss 20 %, reorder 0 %) ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-mesh-50-s3
+=== r5 mesh N=50 seed=3 (loss 0 %, reorder 5 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-mesh-50-s3
+=== r10 mesh N=50 seed=3 (loss 0 %, reorder 10 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-mesh-50-s3
+=== r15 mesh N=50 seed=3 (loss 0 %, reorder 15 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-mesh-50-s3
+=== l10r10 mesh N=50 seed=3 (loss 10 %, reorder 10 %) ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-mesh-50-s3
+=== l0 mesh N=100 seed=3 (loss 0 %, reorder 0 %) ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l0-mesh-100-s3
+=== l5 mesh N=100 seed=3 (loss 5 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l5-mesh-100-s3
+=== l10 mesh N=100 seed=3 (loss 10 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10-mesh-100-s3
+=== l15 mesh N=100 seed=3 (loss 15 %, reorder 0 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l15-mesh-100-s3
+=== l20 mesh N=100 seed=3 (loss 20 %, reorder 0 %) ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l20-mesh-100-s3
+=== r5 mesh N=100 seed=3 (loss 0 %, reorder 5 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r5-mesh-100-s3
+=== r10 mesh N=100 seed=3 (loss 0 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r10-mesh-100-s3
+=== r15 mesh N=100 seed=3 (loss 0 %, reorder 15 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-r15-mesh-100-s3
+=== l10r10 mesh N=100 seed=3 (loss 10 %, reorder 10 %) ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/netem/netem-l10r10-mesh-100-s3
+162 netem runs, 0 unfaithful; wrote /root/tb-runs/fast-recovery-2026-11-04/netem/netem/

@@ -59,8 +59,11 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 5. **Re-synchronisation has a small excused set.** A neighbour that was asked for a sync may repeat a
    message the requester did not list as held once without a strike, if it tags the repeat as an answer
    to that request (within 120 s), for at most 16 messages per request. A TCP node asks each neighbour
-   every 30 s, so a malicious neighbour can send at most 16 unpunished duplicates per 30 s, only of
-   messages the requester lacked when it asked; each is dropped. Untagged repeats are never excused. A
+   every 30 s, and also whenever that neighbour re-establishes its relay connection (`link_resumed`), at
+   most once per 6 s. A malicious neighbour that reconnects on purpose can therefore send at most 16
+   unpunished duplicates per 6 s (without reconnecting, 16 per 30 s), only of messages the requester
+   lacked when it asked; each is dropped, and each costs one signature check within the neighbour's token
+   bucket. Untagged repeats are never excused. A
    further repeat is a strike. Answers go to the `reply_to` address named in the signed request, so a
    requester can aim an answer (at most 16 messages) at a third party. Answers are limited per requester
    (one per 5 s) and in total (a burst of 4, then one per second), which bounds that reflection but does

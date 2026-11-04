@@ -1,0 +1,157 @@
+﻿04ec7be5f1b11f2a8e277b439a2f0a0b77dece7fd74d6511ccfd44b0c2b782ce  /root/crci-fast-recovery/crci-node
+start 2026-11-04T00:31:20+00:00
+attacks done 2026-11-04T01:33:15+00:00
+gate: runs 18 max_ms 25299 p99_ms 3361
+gate passed 2026-11-04T01:33:15+00:00
+netem done 2026-11-04T06:05:53+00:00
+r4 done 2026-11-04T07:41:02+00:00
+$ cat netem/netem/conditions.md
+| Condition | Runs | Runs with a false eviction | Honest false evictions (total, max in one run) | B banned by all its neighbours | Delivery before the fault, mean | Delivery after B is banned, mean (min of a run) | Eviction latency, median of run medians (max) | Frames dropped by the rate limit | Relay frames lost (failed delivery) | Deliveries > 5 s after origination |
+|---|---|---|---|---|---|---|---|---|---|---|
+| l0 | 18 | 0 | 0, 0 | 18/18 | 100.0% | 100.0% (100%) | 2.1 s (2.1 s) | 0 | 0 | 0 |
+| l5 | 18 | 0 | 0, 0 | 18/18 | 100.0% | 100.0% (100%) | 2.1 s (2.5 s) | 0 | 16 | 2 |
+| l10 | 18 | 0 | 0, 0 | 18/18 | 100.0% | 100.0% (100%) | 2.1 s (6.5 s) | 0 | 86 | 142 |
+| l15 | 18 | 0 | 0, 0 | 18/18 | 100.0% | 99.9% (98%) | 2.2 s (7.0 s) | 0 | 247 | 156 |
+| l20 | 18 | 0 | 0, 0 | 18/18 | 100.0% | 99.9% (99%) | 2.2 s (13.1 s) | 0 | 713 | 882 |
+| r5 | 18 | 0 | 0, 0 | 18/18 | 100.0% | 100.0% (100%) | 2.0 s (2.1 s) | 0 | 0 | 0 |
+| r10 | 18 | 0 | 0, 0 | 18/18 | 100.0% | 100.0% (100%) | 2.0 s (2.1 s) | 0 | 0 | 0 |
+| r15 | 18 | 0 | 0, 0 | 18/18 | 100.0% | 100.0% (100%) | 2.1 s (2.2 s) | 0 | 0 | 0 |
+| l10r10 | 18 | 0 | 0, 0 | 18/18 | 100.0% | 100.0% (100%) | 2.1 s (6.2 s) | 0 | 78 | 2 |
+== attacks/over-budget
+run,faithful,banned_by,false_evict,honest_banned,evict_med_ms,evict_max_ms,deliv_pre,deliv_post,rate_drops,rate_drops_honest,origin_drops_honest,late_5s,cpu_mean,cpu_max
+refill20-s1,True,10/10,0,0,13,33,1.0,1.0,1871,0,0,0,4.48,13.0
+refill20-s2,True,10/10,0,0,13,36,1.0,1.0,1865,0,0,0,4.55,15.9
+refill20-s3,True,10/10,0,0,12,161,1.0,1.0,1966,1,0,0,4.43,13.6
+refill5-s1,True,10/10,0,0,14,34,1.0,1.0,486,119,0,12,2.15,10.5
+refill5-s2,True,10/10,0,0,13,53,0.97,1.0,508,131,0,37,2.96,12.5
+refill5-s3,True,10/10,0,0,12,112,0.93,0.99,532,143,0,64,2.3,10.3
+unfaithful: 0 of 6
+== attacks/flood
+run,faithful,banned_by,false_evict,honest_banned,evict_med_ms,evict_max_ms,deliv_pre,deliv_post,rate_drops,rate_drops_honest,origin_drops_honest,late_5s,cpu_mean,cpu_max
+flood40-s1,True,0/10,0,0,,,1.0,,10136,0,0,0,4.41,13.8
+flood40-s2,True,0/10,0,0,,,1.0,,10051,0,0,0,4.91,14.3
+flood40-s3,True,0/10,0,0,,,1.0,,10183,0,0,0,4.3,11.9
+unfaithful: 0 of 3
+== attacks/eventual
+run,faithful,banned_by,false_evict,honest_banned,evict_med_ms,evict_max_ms,deliv_pre,deliv_post,rate_drops,rate_drops_honest,origin_drops_honest,late_5s,cpu_mean,cpu_max
+l20-mesh-100-s1,True,4/4,0,0,1897,3841,1.0,1.0,0,0,0,14,1.38,3.2
+l20-mesh-100-s2,True,4/4,0,0,1963,2029,1.0,1.0,0,0,0,92,1.43,3.1
+l20-mesh-100-s3,True,4/4,0,0,2025,6993,1.0,1.0,0,0,0,72,1.4,2.9
+l20-mesh-20-s1,True,4/4,0,0,2476,4166,1.0,1.0,0,0,0,0,0.42,0.9
+l20-mesh-20-s2,True,4/4,0,0,2033,30784,1.0,1.0,0,0,0,0,0.37,0.8
+l20-mesh-20-s3,True,4/4,0,0,2167,6217,1.0,1.0,0,0,0,4,0.41,0.8
+l20-mesh-50-s1,True,4/4,0,0,2661,2669,1.0,1.0,0,0,0,2,0.79,1.5
+l20-mesh-50-s2,True,4/4,0,0,2158,2748,1.0,1.0,0,0,0,7,0.79,1.3
+l20-mesh-50-s3,True,4/4,0,0,2118,4139,1.0,1.0,0,0,0,19,0.78,1.7
+l20-rgg-100-s1,True,14/14,0,0,2320,11818,1.0,1.0,0,0,0,143,2.23,4.1
+l20-rgg-100-s2,True,11/11,0,0,2175,14063,1.0,1.0,0,0,0,144,2.18,3.9
+l20-rgg-100-s3,True,12/12,0,0,2173,7063,1.0,1.0,0,0,0,8,2.28,4.3
+l20-rgg-20-s1,True,6/6,0,0,2442,6235,1.0,1.0,0,0,0,21,0.41,0.8
+l20-rgg-20-s2,True,7/7,0,0,2282,4473,1.0,1.0,0,0,0,51,0.43,0.9
+l20-rgg-20-s3,True,6/6,0,0,1634,4419,1.0,1.0,0,0,0,147,0.39,0.9
+l20-rgg-50-s1,True,10/10,0,0,2121,2650,1.0,1.0,0,0,0,43,1.06,1.8
+l20-rgg-50-s2,True,10/10,0,0,2494,7912,1.0,1.0,0,0,0,0,1.18,2.2
+l20-rgg-50-s3,True,10/10,0,0,2397,4044,1.0,1.0,0,0,0,113,1.1,1.9
+unfaithful: 0 of 18
+== r4
+run,faithful,banned_by,false_evict,honest_banned,evict_med_ms,evict_max_ms,deliv_pre,deliv_post,rate_drops,rate_drops_honest,origin_drops_honest,late_5s,cpu_mean,cpu_max
+load16-rgg-50-s1,True,10/10,0,0,103,103,1.0,1.0,0,0,0,0,9.82,11.9
+load16-rgg-50-s2,True,10/10,0,0,126,126,1.0,1.0,0,0,0,0,10.88,13.6
+load16-rgg-50-s3,True,10/10,0,0,103,103,1.0,1.0,0,0,0,0,9.7,11.6
+load32-rgg-50-s1,True,10/10,0,0,80,80,0.98,0.98,2868,2868,0,5,16.88,20.4
+load32-rgg-50-s2,True,10/10,0,0,95,95,0.99,0.99,2704,2704,0,12,18.56,21.7
+load32-rgg-50-s3,True,10/10,0,0,57,58,0.94,0.91,3528,3528,0,60,15.73,17.9
+load4-rgg-50-s1,True,10/10,0,0,526,527,1.0,1.0,0,0,0,0,2.43,4.6
+load4-rgg-50-s2,True,10/10,0,0,511,512,1.0,1.0,0,0,0,0,2.64,5.1
+load4-rgg-50-s3,True,10/10,0,0,510,510,1.0,1.0,0,0,0,0,2.62,4.6
+load6-rgg-50-s1,True,10/10,0,0,342,342,1.0,1.0,0,0,0,0,3.67,5.9
+load6-rgg-50-s2,True,10/10,0,0,346,346,1.0,1.0,0,0,0,0,4.01,6.8
+load6-rgg-50-s3,True,10/10,0,0,344,344,1.0,1.0,0,0,0,0,3.63,5.1
+load8-rgg-50-s1,True,10/10,0,0,260,261,1.0,1.0,0,0,0,0,4.7,6.5
+load8-rgg-50-s2,True,10/10,0,0,262,263,1.0,1.0,0,0,0,0,5.07,7.9
+load8-rgg-50-s3,True,10/10,0,0,262,262,1.0,1.0,0,0,0,0,4.91,6.4
+mesh-100-s1,True,4/4,0,0,2010,2011,1.0,1.0,0,0,0,0,1.56,9.8
+mesh-100-s2,True,4/4,0,0,2011,2012,1.0,1.0,0,0,0,0,1.16,5.1
+mesh-100-s3,True,4/4,0,0,2010,2010,1.0,1.0,0,0,0,0,1.14,5.3
+mesh-20-s1,True,4/4,0,0,2011,2012,1.0,1.0,0,0,0,0,0.27,1.4
+mesh-20-s2,True,4/4,0,0,2001,2001,1.0,1.0,0,0,0,0,0.36,3.2
+mesh-20-s3,True,4/4,0,0,2019,2019,1.0,1.0,0,0,0,0,0.39,3.6
+mesh-50-s1,True,4/4,0,0,2011,2012,1.0,1.0,0,0,0,0,0.65,2.5
+mesh-50-s2,True,4/4,0,0,2011,2012,1.0,1.0,0,0,0,0,0.65,2.8
+mesh-50-s3,True,4/4,0,0,2013,2013,1.0,1.0,0,0,0,0,0.66,3.1
+rgg-100-s1,True,14/14,0,0,1990,1990,1.0,1.0,0,0,0,0,1.89,8.3
+rgg-100-s2,True,11/11,0,0,2002,2003,1.0,1.0,0,0,0,0,1.8,7.9
+rgg-100-s3,True,12/12,0,0,2010,2012,1.0,1.0,0,0,0,0,1.93,8.6
+rgg-20-s1,True,6/6,0,0,2012,2012,1.0,1.0,0,0,0,0,0.38,1.8
+rgg-20-s2,True,7/7,0,0,2002,2003,1.0,1.0,0,0,0,0,0.36,1.5
+rgg-20-s3,True,6/6,0,0,2010,2010,1.0,1.0,0,0,0,0,0.34,2.1
+rgg-50-s1,True,10/10,0,0,2023,2023,1.0,1.0,0,0,0,0,0.8,3.5
+rgg-50-s2,True,10/10,0,0,2012,2012,1.0,1.0,0,0,0,0,0.96,4.1
+rgg-50-s3,True,10/10,0,0,1999,2000,1.0,1.0,0,0,0,0,0.88,3.6
+src8-rgg-50-s1,True,10/10,0,0,117,117,0.82,0.81,0,0,1728,62,8.19,10.1
+src8-rgg-50-s2,True,10/10,0,0,138,138,0.82,0.81,0,0,657,0,9.03,11.7
+src8-rgg-50-s3,True,10/10,0,0,168,170,0.82,0.81,0,0,1313,8,8.45,11.1
+stress4-rgg-500-s1,True,18/18,0,0,512,516,1.0,1.0,0,0,0,0,40.72,75.5
+stress4-rgg-500-s2,True,19/19,0,0,514,518,1.0,1.0,0,0,0,0,40.85,87.4
+stress4-rgg-500-s3,True,19/19,0,0,513,516,1.0,1.0,0,0,0,0,41.36,78.9
+sweep-rgg-200-s1,True,16/16,0,0,2010,2014,1.0,1.0,0,0,0,0,4.28,17.4
+sweep-rgg-200-s2,True,14/14,0,0,2013,2014,1.0,1.0,0,0,0,0,4.35,18.1
+sweep-rgg-200-s3,True,17/17,0,0,2014,2016,1.0,1.0,0,0,0,0,4.65,17.9
+sweep-rgg-300-s1,True,22/22,0,0,1997,2001,1.0,1.0,0,0,0,0,7.73,32.1
+sweep-rgg-300-s2,True,16/16,0,0,2015,2016,1.0,1.0,0,0,0,0,6.81,27.7
+sweep-rgg-300-s3,True,16/16,0,0,2011,2017,1.0,1.0,0,0,0,0,7.44,28.3
+sweep-rgg-500-s1,True,18/18,0,0,2016,2018,1.0,1.0,0,0,0,0,12.55,63.0
+sweep-rgg-500-s2,True,19/19,0,0,2010,2014,1.0,1.0,0,0,0,0,12.59,62.8
+sweep-rgg-500-s3,True,19/19,0,0,2017,2021,1.0,1.0,0,0,0,0,12.77,63.2
+unfaithful: 0 of 48
+== netem honest drops
+rate_drops_honest total 0 origin_drops_honest total 0 unfaithful 0 runs 162
+== eventual (new) vs ev20 (old): post-ban latency (ms), max per run; p99 and max over all
+new l20-mesh-100-s1 n 3332 max 2068
+new l20-mesh-100-s2 n 3528 max 4342
+new l20-mesh-100-s3 n 3136 max 1742
+new l20-mesh-20-s1 n 612 max 1239
+new l20-mesh-20-s2 n 144 max 802
+new l20-mesh-20-s3 n 576 max 1294
+new l20-mesh-50-s1 n 1728 max 1383
+new l20-mesh-50-s2 n 1728 max 1947
+new l20-mesh-50-s3 n 1632 max 1275
+new l20-rgg-100-s1 n 2744 max 14157
+new l20-rgg-100-s2 n 2352 max 14318
+new l20-rgg-100-s3 n 3136 max 1208
+new l20-rgg-20-s1 n 576 max 7205
+new l20-rgg-20-s2 n 612 max 10360
+new l20-rgg-20-s3 n 612 max 25299
+new l20-rgg-50-s1 n 1728 max 12802
+new l20-rgg-50-s2 n 1440 max 1826
+new l20-rgg-50-s3 n 1632 max 7388
+new all n 31248 p99 3361 max 25299
+old ev20-mesh-100-s1 n 3528 max 1897
+old ev20-mesh-100-s2 n 3528 max 2899
+old ev20-mesh-100-s3 n 3528 max 2465
+old ev20-mesh-20-s1 n 648 max 1344
+old ev20-mesh-20-s2 n 648 max 1063
+old ev20-mesh-20-s3 n 576 max 1982
+old ev20-mesh-50-s1 n 1632 max 3023
+old ev20-mesh-50-s2 n 1728 max 2102
+old ev20-mesh-50-s3 n 1728 max 1854
+old ev20-rgg-100-s1 n 3528 max 27704
+old ev20-rgg-100-s2 n 2940 max 36596
+old ev20-rgg-100-s3 n 2940 max 1082
+old ev20-rgg-20-s1 n 576 max 60039
+old ev20-rgg-20-s2 n 648 max 16562
+old ev20-rgg-20-s3 n 612 max 26520
+old ev20-rgg-50-s1 n 1152 max 4636
+old ev20-rgg-50-s2 n 1728 max 28466
+old ev20-rgg-50-s3 n 1728 max 34651
+old all n 33396 p99 4744 max 60039
+== sync requests sent per node per minute (log lines "requested sync from"), l20 netem cells, old vs new
+old l0 runs 18 sync requests per node per run, mean 15.1 max 23.9
+old l10 runs 18 sync requests per node per run, mean 15.0 max 23.7
+old l20 runs 18 sync requests per node per run, mean 13.8 max 20.9
+new l0 runs 18 sync requests per node per run, mean 15.1 max 23.9
+new l10 runs 18 sync requests per node per run, mean 15.1 max 24.0
+new l20 runs 18 sync requests per node per run, mean 16.1 max 24.7
+== CPU mean by condition, old vs new
+old {'l0': 0.82, 'l10': 0.96, 'l10r10': 0.87, 'l15': 1.0, 'l20': 0.98, 'l5': 0.96, 'r10': 0.87, 'r15': 0.85, 'r5': 0.9}
+new {'l0': 0.86, 'l10': 0.97, 'l10r10': 0.97, 'l15': 1.02, 'l20': 1.08, 'l5': 0.93, 'r10': 0.91, 'r15': 0.91, 'r5': 0.9}

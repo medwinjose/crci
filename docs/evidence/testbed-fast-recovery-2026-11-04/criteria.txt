@@ -1,0 +1,20 @@
+Fast-recovery runs (first build a701a55c, commit 5c363f7; final build 04ec7be5, commit efbf48e), criteria fixed 2026-11-03 before any data.
+Reference = final run 2 (binary 3db3e27c, /root/tb-runs/final2-2026-11-03).
+
+Fast recovery (primary):
+- eventual (18 runs, 20 % loss, 60 s drain): max post-ban honest delivery latency < 30 s in EVERY run
+  (old: 60.0 s; one old anti-entropy interval = 30 s), and p99 over all post-ban deliveries <= 4.7 s
+  (old 4 744 ms; must not get worse).
+- netem: deliveries > 5 s after origination lower than the old binary at l10, l15 and l20
+  (old 37 / 293 / 833); reported per condition.
+- No sync storm: sync requests sent per node per minute reported for the l20 netem cells, old vs new;
+  any fidelity failure or CPU above the old runs' by more than 20 % in a cell is a defect to explain.
+
+Unchanged criteria from the earlier runs (must all hold on the new binary):
+- fidelity: the 6 analyze.py checks in every run; a failing run is re-run once, both recorded.
+- netem (162): 0 honest false evictions in every condition up to 20 %; B banned by all neighbours in every run.
+- run_all (48): load8 and load16 0 honest-sender rate drops and 0 honest-origin budget drops; load16 delivery 1.0;
+  every main/sweep/stress run B banned by all, 0 false evictions; load32/src8 reported as measured.
+- attacks: over-budget refill5/refill20 B banned by all neighbours, 0 honest bans; flood40 delivery while
+  flooding >= 0.99, 0 honest drops/bans; eventual deliv_post = 1.0, 0 honest bans, B banned by all.
+If a criterion fails: say so, find the cause; no change to the criteria after the data.

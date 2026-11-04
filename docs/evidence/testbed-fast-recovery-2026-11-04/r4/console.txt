@@ -1,0 +1,481 @@
+=== rgg-20 (rgg, N=20, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.3088, "attempts": 2}
+metrics nodes=20 edges=44 mean_degree=4.4 min_degree=1 max_degree=7 diameter=6 avg_shortest_path=2.5579 clustering=0.4974
+roles source=8 byzantine=12 byzantine_degree=6 hops_source_to_byzantine=2 downstream=12
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-20-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-20-s1/summary.json
+=== rgg-50 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-50-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-50-s1/summary.json
+=== rgg-100 (rgg, N=100, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.1712, "attempts": 1}
+metrics nodes=100 edges=381 mean_degree=7.62 min_degree=1 max_degree=15 diameter=12 avg_shortest_path=4.7869 clustering=0.5975
+roles source=5 byzantine=14 byzantine_degree=14 hops_source_to_byzantine=3 downstream=22
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-100-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-100-s1/summary.json
+=== mesh-20 (mesh, N=20, seed 1) ===
+topology kind=mesh seed=1 {"degree": 4, "attempts": 90}
+metrics nodes=20 edges=40 mean_degree=4.0 min_degree=4 max_degree=4 diameter=4 avg_shortest_path=2.1632 clustering=0.1
+roles source=18 byzantine=2 byzantine_degree=4 hops_source_to_byzantine=2 downstream=2
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-20-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-20-s1/summary.json
+=== mesh-50 (mesh, N=50, seed 1) ===
+topology kind=mesh seed=1 {"degree": 4, "attempts": 12}
+metrics nodes=50 edges=100 mean_degree=4.0 min_degree=4 max_degree=4 diameter=5 avg_shortest_path=2.9265 clustering=0.03
+roles source=25 byzantine=1 byzantine_degree=4 hops_source_to_byzantine=2 downstream=6
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-50-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-50-s1/summary.json
+=== mesh-100 (mesh, N=100, seed 1) ===
+topology kind=mesh seed=1 {"degree": 4, "attempts": 125}
+metrics nodes=100 edges=200 mean_degree=4.0 min_degree=4 max_degree=4 diameter=6 avg_shortest_path=3.5838 clustering=0.035
+roles source=22 byzantine=1 byzantine_degree=4 hops_source_to_byzantine=2 downstream=13
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-100-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-100-s1/summary.json
+=== load4-rgg-50 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load4-rgg-50-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load4-rgg-50-s1/summary.json
+=== load6-rgg-50 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load6-rgg-50-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load6-rgg-50-s1/summary.json
+=== load8-rgg-50 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load8-rgg-50-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load8-rgg-50-s1/summary.json
+=== load16-rgg-50 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load16-rgg-50-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load16-rgg-50-s1/summary.json
+=== load32-rgg-50 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load32-rgg-50-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load32-rgg-50-s1/summary.json
+=== src8-rgg-50 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/src8-rgg-50-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/src8-rgg-50-s1/summary.json
+=== sweep-rgg-200 (rgg, N=200, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.1299, "attempts": 1}
+metrics nodes=200 edges=906 mean_degree=9.06 min_degree=2 max_degree=19 diameter=14 avg_shortest_path=6.1749 clustering=0.6609
+roles source=141 byzantine=5 byzantine_degree=16 hops_source_to_byzantine=2 downstream=50
+network: 200 namespaces up in 28.9 s
+launched 200 nodes in 0.1 s; T0 in 29.9 s
+T0: 200/200 nodes listening
+done: 200/200 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-200-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-200-s1/summary.json
+=== sweep-rgg-300 (rgg, N=300, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.11, "attempts": 1}
+metrics nodes=300 edges=1583 mean_degree=10.553 min_degree=1 max_degree=22 diameter=16 avg_shortest_path=6.5629 clustering=0.6257
+roles source=204 byzantine=212 byzantine_degree=22 hops_source_to_byzantine=2 downstream=45
+network: 300 namespaces up in 43.4 s
+launched 300 nodes in 0.1 s; T0 in 34.9 s
+T0: 300/300 nodes listening
+done: 300/300 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-300-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-300-s1/summary.json
+=== sweep-rgg-500 (rgg, N=500, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.089, "attempts": 1}
+metrics nodes=500 edges=2803 mean_degree=11.212 min_degree=2 max_degree=20 diameter=20 avg_shortest_path=7.9832 clustering=0.6221
+roles source=157 byzantine=225 byzantine_degree=18 hops_source_to_byzantine=2 downstream=88
+network: 500 namespaces up in 72.1 s
+launched 500 nodes in 0.2 s; T0 in 44.8 s
+T0: 500/500 nodes listening
+done: 500/500 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-500-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-500-s1/summary.json
+=== stress4-rgg-500 (rgg, N=500, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.089, "attempts": 1}
+metrics nodes=500 edges=2803 mean_degree=11.212 min_degree=2 max_degree=20 diameter=20 avg_shortest_path=7.9832 clustering=0.6221
+roles source=157 byzantine=225 byzantine_degree=18 hops_source_to_byzantine=2 downstream=88
+network: 500 namespaces up in 72.2 s
+launched 500 nodes in 0.2 s; T0 in 44.8 s
+T0: 500/500 nodes listening
+done: 500/500 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/stress4-rgg-500-s1
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/stress4-rgg-500-s1/summary.json
+=== rgg-20 (rgg, N=20, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.3088, "attempts": 1}
+metrics nodes=20 edges=46 mean_degree=4.6 min_degree=1 max_degree=7 diameter=8 avg_shortest_path=2.9947 clustering=0.6781
+roles source=1 byzantine=6 byzantine_degree=7 hops_source_to_byzantine=2 downstream=9
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-20-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-20-s2/summary.json
+=== rgg-50 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-50-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-50-s2/summary.json
+=== rgg-100 (rgg, N=100, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.1712, "attempts": 1}
+metrics nodes=100 edges=354 mean_degree=7.08 min_degree=1 max_degree=12 diameter=12 avg_shortest_path=4.9105 clustering=0.5962
+roles source=21 byzantine=26 byzantine_degree=11 hops_source_to_byzantine=2 downstream=70
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-100-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-100-s2/summary.json
+=== mesh-20 (mesh, N=20, seed 2) ===
+topology kind=mesh seed=2 {"degree": 4, "attempts": 22}
+metrics nodes=20 edges=40 mean_degree=4.0 min_degree=4 max_degree=4 diameter=4 avg_shortest_path=2.2632 clustering=0.175
+roles source=1 byzantine=8 byzantine_degree=4 hops_source_to_byzantine=2 downstream=2
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-20-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-20-s2/summary.json
+=== mesh-50 (mesh, N=50, seed 2) ===
+topology kind=mesh seed=2 {"degree": 4, "attempts": 31}
+metrics nodes=50 edges=100 mean_degree=4.0 min_degree=4 max_degree=4 diameter=5 avg_shortest_path=2.9445 clustering=0.05
+roles source=47 byzantine=4 byzantine_degree=4 hops_source_to_byzantine=2 downstream=9
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-50-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-50-s2/summary.json
+=== mesh-100 (mesh, N=100, seed 2) ===
+topology kind=mesh seed=2 {"degree": 4, "attempts": 41}
+metrics nodes=100 edges=200 mean_degree=4.0 min_degree=4 max_degree=4 diameter=6 avg_shortest_path=3.5388 clustering=0.005
+roles source=61 byzantine=1 byzantine_degree=4 hops_source_to_byzantine=2 downstream=9
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-100-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-100-s2/summary.json
+=== load4-rgg-50 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load4-rgg-50-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load4-rgg-50-s2/summary.json
+=== load6-rgg-50 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load6-rgg-50-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load6-rgg-50-s2/summary.json
+=== load8-rgg-50 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load8-rgg-50-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load8-rgg-50-s2/summary.json
+=== load16-rgg-50 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load16-rgg-50-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load16-rgg-50-s2/summary.json
+=== load32-rgg-50 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load32-rgg-50-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load32-rgg-50-s2/summary.json
+=== src8-rgg-50 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/src8-rgg-50-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/src8-rgg-50-s2/summary.json
+=== sweep-rgg-200 (rgg, N=200, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.1299, "attempts": 1}
+metrics nodes=200 edges=894 mean_degree=8.94 min_degree=2 max_degree=17 diameter=14 avg_shortest_path=6.0445 clustering=0.6354
+roles source=19 byzantine=23 byzantine_degree=14 hops_source_to_byzantine=2 downstream=52
+network: 200 namespaces up in 29.0 s
+launched 200 nodes in 0.1 s; T0 in 29.9 s
+T0: 200/200 nodes listening
+done: 200/200 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-200-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-200-s2/summary.json
+=== sweep-rgg-300 (rgg, N=300, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.11, "attempts": 1}
+metrics nodes=300 edges=1452 mean_degree=9.68 min_degree=3 max_degree=16 diameter=17 avg_shortest_path=6.6498 clustering=0.6077
+roles source=5 byzantine=143 byzantine_degree=16 hops_source_to_byzantine=3 downstream=57
+network: 300 namespaces up in 43.3 s
+launched 300 nodes in 0.1 s; T0 in 34.9 s
+T0: 300/300 nodes listening
+done: 300/300 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-300-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-300-s2/summary.json
+=== sweep-rgg-500 (rgg, N=500, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.089, "attempts": 1}
+metrics nodes=500 edges=2775 mean_degree=11.1 min_degree=2 max_degree=24 diameter=19 avg_shortest_path=8.0084 clustering=0.6187
+roles source=201 byzantine=402 byzantine_degree=19 hops_source_to_byzantine=2 downstream=146
+network: 500 namespaces up in 72.2 s
+launched 500 nodes in 0.2 s; T0 in 44.8 s
+T0: 500/500 nodes listening
+done: 500/500 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-500-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-500-s2/summary.json
+=== stress4-rgg-500 (rgg, N=500, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.089, "attempts": 1}
+metrics nodes=500 edges=2775 mean_degree=11.1 min_degree=2 max_degree=24 diameter=19 avg_shortest_path=8.0084 clustering=0.6187
+roles source=201 byzantine=402 byzantine_degree=19 hops_source_to_byzantine=2 downstream=146
+network: 500 namespaces up in 72.2 s
+launched 500 nodes in 0.2 s; T0 in 44.8 s
+T0: 500/500 nodes listening
+done: 500/500 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/stress4-rgg-500-s2
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/stress4-rgg-500-s2/summary.json
+=== rgg-20 (rgg, N=20, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.3088, "attempts": 8}
+metrics nodes=20 edges=37 mean_degree=3.7 min_degree=1 max_degree=6 diameter=10 avg_shortest_path=3.6947 clustering=0.6017
+roles source=12 byzantine=9 byzantine_degree=6 hops_source_to_byzantine=3 downstream=11
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-20-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-20-s3/summary.json
+=== rgg-50 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-50-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-50-s3/summary.json
+=== rgg-100 (rgg, N=100, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.1712, "attempts": 3}
+metrics nodes=100 edges=399 mean_degree=7.98 min_degree=3 max_degree=15 diameter=10 avg_shortest_path=4.2501 clustering=0.6075
+roles source=14 byzantine=88 byzantine_degree=12 hops_source_to_byzantine=2 downstream=28
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-100-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/rgg-100-s3/summary.json
+=== mesh-20 (mesh, N=20, seed 3) ===
+topology kind=mesh seed=3 {"degree": 4, "attempts": 3}
+metrics nodes=20 edges=40 mean_degree=4.0 min_degree=4 max_degree=4 diameter=4 avg_shortest_path=2.1421 clustering=0.175
+roles source=12 byzantine=11 byzantine_degree=4 hops_source_to_byzantine=2 downstream=2
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-20-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-20-s3/summary.json
+=== mesh-50 (mesh, N=50, seed 3) ===
+topology kind=mesh seed=3 {"degree": 4, "attempts": 16}
+metrics nodes=50 edges=100 mean_degree=4.0 min_degree=4 max_degree=4 diameter=5 avg_shortest_path=2.9673 clustering=0.06
+roles source=6 byzantine=9 byzantine_degree=4 hops_source_to_byzantine=2 downstream=5
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-50-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-50-s3/summary.json
+=== mesh-100 (mesh, N=100, seed 3) ===
+topology kind=mesh seed=3 {"degree": 4, "attempts": 26}
+metrics nodes=100 edges=200 mean_degree=4.0 min_degree=4 max_degree=4 diameter=6 avg_shortest_path=3.5891 clustering=0.03
+roles source=43 byzantine=8 byzantine_degree=4 hops_source_to_byzantine=2 downstream=10
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-100-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/mesh-100-s3/summary.json
+=== load4-rgg-50 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load4-rgg-50-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load4-rgg-50-s3/summary.json
+=== load6-rgg-50 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load6-rgg-50-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load6-rgg-50-s3/summary.json
+=== load8-rgg-50 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load8-rgg-50-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load8-rgg-50-s3/summary.json
+=== load16-rgg-50 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load16-rgg-50-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load16-rgg-50-s3/summary.json
+=== load32-rgg-50 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/load32-rgg-50-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/load32-rgg-50-s3/summary.json
+=== src8-rgg-50 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/src8-rgg-50-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/src8-rgg-50-s3/summary.json
+=== sweep-rgg-200 (rgg, N=200, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.1299, "attempts": 2}
+metrics nodes=200 edges=949 mean_degree=9.49 min_degree=1 max_degree=18 diameter=14 avg_shortest_path=5.5549 clustering=0.6223
+roles source=29 byzantine=178 byzantine_degree=17 hops_source_to_byzantine=2 downstream=14
+network: 200 namespaces up in 29.0 s
+launched 200 nodes in 0.1 s; T0 in 29.9 s
+T0: 200/200 nodes listening
+done: 200/200 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-200-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-200-s3/summary.json
+=== sweep-rgg-300 (rgg, N=300, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.11, "attempts": 1}
+metrics nodes=300 edges=1586 mean_degree=10.573 min_degree=1 max_degree=18 diameter=16 avg_shortest_path=6.3579 clustering=0.6093
+roles source=283 byzantine=61 byzantine_degree=16 hops_source_to_byzantine=2 downstream=68
+network: 300 namespaces up in 43.4 s
+launched 300 nodes in 0.1 s; T0 in 34.9 s
+T0: 300/300 nodes listening
+done: 300/300 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-300-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-300-s3/summary.json
+=== sweep-rgg-500 (rgg, N=500, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.089, "attempts": 1}
+metrics nodes=500 edges=2862 mean_degree=11.448 min_degree=2 max_degree=21 diameter=21 avg_shortest_path=7.9993 clustering=0.6033
+roles source=324 byzantine=334 byzantine_degree=19 hops_source_to_byzantine=2 downstream=140
+network: 500 namespaces up in 72.4 s
+launched 500 nodes in 0.2 s; T0 in 44.8 s
+T0: 500/500 nodes listening
+done: 500/500 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-500-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/sweep-rgg-500-s3/summary.json
+=== stress4-rgg-500 (rgg, N=500, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.089, "attempts": 1}
+metrics nodes=500 edges=2862 mean_degree=11.448 min_degree=2 max_degree=21 diameter=21 avg_shortest_path=7.9993 clustering=0.6033
+roles source=324 byzantine=334 byzantine_degree=19 hops_source_to_byzantine=2 downstream=140
+network: 500 namespaces up in 72.2 s
+launched 500 nodes in 0.2 s; T0 in 44.8 s
+T0: 500/500 nodes listening
+done: 500/500 alive at the end of the window; output in /root/tb-runs/fast-recovery-2026-11-04/r4/stress4-rgg-500-s3
+summary: /root/tb-runs/fast-recovery-2026-11-04/r4/stress4-rgg-500-s3/summary.json
+run,kind,seed,N,delay_ms,jitter_ms,loss_pct,reorder_pct,mean_deg,max_deg,diam,aspl,clust,up,msgs,deliv_pre,deliv_post,lat_med_pre,lat_p95_pre,lat_med_post,lat_p95_post,hop_excess_med,down_pre,down_post,via_byz_post,banned_by,evict_med_ms,evict_max_ms,false_evict,honest_banned,honest_nodes,rate_drops,rate_drops_honest,origin_drops_honest,relay_failed,late_5s,cpu_mean,cpu_max,mem_mib,swap_io,kdrops,rss_mib_node,rtt_med,rtt_p95,faithful
+load16-rgg-50-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,960,1.0,1.0,34,74,43,75,0.86,1098/1098,2862/2862,0,10/10,103,103,0,0,49,0,0,0,0,0,9.82,11.9,753,0,0,9.19,20.5,20.9,True
+load16-rgg-50-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,960,1.0,1.0,43,66,43,74,0.83,732/732,1908/1908,0,10/10,126,126,0,0,49,0,0,0,0,0,10.88,13.6,799,0,0,9.39,20.5,21.0,True
+load16-rgg-50-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,960,1.0,1.0,44,86,62,96,0.75,1220/1220,3180/3180,0,10/10,103,103,0,0,49,0,0,0,0,0,9.7,11.6,766,0,0,9.16,20.4,20.9,True
+load32-rgg-50-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,1920,0.98,0.98,41,73,42,74,0.67,1058/1098,2698/2862,0,10/10,80,80,0,0,49,2868,2868,0,0,5,16.88,20.4,831,0,0,10.83,20.3,20.9,True
+load32-rgg-50-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,1920,0.99,0.99,42,71,42,74,0.67,732/732,1908/1908,0,10/10,95,95,0,0,49,2704,2704,0,0,12,18.56,21.7,888,0,0,11.18,20.3,20.9,True
+load32-rgg-50-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,1920,0.94,0.91,43,85,53,95,0.57,896/1200,2829/3180,0,10/10,57,58,0,0,49,3528,3528,0,0,60,15.73,17.9,839,0,0,10.63,20.3,20.9,True
+load4-rgg-50-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,240,1.0,1.0,35,69,43,75,1.0,558/558,1404/1404,0,10/10,526,527,0,0,49,0,0,0,0,0,2.43,4.6,660,0,0,7.31,20.5,20.9,True
+load4-rgg-50-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,240,1.0,1.0,42,66,43,75,1.0,372/372,936/936,0,10/10,511,512,0,0,49,0,0,0,0,0,2.64,5.1,701,0,0,7.41,20.6,20.9,True
+load4-rgg-50-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,240,1.0,1.0,44,86,64,94,1.0,620/620,1560/1560,0,10/10,510,510,0,0,49,0,0,0,0,0,2.62,4.6,677,0,0,7.31,20.5,20.9,True
+load6-rgg-50-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,360,1.0,1.0,34,73,42,75,1.0,810/810,2124/2124,0,10/10,342,342,0,0,49,0,0,0,0,0,3.67,5.9,672,0,0,7.61,20.5,20.9,True
+load6-rgg-50-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,360,1.0,1.0,43,65,43,74,1.0,540/540,1416/1416,0,10/10,346,346,0,0,49,0,0,0,0,0,4.01,6.8,714,0,0,7.76,20.5,20.9,True
+load6-rgg-50-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,360,1.0,1.0,44,85,64,94,1.0,900/900,2360/2360,0,10/10,344,344,0,0,49,0,0,0,0,0,3.63,5.1,689,0,0,7.61,20.5,20.9,True
+load8-rgg-50-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,480,1.0,1.0,34,74,43,75,1.0,1098/1098,2844/2844,0,10/10,260,261,0,0,49,0,0,0,0,0,4.7,6.5,684,0,0,7.81,20.5,21.0,True
+load8-rgg-50-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,480,1.0,1.0,42,66,43,75,1.0,732/732,1896/1896,0,10/10,262,263,0,0,49,0,0,0,0,0,5.07,7.9,725,0,0,7.96,20.5,21.0,True
+load8-rgg-50-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,480,1.0,1.0,44,86,64,95,1.0,1220/1220,3160/3160,0,10/10,262,262,0,0,49,0,0,0,0,0,4.91,6.4,699,0,0,7.83,20.5,21.0,True
+mesh-100-s1,mesh,1,100,10,0,0,0,4.0,4,6,3.5838,0.035,100/100,60,1.0,1.0,44,57,43,57,1.0,104/104,234/234,0,4/4,2010,2011,0,0,99,0,0,0,0,0,1.56,9.8,756,0,0,6.71,20.5,20.8,True
+mesh-100-s2,mesh,2,100,10,0,0,0,4.0,4,6,3.5388,0.005,100/100,60,1.0,1.0,43,56,44,57,1.0,72/72,162/162,0,4/4,2011,2012,0,0,99,0,0,0,0,0,1.16,5.1,755,0,0,6.71,20.5,20.9,True
+mesh-100-s3,mesh,3,100,10,0,0,0,4.0,4,6,3.5891,0.03,100/100,60,1.0,1.0,44,56,44,58,1.0,80/80,180/180,0,4/4,2010,2010,0,0,99,0,0,0,0,0,1.14,5.3,767,0,0,6.71,20.5,20.8,True
+mesh-20-s1,mesh,1,20,10,0,0,0,4.0,4,4,2.1632,0.1,20/20,60,1.0,1.0,22,33,22,42,1.0,16/16,36/36,0,4/4,2011,2012,0,0,19,0,0,0,0,0,0.27,1.4,567,0,0,6.63,20.5,20.9,True
+mesh-20-s2,mesh,2,20,10,0,0,0,4.0,4,4,2.2632,0.175,20/20,60,1.0,1.0,22,42,23,44,1.0,16/16,36/36,0,4/4,2001,2001,0,0,19,0,0,0,0,0,0.36,3.2,615,0,0,6.69,20.6,20.9,True
+mesh-20-s3,mesh,3,20,10,0,0,0,4.0,4,4,2.1421,0.175,20/20,60,1.0,1.0,22,33,23,43,1.0,16/16,36/36,0,4/4,2019,2019,0,0,19,0,0,0,0,0,0.39,3.6,624,0,0,6.68,20.6,20.9,True
+mesh-50-s1,mesh,1,50,10,0,0,0,4.0,4,5,2.9265,0.03,50/50,60,1.0,1.0,34,45,33,52,1.0,48/48,108/108,0,4/4,2011,2012,0,0,49,0,0,0,0,0,0.65,2.5,621,0,0,6.68,20.5,20.9,True
+mesh-50-s2,mesh,2,50,10,0,0,0,4.0,4,5,2.9445,0.05,50/50,60,1.0,1.0,33,46,33,54,1.0,72/72,162/162,0,4/4,2011,2012,0,0,49,0,0,0,0,0,0.65,2.8,660,0,0,6.69,20.5,20.8,True
+mesh-50-s3,mesh,3,50,10,0,0,0,4.0,4,5,2.9673,0.06,50/50,60,1.0,1.0,33,53,33,54,1.0,40/40,90/90,0,4/4,2013,2013,0,0,49,0,0,0,0,0,0.66,3.1,674,0,0,6.71,20.5,20.9,True
+rgg-100-s1,rgg,1,100,10,0,0,0,7.62,15,12,4.7869,0.5975,100/100,60,1.0,1.0,55,96,47,91,1.0,176/176,396/396,0,14/14,1990,1990,0,0,99,0,0,0,0,0,1.89,8.3,741,0,0,6.95,20.5,20.8,True
+rgg-100-s2,rgg,2,100,10,0,0,0,7.08,12,12,4.9105,0.5962,100/100,60,1.0,1.0,59,97,66,119,1.0,560/560,1260/1260,0,11/11,2002,2003,0,0,99,0,0,0,0,0,1.8,7.9,777,0,0,6.92,20.5,20.9,True
+rgg-100-s3,rgg,3,100,10,0,0,0,7.98,15,10,4.2501,0.6075,100/100,60,1.0,1.0,45,85,47,87,1.0,224/224,504/504,0,12/12,2010,2012,0,0,99,0,0,0,0,0,1.93,8.6,796,0,0,6.97,20.5,20.8,True
+rgg-20-s1,rgg,1,20,10,0,0,0,4.4,7,6,2.5579,0.4974,20/20,60,1.0,1.0,34,55,43,66,1.0,96/96,216/216,0,6/6,2012,2012,0,0,19,0,0,0,0,0,0.38,1.8,569,0,0,6.68,20.6,20.9,True
+rgg-20-s2,rgg,2,20,10,0,0,0,4.6,7,8,2.9947,0.6781,20/20,60,1.0,1.0,33,66,33,76,1.0,72/72,162/162,0,7/7,2002,2003,0,0,19,0,0,0,0,0,0.36,1.5,612,0,0,6.67,20.6,20.8,True
+rgg-20-s3,rgg,3,20,10,0,0,0,3.7,6,10,3.6947,0.6017,20/20,60,1.0,1.0,42,95,53,108,1.0,88/88,198/198,0,6/6,2010,2010,0,0,19,0,0,0,0,0,0.34,2.1,625,0,0,6.64,20.5,20.9,True
+rgg-50-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,60,1.0,1.0,34,66,43,75,1.0,144/144,324/324,0,10/10,2023,2023,0,0,49,0,0,0,0,0,0.8,3.5,628,0,0,6.86,20.5,20.8,True
+rgg-50-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,60,1.0,1.0,43,66,43,75,1.0,96/96,216/216,0,10/10,2012,2012,0,0,49,0,0,0,0,0,0.96,4.1,672,0,0,6.91,20.5,20.9,True
+rgg-50-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,60,1.0,1.0,43,85,63,89,0.86,160/160,360/360,0,10/10,1999,2000,0,0,49,0,0,0,0,0,0.88,3.6,681,0,0,6.86,20.5,20.9,True
+src8-rgg-50-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,960,0.82,0.81,35,75,43,76,1.0,1381/2178,3582/5724,0,10/10,117,117,0,0,49,0,0,1728,0,62,8.19,10.1,717,0,0,8.5,20.4,21.0,True
+src8-rgg-50-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,960,0.82,0.81,43,67,44,75,1.0,924/1452,2352/3816,0,10/10,138,138,0,0,49,0,0,657,0,0,9.03,11.7,763,0,0,8.71,20.5,20.9,True
+src8-rgg-50-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,960,0.82,0.81,45,87,64,96,1.0,1555/2420,3900/6360,0,10/10,168,170,0,0,49,0,0,1313,0,8,8.45,11.1,731,0,0,8.5,20.5,21.0,True
+stress4-rgg-500-s1,rgg,1,500,10,0,0,0,11.212,20,20,7.9832,0.6221,500/500,240,1.0,1.0,108,199,109,202,3.07,2728/2728,6864/6864,0,18/18,512,516,0,0,499,0,0,0,0,0,40.72,75.5,2510,0,0,8.57,20.2,20.6,True
+stress4-rgg-500-s2,rgg,2,500,10,0,0,0,11.1,24,19,8.0084,0.6187,500/500,240,1.0,1.0,111,201,114,206,2.8,4526/4526,11388/11388,0,19/19,514,518,0,0,499,0,0,0,0,0,40.85,87.4,2521,0,0,8.57,20.2,20.7,True
+stress4-rgg-500-s3,rgg,3,500,10,0,0,0,11.448,21,21,7.9993,0.6033,500/500,240,1.0,1.0,111,203,113,207,3.11,4340/4340,10920/10920,0,19/19,513,516,0,0,499,0,0,0,0,0,41.36,78.9,2522,0,0,8.62,20.2,20.8,True
+sweep-rgg-200-s1,rgg,1,200,10,0,0,0,9.06,19,14,6.1749,0.6609,200/200,60,1.0,1.0,69,118,74,123,1.17,400/400,900/900,0,16/16,2010,2014,0,0,199,0,0,0,0,0,4.28,17.4,1008,0,0,7.06,20.4,20.8,True
+sweep-rgg-200-s2,rgg,2,200,10,0,0,0,8.94,17,14,6.0445,0.6354,200/200,60,1.0,1.0,68,115,75,122,1.25,416/416,936/936,0,14/14,2013,2014,0,0,199,0,0,0,0,0,4.35,18.1,1036,0,0,7.05,20.4,20.8,True
+sweep-rgg-200-s3,rgg,3,200,10,0,0,0,9.49,18,14,5.5549,0.6223,200/200,60,1.0,1.0,56,96,58,102,1.67,112/112,252/252,0,17/17,2014,2016,0,0,199,0,0,0,0,0,4.65,17.9,1019,0,0,7.08,20.4,20.8,True
+sweep-rgg-300-s1,rgg,1,300,10,0,0,0,10.553,22,16,6.5629,0.6257,300/300,60,1.0,1.0,81,135,84,150,1.71,360/360,810/810,0,22/22,1997,2001,0,0,299,0,0,0,0,0,7.73,32.1,1312,0,0,7.26,20.3,20.8,True
+sweep-rgg-300-s2,rgg,2,300,10,0,0,0,9.68,16,17,6.6498,0.6077,300/300,60,1.0,1.0,77,128,77,129,1.6,456/456,1026/1026,0,16/16,2015,2016,0,0,299,0,0,0,0,0,6.81,27.7,1320,0,0,7.2,20.3,20.7,True
+sweep-rgg-300-s3,rgg,3,300,10,0,0,0,10.573,18,16,6.3579,0.6093,300/300,60,1.0,1.0,75,129,74,135,1.88,544/544,1224/1224,0,16/16,2011,2017,0,0,299,0,0,0,0,0,7.44,28.3,1315,0,0,7.27,20.3,20.7,True
+sweep-rgg-500-s1,rgg,1,500,10,0,0,0,11.212,20,20,7.9832,0.6221,500/500,60,1.0,1.0,107,192,109,200,3.0,704/704,1584/1584,0,18/18,2016,2018,0,0,499,0,0,0,0,0,12.55,63.0,1975,0,0,7.34,20.2,20.6,True
+sweep-rgg-500-s2,rgg,2,500,10,0,0,0,11.1,24,19,8.0084,0.6187,500/500,60,1.0,1.0,109,192,113,210,2.75,1168/1168,2628/2628,0,19/19,2010,2014,0,0,499,0,0,0,0,0,12.59,62.8,1977,0,0,7.34,20.2,20.7,True
+sweep-rgg-500-s3,rgg,3,500,10,0,0,0,11.448,21,21,7.9993,0.6033,500/500,60,1.0,1.0,104,189,113,211,3.0,1120/1120,2520/2520,0,19/19,2017,2021,0,0,499,0,0,0,0,0,12.77,63.2,1980,0,0,7.37,20.2,20.7,True

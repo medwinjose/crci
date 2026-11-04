@@ -153,6 +153,47 @@ What these files show, stated plainly:
   except the two tarballs: the slowest delivery at 20 % loss (60 s) and one fresh-message flood run.
 - `before-origin-budget/fl/`: the same flood on the build before the per-origin budget (honest delivery
   82–98 %).
+- **Superseded** by `testbed-fast-recovery-2026-11-04/` (every configuration re-run on the build that
+  recovers frames lost with an aborted connection); kept as the before-state.
+
+## `testbed-fast-recovery-2026-11-04/`
+
+| File | SHA-256 |
+|---|---|
+| `binary.sha256` | `e21018b18ea74ee1395467eb7331bba231bf659e88358bf2c12d812f2994ff0d` |
+| `criteria.txt` | `82c9f227051e5748413e6a03e81213ac2bc343a6df53c345076a2045f4cf8c3f` |
+| `progress.txt` | `d024999a029badbcd362fbb54bc1dfbf83b13dcabfb1cd77454e4a6532e83c91` |
+| `summary.txt` | `5af4e65be897c78f6892febc1cc72031c7ef1963d1289e7cc0b44d0034965fb7` |
+| `netem/results.csv` | `b5ca57b4ab59be990d6bd29be72822aa4515c589e2c54766192ff788de1bc875` |
+| `netem/conditions/conditions.md` | `ae8adfdca36330a8b415e30cb4967064ca4988902c7c4ba8ebc5d8b2b0363701` |
+| `r4/results.csv` | `9a8897b32b2735a2a837e843ed9784c5eb782146619fa170366df7024f3ec0ad` |
+| `attacks/over-budget/results.csv` | `410740577c9a0393e5fe084177612092156f62ba4bfc84201dc82409f47c0f54` |
+| `attacks/flood/results.csv` | `e3ea78337725574cf04477a0216149ae54577ae7b7772e5d05a550f22fb4f1af` |
+| `attacks/eventual/results.csv` | `fe0347d8c2aeb366578a35f9cf9d3bad735c8a8db6aac3b71615f0d4aacf1428` |
+| `l20-rgg-20-s3-raw.tar.gz` | `30eec98446852bbcee56b98fa7e529f699a8977a15ad37bad5968396b7576789` |
+| `first-fix/summary.txt` | `6b9cd02f6cbe6354df47a9ad7af1a195074308ee93cbeefa868c3e1eb53450ee` |
+| `first-fix/binary.sha256` | `769895d88ce464f1db3ae2ea80275a6382178e6928ece76176846ea261cb433e` |
+| `first-fix/l20-rgg-20-s1-raw.tar.gz` | `b50625109a5164f970b106e4b3903b4454d29213ad3b6e0281c86fd3645610ff` |
+
+- **What it is:** every testbed number in [benchmarks.md](../benchmarks.md#emulation-testbed-real-processes-one-host)
+  since 2026-11-04, from one `crci-node` build (`binary.sha256`, commit efbf48e). `r4/` = `run_all.sh`
+  (48 runs), `netem/` = `run_netem.sh` (162 runs), `attacks/` = `run_attacks.sh` (27 runs: over-budget
+  replayer, fresh-message flood, and 20 % loss with a 60 s drain in `eventual/`). `criteria.txt` holds the
+  pass criteria, written before the first of the two builds below was run (internal labels replaced).
+  `summary.txt` is the verbatim comparison with the previous build; `progress.txt` includes the
+  20 % loss gate the driver checked before running the rest.
+- **Result against the criteria:** worst post-ban delivery at 20 % loss 25.3 s (criterion < 30 s; previous
+  build 60.0 s), 99th percentile 3.4 s (criterion ≤ 4.7 s); every other criterion of the previous runs
+  held. One criterion failed: deliveries later than 5 s were to fall at 10, 15 and 20 % loss and fell
+  only at 15 % (37 → 142, 293 → 156, 833 → 882). That column counts deliveries, not messages; at 10 % one
+  message accounts for 96 of the 142. Deliveries later than 20 s fell from 0 / 51 / 72 to 0 / 0 / 3.
+- `runs/<run>/`: `summary.json`, `bans.csv`, `meta.json` per run, plus `latency.csv.gz` (every delivery)
+  for the 20 % loss runs in `attacks/eventual/`. Raw logs are not committed except the tarball of the
+  slowest of those runs (25.3 s).
+- `first-fix/`: the first version of the change (commit 5c363f7), which asked a peer for a sync only
+  when the peer opened a new relay connection. It **failed** the latency criterion (worst 65.5 s, p99
+  5.9 s): a sender with nothing more to send never reconnected, so frames lost just before a link fell
+  quiet still waited for the 30 s exchange. Results, summary and the raw logs of its slowest run are kept.
 
 ## `archive/`
 
