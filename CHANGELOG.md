@@ -22,6 +22,10 @@ git history; `git log` is the complete record.
   dropped by the rate limit, per-origin budget drops, and aggregates the loss runs per condition. Every
   testbed configuration runs with three seeds, and the load set covers 16 and 32 messages/s.
 
+- `scripts/testbed/main_table.py` regenerates the main testbed table of `docs/benchmarks.md` from `results.csv`;
+  `make tables` builds it and the netem tables, `make smoke` runs a small check, `make reproduce` runs every
+  experiment and then the tables.
+
 ### Changed
 - The per-neighbour budget refills at 20 messages per second instead of 5, and only messages the
   receiver has not seen spend it. Chosen from a testbed sweep (refill 5/10/20/50 per second, offered load

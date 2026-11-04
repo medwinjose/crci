@@ -22,6 +22,7 @@ Linux only, run as root. Tested in WSL2 (Ubuntu 26.04, kernel 6.6, iproute2 6.19
 | `testbed.py --topo T.json --out DIR --bin crci-node` | Creates the namespaces, starts one node per namespace (`TOKIO_WORKER_THREADS=2`, listening on the namespace's own address), drives the traffic, samples host CPU / memory / swap / kernel backlog drops every second, pings sampled overlay links, records per-node RSS, then stops everything and removes the namespaces. Every node's schedule counts from T0 (`--experiment-epoch-unix-ms`), because `ip netns exec` delays process start by seconds when hundreds of nodes start at once. |
 | `analyze.py DIR` | Computes delivery ratio and dissemination latency of honest-originated messages (overall, per hop, for the downstream set), bans, eviction latency, honest false evictions, rate-limit drops (honest senders' frames separately), per-origin budget drops, relay frames lost, deliveries more than 5 s late by path, host load and link RTT, and checks the fidelity criteria. Writes `summary.json`, `latency.csv`, `bans.csv`. |
 | `report.py OUT` | Collects every run's `summary.json` into `results.csv`. |
+| `main_table.py OUT` | The main table of `docs/benchmarks.md` (one row per configuration, ranges over seeds) from `OUT/results.csv`. |
 | `run_all.sh OUT [BIN]` | The full experiment set (see the header of the script). |
 | `run_netem.sh OUT [BIN] [SEEDS] [SIZES]` | The impairment set: one-way delay 40 ms ± 15 ms (uniform) on every egress, with loss 0/5/10/15/20 %, reordering 5/10/15 % and loss 10 % + reordering 10 %; rgg and mesh, N = 20/50/100, seeds 1–3. Resumable. |
 | `netem_table.py OUT` | One CSV per condition, `summary.csv` (mean over seeds) and `table.md` under `OUT/netem/`, and `conditions.md`: each condition aggregated over all its runs. |
@@ -30,6 +31,9 @@ Linux only, run as root. Tested in WSL2 (Ubuntu 26.04, kernel 6.6, iproute2 6.19
 ```bash
 make testbed OUT=/tmp/crci-testbed
 make attacks OUT=/tmp/crci-testbed   # writes /tmp/crci-testbed-attacks
+make tables OUT=/tmp/crci-testbed    # main table and netem tables from runs already there
+make smoke OUT=/tmp/crci-testbed     # seed 1, N = 20 netem runs only, to check the scripts
+make reproduce OUT=/tmp/crci-testbed # all runs (about 7.5 h), then the tables
 # or: cargo build --release -p crci-node --bin crci-node
 #     sudo scripts/testbed/run_all.sh /tmp/crci-testbed target/release/crci-node
 ```
