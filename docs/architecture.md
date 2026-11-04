@@ -185,7 +185,9 @@ answers, never ordinary gossip.
 
 In-process, `MeshSimulator::heal(a, b)` restores a link and has both ends request. A TCP node requests
 from every `--peers` / `--dial` address 0.5 s after start and every 30 s, and retries an unreachable peer
-every 5 s, so a healed link is re-synchronised within about 5 s. The session is opened after the
+every 5 s, so a healed link is re-synchronised within about 5 s. It also requests from a peer as soon as
+that peer re-establishes its relay connection (`link_resumed`, see the message path above), once the
+peer's 5 s answer cooldown allows. The session is opened after the
 listener's identity has been authenticated and before the request frame is sent. Answers travel on the
 same ordered connection as the neighbour's gossip, so an answer never arrives before the neighbour's
 own gossip copy of the same message. `reply_to` is the
