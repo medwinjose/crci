@@ -1552,9 +1552,10 @@ async fn run_node(
             tcp.listen_addr
         );
     }
-    // A peer that opens a new relay connection to this node may have lost frames with its
-    // previous one, so it is asked for a sync as soon as its cooldown allows, not at the next
-    // SYNC_INTERVAL. Its address is known once this node's own sync dial authenticated it.
+    // A peer that re-establishes its relay connection to this node (`link_resumed`) may have
+    // lost frames with the previous one, so it is asked for a sync as soon as its cooldown
+    // allows, not at the next SYNC_INTERVAL. Its address is known once this node's own sync
+    // dial authenticated it.
     const COOLDOWN_MARGIN: std::time::Duration = std::time::Duration::from_secs(1);
     tokio::spawn(async move {
         let Some(reply_to) = reply_to else {

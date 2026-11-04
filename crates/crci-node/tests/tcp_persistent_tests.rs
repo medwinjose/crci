@@ -219,34 +219,44 @@ async fn an_idle_connection_outlives_the_read_timeout() {
     );
 }
 
-/// A new connection is reported as a relay link (its sender may have lost frames) only when
-/// it carries gossip; a sync-only connection is not, so sync requests cannot trigger each
-/// other between two nodes.
+/// Only a connection that replaces an earlier one to the same peer is reported (its first
+/// frame is `link_resumed`, which is consumed, not delivered): not the first connection,
+/// and not a sync-only connection, so sync requests cannot trigger each other.
 #[tokio::test]
-async fn new_relay_links_are_reported_but_sync_connections_are_not() {
-    let receiver = listener("link-receiver").await;
+async fn only_a_replaced_relay_connection_is_reported() {
+    let first = listener("link-receiver").await;
+    let addr = first.listen_addr;
     let sender = listener("link-sender").await;
-    let target = receiver.listen_addr.to_string();
+    let id = Identity::new("author");
 
     let mut sync = signed(&Identity::new("link-sender"), "sync-1", "link-sender", 1);
     sync.message_type = crci_core::runtime::SYNC_REQUEST_TYPE.to_string();
-    let mut conn = sender.dial(&target).await.unwrap();
+    let mut conn = sender.dial(&addr.to_string()).await.unwrap();
     conn.send(&sync).await.unwrap();
-    receive_within(&receiver, 2).await;
+    receive_within(&first, 2).await;
     conn.close().await;
-    let mut links = receiver.new_links.lock().await;
+    sender
+        .send(&addr.to_string(), &signed(&id, "before", "author", 1))
+        .await
+        .unwrap();
+    assert_eq!(receive_within(&first, 2).await.1.id, "before");
     assert!(
-        links.try_recv().is_err(),
-        "a sync-only connection was reported"
+        first.new_links.lock().await.try_recv().is_err(),
+        "a first or sync-only connection was reported"
     );
 
-    let id = Identity::new("author");
+    drop(first);
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let second = bind_at("link-receiver", addr).await;
     sender
-        .relay(&target, signed(&id, "gossip-1", "author", 1))
-        .unwrap();
-    let (from, _) = receive_within(&receiver, 2).await;
-    let reported = tokio::time::timeout(Duration::from_secs(2), links.recv())
+        .send(&addr.to_string(), &signed(&id, "after", "author", 2))
         .await
-        .expect("relay link not reported");
+        .unwrap();
+    let (from, wire) = receive_within(&second, 2).await;
+    assert_eq!(wire.id, "after", "the link_resumed frame was delivered");
+    let reported =
+        tokio::time::timeout(Duration::from_secs(2), second.new_links.lock().await.recv())
+            .await
+            .expect("replaced connection not reported");
     assert_eq!(reported, Some(from));
 }

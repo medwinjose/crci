@@ -140,11 +140,13 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
    retransmission backoff held single links for up to 38 s at 20 % packet loss, and the sync answers
    queued behind them could not repair the gap. Frames still in the aborted connection are not re-sent
    (the sender cannot tell which of them arrived, and a repeat that did arrive would be struck as a
-   replay). Instead the receiver asks for them: when a peer opens a new relay connection to a node (its
-   first frame is not a sync request), the node sends that peer a sync request as soon as the peer's
-   5 s answer cooldown allows, instead of at the next 30 s exchange. Short sync-only connections are not
-   counted, so two nodes' requests cannot trigger each other; a peer that reconnects constantly gets at
-   most one request per 6 s from each neighbour.
+   replay). Instead the sender makes the receiver ask for them. A relay task whose send failed, or whose
+   connection died within 6 s of a write (checked every second, also when there is nothing more to
+   send), reconnects at once, retrying every second, and every connection that replaces an earlier one
+   starts with a `link_resumed` frame. The receiving transport consumes that frame (at most one report
+   per connection; it never reaches `NodeRuntime`), and the node sends that peer a sync request as soon
+   as the peer's 5 s answer cooldown allows, instead of at the next 30 s exchange. A peer that
+   reconnects constantly gets at most one request per 6 s from each neighbour.
 
 Every 5 s the binary advances the pipeline round and compares the severities reported by verified zone
 members with their median (anchored at 3), treating deviations ≥ 2 as outliers unless 3f ≥ n. An outlier

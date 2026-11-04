@@ -601,19 +601,30 @@ impl LossyProxy {
 }
 
 /// A frame written into a relay connection that is then lost reaches the peer soon after
-/// the connection is re-established: the peer sees the new connection and asks the sender
-/// for a sync, instead of waiting for the next periodic exchange (30 s).
+/// the connection is re-established: the sender reconnects and tells the peer, which asks
+/// it for a sync, instead of waiting for the next periodic exchange (30 s).
 #[test]
 fn frame_lost_with_a_relay_connection_is_recovered_after_reconnect() {
+    lose_a_frame_then_cut(true);
+}
+
+/// The same when the sender has nothing more to send: it reconnects by itself.
+#[test]
+fn frame_lost_on_a_link_that_then_goes_quiet_is_recovered() {
+    lose_a_frame_then_cut(false);
+}
+
+fn lose_a_frame_then_cut(traffic_after: bool) {
     let target = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
     let proxy = LossyProxy::start(target.clone());
     let a = start_node("tcp-loss-a", &["--peers", &proxy.addr]);
     let b = start_node("tcp-loss-b", &["--peers", &a.addr]);
     *target.lock().unwrap() = b.addr.clone();
-    // Let both start-up syncs finish, then open A's relay connection to B.
+    // Let both start-up syncs finish, then open A's relay connection to B, and let any sync
+    // that connection's opening scheduled pass (one cooldown), so it cannot mask the loss.
     std::thread::sleep(Duration::from_millis(1500));
     send_signed(&a.addr, "node-before-loss");
-    std::thread::sleep(Duration::from_millis(500));
+    std::thread::sleep(Duration::from_secs(8));
 
     proxy
         .discard
@@ -621,13 +632,17 @@ fn frame_lost_with_a_relay_connection_is_recovered_after_reconnect() {
     send_signed(&a.addr, "node-lost");
     std::thread::sleep(Duration::from_millis(500));
     proxy.cut();
-    // The next relay finds the connection closed and dials a new one.
-    send_signed(&a.addr, "node-after-loss");
+    let mut expected = vec!["node-before-loss", "node-lost"];
+    if traffic_after {
+        // The next relay finds the connection closed and dials a new one.
+        send_signed(&a.addr, "node-after-loss");
+        expected.push("node-after-loss");
+    }
     std::thread::sleep(Duration::from_secs(10));
     let b_log = b.finish();
     let a_log = a.finish();
 
-    for origin in ["node-before-loss", "node-after-loss", "node-lost"] {
+    for origin in expected {
         assert!(
             b_log.contains(&format!("(origin {origin}, via tcp-loss-a#")),
             "{origin} missing at B\nB log:\n{b_log}\nA log:\n{a_log}"

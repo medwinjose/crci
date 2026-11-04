@@ -496,56 +496,136 @@ async fn dialer_handshake(
     ))
 }
 
+/// Message type of the frame a dialer sends first on every connection that replaces an
+/// earlier one to the same peer: frames in the earlier connection may have been lost, so
+/// the listener asks the dialer for a sync. Consumed by the transport, never delivered.
+pub const LINK_RESUMED_TYPE: &str = "link_resumed";
+
+/// A connection whose last write is older than this has had it acknowledged or aborted
+/// (`IO_TIMEOUT`), so finding it closed later loses nothing.
+const ABORT_WINDOW: Duration = Duration::from_secs(6);
+
+fn link_resumed(node_id: &str) -> NetworkMessage {
+    NetworkMessage {
+        id: format!("link-{node_id}"),
+        origin: node_id.to_string(),
+        origin_pubkey: Vec::new(),
+        severity: 0,
+        confidence: 0,
+        needs_help: false,
+        can_help_others: false,
+        location_confirmed: false,
+        visibility: String::new(),
+        note: None,
+        message_type: LINK_RESUMED_TYPE.to_string(),
+        origin_active: true,
+        signature_bytes: Vec::new(),
+        seq: 0,
+        sync: None,
+        answers_sync: None,
+    }
+}
+
+/// The persistent connection to one peer and what may have been lost on it.
+#[derive(Default)]
+struct Link {
+    conn: Option<DialedConnection>,
+    /// A connection to this peer existed before, so a new one starts with `link_resumed`.
+    dialed: bool,
+    last_write: Option<std::time::Instant>,
+    /// A frame failed or the connection died after a recent write: reconnect without
+    /// waiting for the next frame, so the peer learns of the loss.
+    lost: bool,
+}
+
+impl Link {
+    async fn connect(&mut self, outbound: &Outbound, addr: &str) -> Result<(), TransportError> {
+        outbound.handshakes.fetch_add(1, Ordering::SeqCst);
+        let mut conn = DialedConnection::connect(addr, &outbound.node_id, &outbound.key).await?;
+        if self.dialed {
+            conn.send(&link_resumed(&outbound.node_id)).await?;
+        }
+        self.dialed = true;
+        self.lost = false;
+        self.conn = Some(conn);
+        Ok(())
+    }
+}
+
 /// One authenticated outgoing connection per peer address, reused for every frame and
 /// re-established when it has closed. Sends to different peers take different locks, so a
 /// slow or unreachable peer delays only its own frames.
 struct Outbound {
     node_id: String,
     key: SigningKey,
-    links: std::sync::Mutex<HashMap<String, Arc<tokio::sync::Mutex<Option<DialedConnection>>>>>,
+    links: std::sync::Mutex<HashMap<String, Arc<tokio::sync::Mutex<Link>>>>,
     queues: std::sync::Mutex<HashMap<String, mpsc::Sender<NetworkMessage>>>,
     handshakes: Arc<AtomicU64>,
     failures: Arc<AtomicU64>,
 }
 
 impl Outbound {
+    fn slot(&self, addr: &str) -> Arc<tokio::sync::Mutex<Link>> {
+        let mut links = self.links.lock().unwrap_or_else(|e| e.into_inner());
+        links.entry(addr.to_string()).or_default().clone()
+    }
+
     async fn send(&self, addr: &str, message: &NetworkMessage) -> Result<(), TransportError> {
-        let slot = {
-            let mut links = self.links.lock().unwrap_or_else(|e| e.into_inner());
-            links.entry(addr.to_string()).or_default().clone()
-        };
+        let slot = self.slot(addr);
         let mut link = slot.lock().await;
         // A write that fails on an established connection is retried once on a new one.
         let mut last_err = TransportError::ConnectionFailed("no attempt made".into());
         for _ in 0..2 {
-            if link.as_ref().is_some_and(DialedConnection::is_closed) {
-                *link = None;
+            if link.conn.as_ref().is_some_and(DialedConnection::is_closed) {
+                link.conn = None;
             }
-            if link.is_none() {
-                self.handshakes.fetch_add(1, Ordering::SeqCst);
-                *link = Some(DialedConnection::connect(addr, &self.node_id, &self.key).await?);
+            if link.conn.is_none() {
+                if let Err(e) = link.connect(self, addr).await {
+                    link.lost = true;
+                    return Err(e);
+                }
             }
-            let Some(conn) = link.as_mut() else {
+            let Some(conn) = link.conn.as_mut() else {
                 continue;
             };
             match conn.send(message).await {
-                Ok(()) => return Ok(()),
+                Ok(()) => {
+                    link.last_write = Some(std::time::Instant::now());
+                    return Ok(());
+                }
                 Err(e) => {
-                    *link = None;
+                    link.conn = None;
                     last_err = e;
                 }
             }
         }
+        link.lost = true;
         Err(last_err)
+    }
+
+    /// Between frames: notice a connection that died soon after a write, and reconnect
+    /// to a peer whose frames may have been lost, so it can recover them by a sync.
+    async fn maintain(&self, addr: &str) {
+        let slot = self.slot(addr);
+        let mut link = slot.lock().await;
+        let recent = link.last_write.is_some_and(|t| t.elapsed() < ABORT_WINDOW);
+        if recent && link.conn.as_ref().is_some_and(DialedConnection::is_closed) {
+            link.conn = None;
+            link.lost = true;
+        }
+        if link.lost && link.conn.is_none() {
+            // A failure leaves `lost` set; the next tick tries again.
+            let _ = link.connect(self, addr).await;
+        }
     }
 }
 
 pub struct TcpTransport {
     pub listen_addr: SocketAddr,
     pub rx: tokio::sync::Mutex<mpsc::Receiver<(NodeId, NetworkMessage)>>,
-    /// Authenticated identity of each dialer that opened a new relay connection (its first
-    /// frame is not a sync request). Frames in the dialer's previous connection may be lost,
-    /// so the node asks that dialer for a sync.
+    /// Authenticated identity of each dialer that re-established its relay connection
+    /// (`link_resumed`). Frames in the dialer's previous connection may be lost, so the node
+    /// asks that dialer for a sync.
     pub new_links: tokio::sync::Mutex<mpsc::Receiver<NodeId>>,
     pub accepted_count: Arc<AtomicU64>,
     pub rejected_count: Arc<AtomicU64>,
@@ -729,12 +809,17 @@ impl TcpTransport {
                     let cancel = self.cancel_token.clone();
                     let target = addr.to_string();
                     tokio::spawn(async move {
+                        let mut tick = tokio::time::interval(Duration::from_secs(1));
                         loop {
                             let message = tokio::select! {
                                 m = rx.recv() => match m {
                                     Some(m) => m,
                                     None => break,
                                 },
+                                _ = tick.tick() => {
+                                    outbound.maintain(&target).await;
+                                    continue;
+                                }
                                 _ = cancel.cancelled() => break,
                             };
                             if let Err(e) = outbound.send(&target, &message).await {
@@ -803,8 +888,8 @@ fn configure_socket(stream: &tokio::net::TcpStream) -> std::io::Result<()> {
 /// Abort a dialed connection whose sent data stays unacknowledged for `IO_TIMEOUT`, so the
 /// next frame reconnects instead of waiting out TCP's exponential retransmission backoff
 /// (tens of seconds at 20 % packet loss), which would hold up gossip and sync answers alike.
-/// Frames left in the aborted connection are not re-sent; the peer sees the new connection
-/// (`new_links`) and asks for a sync, which recovers them.
+/// Frames left in the aborted connection are not re-sent; the relay task reconnects with
+/// `link_resumed` and the peer asks for a sync, which recovers them.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 fn limit_unacknowledged(stream: &tokio::net::TcpStream) -> std::io::Result<()> {
     let socket = unsafe { get_socket(stream) };
@@ -899,12 +984,13 @@ async fn handle_connection(
         }
         expected_counter += 1;
 
-        // A dialer opens a new relay connection only at start-up or after its previous one
-        // was lost, possibly with frames in it. Sync-only connections carry a single request
-        // and are not reported, so two nodes' sync requests cannot trigger each other.
-        if !link_reported && frame.message.message_type != crate::runtime::SYNC_REQUEST_TYPE {
-            link_reported = true;
-            let _ = ctx.new_links.try_send(peer.identity.clone());
+        // At most one report per connection, so a peer gets syncs only by reconnecting.
+        if frame.message.message_type == LINK_RESUMED_TYPE {
+            if !link_reported {
+                link_reported = true;
+                let _ = ctx.new_links.try_send(peer.identity.clone());
+            }
+            continue;
         }
 
         if tx
