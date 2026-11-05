@@ -26,6 +26,10 @@ git history; `git log` is the complete record.
   `make tables` builds it and the netem tables, `make smoke` runs a small check, `make reproduce` runs every
   experiment and then the tables.
 
+- In-process simulation (`crates/crci-node/examples/mesh_sim`, `scripts/sim/`, `make sim`): unmodified
+  `NodeRuntime` instances on the testbed's topologies, up to 5 000 nodes and 45 % replaying attackers,
+  cross-checked against the testbed's runs.
+
 ### Changed
 - The per-neighbour budget refills at 20 messages per second instead of 5, and only messages the
   receiver has not seen spend it. Chosen from a testbed sweep (refill 5/10/20/50 per second, offered load

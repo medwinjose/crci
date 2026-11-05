@@ -150,10 +150,11 @@ def sampler(path, stop):
 
 def plan_traffic(n, roles, window, source_rate, bg_rate, seed):
     """Per node: (count, interval_ms, offset_ms from T0)."""
-    s, b = roles["source"], roles["byzantine"]
+    s = roles["source"]
+    silent = {s, *roles.get("attackers", [roles["byzantine"]])}
     plan = {i: (0, 1000, 0) for i in range(n)}
     plan[s] = (int(window * source_rate), int(1000 / source_rate), 0)
-    others = [i for i in range(n) if i not in (s, b)]
+    others = [i for i in range(n) if i not in silent]
     random.Random(seed).shuffle(others)
     total = int(window * bg_rate)
     k = len(others)

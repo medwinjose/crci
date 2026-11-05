@@ -31,6 +31,8 @@ states/
 .DS_Store
 Thumbs.db
 
+__pycache__/
+
 # ── Working drafts kept outside version control ──────────────────────────────
 docs/preprint/
 paper_workspace/
