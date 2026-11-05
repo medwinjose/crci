@@ -524,3 +524,25 @@ fn sync_requests_use_a_window_of_their_own() {
     assert!(b.seen_messages.contains_key(&old.id));
     assert!(!inbox.lock().unwrap().contains_key("a"));
 }
+
+/// The seen-ID cache is cleared at its limit. A neighbour's echo of this node's own message that
+/// arrives right after must not make the node deliver and relay it again: its neighbours would
+/// strike it for the repeat.
+#[test]
+fn an_own_message_echoed_after_the_seen_cache_cleared_is_not_relayed_again() {
+    let (mut a, _b, inbox) = linked_pair();
+    a.originate(msg("m1", "a"));
+    let frame = inbox.lock().unwrap().remove("b").unwrap().remove(0);
+    a.seen_messages.clear();
+    inbox
+        .lock()
+        .unwrap()
+        .insert("a".to_string(), vec![("b".to_string(), frame.1)]);
+    let delivered = a.process_inbox_delivered();
+    assert!(delivered.is_empty());
+    assert!(
+        !inbox.lock().unwrap().contains_key("b"),
+        "a relayed its own message again"
+    );
+    assert_eq!(a.byzantine_events, 0);
+}

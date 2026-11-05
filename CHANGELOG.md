@@ -50,6 +50,8 @@ git history; `git log` is the complete record.
 - Sync requests and chain-head announcements no longer take sequence numbers from the origin's messages, which
   pushed its messages out of the replay window and out of what neighbours keep for anti-entropy. They have a
   counter and a window of their own.
+- A node no longer accepts and relays its own message when a neighbour's echo arrives after the seen-ID cache was
+  cleared; its neighbours used to strike it for the repeat.
 - Frames lost with an aborted or closed relay connection are recovered within seconds instead of at the
   next 30 s anti-entropy exchange. A node whose relay to a peer failed, or whose connection died soon
   after a write, reconnects at once (also when it has nothing more to send) and opens the new

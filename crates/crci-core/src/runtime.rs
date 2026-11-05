@@ -979,6 +979,12 @@ impl NodeRuntime {
             new_senders.insert(sender_id.clone());
             self.seen_messages.insert(wire.id.clone(), new_senders);
 
+            // This node's own message, echoed by a neighbour after the seen-ID limit above cleared
+            // the cache. Accepting it would relay it again and get this node struck for the repeat.
+            if wire.origin == self.id {
+                continue;
+            }
+
             // Step 2: pubkey consistency check. The first key seen for an origin ID is pinned;
             // a validly signed message claiming that origin with another key is dropped.
             // It is not a strike: the receiver cannot tell which key is the genuine one, so
