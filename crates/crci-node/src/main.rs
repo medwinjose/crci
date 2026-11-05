@@ -1556,7 +1556,6 @@ async fn run_node(
     // lost frames with the previous one, so it is asked for a sync as soon as its cooldown
     // allows, not at the next SYNC_INTERVAL. Its address is known once this node's own sync
     // dial authenticated it.
-    const COOLDOWN_MARGIN: std::time::Duration = std::time::Duration::from_secs(1);
     tokio::spawn(async move {
         let Some(reply_to) = reply_to else {
             return;
@@ -1595,7 +1594,8 @@ async fn run_node(
                 }
                 addr_of.insert(conn.peer.clone(), peer.clone());
                 conn.close().await;
-                last_sent.insert(peer.clone(), now);
+                // After the dial, which can take seconds: the cooldown runs from the arrival.
+                last_sent.insert(peer.clone(), std::time::Instant::now());
                 next_due.insert(peer.clone(), now + SYNC_INTERVAL);
             }
             let wake = next_due
@@ -1612,7 +1612,7 @@ async fn run_node(
                     };
                     let earliest = last_sent
                         .get(peer)
-                        .map_or(now, |t| *t + runtime::SYNC_COOLDOWN + COOLDOWN_MARGIN);
+                        .map_or(now, |t| *t + runtime::SYNC_RESUME_SPACING);
                     let due = next_due.entry(peer.clone()).or_insert(earliest);
                     *due = (*due).min(earliest.max(std::time::Instant::now()));
                 }

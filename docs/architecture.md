@@ -147,9 +147,10 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
    connection died within 15 s of a write (checked every second, also when there is nothing more to
    send), reconnects at once, retrying every second, and every connection that replaces an earlier one
    starts with a `link_resumed` frame. The receiving transport consumes that frame (at most one report
-   per connection; it never reaches `NodeRuntime`), and the node sends that peer a sync request as soon
-   as the peer's 5 s answer cooldown allows, instead of at the next 30 s exchange. A peer that
-   reconnects constantly gets at most one request per 6 s from each neighbour.
+   per connection; it never reaches `NodeRuntime`), and the node sends that peer a sync request 8 s after
+   its previous one, instead of at the next 30 s exchange. The peer's 5 s answer cooldown runs from the
+   arrival and refuses without saying so, so the other 3 s are for retransmissions of the earlier request.
+   A peer that reconnects constantly gets at most one request per 8 s from each neighbour.
 
 Every 5 s the binary advances the pipeline round and compares the severities reported by verified zone
 members with their median (anchored at 3), treating deviations ≥ 2 as outliers unless 3f ≥ n. An outlier
@@ -189,8 +190,8 @@ answers, never ordinary gossip.
 In-process, `MeshSimulator::heal(a, b)` restores a link and has both ends request. A TCP node requests
 from every `--peers` / `--dial` address 0.5 s after start and every 30 s, and retries an unreachable peer
 every 5 s, so a healed link is re-synchronised within about 5 s. It also requests from a peer as soon as
-that peer re-establishes its relay connection (`link_resumed`, see the message path above), once the
-peer's 5 s answer cooldown allows. The session is opened after the
+that peer re-establishes its relay connection (`link_resumed`, see the message path above), at least
+8 s after its previous request. The session is opened after the
 listener's identity has been authenticated and before the request frame is sent. Answers travel on the
 same ordered connection as the neighbour's gossip, so an answer never arrives before the neighbour's
 own gossip copy of the same message. `reply_to` is the

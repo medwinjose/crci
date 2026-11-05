@@ -404,6 +404,25 @@ fn answers_are_rate_limited_and_batched() {
     assert_eq!(pair.take("b").len(), crci_core::runtime::SYNC_MAX_BATCH);
 }
 
+/// The cooldown runs from when a request arrives. A request that TCP delivered 3 s late (three
+/// retransmissions) must not get the next one, sent for a resumed link, silently refused.
+#[test]
+fn a_resumed_sync_is_answered_after_a_request_that_arrived_late() {
+    let mut pair = Pair::new();
+    authored_by_a(&mut pair, 40);
+    pair.b.request_sync("a");
+    pair.a.process_inbox();
+    assert_eq!(pair.take("b").len(), SYNC_MAX_BATCH);
+
+    // Sent SYNC_RESUME_SPACING after the first request, which reached a 3 s after it was sent.
+    pair.a
+        .sybil_guard
+        .advance_time(crci_core::runtime::SYNC_RESUME_SPACING - Duration::from_secs(3));
+    pair.b.request_sync("a");
+    pair.a.process_inbox();
+    assert_eq!(pair.take("b").len(), SYNC_MAX_BATCH);
+}
+
 /// The digest is covered by the requester's signature: a relay cannot alter it.
 #[test]
 fn sync_digest_is_signed() {

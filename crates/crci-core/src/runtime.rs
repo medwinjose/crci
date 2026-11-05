@@ -40,6 +40,10 @@ pub const MIN_TRUSTED_REP: f64 = 0.41;
 pub const SYNC_MAX_BATCH: usize = 16;
 /// A requester answered less than this long ago gets no new answer.
 pub const SYNC_COOLDOWN: Duration = Duration::from_secs(5);
+/// Gap a requester leaves after its last request before asking again for a resumed link. The
+/// cooldown runs from the arrival, which TCP can delay: this allows 3 s of retransmissions.
+/// A refused request is not reported, and the next chance is the next anti-entropy round.
+pub const SYNC_RESUME_SPACING: Duration = Duration::from_secs(8);
 /// How long a request's answers are excused. Only frames tagged as answers benefit, so this
 /// covers a request delayed by TCP retransmissions under heavy loss, not just a round trip.
 pub const SYNC_SESSION_TTL: Duration = Duration::from_secs(120);

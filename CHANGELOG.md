@@ -47,6 +47,9 @@ git history; `git log` is the complete record.
   placeholder divergence alerts.
 
 ### Fixed
+- A request for a sync after a relay link resumed is spaced 8 s from the previous request, counted after it was
+  sent. It was spaced 6 s from before the dial, so a request delayed by TCP retransmissions got the next one
+  refused by the peer's 5 s cooldown, and the node waited for the next 30 s round (longest delivery 47.6 s).
 - A relay connection aborted more than 6 s after a write is now noticed (window 15 s), so its frames are
   recovered within seconds; such an abort used to wait for the next 30 s anti-entropy round.
 - Sync requests and chain-head announcements no longer take sequence numbers from the origin's messages, which
@@ -58,7 +61,7 @@ git history; `git log` is the complete record.
   next 30 s anti-entropy exchange. A node whose relay to a peer failed, or whose connection died soon
   after a write, reconnects at once (also when it has nothing more to send) and opens the new
   connection with a `link_resumed` frame; the peer then asks it for a sync as soon as its answer
-  cooldown allows (about 6 s after the previous request). Lost frames are still never re-sent by the
+  cooldown allows (8 s after the previous request). Lost frames are still never re-sent by the
   sender, so no honest repeat can be struck.
 - A relay connection no longer stalls behind TCP's retransmission backoff under heavy packet loss. On
   Linux and Android a dialed connection whose data stays unacknowledged for 5 s is aborted
