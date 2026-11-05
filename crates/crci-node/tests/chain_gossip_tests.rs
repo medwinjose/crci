@@ -252,14 +252,14 @@ fn chain_head_announcements_do_not_echo() {
 
     // a: its message + b's announcement processed without answering; b: one announcement.
     assert!(
-        sim.nodes["a"].seq_counter <= 2,
+        sim.nodes["a"].control_seq_counter <= 1,
         "a announced {} times",
-        sim.nodes["a"].seq_counter - 1
+        sim.nodes["a"].control_seq_counter
     );
     assert!(
-        sim.nodes["b"].seq_counter <= 1,
+        sim.nodes["b"].control_seq_counter <= 1,
         "b announced {} times",
-        sim.nodes["b"].seq_counter
+        sim.nodes["b"].control_seq_counter
     );
     assert_eq!(sim.nodes["a"].sybil_rate_limited_events, 0);
     assert_eq!(sim.nodes["b"].sybil_rate_limited_events, 0);
@@ -298,7 +298,7 @@ fn chain_head_is_announced_only_when_it_changes() {
     }
     assert_eq!(sim.nodes["b"].messages_handled, 49);
     assert_eq!(
-        sim.nodes["b"].seq_counter, 1,
+        sim.nodes["b"].control_seq_counter, 1,
         "b announced its unchanged head again"
     );
 
@@ -314,7 +314,7 @@ fn chain_head_is_announced_only_when_it_changes() {
     );
     sim.drain();
     assert_eq!(sim.nodes["b"].messages_handled, 50);
-    assert_eq!(sim.nodes["b"].seq_counter, 2);
+    assert_eq!(sim.nodes["b"].control_seq_counter, 2);
     assert_eq!(sim.nodes["a"].sybil_rate_limited_events, 0);
     assert_eq!(sim.nodes["b"].sybil_rate_limited_events, 0);
 }

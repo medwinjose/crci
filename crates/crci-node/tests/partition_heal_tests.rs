@@ -437,3 +437,90 @@ fn answers_are_limited_across_requesters() {
     }
     assert_eq!(answered, crci_core::runtime::SYNC_ANSWER_BURST as usize);
 }
+
+/// Two linked in-process nodes for tests that hold frames back. Router off, as on TCP.
+fn linked_pair() -> (NodeRuntime, NodeRuntime, SharedInbox) {
+    let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+    let mut a = NodeRuntime::new("a", "z", inbox.clone());
+    let mut b = NodeRuntime::new("b", "z", inbox.clone());
+    a.use_router = false;
+    b.use_router = false;
+    a.add_peer("b");
+    b.add_peer("a");
+    b.sybil_guard.use_manual_clock();
+    (a, b, inbox)
+}
+
+/// A node asks each neighbour for a sync every 30 s, so requests can far outnumber its messages.
+/// They must not shift its message window: the receiver of two messages far apart keeps both
+/// for answering sync requests.
+#[test]
+fn sync_requests_do_not_push_messages_out_of_the_window() {
+    let (mut a, mut b, _inbox) = linked_pair();
+    a.originate(msg("m1", "a"));
+    b.process_inbox();
+    for _ in 0..70 {
+        a.request_sync("b");
+        b.process_inbox();
+        b.sybil_guard.advance_time(Duration::from_secs(1));
+    }
+    a.originate(msg("m2", "a"));
+    b.process_inbox();
+    let kept: Vec<&str> = b.recent_messages["a"]
+        .values()
+        .map(|w| w.id.as_str())
+        .collect();
+    assert_eq!(kept, ["m1", "m2"]);
+}
+
+/// A message delayed behind many of its origin's sync requests is still inside the window.
+#[test]
+fn a_message_delayed_behind_sync_requests_is_accepted() {
+    let (mut a, mut b, inbox) = linked_pair();
+    a.originate(msg("m1", "a"));
+    let held_back = inbox.lock().unwrap().remove("b").unwrap();
+    for _ in 0..70 {
+        a.request_sync("b");
+        b.process_inbox();
+        b.sybil_guard.advance_time(Duration::from_secs(1));
+    }
+    inbox.lock().unwrap().insert("b".to_string(), held_back);
+    let delivered = b.process_inbox_delivered();
+    assert_eq!(delivered.len(), 1);
+    assert_eq!(delivered[0].id, "m1");
+}
+
+/// A replayed sync request is still a replay, though requests have their own window.
+#[test]
+fn a_repeated_sync_request_is_still_struck() {
+    let (mut a, mut b, inbox) = linked_pair();
+    a.request_sync("b");
+    let frames = inbox.lock().unwrap().get("b").unwrap().clone();
+    b.process_inbox();
+    inbox.lock().unwrap().insert("b".to_string(), frames);
+    b.process_inbox();
+    assert_eq!(b.byzantine_events, 1);
+}
+
+/// Sync requests from an origin with a stale counter (out of their own window) are dropped
+/// without a strike and without an answer.
+#[test]
+fn sync_requests_use_a_window_of_their_own() {
+    let (mut a, mut b, inbox) = linked_pair();
+    let old = a.build_sync_request(None);
+    for _ in 0..70 {
+        a.request_sync("b");
+        b.process_inbox();
+        b.sybil_guard.advance_time(Duration::from_secs(1));
+    }
+    inbox
+        .lock()
+        .unwrap()
+        .entry("b".to_string())
+        .or_default()
+        .push(("a".to_string(), serde_json::to_vec(&old).unwrap()));
+    b.process_inbox();
+    assert_eq!(b.byzantine_events, 0);
+    assert!(b.seen_messages.contains_key(&old.id));
+    assert!(!inbox.lock().unwrap().contains_key("a"));
+}

@@ -66,7 +66,10 @@ applies, in order:
    without a strike; a late packet inside the window is accepted once; the same sequence number again from
    the same sender is a strike, from a different sender it is dropped without a strike. A message resent by
    the same sender after it has left the window is also dropped as stale (step 2 does not strike it). The
-   sequence number is covered by the origin's signature, so a relay cannot move the window.
+   sequence number is covered by the origin's signature, so a relay cannot move the window. Sync requests
+   and chain-head announcements have a counter and a window of their own: a node sends one request per
+   neighbour per round whether or not it has anything to say, and in the origin's message window those
+   would push out its messages (measured in the in-process simulation).
 
 A strike is −0.15 reputation (start 0.5, ban below 0.1, so three strikes ban). Between strikes a score
 recovers with elapsed time, 0.0005 per second (one strike forgiven in 300 s), whatever the peer sends,

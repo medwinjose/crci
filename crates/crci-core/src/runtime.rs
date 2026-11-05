@@ -30,6 +30,11 @@ pub const MIN_TRUSTED_REP: f64 = 0.41;
 // Other duplicates are judged by the normal rules. A request is answered only when it
 // comes straight from its author (a relayed copy is ignored), at most once per
 // `SYNC_COOLDOWN` per requester.
+//
+// Sync requests and chain-head announcements are control messages: they go one hop, nobody keeps
+// them, and a node sends them whether or not it has anything to say (a request per neighbour per
+// round). They take their sequence numbers from a counter and a replay window of their own, so
+// they never push the origin's messages out of its window of W.
 
 /// Most messages one sync answer carries; below the token-bucket burst (20).
 pub const SYNC_MAX_BATCH: usize = 16;
@@ -111,6 +116,12 @@ pub struct WireMessage {
 /// Message type of an anti-entropy request. It is answered by its direct recipient and
 /// never delivered, stored or forwarded.
 pub const SYNC_REQUEST_TYPE: &str = "sync_request";
+
+/// One-hop messages that are never kept: their sequence numbers are separate from the origin's
+/// messages (see "Anti-entropy" above).
+fn is_control(wire: &WireMessage) -> bool {
+    wire.message_type == SYNC_REQUEST_TYPE || wire.message_type.contains("ChainHeadAnnouncement")
+}
 
 /// What a requester holds of one origin's stream: the highest accepted sequence number
 /// and every sequence number accepted inside the window.
@@ -322,7 +333,11 @@ pub struct NodeRuntime {
     pub observations: Vec<(String, u8, u8, bool)>,
     pub known_keys: HashMap<String, Vec<u8>>,
     pub replay_filter: crate::replay::ReplayFilter,
+    /// Replay window of received control messages (sync requests, chain-head announcements).
+    pub control_replay_filter: crate::replay::ReplayFilter,
     pub seq_counter: u64,
+    /// Sequence numbers of the control messages this node sends.
+    pub control_seq_counter: u64,
     pub messages_handled: u64,
     pub byzantine_events: u64,
     pub consensus_rounds: u64,
@@ -380,7 +395,9 @@ impl NodeRuntime {
             storage_backend: None,
             known_keys: HashMap::new(),
             replay_filter: crate::replay::ReplayFilter::new(),
+            control_replay_filter: crate::replay::ReplayFilter::new(),
             seq_counter: 0,
+            control_seq_counter: 0,
             messages_handled: 0,
             byzantine_events: 0,
             consensus_rounds: 0,
@@ -410,9 +427,7 @@ impl NodeRuntime {
 
     /// Keep `wire` among the recent messages of its origin (for answering sync requests).
     fn remember_recent(&mut self, wire: &WireMessage) {
-        if wire.message_type == SYNC_REQUEST_TYPE
-            || wire.message_type.contains("ChainHeadAnnouncement")
-        {
+        if is_control(wire) {
             return;
         }
         if !self.recent_messages.contains_key(&wire.origin)
@@ -439,14 +454,14 @@ impl NodeRuntime {
     /// Build a signed sync request listing what this node holds. `reply_to` is the address
     /// to answer at when this node's transport identity is not an address (TCP).
     pub fn build_sync_request(&mut self, reply_to: Option<String>) -> WireMessage {
-        self.seq_counter += 1;
+        self.control_seq_counter += 1;
         let mut msg = Message::new(
-            &format!("sync-{}-{}", self.id, self.seq_counter),
+            &format!("sync-{}-{}", self.id, self.control_seq_counter),
             &self.id,
             Signal::new(1, false, false, false, 1, Visibility::Direct),
             None,
         );
-        msg.seq = self.seq_counter;
+        msg.seq = self.control_seq_counter;
         let mut wire = WireMessage::from_message(&msg, &self.identity);
         wire.message_type = SYNC_REQUEST_TYPE.to_string();
         wire.sync = Some(SyncDigest {
@@ -720,8 +735,13 @@ impl NodeRuntime {
     }
 
     pub fn originate(&mut self, mut msg: Message) {
-        self.seq_counter += 1;
-        msg.seq = self.seq_counter;
+        if matches!(msg.message_type, MessageType::ChainHeadAnnouncement { .. }) {
+            self.control_seq_counter += 1;
+            msg.seq = self.control_seq_counter;
+        } else {
+            self.seq_counter += 1;
+            msg.seq = self.seq_counter;
+        }
         if !self.is_online {
             println!("  [{}] OFFLINE — cannot originate", self.id);
             return;
@@ -842,7 +862,12 @@ impl NodeRuntime {
                         // This specific peer has already sent us this exact message.
                         // Once the message is older than the origin's replay window it is
                         // stale (an honest peer may resend after a reconnect): drop, no strike.
-                        if self.replay_filter.is_out_of_window(&wire.origin, wire.seq) {
+                        let window = if is_control(&wire) {
+                            &self.control_replay_filter
+                        } else {
+                            &self.replay_filter
+                        };
+                        if window.is_out_of_window(&wire.origin, wire.seq) {
                             println!(
                                 "  ⏰ [{}] STALE resend of '{}' from '{}' — out of window, dropped",
                                 self.id, wire.id, sender_id
@@ -1002,9 +1027,12 @@ impl NodeRuntime {
                 continue;
             }
 
-            let verdict = self
-                .replay_filter
-                .check_and_record(&wire.origin, wire.seq, &sender_id);
+            let window = if is_control(&wire) {
+                &mut self.control_replay_filter
+            } else {
+                &mut self.replay_filter
+            };
+            let verdict = window.check_and_record(&wire.origin, wire.seq, &sender_id);
             if !verdict.is_accept() {
                 self.metrics
                     .messages_rejected
@@ -1208,7 +1236,7 @@ impl NodeRuntime {
             self.last_announced_head = Some(head);
             let (head_hash, head_seq) = head;
             let announcement = Message {
-                id: format!("head-{}-{}", self.id, self.seq_counter + 1),
+                id: format!("head-{}-{}", self.id, self.control_seq_counter + 1),
                 origin: self.id.clone(),
                 signal: Signal::new(1, false, false, false, 1, Visibility::Direct),
                 note: None,
