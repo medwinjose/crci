@@ -144,7 +144,7 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
    queued behind them could not repair the gap. Frames still in the aborted connection are not re-sent
    (the sender cannot tell which of them arrived, and a repeat that did arrive would be struck as a
    replay). Instead the sender makes the receiver ask for them. A relay task whose send failed, or whose
-   connection died within 6 s of a write (checked every second, also when there is nothing more to
+   connection died within 15 s of a write (checked every second, also when there is nothing more to
    send), reconnects at once, retrying every second, and every connection that replaces an earlier one
    starts with a `link_resumed` frame. The receiving transport consumes that frame (at most one report
    per connection; it never reaches `NodeRuntime`), and the node sends that peer a sync request as soon

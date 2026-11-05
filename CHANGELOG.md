@@ -47,6 +47,8 @@ git history; `git log` is the complete record.
   placeholder divergence alerts.
 
 ### Fixed
+- A relay connection aborted more than 6 s after a write is now noticed (window 15 s), so its frames are
+  recovered within seconds; such an abort used to wait for the next 30 s anti-entropy round.
 - Sync requests and chain-head announcements no longer take sequence numbers from the origin's messages, which
   pushed its messages out of the replay window and out of what neighbours keep for anti-entropy. They have a
   counter and a window of their own.

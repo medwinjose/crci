@@ -260,3 +260,31 @@ async fn only_a_replaced_relay_connection_is_reported() {
             .expect("replaced connection not reported");
     assert_eq!(reported, Some(from));
 }
+
+/// TCP aborts a connection with unacknowledged data only when a retransmission timer fires, and
+/// the relay task looks once a second, so the loss can surface well after the 5 s limit. A link
+/// that dies 7 s after a write must still reconnect by itself and tell the peer to resync.
+#[tokio::test]
+async fn a_link_that_dies_late_after_a_write_reconnects_and_reports_itself() {
+    let first = listener("receiver").await;
+    let addr = first.listen_addr;
+    let sender = listener("sender").await;
+    let id = Identity::new("author");
+
+    sender
+        .relay(&addr.to_string(), signed(&id, "before", "author", 1))
+        .unwrap();
+    assert_eq!(receive_within(&first, 2).await.1.id, "before");
+
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    drop(first);
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let second = bind_at("receiver", addr).await;
+
+    let mut new_links = second.new_links.lock().await;
+    let reported = tokio::time::timeout(Duration::from_secs(3), new_links.recv())
+        .await
+        .expect("the sender did not reconnect by itself")
+        .expect("channel closed");
+    assert!(reported.starts_with("sender#"), "{reported}");
+}

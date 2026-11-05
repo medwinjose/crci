@@ -501,9 +501,11 @@ async fn dialer_handshake(
 /// the listener asks the dialer for a sync. Consumed by the transport, never delivered.
 pub const LINK_RESUMED_TYPE: &str = "link_resumed";
 
-/// A connection whose last write is older than this has had it acknowledged or aborted
-/// (`IO_TIMEOUT`), so finding it closed later loses nothing.
-const ABORT_WINDOW: Duration = Duration::from_secs(6);
+/// A connection whose last write is older than this has had it acknowledged or aborted, so
+/// finding it closed later loses nothing. Well above `IO_TIMEOUT`: TCP aborts only when a
+/// retransmission timer fires, and the relay task looks once a second. At 6 s a late abort
+/// went unnoticed and its frames waited for the next anti-entropy round (measured: 34 s).
+const ABORT_WINDOW: Duration = Duration::from_secs(15);
 
 fn link_resumed(node_id: &str) -> NetworkMessage {
     NetworkMessage {
