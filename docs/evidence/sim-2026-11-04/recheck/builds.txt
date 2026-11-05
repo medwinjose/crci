@@ -1,0 +1,9 @@
+Node builds of the repeat sets (SHA-256 of the binary) and what each adds to the one before.
+04ec7be5f1b11f2a8e277b439a2f0a0b77dece7fd74d6511ccfd44b0c2b782ce  crci-node  fast recovery (testbed-fast-recovery-2026-11-04)
+cfe7d248219b1afa76053003f889b57c4fa5c3decbaea6c5ebb870f72fe829fa  crci-node  control window, own-message echo
+00e4b508a0dddbd160cfc1a4aa120a94aa13e6f1da2b3204ab09246803545153  crci-node  abort window 15 s
+b17f6f0c669e7ccdc6e4b88aacfee93b381579bc4e3e0b73120862d605c526cf  crci-node  request spacing 8 s
+
+Simulator builds.
+9c151bb13ba3d9a04dd647726543e673588b8e4c6fff9565fc9e07db1fbd1cf2  mesh_sim  the 210 runs in ../results.csv
+1f3b93ab59412c88e4d23d7ef37d6594d3571e8f8d3b5bf609c458e29e6444ec  mesh_sim  final source, sim-on-final-source.txt

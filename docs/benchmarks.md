@@ -242,26 +242,68 @@ What the runs show, stated plainly:
 - **Loss slows delivery, not eviction.** The median eviction latency stays at 2.0–2.2 s up to 20 % loss;
   the slowest neighbour took up to 13 s at 20 % loss. A frame left in a TCP connection that is aborted
   under loss (data unacknowledged for 5 s) is not re-sent, since a copy that did arrive would be struck as
-  a replay. The sender reconnects at once and tells the receiver, which asks it for a sync as soon as the
-  sender's 5 s answer cooldown allows. The column "Deliveries > 5 s" counts deliveries, not messages: one message delayed at
+  a replay. The sender reconnects at once and tells the receiver, which asks it for a sync 8 s after its
+  previous request, past the sender's 5 s answer cooldown. The column "Deliveries > 5 s" counts deliveries, not messages: one message delayed at
   its first hop counts once per node it then reaches. In the 10 % loss row one message from one origin
   accounts for 96 of the 142 (it left its source 7.7 s late and reached the 96 other nodes of its run).
   With the build before this recovery, the same column read 37, 293 and 833 at 10, 15 and 20 % loss; the
   totals vary with a few runs, but deliveries later than 20 s fell from 0 / 51 / 72 to 0 / 0 / 3.
 - **Delivery below 100 % is the window ending, not lost messages.** The same 18 runs at 20 % loss with the
   nodes kept running 60 s after the last message (`make attacks`, `eventual/`) delivered every honest
-  message sent after the ban to every honest node in 18/18 runs, 0 honest bans, B banned by all its
-  neighbours in every run. Over 31 248 such deliveries the 99th percentile latency was 3.4 s and the maximum
-  25.3 s (the build before: 4.7 s and 60.0 s over 33 396). The maximum is one message in `l20-rgg-20-s3`
-  (raw logs in the evidence folder) that reached its source's neighbour in 55 ms and six nodes within
-  3.5 s, but four nodes 8–10 hops away only after 23.9–25.3 s, by gossip, not by a sync answer; that
-  path was not traced further. No delivery in the other 17 runs took longer than 15 s. Before the
-  recovery, every delivery later than 20 s was a frame
-  lost with an aborted connection shortly before a link fell quiet, recovered only by the next 30 s
-  anti-entropy exchange.
+  message sent after the ban to every honest node, with 0 honest bans and B banned by all its neighbours, in
+  every run of all eight sets in the next table. Before the recovery described above, every delivery later than
+  20 s was a frame lost with an aborted connection shortly before a link fell quiet, recovered only by the next
+  30 s anti-entropy exchange (99th percentile 4.7 s, maximum 60.0 s, over 33 396 deliveries).
 - **Limits.** Loss is applied per egress and independently of the TCP connection; burst loss, asymmetric
   loss and link failures were not tested. Three seeds per cell is too few for confidence intervals; the
   table reports means and extremes only.
+
+### The latency tail at 20 % loss, over repeat sets
+
+Each row is the same 18 runs (rgg and 4-regular, N = 20/50/100, seeds 1–3, 60 s drain), repeated. The table above is
+from `04ec7be5`. "After the ban" covers the deliveries after the last ban; "all" also those before and during the
+fault (59 040 per set).
+
+| Build | Set | After the ban: p99 | After the ban: worst | All: p99 | All: worst | All: over 5 s | Honest sync requests unanswered |
+|---|---|---|---|---|---|---|---|
+| `04ec7be5` | 1 | 3.4 s | 25.3 s | 5.7 s | 34.6 s | 1.49 % | 313 |
+| | 2 | 4.1 s | 21.3 s | 5.6 s | 21.3 s | 1.40 % | 324 |
+| `cfe7d248` (control window, own-message echo) | 1 | 6.7 s | 22.1 s | 6.1 s | 22.1 s | 1.50 % | 316 |
+| | 2 | 3.8 s | 34.1 s | 6.3 s | 35.5 s | 2.14 % | 325 |
+| `00e4b508` (+ abort window 15 s) | 1 | 9.0 s | 24.3 s | 7.5 s | 24.3 s | 2.03 % | 358 |
+| | 2 | 6.9 s | 29.9 s | 6.7 s | 47.6 s | 1.78 % | 336 |
+| `b17f6f0c`, current (+ request spacing 8 s) | 1 | 3.6 s | 17.5 s | 5.4 s | 33.5 s | 1.30 % | 1 |
+| | 2 | 5.5 s | 20.1 s | 6.3 s | 28.2 s | 1.79 % | 4 |
+
+- **One set does not pin this tail down.** The p99 after the ban moved by up to 2.9 s between two sets of one build:
+  a message lost near its source counts once per node it reaches, and the post-ban pool depends on when the last ban
+  falls. At 20 % loss it lies somewhere between 3 and 9 s, and no tighter claim is made. The current build is inside
+  that spread and is not shown to be faster; its worst case after the ban is the lowest of the eight sets, on two sets.
+- **What the fixes changed measurably:** honest sync requests left unanswered fell from 313–358 per set to 1 and 4,
+  out of about 27 000 received. (Requests from B to neighbours that banned it, 361–399 per set, are ignored on purpose
+  and are not counted here.)
+- **Two defects behind the longest deliveries, both fixed, failing tests first:**
+  - A frame written into a connection that TCP aborted more than 6 s later waited for the 30 s round: nobody noticed the
+    abort (34.1 s). The window is now 15 s.
+  - A request for a resumed link was spaced 6 s from before the dial, while the peer's 5 s cooldown runs from the
+    arrival. A first request delayed by retransmissions got the next one refused, without any reply, and the node
+    waited for the next round (47.6 s). The spacing is now 8 s from after the send.
+- **What remains.** The longest on the current build, 33.5 s before the fault, is a leaf with one 20 % loss link: the
+  message was already about 17 s late at its neighbours, and the leaf's request for it was answered 16.7 s later over
+  that link. No request was refused. This is stated as measured, not fixed.
+- **Cost of the fixes.** Against `04ec7be5`, the two `00e4b508` sets have a higher p99 and more deliveries over 5 s, but a
+  run-level permutation test (36 runs against 36) gives p = 0.19, which the rule written before the test calls no
+  regression. The direction was against that build and those runs cannot exclude a small cost. On the current
+  build p99 and the share over 5 s are back among the `04ec7be5` values.
+- **Not repeated.** The main, load and loss sweeps in this document remain those of `04ec7be5`. On `b17f6f0c`, the attack
+  set repeats the table below: over-budget replayer banned by all neighbours in about 12 ms (3/3 at both refill rates;
+  refill 5/s 117–130 honest frames rate-limited, delivery 96–100 %), fresh-message flood not struck, honest delivery
+  100 %, no honest frame dropped, no honest ban.
+
+Evidence: [`evidence/sim-2026-11-04/recheck/`](evidence/sim-2026-11-04/recheck/) (`sets.csv`, `per-run.csv`,
+`compare_sets.py`, raw logs of the three traced runs), criteria and each result in
+[`criteria.txt`](evidence/sim-2026-11-04/criteria.txt). One limit there failed as written, because of how it counted,
+and stays recorded as failed.
 
 ### Attackers that stay within or above their budget
 
@@ -270,10 +312,10 @@ its fault, so its neighbours' budget for it is already empty when the fault star
 
 | Experiment | Binary | B banned by all its neighbours | Eviction latency (median) | Honest delivery while B is active | Honest frames rate-limited | Honest false evictions |
 |---|---|---|---|---|---|---|
-| Over-budget replayer, refill 5/s (B at 10 msg/s, every frame 8×) | current | 3/3 | 12–14 ms | 97.4–100 % | 119–143 per run | 0 |
-| Over-budget replayer, refill 20/s (B at 40 msg/s, every frame 8×) | current | 3/3 | 12–13 ms | 100 % | 0–1 per run | 0 |
+| Over-budget replayer, refill 5/s (B at 10 msg/s, every frame 8×) | `04ec7be5` | 3/3 | 12–14 ms | 97.4–100 % | 119–143 per run | 0 |
+| Over-budget replayer, refill 20/s (B at 40 msg/s, every frame 8×) | `04ec7be5` | 3/3 | 12–13 ms | 100 % | 0–1 per run | 0 |
 | Over-budget replayer, refill 5/s | before (repeats judged after the rate limit) | 0/3 | never | 32–49 % | 7 806–11 647 per run | 0 |
-| Fresh-message flood (B at 40 msg/s, no repeats) | current | not struck (0/3) | — | 100 % | 0 | 0 |
+| Fresh-message flood (B at 40 msg/s, no repeats) | `04ec7be5` | not struck (0/3) | — | 100 % | 0 | 0 |
 | Fresh-message flood | before the per-origin budget | not struck (0/3) | — | 82–98 % | (not separated) | 0 |
 
 - **A replayer cannot hide behind the rate limit.** Repeats are judged before the budget, so B is struck on
@@ -291,6 +333,99 @@ its fault, so its neighbours' budget for it is already empty when the fault star
   frames rate-limited per run; 98–113 on the previous build, whose runs sent the same number of sync
   requests and lost no relay frame, so the difference is run-to-run variation) and honest delivery while
   B is active was 97.4–100 %; the default refill is 20/s.
+
+## In-process simulation (up to 5 000 nodes)
+
+Protocol logic at a scale one host cannot emulate with real processes. **These are simulation results, not
+network measurements:** no sockets, no loss, and time is simulated, so nothing here is a latency result.
+
+- **Harness:** `crates/crci-node/examples/mesh_sim` runs unmodified `NodeRuntime` instances and follows
+  `crci-node`'s receive path: one frame per pass, the authenticated `node_id#key` sender identity, separate
+  peer addresses, relaying and the 30 s anti-entropy rounds, with a hop taking one 10 ms tick and a simulated
+  clock (`use_manual_clock`). Signatures are real. `scripts/sim/run_sim.py` writes the scenarios from seeds
+  with the testbed's topology generators and traffic plan; `scripts/sim/sim_report.py` writes the tables,
+  the checks and the figures. Same scenario, same outcome (tested; keys, runtime and memory excepted).
+- **Command:** `make sim OUT=…`, no root. 210 runs from one build, about 1 h on the i5-12450HX (WSL2).
+- **Attackers:** replay only, no collusion. Each relays honestly until 20 s, then sends every message twice,
+  and originates nothing. "One" is the testbed's relay B; f % are drawn by seed. The source is honest.
+- **Evidence:** [`evidence/sim-2026-11-04/`](evidence/sim-2026-11-04/) (criteria fixed before the runs,
+  `results.csv`, `cross-check.csv`, `tables.md` with every cell, `figures/`).
+
+**Cross-check against the testbed (18 runs, rgg and mesh, N = 20/50/100, seeds 1–3, same topology instances,
+roles and traffic plan):** every run agrees. Topology metrics are equal, every neighbour bans B in both,
+0 honest false evictions in both, delivery is 100 % in both, including the downstream set D, and the
+third strike falls within 30 ms of the testbed's median eviction time. The testbed reference is binary
+`04ec7be5`, before the fixes below.
+
+**Scale (180 runs: N = 100, 500, 1 000, 2 000, 5 000, rgg and mesh, one attacker and f = 0/10/20/30/45 %,
+seeds 1–3; 1 message/s for 60 s):**
+
+- 0 honest false evictions and 0 strikes on honest senders in every run.
+- Every honest neighbour of every attacker banned it: 351 994 of 351 994 links.
+- Eviction stays local: in no run did a node hold any record of a sender that is not its neighbour.
+- Among honest nodes in the origin's component, delivery after the bans is 100 % in every run. Everything lost
+  below is lost to partition: banning an attacker removes its links, and that can cut honest nodes off.
+
+Delivery after the bans over all honest nodes, mean of 3 seeds (runs where the honest nodes were partitioned):
+
+| Topology | Attackers | N = 100 | 500 | 1 000 | 2 000 | 5 000 |
+|---|---|---|---|---|---|---|
+| rgg | one or 0 % | 100 % (0/3) | 100 % (0/3) | 100 % (0/3) | 100 % (0/3) | 100 % (0/3) |
+| rgg | 10 % | 99.63 % (1/3) | 100 % (0/3) | 100 % (0/3) | 100 % (0/3) | 100 % (0/3) |
+| rgg | 20 % | 97.44 % (2/3) | 100 % (0/3) | 100 % (0/3) | 99.96 % (1/3) | 99.99 % (1/3) |
+| rgg | 30 % | 95.89 % (2/3) | 100 % (0/3) | 99.57 % (2/3) | 99.90 % (1/3) | 100 % (0/3) |
+| rgg | 45 % | 52.37 % (3/3) | 89.40 % (3/3) | 95.23 % (3/3) | 99.88 % (2/3) | 99.92 % (2/3) |
+| mesh | one or 0 % | 100 % (0/3) | 100 % (0/3) | 100 % (0/3) | 100 % (0/3) | 100 % (0/3) |
+| mesh | 10 % | 100 % (0/3) | 100 % (0/3) | 99.96 % (1/3) | 100 % (0/3) | 100 % (0/3) |
+| mesh | 20 % | 100 % (0/3) | 99.58 % (3/3) | 99.87 % (2/3) | 99.77 % (3/3) | 99.88 % (3/3) |
+| mesh | 30 % | 99.52 % (1/3) | 98.23 % (3/3) | 99.00 % (3/3) | 99.05 % (3/3) | 98.94 % (3/3) |
+| mesh | 45 % | 76.75 % (3/3) | 93.30 % (3/3) | 90.58 % (3/3) | 86.76 % (3/3) | 90.49 % (3/3) |
+
+Three seeds per cell, and each random attacker set is one draw, so read these as a sketch of the trend and
+not as partition probabilities. At 45 % the small RGGs fall apart: the mean of N = 100 is 52 %, and delivery
+of a single message can reach 0 when its origin ends up alone.
+
+**Long runs (12 runs: 8 messages/s for 15 simulated minutes, mesh N = 300 and rgg N = 150, f = 0 and 10 %, seeds
+1–3):** past the seen-ID limit of 5 000 (222–300 cache clears per run, all nodes together), the digest limit of
+256 origins (mesh only) and the time a banned peer needs to be readmitted. 0 honest false evictions, 0 strikes
+on honest senders, 0 budget drops; f = 0 delivers 100 %; every honest neighbour banned every attacker, and
+attackers that kept replaying were banned again after readmission (118–127 readmissions per run with attackers).
+
+**Defects these runs found (both fixed, failing tests first, numbers above are from the build with those fixes):**
+
+- *Control messages shifted the message window.* A sync request (one per neighbour per round) and a chain-head
+  announcement took a sequence number from the origin's message counter, so at degree 33 a node's window of
+  64 covered about a minute and receivers kept fewer of its messages for anti-entropy. They now have a counter
+  and a window of their own.
+- *An origin could be struck for its own message.* When the seen-ID cache cleared while a node's own message was
+  still echoing back, it accepted the message as new and relayed it again, and its neighbours struck it for
+  the repeat. Measured before the fix: 155 strikes on honest senders over the 12 long runs (up to 45 in one
+  run), no ban. `evidence/sim-2026-11-04/before-fixes/`.
+
+Re-running real processes with these two fixes led to two more fixes in the transport and the node's request timing
+([repeat sets](#the-latency-tail-at-20--loss-over-repeat-sets)). They do not change `NodeRuntime`'s behaviour: rebuilt from
+the final source, 90 of these runs (cross and scale up to N = 500) gave the same outcome on all 54 columns,
+runtime and memory excepted (`recheck/sim-on-final-source.txt`).
+
+**Cost.** One process, one thread, 60 simulated seconds at 1 message/s:
+
+| Topology | N | Mean degree | Runtime | Peak memory | Per node |
+|---|---|---|---|---|---|
+| rgg | 1 000 | 12.95 | 9.5 s | 434 MiB | 0.43 MiB |
+| rgg | 2 000 | 14.58 | 21.9 s | 920 MiB | 0.46 MiB |
+| rgg | 5 000 | 16.57 | 62.8 s | 2 477 MiB | 0.50 MiB |
+| mesh | 1 000 | 4.00 | 5.0 s | 263 MiB | 0.26 MiB |
+| mesh | 2 000 | 4.00 | 10.1 s | 523 MiB | 0.26 MiB |
+| mesh | 5 000 | 4.00 | 26.4 s | 1 304 MiB | 0.26 MiB |
+
+**State per node is not bounded yet.** It grows with time and degree: the long runs peak at 17 MiB per node (rgg
+N = 150) and 12 MiB per node (mesh N = 300), and the same runs at larger sizes did not fit in the host's 7.8 GiB,
+which is why the long runs use these sizes. Peak memory includes the harness's own records. Each sync session
+keeps its own copy of the digest, and the replay window and seen-ID cache keep a sender identity per copy
+received.
+
+**Not shown by these runs:** anything about packet loss, timing or real transport (the testbed covers those);
+colluding or omitting attackers; attackers that originate.
 
 ## WAN smoke test
 

@@ -1,0 +1,138 @@
+In-process simulation runs. Criteria written 2026-11-04, after timing runs of seed 1 on the build
+before the control-window fix (cross N = 20/50/100, scale N = 5000) and before any run of the build
+recorded here. If a criterion fails: say so, find the cause; no change to the criteria after the data.
+
+Cross-check (group cross, N = 20/50/100, rgg and mesh, seeds 1-3, one attacker) against the testbed
+runs of the same (kind, N, seed) in docs/evidence/testbed-fast-recovery-2026-11-04/r4/results.csv
+(binary 04ec7be5; no loss, 10 ms per hop):
+- same topology instance: mean_deg, max_deg, diam, aspl, clust equal;
+- same attacker coverage: banned_by equal (every honest neighbour);
+- false evictions: 0 in both;
+- delivery before the fault and after the ban: both 1.0;
+- downstream delivery: all delivered in both (message counts may differ by the few messages that
+  fall between the fault and the last ban, because the period boundaries are not identical);
+- strike dynamics: median eviction, simulated vs testbed wall clock, within 200 ms. This compares
+  when the third strike falls; it is not a latency result of the simulation.
+
+Scale (group scale, N = 100/500/1000/2000/5000, rgg and mesh, seeds 1-3, one attacker and
+f = 0/10/20/30/45 % attackers):
+- 0 honest false evictions and 0 strikes on honest senders in every run;
+- every honest neighbour of every attacker bans it in every run (coverage 100 %);
+- eviction stays local: 0 records of non-neighbours in any node's guard, in every run;
+- delivery after the bans = 1.0 among honest nodes in the origin's component, in every run;
+- f = 0 and one attacker: 0 rate-limit and origin-budget drops, delivery 1.0;
+- partition rate and delivery over all honest nodes: reported as measured.
+
+Long (group long, mesh N = 300 and rgg N = 150, 8 messages/s for 15 simulated minutes, f = 0 and
+10 %, seeds 1-3; passes the seen-ID limit of 5000 and, on the mesh, the digest limit of 256 origins):
+- 0 honest false evictions and 0 strikes on honest senders;
+- f = 0: delivery 1.0;
+- f = 10 %: every honest neighbour bans every attacker at least once; readmissions reported as
+  measured;
+- per-node state reported as measured against those limits.
+
+Changed before any long run finished: the long group was first written with N = 500. Those processes
+grew past 2 GiB each and four at once exhausted the 7.8 GiB of this WSL2 host (kernel OOM kill), with
+no outcome recorded. N = 300 on both topologies reached 7 MiB per node after 80 s of wall-clock time and
+was stopped, also with no outcome recorded. Per-node state grows with time and degree, so the
+sizes above are what fits: the mesh keeps the digest limit in play (300 origins > 256); rgg at
+N = 150 does not reach it.
+
+Reported, no pass/fail: runtime and peak memory per N.
+
+Testbed re-check of the two protocol fixes these runs led to, written before the run (real crci-node
+processes, scripts/testbed/run_attacks.sh, the same 30 runs and the same limits as the fast-recovery
+criteria, build recorded in binary.sha256):
+- fidelity: the analyze.py checks hold in every run;
+- over-budget refill5 and refill20: B banned by all neighbours, 0 honest bans;
+- flood40: delivery while flooding >= 0.99, 0 honest drops, 0 honest bans;
+- eventual (20 % loss, 60 s drain): delivery after the ban 1.0, 0 honest bans, B banned by all
+  neighbours, max post-ban honest delivery latency < 30 s in every run, p99 <= 4.7 s.
+The main, load and netem sweeps are not repeated for this build. They are repeated on the final
+protocol build before submission; their published numbers remain those of binary 04ec7be5.
+
+Result of that re-check: every criterion held except one. p99 was 6 687 ms (limit 4 700 ms; previous
+build 3 361 ms) with max 22 055 ms (previous 25 299 ms). The criterion failed as written, and this is
+recorded as such. Messages with a delivery over 3 s: 90 of 596 against 86 of 566, so the difference may be
+the weight of a few messages lost near their source (one counts up to 96 deliveries).
+
+Decision rule, written before more data: one fresh set of the same 18 runs on each build, old
+(04ec7be5) first, then new. The fixes caused a latency regression if both new sets have a p99 above both
+old sets and a higher share of messages with a delivery over 3 s in both. Then the fix is reworked.
+Otherwise the p99 limit is recorded as failed once and the spread between sets of one build is reported
+as what this metric can resolve.
+
+Result of the decision rule: no latency regression from the two fixes. p99 old 3 361 and 4 067 ms, new 6 687
+and 3 815 ms; messages with a delivery over 3 s old 15.2 and 13.9 %, new 15.1 and 13.1 %. The same p99 on one
+build moved by up to 2.9 s between sets, which is what this metric can resolve.
+
+The same sets found a separate, older defect. The second new set has 2 runs over the 30 s limit (worst
+34 144 ms, 5 messages). Traced: the frames were written into a connection that TCP aborted after the
+relay task's 6 s window, so nobody reconnected and they waited for the 30 s anti-entropy round. Failing test
+first, window raised to 15 s, in transport/tcp.rs only; NodeRuntime is unchanged, so the simulation
+results stand.
+
+Criteria for the build with that fix, written before its runs (run_attacks.sh, then one more set of the 18
+eventual runs):
+- every criterion of the testbed re-check above, on the attack set;
+- max post-ban honest delivery latency < 30 s in every eventual run of both sets;
+- fidelity checks, 0 honest bans, B banned by all neighbours, delivery after the ban 1.0, in both sets;
+- p99 reported per set against 4.7 s. This limit failed once on the previous build, and a value inside the
+  3.4-6.7 s spread of the earlier sets is reported as it is, not as an improvement or a regression.
+
+Result on that build (00e4b508): every pass/fail criterion held on both sets. Worst delivery 24 302 and
+29 875 ms (limit 30 s, the second by 125 ms). p99 was 9 019 and 6 853 ms, both over 4.7 s and both outside the
+3.4-6.7 s spread above, a case the criteria did not cover.
+
+Decision rule for that case, written before computing it. The post-ban pool depends on when the last ban falls
+(rgg N = 50 holds 2 853 to 14 850 deliveries depending on the set), so the sets do not weigh the same runs
+equally. Compare all honest deliveries of each run, before and after the ban, which the fixed traffic plan
+keeps the same size. Regression if the two 00e4b508 sets both have a p99 above both 04ec7be5 sets, and a higher
+share of deliveries over 5 s than both, and a run-level permutation test (36 runs against 36, statistic = mean
+per-run share over 5 s) gives p < 0.05. Then the 15 s window is reworked and re-measured. Otherwise the
+post-ban p99 is recorded as failed on this build, with the spread between sets, and no latency claim
+tighter than that spread is made.
+
+Result of that rule: not a regression by the rule. All deliveries: p99 5 658 and 5 644 ms (04ec7be5), 7 522 and
+6 746 ms (00e4b508); share over 5 s 1.49 and 1.40 %, 2.03 and 1.78 %; permutation p = 0.19, not below 0.05. The
+direction is against the new build and these runs cannot exclude a small cost.
+
+The same analysis found a separate defect, older than these fixes. The longest delivery in any period was
+47 610 ms (l20-rgg-20-s1, a leaf node, before the fault; the post-ban criteria do not cover it). Traced: its
+first request arrived 2.7 s late through TCP retransmissions, and the request for the resumed link arrived 3.5 s
+after that, inside the responder's 5 s cooldown. The responder refuses without saying so, so the node waited
+for the next 30 s round. On every build 697-734 of about 27 000 requests per set are refused this way. The requester
+spaced its request 6 s from before the dial, while the cooldown runs from the arrival. Failing test first;
+the requester now spaces it 8 s from after the send. NodeRuntime's answers are unchanged, so the simulation
+results stand.
+
+Criteria for the build with that fix, written before its runs (run_attacks.sh, then one more set of the 18
+eventual runs, build in binary.sha256):
+- every criterion of the first testbed re-check above, on the attack set, and fidelity, 0 honest bans, B banned by
+  all neighbours, delivery after the ban 1.0, on both sets;
+- max post-ban honest delivery latency < 30 s in every eventual run of both sets;
+- refused requests (received - answered - budget refusals) at most 175 per set, a quarter of the 700 above;
+- reported as measured, with all earlier sets: post-ban p99 against 4.7 s, p99 of all deliveries, longest delivery
+  in any period, share of deliveries over 5 s.
+If a pass/fail line fails: say so, find the cause. If they hold, what remains of the tail at 20 % loss is stated
+as measured and this task ends; the link-flapping experiment is the next place to test recovery.
+
+Result on that build (b17f6f0c): the attack set and both eventual sets held every pass/fail line except one.
+Faithful 18/18 on both sets, 0 honest bans, B banned by all neighbours, delivery after the ban 1.0, flood40 delivery
+1.0 with 0 honest drops, refill5/20 banned by 10/10. Worst post-ban delivery 17 458 and 20 103 ms (limit 30 s).
+
+The refused-requests line failed as written: 365 and 403 against a limit of 175. Cause: the count was wrong, not
+the node. It includes requests from the attacker to neighbours that had banned it, which are ignored on purpose
+(364 and 399). Requests from honest nodes left unanswered: 313, 324 (04ec7be5), 358, 336 (00e4b508), then 1 and 4
+on this build. The sentence above, "697-734 of about 27 000 requests per set are refused this way", overstated the
+defect by about a factor of two for the same reason. The limit is not changed; the line stays failed as written and
+the breakdown is reported next to it.
+
+Reported as measured, all sets, 20 % loss, 60 s drain: post-ban p99 3 598 and 5 519 ms (limit 4 700 ms: the second
+fails it, inside the 3.4-9.0 s spread of all sets), p99 of all deliveries 5 437 and 6 317 ms, share of deliveries
+over 5 s 1.30 and 1.79 %, longest delivery in any period 33 459 and 28 201 ms.
+
+Traced, 33 459 ms (l20-rgg-20-s2, before the fault): the receiver is a leaf with one 20 % loss link. The message
+was already about 17 s late at its neighbours; the leaf's request for it was answered 16.7 s later, over that link.
+No request was refused. This is what remains of the tail at 20 % loss, stated as measured. This task ends here;
+the link-flapping experiment is the next place to test recovery.

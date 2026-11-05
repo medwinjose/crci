@@ -195,6 +195,53 @@ What these files show, stated plainly:
   5.9 s): a sender with nothing more to send never reconnected, so frames lost just before a link fell
   quiet still waited for the 30 s exchange. Results, summary and the raw logs of its slowest run are kept.
 
+## `sim-2026-11-04/`
+
+| File | SHA-256 |
+|---|---|
+| `before-fixes/criteria-check-echo-defect.txt` | `41a2309e0d2f33347bded3623d17e2af670b024d7338fee85870c7ede406e9f7` |
+| `before-fixes/results-echo-defect.csv` | `59b9c35ed48fb0f88d37ecf67152889de29a6cc36df47c5c945b56c596c121f5` |
+| `binary.sha256` | `61b603ee5c2f04b2d8a8c5efc262a04f0b9f362d00f98061e9258a89eef721be` |
+| `console.txt` | `decb4cf61bbf7b353a5c6bfb47898a929006cdf8bc1fa18bca82593474cc3465` |
+| `criteria-check.txt` | `527fe717fb77ce939744d4da7eb9022160a8a50b1b2528f3b4574bc8bbbe3dc4` |
+| `criteria.txt` | `ab3ca45d8537a7ad50560a42093352cd8ea45fc4554d446df796e0195338cbca` |
+| `cross-check.csv` | `405dd3b23fed2596298ece22f1cc79082cd5b6faf5024cfba8d37bc0e390fa1d` |
+| `figures/cost-vs-n.svg` | `4f3bb77463971b625ce43969d6ff15ec9560650e69303f97fc6ebb780c64e4dc` |
+| `figures/delivery-vs-attackers.svg` | `d281aa71f479ff19059dec342e7d6b633146841f6a045b7738925e1ae1e6f8b8` |
+| `figures/largest-component-vs-attackers.svg` | `7d9a2a9b4aa0806cd3a0a0030d0952999bb2a03d30483cf07a8c3a54f06fc344` |
+| `recheck/00e4b508-1-eventual-results.csv` | `d7cb2c5c23bcd21d1275f6faaceec51d990e0f538cd57c38b64415c9a48ad0ff` |
+| `recheck/00e4b508-1-flood-results.csv` | `36266cc39d59acb0f222826654aabb164eda1c3cf464cc86ef2c9fcd82692823` |
+| `recheck/00e4b508-1-over-budget-results.csv` | `3566223d320c8db58e27b43327edeae0291b4a44375d4af0398c793813bc4ffb` |
+| `recheck/00e4b508-2-eventual-results.csv` | `982070e8f1b5d971a68e3a0c4f8ddb9e0c026dbf87bfff03a79043f414e044c1` |
+| `recheck/04ec7be5-2-eventual-results.csv` | `439ed9789e95ce0d306d42b96ae0bc3fbd83f10bbaf9972e3ed936deeaa8a478` |
+| `recheck/b17f6f0c-1-eventual-results.csv` | `9cd6cdd41d047393cb7f6603a0655687591feaddf81410c3f8c6de07d4521fe6` |
+| `recheck/b17f6f0c-1-flood-results.csv` | `fa9fd66d49c5f065100d0f73406026a2a36c90bc14d0bd8b63b7059cea51ea2b` |
+| `recheck/b17f6f0c-1-over-budget-results.csv` | `61b1796d14c50ef10d115c0b8101a39b54df686da0ce10f7058204764672869d` |
+| `recheck/b17f6f0c-2-eventual-results.csv` | `49329d4c394cf2f056f6ee50a26c4a8ae396bac88e37a99262d7a750f40cf149` |
+| `recheck/builds.txt` | `5d7187af1039c461a06b844254c6bdf9b46a14a7b87f2670a96a964b246d0078` |
+| `recheck/cfe7d248-1-eventual-results.csv` | `587344447aaf4fcfeae6b72eb2a6308c748f1106a7799b9eba1b11d3c32c0673` |
+| `recheck/cfe7d248-1-over-budget-results.csv` | `dcbcf4696e6b1057a2c3e33d62efaa53a2c3ba4a5495bdb4006986ff9cdf8bc4` |
+| `recheck/cfe7d248-2-eventual-results.csv` | `22245e22483475c7f6f6d282cd628e0fcc93afe8dceb45b6914023bbcd1da7eb` |
+| `recheck/compare_sets.py` | `f75854c7609f5831fba1b8b007cc41e8b04f2150972fb5cdff1b8882e2e2ce1b` |
+| `recheck/per-run.csv` | `b76c4020628f5fe79ad9056abce9879f7b5e6f61454c946c48b449a1f7f50e40` |
+| `recheck/sets.csv` | `a354c7e904d6ae2662a2cbceb08e1e312b39ae87465e05849094d91d7adeb899` |
+| `recheck/sim-on-final-source.txt` | `eaaedc479599c01b80678c6aab0260a10cfd434a6e1cc016c36c60711ff8bca4` |
+| `recheck/traced-33459ms-b17f6f0c-1-l20-rgg-20-s2.tar.gz` | `7bdb83a437a8b04d34fe49a87240687e7c7ffd5ecfadf2f25226006fd0397c7f` |
+| `recheck/traced-34144ms-cfe7d248-2-l20-rgg-20-s1.tar.gz` | `a68f0964d8042e1797d34c7663505a6ebc1c56e8c8162c2049ee5173901ec182` |
+| `recheck/traced-47610ms-00e4b508-2-l20-rgg-20-s1.tar.gz` | `7d7abec23e6e17bde1c24eaea7ab04fd5dacdc3b9e895ad5982c1868be1d55d5` |
+| `results.csv` | `63791a2f5eee9f740a46812973cc171288e06d31b8cd1f6440ec947fb2e5ba4e` |
+| `tables.md` | `b067cf94b36357854f2a554280956bc0e26f9ee706dc053dbb82ea61f72d1616` |
+| `timing.csv` | `4950b48abe255af9ec9310a3e6b6efe3a30587c2bbe65679037d2b294dc2ca19` |
+
+- In-process simulation: `mesh_sim` build `9c151bb1`, 210 runs from seeds (`make sim`), with the criteria fixed
+  before the runs (`criteria.txt`), the cross-check against the testbed and the figures. `before-fixes/` holds the
+  runs that showed honest senders struck for an echo of their own message.
+- `recheck/`: repeat sets of the 18 eventual runs at 20 % loss on four `crci-node` builds (`builds.txt`), which put
+  the single set in `testbed-fast-recovery-2026-11-04/` in context: its p99 of 3.4 s and maximum of 25.3 s are one
+  set, not the build. `sets.csv` and `per-run.csv` come from `compare_sets.py` over the raw run folders, which are
+  not kept except the three traced runs (`traced-*.tar.gz`). `sim-on-final-source.txt`: the simulator rebuilt from
+  the final source gives the same outcomes on 90 of these runs.
+
 ## `archive/`
 
 | File | SHA-256 |

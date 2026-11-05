@@ -1,0 +1,13 @@
+cross-check runs: 18, failed criteria: 0
+scale runs: 180, failed criteria: 0
+long runs: 12, failed criteria: 10
+FAIL long-rgg-150-f0-s1: honest false eviction or strike
+FAIL long-rgg-150-f10-s1: honest false eviction or strike
+FAIL long-rgg-150-f0-s2: honest false eviction or strike
+FAIL long-rgg-150-f10-s2: honest false eviction or strike
+FAIL long-rgg-150-f10-s3: honest false eviction or strike
+FAIL long-mesh-300-f0-s1: honest false eviction or strike
+FAIL long-mesh-300-f0-s2: honest false eviction or strike
+FAIL long-mesh-300-f10-s2: honest false eviction or strike
+FAIL long-mesh-300-f0-s3: honest false eviction or strike
+FAIL long-mesh-300-f10-s3: honest false eviction or strike
