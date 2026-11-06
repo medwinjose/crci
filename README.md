@@ -79,8 +79,7 @@ measured with the in-process benchmark harness, 50 deterministic trials per cond
   banned.
 
 **Emulation testbed** (real `crci-node` processes over TCP in Linux network namespaces with `tc netem`,
-emulated on one host; 240 runs, three seeds per configuration, every run within the testbed's fidelity
-checks):
+emulated on one host; three seeds per configuration, every run within the testbed's fidelity checks):
 
 | Setting | Result |
 |---|---|
@@ -89,6 +88,8 @@ checks):
 | A replayer that keeps its rate budget empty | Banned in ≈ 12 ms (before: never banned, honest delivery 32–49 %) |
 | A node flooding fresh, validly signed messages at 40 msg/s | Honest delivery 100 % (before the per-origin budget: 82–98 %) |
 | Offered load | No honest message dropped at 16 msg/s network-wide; one node can sustain at most 5 msg/s |
+| 20 % or 50 % of the links going down and up every 5–10 s, with and without a replayer (102 runs) | 0 honest nodes banned or struck; every message delivered to every node; the replayer banned by all neighbours within 7.6 s |
+| 10–45 % of the nodes replaying, N = 20/50/100 (90 runs) | Every honest neighbour of every replayer bans it (3 958 of 3 958), median ≈ 2 s, 0 honest nodes banned; honest delivery inside the connected part 100 %. Removing up to 45 % of the nodes can cut honest nodes off: 27 of 72 runs, see the [partition probabilities](docs/benchmarks.md#share-of-replaying-nodes) |
 
 Every number above links back to a raw data file and the exact command in
 [docs/benchmarks.md](docs/benchmarks.md).
@@ -141,13 +142,12 @@ A Docker Compose demo (two honest nodes, one adversarial node, and the dashboard
 
 CRCI is an active research project. The isolation pipeline runs in the node runtime used by both the
 networked TCP node and the test suite. Done: a network-emulation testbed of real processes (20–500
-nodes, loss, delay, jitter, reordering, attacker variants, invalid-signature floods, link flapping, defence baselines and ablations) and an in-process simulation of up to 5 000
+nodes, loss, delay, jitter, reordering, attacker variants, invalid-signature floods, link flapping, defence baselines and ablations, and a sweep of the share of replaying nodes up to 45 %) and an in-process simulation of up to 5 000
 nodes, cross-checked against the testbed ([results](docs/benchmarks.md#in-process-simulation-up-to-5-000-nodes)).
 Current work, in order:
 
-1. A Byzantine-ratio sweep.
-2. Safety and liveness invariants of the final protocol in TLA+.
-3. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
+1. Safety and liveness invariants of the final protocol in TLA+.
+2. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
 
 Out of scope: large-scale Sybil attacks, colluding adversaries, and physical LoRa/BLE radios (the BLE and
 LoRa transports are interface stubs). Known gaps are tracked in [docs/threat-model.md](docs/threat-model.md).

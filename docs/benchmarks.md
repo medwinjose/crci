@@ -605,6 +605,72 @@ Evidence: [`evidence/flapping-2026-11-07/`](evidence/flapping-2026-11-07/) (`fla
 102 runs' `summary.json`, `meta.json` with the planned flap events, `flaps.csv` with the applied ones and
 `bans.csv`, `SHA256SUMS`). Reproduce: `make flapping` (about 5 h).
 
+### Share of replaying nodes
+
+A share f of the nodes replays, f = 0 (reference), 10, 20, 30 and 45 %, on rgg and 4-regular mesh at N = 20, 50
+and 100, seeds 1–3: 90 runs, all faithful, one node binary (`aa619cb0`), 40 ms ± 15 ms delay, 60 s of
+traffic at 1 message/s from one honest source and 15 s of drain.
+
+- **Attacker model (the same as the simulation's):** replay only, no collusion. Each attacker relays honestly
+  until 20 s, then sends every message twice, and originates nothing. The source is honest. The attackers
+  are drawn from the seed exactly as `scripts/sim/run_sim.py` draws them, so a run and its simulation twin have
+  the same attackers on the same topology.
+- **What is judged:** bans between honest observers (an attacker's opinion of any node is not evidence),
+  delivery between honest nodes, and the honest nodes' graph with the attackers removed, because banning an
+  attacker removes its links and that can cut honest nodes off.
+- **Criteria, fixed before the runs:** every run faithful; no honest node bans another honest node, f = 0
+  included; every honest neighbour of every attacker bans it; the slowest ban at most 30 s after the fault;
+  after the quarantine, mean delivery inside the origin's honest component at least 0.99. **All five hold.**
+
+| Measure (72 runs with attackers) | Result |
+|---|---|
+| Honest neighbours that banned an attacker | 3 958 of 3 958 |
+| Honest nodes banned by another honest node | 0 |
+| Slowest ban after the fault | 2.35 s; run medians 1.90–2.14 s |
+| Delivery inside the origin's honest component after the bans | 100 % in every run |
+| Runs in which the attackers' removal leaves the honest nodes in more than one component | 27 of 72 (3, 5, 7 and 12 at f = 10, 20, 30 and 45 %) |
+| Delivery to all honest nodes after the bans in those 27 runs | 24 % to 99 %; 100 % in the 45 runs that stayed connected |
+
+The partitions are a property of the graph, not of the isolation: the nodes cut off are exactly those whose
+every path to the source ran through attackers. Latency (the p95 of the honest messages' delivery time after
+the bans, mean of 3 seeds) from f = 0 to 45 %: mesh 150 → 219 ms (N = 20), 202 → 382 ms (50), 227 → 438 ms (100);
+rgg 344 → 159 ms (20), 298 → 272 ms (50), 347 → 524 ms (100). On the rgg the cut-off nodes no longer count,
+so a lower value there is not faster delivery; the causes of the rises (longer paths, fewer links, host load)
+were not separated.
+
+An attacker whose neighbours are all attackers (19 of the 1 068 attackers in these runs) is banned by nobody;
+it is not counted in the coverage, which is taken over honest neighbours.
+
+**Probability of a partition (graph computation, not a protocol measurement).** For each topology, N and f,
+200 topology instances (seeds 1–200) with attackers drawn as above; the attackers and their links are
+removed, which is what the quarantine does once every honest neighbour has banned them, and the share of
+instances in which the rest is not connected is reported with a Wilson 95 % interval
+(`scripts/sim/partition_prob.py`). At the points the emulation and the simulation share (N = 100, 500,
+1 000) it agrees with the simulation's recorded `honest_components` in all 72 runs that have attackers.
+
+| Topology | N | f = 10 % | 20 % | 30 % | 45 % |
+|---|---|---|---|---|---|
+| rgg | 100 | 18.5 % | 48.5 % | 77.0 % | 95.5 % |
+| rgg | 500 | 11.5 % | 27.5 % | 45.5 % | 93.5 % |
+| rgg | 1 000 | 6.0 % | 19.5 % | 48.0 % | 85.5 % |
+| mesh | 100 | 1.0 % | 12.0 % | 48.0 % | 94.0 % |
+| mesh | 500 | 3.0 % | 50.5 % | 96.5 % | 100 % |
+| mesh | 1 000 | 10.5 % | 76.5 % | 100 % | 100 % |
+
+Read these as "at least one honest node is cut off": the mean number of honest nodes outside the largest
+component is 0.01–2.6 at f ≤ 20 % and 4.8–43 at 45 % (`partition.csv` has every interval and the mean largest
+component, at least 0.91 everywhere except rgg N = 100 at 45 %, where it is 0.76). A 4-regular mesh has no
+redundancy against a node whose four neighbours are all attackers, so its probability grows with N at fixed f.
+
+**Limits.** Replay only, no collusion, no attacker that originates; an attacker never changes strategy;
+N ≤ 100 on real processes; the sizes above 100 are graph computations or the simulation; one host.
+The summary's generic fields (`byzantine_*`, delivery) follow the first attacker only; the `ratio` block of each
+`summary.json` is the record for these runs.
+
+Evidence: [`evidence/ratio-2026-11-07/`](evidence/ratio-2026-11-07/) (`ratio.csv`, `ratio.md`, `partition.csv`,
+`partition-check.txt`, the figures, the 90 runs' `summary.json`, `meta.json` and `bans.csv`, `SHA256SUMS`).
+Reproduce: `make ratio` (about 3.5 h for the runs, seconds for the graph computation).
+
 ## In-process simulation (up to 5 000 nodes)
 
 Protocol logic at a scale one host cannot emulate with real processes. **These are simulation results, not

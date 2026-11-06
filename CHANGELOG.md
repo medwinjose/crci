@@ -50,6 +50,11 @@ git history; `git log` is the complete record.
   of the overlay links drops packets for 5–10 s at a time, symmetrically or in one direction, and the analysis
   reports bans, strikes, sync requests and delivery per run. Results:
   [benchmarks.md](docs/benchmarks.md#link-flapping).
+- Byzantine-ratio experiment (`scripts/testbed/run_ratio.sh`, `ratio_table.py`, `make ratio`; testbed option
+  `--attackers-pct`): a seeded share of the nodes replays from 20 s on without colluding, the analysis judges
+  bans between honest observers and reports the honest nodes' components after the attackers are removed.
+  `scripts/sim/partition_prob.py` computes the probability of a partition over many topology instances and
+  checks it against the simulation. Results: [benchmarks.md](docs/benchmarks.md#share-of-replaying-nodes).
 
 ### Changed
 - The listener reads at most 200 frames per second from one connection (burst 400) and waits when a sender
@@ -85,6 +90,8 @@ git history; `git log` is the complete record.
   placeholder divergence alerts.
 
 ### Fixed
+- The testbed analysis counted a ban of any attacker other than the first as an honest false eviction in
+  runs with several attackers; it now excludes every attacker.
 - A request for a sync after a relay link resumed is spaced 8 s from the previous request, counted after it was
   sent. It was spaced 6 s from before the dial, so a request delayed by TCP retransmissions got the next one
   refused by the peer's 5 s cooldown, and the node waited for the next 30 s round (longest delivery 47.6 s).
