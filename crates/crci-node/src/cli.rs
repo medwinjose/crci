@@ -81,6 +81,16 @@ pub struct Cli {
     #[arg(long, default_value_t = 2)]
     pub replay_copies: usize,
 
+    /// Fault injection for experiments: once the fault is active, corrupt the signature of every
+    /// outgoing gossip message, as a relay forwarding forged data would
+    #[arg(long)]
+    pub corrupt_signatures: bool,
+
+    /// With --corrupt-signatures: corrupt for this many milliseconds from the fault on, then
+    /// sign correctly again (to test readmission); default: until the process ends
+    #[arg(long)]
+    pub corrupt_for_ms: Option<u64>,
+
     /// Experiments: messages per second added back to each neighbour's budget (default:
     /// the protocol's rate)
     #[arg(long)]

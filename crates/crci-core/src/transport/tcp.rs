@@ -49,6 +49,73 @@ const IO_TIMEOUT: Duration = Duration::from_secs(5);
 const FRAME_IDLE_TIMEOUT: Duration = Duration::from_secs(600);
 /// Frames queued per peer for `TcpTransport::relay`; further frames are dropped and logged.
 const RELAY_QUEUE_LEN: usize = 1024;
+/// How long the listener keeps refusing a banned identity before it lets one probe frame
+/// through, so the node can notice a readmission (a ban lasts at least 300 s).
+pub const SHUN_PROBE_INTERVAL: Duration = Duration::from_secs(30);
+/// Frames per second the listener reads from one connection, sustained. Honest links carry about
+/// one frame per message (a few per second, tens at the measured network capacity) plus bounded
+/// sync answers, so this is far above honest use; it bounds what a sender that is never struck
+/// (a flood of fresh messages above its budget) can make the receiver parse and verify.
+pub const FRAME_PACING_RATE: f64 = 200.0;
+/// Frames a connection may send at once before pacing applies.
+pub const FRAME_PACING_BURST: u32 = 400;
+
+/// Token bucket for the frames read from one connection. When it is empty the reader waits,
+/// which fills the kernel's buffers and slows the sender through TCP flow control.
+struct FramePacer {
+    tokens: f64,
+    last: std::time::Instant,
+    rate: f64,
+    burst: f64,
+}
+
+impl FramePacer {
+    fn new(rate: f64, burst: u32) -> Self {
+        Self {
+            tokens: f64::from(burst),
+            last: std::time::Instant::now(),
+            rate,
+            burst: f64::from(burst),
+        }
+    }
+
+    /// Take a token for the next frame; the time to wait first, if none is available.
+    fn take(&mut self) -> Option<Duration> {
+        let now = std::time::Instant::now();
+        self.tokens = (self.tokens + (now - self.last).as_secs_f64() * self.rate).min(self.burst);
+        self.last = now;
+        self.tokens -= 1.0;
+        (self.tokens < 0.0).then(|| Duration::from_secs_f64(-self.tokens / self.rate))
+    }
+}
+
+/// Entries above which expired shun entries are purged on insert.
+const SHUN_PURGE_ABOVE: usize = 1024;
+
+/// Authenticated identities whose connections the listener closes without reading them.
+/// A node adds an identity when it bans it; an entry expires after `SHUN_PROBE_INTERVAL`,
+/// and the node renews it whenever the probe frame shows the peer is still banned.
+#[derive(Default)]
+struct ShunList {
+    until: std::sync::RwLock<HashMap<String, std::time::Instant>>,
+}
+
+impl ShunList {
+    fn shun(&self, identity: &str, interval: Duration) {
+        let now = std::time::Instant::now();
+        let mut map = self.until.write().unwrap_or_else(|e| e.into_inner());
+        if map.len() >= SHUN_PURGE_ABOVE {
+            map.retain(|_, t| *t > now);
+        }
+        map.insert(identity.to_string(), now + interval);
+    }
+
+    fn is_shunned(&self, identity: &str) -> bool {
+        let map = self.until.read().unwrap_or_else(|e| e.into_inner());
+        map.get(identity)
+            .is_some_and(|t| std::time::Instant::now() < *t)
+    }
+}
 
 /// Handshake message 1, listener → dialer.
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -641,9 +708,12 @@ pub struct TcpTransport {
     pub relay_failures: Arc<AtomicU64>,
     /// Relayed frames dropped because the peer's queue was full.
     pub relay_queue_full: Arc<AtomicU64>,
+    /// Frames whose connection had to wait (frame pacing) before the next frame was read.
+    pub paced_frames: Arc<AtomicU64>,
     pub node_id: String,
     signing_key: SigningKey,
     outbound: Arc<Outbound>,
+    shun: Arc<ShunList>,
     pub cancel_token: CancellationToken,
 }
 
@@ -655,6 +725,25 @@ impl TcpTransport {
         addr: SocketAddr,
         signing_key: SigningKey,
     ) -> std::io::Result<Self> {
+        Self::bind_with_pacing(
+            node_id,
+            addr,
+            signing_key,
+            FRAME_PACING_RATE,
+            FRAME_PACING_BURST,
+        )
+        .await
+    }
+
+    /// `bind` with an explicit frame rate (per second) and burst for each connection's reader.
+    pub async fn bind_with_pacing(
+        node_id: String,
+        addr: SocketAddr,
+        signing_key: SigningKey,
+        pacing_rate: f64,
+        pacing_burst: u32,
+    ) -> std::io::Result<Self> {
+        let pacing = (pacing_rate, pacing_burst);
         let listener = TcpListener::bind(addr).await?;
         let (tx, rx) = mpsc::channel(1024);
         // shortcut: a full channel drops the report, the periodic sync still covers the link.
@@ -664,6 +753,8 @@ impl TcpTransport {
         let active = Arc::new(AtomicU64::new(0));
         let auth_failures = Arc::new(AtomicU64::new(0));
         let cancel_token = CancellationToken::new();
+        let shun = Arc::new(ShunList::default());
+        let paced_frames = Arc::new(AtomicU64::new(0));
 
         let actual_addr = listener.local_addr().unwrap_or(addr);
 
@@ -674,6 +765,8 @@ impl TcpTransport {
         let cancel_token_clone = cancel_token.clone();
         let local_node_id = node_id.clone();
         let listener_key = signing_key.clone();
+        let listener_shun = shun.clone();
+        let listener_paced = paced_frames.clone();
 
         // Spawn background listener accept task
         tokio::spawn(async move {
@@ -712,6 +805,8 @@ impl TcpTransport {
                         let auth_failures_for_task = auth_failures_clone.clone();
                         let cancel_for_task = cancel_token_clone.clone();
                         let links_for_task = links_tx.clone();
+                        let shun_for_task = listener_shun.clone();
+                        let paced_for_task = listener_paced.clone();
 
                         tokio::spawn(async move {
                             // RAII connection guard to decrement count on drop (preventing leaks)
@@ -731,6 +826,9 @@ impl TcpTransport {
                                     key: key_for_task,
                                     auth_failures: auth_failures_for_task,
                                     new_links: links_for_task,
+                                    shun: shun_for_task,
+                                    pacing,
+                                    paced: paced_for_task,
                                 },
                                 cancel_for_task,
                             )
@@ -780,11 +878,26 @@ impl TcpTransport {
             dialed_handshakes,
             relay_failures,
             relay_queue_full: Arc::new(AtomicU64::new(0)),
+            paced_frames,
             node_id,
             signing_key,
             outbound,
+            shun,
             cancel_token,
         })
+    }
+
+    /// Stop reading the connections of `identity` (a banned peer): they are closed and its
+    /// new connections refused for `SHUN_PROBE_INTERVAL`, after which one frame is let
+    /// through for the node to test whether the peer was readmitted. The node calls this
+    /// again when the probe shows it is still banned.
+    pub fn shun_peer(&self, identity: &str) {
+        self.shun_peer_for(identity, SHUN_PROBE_INTERVAL);
+    }
+
+    /// `shun_peer` with an explicit interval.
+    pub fn shun_peer_for(&self, identity: &str, interval: Duration) {
+        self.shun.shun(identity, interval);
     }
 
     /// The public key this transport proves to its peers.
@@ -908,6 +1021,10 @@ struct ConnectionContext {
     key: SigningKey,
     auth_failures: Arc<AtomicU64>,
     new_links: mpsc::Sender<NodeId>,
+    shun: Arc<ShunList>,
+    /// Frames per second and burst for this listener's connections.
+    pacing: (f64, u32),
+    paced: Arc<AtomicU64>,
 }
 
 /// Authenticate the dialer, then deliver its frames, attributed to its authenticated
@@ -940,10 +1057,26 @@ async fn handle_connection(
         }
     };
     log::debug!("authenticated TCP peer {}", peer.identity);
+    // A banned identity gets no further service; the handshake is the only cost it can cause.
+    if ctx.shun.is_shunned(&peer.identity) {
+        let _ = stream.shutdown().await;
+        return;
+    }
 
     let mut expected_counter: u64 = 0;
     let mut link_reported = false;
+    let mut pacer = FramePacer::new(ctx.pacing.0, ctx.pacing.1);
     loop {
+        if ctx.shun.is_shunned(&peer.identity) {
+            break;
+        }
+        if let Some(wait) = pacer.take() {
+            ctx.paced.fetch_add(1, Ordering::Relaxed);
+            tokio::select! {
+                _ = tokio::time::sleep(wait) => {}
+                _ = cancel_token.cancelled() => break,
+            }
+        }
         // Shutdown immediately on any failure (ASYNC-013).
         let frame_res = tokio::select! {
             res = read_json_after_idle::<TcpFrame>(&mut stream, MAX_FRAME_BYTES, FRAME_IDLE_TIMEOUT) => res,
@@ -962,6 +1095,11 @@ async fn handle_connection(
                 break;
             }
         };
+
+        // Banned while this frame was in flight: skip the signature check and close.
+        if ctx.shun.is_shunned(&peer.identity) {
+            break;
+        }
 
         let signed_ok = <[u8; 64]>::try_from(frame.signature.as_slice())
             .map(|sig| {

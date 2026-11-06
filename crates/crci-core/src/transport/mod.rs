@@ -45,4 +45,4 @@ pub use multiplexer::TransportMultiplexer;
 #[allow(unused_imports)]
 pub use sim::{LegacyTransport, SharedInbox, SimTransport};
 #[allow(unused_imports)]
-pub use tcp::TcpTransport;
+pub use tcp::{TcpTransport, FRAME_PACING_BURST, FRAME_PACING_RATE};

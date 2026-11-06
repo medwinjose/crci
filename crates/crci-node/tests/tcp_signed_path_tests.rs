@@ -18,15 +18,18 @@ fn bin_path() -> std::path::PathBuf {
     path
 }
 
-/// A port free now. Only for a node that must be named before it starts; another test can
-/// take the port in between (shortcut: rare, retry the test; use port 0 wherever possible).
+/// A port that is free now, for a node that must be named before it starts. It comes from a
+/// range below every operating system's ephemeral range (Windows 49152+, Linux 32768+), so a
+/// node that binds port 0 in another test cannot be given it between choosing and binding.
 fn free_addr() -> String {
-    let port = std::net::TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    format!("127.0.0.1:{}", port)
+    static NEXT: std::sync::atomic::AtomicU16 = std::sync::atomic::AtomicU16::new(0);
+    let base = 20_000 + (std::process::id() % 5_000) as u16;
+    loop {
+        let port = base + NEXT.fetch_add(1, std::sync::atomic::Ordering::SeqCst) % 5_000;
+        if std::net::TcpListener::bind(("127.0.0.1", port)).is_ok() {
+            return format!("127.0.0.1:{}", port);
+        }
+    }
 }
 
 struct Receiver {
@@ -206,7 +209,7 @@ fn signed_replay_over_tcp_bans_the_sender_after_three_strikes() {
     );
     assert!(
         log.lines()
-            .any(|l| l.contains("peer byz-replay#") && l.contains("is banned")),
+            .any(|l| l.contains(" banned byz-replay#") && l.contains("at_ms=")),
         "receiver log:\n{}",
         log
     );
@@ -226,7 +229,7 @@ fn bad_signature_over_tcp_is_rejected() {
     );
     assert!(
         log.lines()
-            .any(|l| l.contains("peer byz-badsig#") && l.contains("is banned")),
+            .any(|l| l.contains(" banned byz-badsig#") && l.contains("at_ms=")),
         "receiver log:\n{}",
         log
     );
@@ -299,7 +302,9 @@ fn adversary_claiming_an_honest_id_cannot_get_it_banned() {
         .split("via ")
         .nth(1)
         .unwrap_or("")
-        .trim_end_matches(')')
+        .split(')')
+        .next()
+        .unwrap_or("")
         .to_string();
     let adversary = sender_of(&log, "replayed-msg-1");
     assert!(
@@ -330,7 +335,7 @@ fn adversary_claiming_an_honest_id_cannot_get_it_banned() {
         log
     );
     assert!(
-        log.contains(&format!("peer {adversary} is banned")),
+        log.contains(&format!(" banned {adversary} at_ms=")),
         "receiver log:
 {}",
         log
@@ -343,7 +348,7 @@ fn adversary_claiming_an_honest_id_cannot_get_it_banned() {
         log
     );
     assert_eq!(
-        count(&log, &format!("peer {honest} is banned")),
+        count(&log, &format!(" banned {honest} at_ms=")),
         0,
         "receiver log:
 {}",
@@ -530,6 +535,74 @@ fn a_replaying_node_is_banned_by_its_peer() {
         count(&log, "Node tcp-fault-sink banned tcp-faulty#"),
         1,
         "downstream log:\n{}",
+        log
+    );
+}
+
+/// A relay that forwards forged signatures is banned after three strikes. Its connection is
+/// then closed and not read again (its reconnects are refused until the probe interval), so
+/// the 300 frames it keeps sending cost the receiver nothing, and no log line each.
+#[test]
+fn a_banned_forger_is_disconnected_and_costs_nothing() {
+    let sink = start_receiver("tcp-forge-sink");
+    let forger = start_node(
+        "tcp-forger",
+        &[
+            "--peers",
+            &sink.addr,
+            "--emit-count",
+            "300",
+            "--emit-interval-ms",
+            "5",
+            "--emit-delay-ms",
+            "200",
+            "--replay-after-ms",
+            "0",
+            "--replay-copies",
+            "1",
+            "--corrupt-signatures",
+        ],
+    );
+    std::thread::sleep(Duration::from_millis(3500));
+    drop(forger);
+    let log = sink.finish();
+
+    assert_eq!(
+        count(&log, "accepted '"),
+        0,
+        "sink log:
+{}",
+        log
+    );
+    assert_eq!(
+        count(&log, "INVALID SIGNATURE"),
+        3,
+        "sink log:
+{}",
+        log
+    );
+    assert_eq!(
+        count(&log, "Node tcp-forge-sink banned tcp-forger#"),
+        1,
+        "sink log:
+{}",
+        log
+    );
+    assert_eq!(
+        count(&log, "SYBIL GUARD DROP"),
+        0,
+        "a banned peer's frames must not log one line each:
+{}",
+        log
+    );
+    // Frames that were already in flight when the ban took effect may still arrive; the
+    // other ~290 must never be read.
+    let received = count(&log, "received message from tcp-forger#");
+    assert!(
+        received <= 60,
+        "{} frames reached the node after three strikes:
+{}",
+        received,
         log
     );
 }

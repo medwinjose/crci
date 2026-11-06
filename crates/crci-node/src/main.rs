@@ -1346,6 +1346,8 @@ struct Experiment {
     emit_delay: std::time::Duration,
     replay_after: Option<std::time::Duration>,
     replay_copies: usize,
+    corrupt_signatures: bool,
+    corrupt_for: Option<std::time::Duration>,
 }
 
 impl Experiment {
@@ -1373,6 +1375,8 @@ impl Experiment {
             emit_delay: std::time::Duration::from_millis(args.emit_delay_ms),
             replay_after: args.replay_after_ms.map(std::time::Duration::from_millis),
             replay_copies: args.replay_copies.max(1),
+            corrupt_signatures: args.corrupt_signatures,
+            corrupt_for: args.corrupt_for_ms.map(std::time::Duration::from_millis),
         }
     }
 }
@@ -1387,17 +1391,45 @@ fn unix_ms() -> u128 {
 
 /// Relay messages `NodeRuntime` queued, `copies` times each (more than one only in the
 /// replay fault mode). Destinations are peer addresses from --dial / --peers.
-fn relay_outbound(tcp: &transport::TcpTransport, outbound: Vec<(String, Vec<u8>)>, copies: usize) {
+fn relay_outbound(
+    tcp: &transport::TcpTransport,
+    outbound: Vec<(String, Vec<u8>)>,
+    copies: usize,
+    corrupt: bool,
+) {
     for (dest, bytes) in outbound {
-        let Ok(out) = serde_json::from_slice::<runtime::WireMessage>(&bytes) else {
+        let Ok(mut out) = serde_json::from_slice::<runtime::WireMessage>(&bytes) else {
             continue;
         };
+        if corrupt {
+            corrupt_signature(&mut out);
+        }
         for _ in 0..copies {
             if let Err(e) = tcp.relay(&dest, out.clone()) {
                 log::warn!("relay of '{}' to {} dropped: {}", out.id, dest, e);
             }
         }
     }
+}
+
+/// Make the origin signature invalid (fault injection: a relay forwarding forged data).
+fn corrupt_signature(msg: &mut runtime::WireMessage) {
+    match msg.signature_bytes.first_mut() {
+        Some(b) => *b ^= 1,
+        None => msg.signature_bytes.push(1),
+    }
+}
+
+/// Whether the fault has started and this node was told to corrupt signatures.
+fn corrupting_now(experiment: &Experiment) -> bool {
+    experiment.corrupt_signatures
+        && experiment.replay_after.is_some_and(|after| {
+            let now = std::time::Instant::now();
+            experiment
+                .started
+                .checked_add(after)
+                .is_some_and(|at| now >= at && experiment.corrupt_for.is_none_or(|d| now < at + d))
+        })
 }
 
 /// How many copies of each outgoing message to send: `replay_copies` once the replay fault
@@ -1455,6 +1487,8 @@ async fn run_node(
 ) {
     let started = experiment.started;
     let fault_announced = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    // Frames from banned peers, dropped before they are parsed; reported with the statistics.
+    let banned_frames_dropped = Arc::new(std::sync::atomic::AtomicU64::new(0));
     // Forward to every dialed peer: the router's next hops are node IDs, not TCP addresses.
     node.use_router = false;
     let mut pipeline = integration::GossipPipeline::new();
@@ -1627,11 +1661,45 @@ async fn run_node(
     let recv_api = api_state.clone();
     let recv_id = node_id.clone();
     let recv_fault = fault_announced.clone();
+    let recv_banned_dropped = banned_frames_dropped.clone();
     tokio::spawn(async move {
         // Peers this node has banned, so each ban (and readmission) is printed once.
         let mut banned: std::collections::HashSet<String> = std::collections::HashSet::new();
+        // Banned peers whose dropped frames were already announced (one line per ban).
+        let mut dropping: std::collections::HashSet<String> = std::collections::HashSet::new();
         while let Ok((sender_id, wire)) = recv_tcp.receive().await {
             let dequeued = std::time::Instant::now();
+            // A banned peer's frames are dropped by NodeRuntime's admission check anyway; doing
+            // it first spares the parse, the lock hold and the per-frame log lines, which a
+            // flooding peer would otherwise turn into CPU and output load (a blocked stdout
+            // would stall this loop). The check also performs the time-based readmission.
+            let sender_is_banned = {
+                let mut n = recv_node.lock().unwrap_or_else(|e| e.into_inner());
+                let is_banned = n.sybil_guard.is_banned(&sender_id);
+                if is_banned {
+                    n.sybil_banned_events += 1;
+                    n.metrics
+                        .sybil_banned_total
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                }
+                is_banned
+            };
+            if sender_is_banned {
+                // A frame still arrives only from before the shun took effect, or as the
+                // probe after its interval: shun again so the connection is not read.
+                recv_tcp.shun_peer(&sender_id);
+                recv_banned_dropped.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                if dropping.insert(sender_id.clone()) {
+                    println!(
+                        "Node {} dropping frames from banned peer {} without processing at_ms={}",
+                        recv_id,
+                        sender_id,
+                        unix_ms()
+                    );
+                }
+                continue;
+            }
+            dropping.remove(&sender_id);
             println!(
                 "Node {} received message from {}: id={}, type={}, origin={}",
                 recv_id, sender_id, wire.id, wire.message_type, wire.origin
@@ -1685,6 +1753,7 @@ async fn run_node(
             // Strikes are always charged to the sender of the frame just processed, so a
             // ban can only start here.
             if sender_banned && banned.insert(sender_id.clone()) {
+                recv_tcp.shun_peer(&sender_id);
                 println!("Node {} banned {} at_ms={}", recv_id, sender_id, unix_ms());
             } else if !sender_banned && banned.remove(&sender_id) {
                 println!(
@@ -1749,7 +1818,7 @@ async fn run_node(
             // Relay what NodeRuntime queued. Destinations are peer addresses from --dial /
             // --peers; a destination that is a node ID (from the router) has no address yet.
             let copies = copies_to_send(&recv_id, &experiment, started, &recv_fault);
-            relay_outbound(&recv_tcp, outbound, copies);
+            relay_outbound(&recv_tcp, outbound, copies, corrupting_now(&experiment));
         }
     });
 
@@ -1787,7 +1856,7 @@ async fn run_node(
                     unix_ms()
                 );
                 let copies = copies_to_send(&emit_id, &experiment, started, &emit_fault);
-                relay_outbound(&emit_tcp, outbound, copies);
+                relay_outbound(&emit_tcp, outbound, copies, corrupting_now(&experiment));
             }
         });
     }
@@ -1799,8 +1868,11 @@ async fn run_node(
     let cons_node_id = node_id.clone();
     let cons_api = api_state.clone();
     let stats_tcp = tcp.clone();
+    let stats_banned_dropped = banned_frames_dropped.clone();
+    let mut last_paced = 0;
     tokio::spawn(async move {
         let mut last_stats = (0, 0);
+        let mut last_banned_dropped = 0;
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             // Relayed frames that never left this node; anti-entropy is their only recovery.
@@ -1812,6 +1884,28 @@ async fn run_node(
                     .relay_queue_full
                     .load(std::sync::atomic::Ordering::Relaxed),
             );
+            let paced = stats_tcp
+                .paced_frames
+                .load(std::sync::atomic::Ordering::Relaxed);
+            if paced != last_paced {
+                last_paced = paced;
+                println!(
+                    "Node {} frames paced: total={} at_ms={}",
+                    cons_node_id,
+                    paced,
+                    unix_ms()
+                );
+            }
+            let banned_dropped = stats_banned_dropped.load(std::sync::atomic::Ordering::Relaxed);
+            if banned_dropped != last_banned_dropped {
+                last_banned_dropped = banned_dropped;
+                println!(
+                    "Node {} banned-peer frames dropped: total={} at_ms={}",
+                    cons_node_id,
+                    banned_dropped,
+                    unix_ms()
+                );
+            }
             if stats != last_stats {
                 last_stats = stats;
                 println!(
@@ -1907,7 +2001,7 @@ fn add_api_peer(api_state: &api::ApiState, peer: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::sync_reply_address;
+    use super::{corrupt_signature, sync_reply_address};
 
     #[test]
     fn sync_answers_are_not_sent_to_an_unspecified_listen_address() {
@@ -1917,5 +2011,21 @@ mod tests {
             sync_reply_address("10.0.0.3:7001".parse().unwrap()),
             Some("10.0.0.3:7001".to_string())
         );
+    }
+
+    #[test]
+    fn corrupted_message_fails_signature_verification() {
+        use crci_core::identity::Identity;
+        use crci_core::message::{Message, Signal, Visibility};
+        let msg = Message::new(
+            "m1",
+            "a",
+            Signal::new(3, false, false, true, 3, Visibility::Direct),
+            None,
+        );
+        let mut wire = crci_core::runtime::WireMessage::from_message(&msg, &Identity::new("a"));
+        assert!(wire.verify_signature());
+        corrupt_signature(&mut wire);
+        assert!(!wire.verify_signature());
     }
 }
