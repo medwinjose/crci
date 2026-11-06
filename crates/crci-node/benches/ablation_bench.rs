@@ -15,10 +15,16 @@
 //! relay; an older one is dropped as stale, so the relay is never banned.
 //!
 //! State: the window keeps at most W + 1 sequence numbers per origin (`window_entries`).
+//!
+//! Strike threshold k against a paced attacker: one replay every P seconds for six simulated
+//! hours. Recovery forgives `penalty / 0.0005` seconds' worth of score per strike, and the
+//! penalty is `0.45 / k`, so a larger k forgives a strike sooner and tolerates a faster pace
+//! without a ban. Written to `benches/results/ablation_paced.csv`.
 
 use crci_core::identity::Identity;
 use crci_core::message::{Message, Signal, Visibility};
 use crci_core::runtime::{NodeRuntime, WireMessage};
+use crci_core::sybil::SybilGuard;
 use crci_core::transport::SharedInbox;
 use std::collections::HashMap;
 use std::error::Error;
@@ -35,6 +41,9 @@ const WINDOWS: [u64; 6] = [0, 8, 16, 32, 64, 128];
 const DEPTHS: [u64; 8] = [0, 1, 2, 4, 8, 16, 32, 64];
 const LAGS: [u64; 5] = [1, 8, 32, 64, 128];
 const REPLAYS: usize = 5;
+const KS: [u32; 3] = [1, 3, 5];
+const PACES_S: [u64; 12] = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 600];
+const HORIZON_S: u64 = 6 * 3600;
 
 struct Cell {
     sent: u64,
@@ -130,6 +139,26 @@ fn replay(window: u64, lag: u64) -> Result<Cell, Box<dyn Error>> {
     Ok(finish(&mut node, &["relay-a"], 1 + lag))
 }
 
+/// One strike every `pace_s` seconds against a guard with threshold `k`: (banned, strikes made,
+/// second of the ban).
+fn paced(k: u32, pace_s: u64) -> (bool, u64, Option<u64>) {
+    let mut guard = SybilGuard::new(0);
+    guard.use_manual_clock();
+    guard.set_strikes_to_ban(k);
+    let attacker = "attacker".to_string();
+    let (mut t, mut strikes) = (0, 0);
+    while t + pace_s <= HORIZON_S {
+        guard.advance_time(Duration::from_secs(pace_s));
+        t += pace_s;
+        strikes += 1;
+        guard.report_violation(&attacker);
+        if guard.is_banned(&attacker) {
+            return (true, strikes, Some(t));
+        }
+    }
+    (false, strikes, None)
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let mut csv =
         String::from("experiment,window,param,sent,delivered,strikes,banned,window_entries\n");
@@ -192,7 +221,37 @@ fn main() -> Result<(), Box<dyn Error>> {
         writeln!(replay_table)?;
     }
 
+    let mut paced_csv = String::from(
+        "k,pace_s,banned,strikes,banned_at_s
+",
+    );
+    let mut paced_table = String::from("| Seconds between replays |");
+    let mut paced_sep = String::from("| :--- |");
+    for k in KS {
+        write!(paced_table, " k = {k} |")?;
+        paced_sep.push_str(" :--- |");
+    }
+    writeln!(paced_table)?;
+    writeln!(paced_table, "{paced_sep}")?;
+    for pace in PACES_S {
+        write!(paced_table, "| {pace} |")?;
+        for k in KS {
+            let (banned, strikes, at) = paced(k, pace);
+            writeln!(
+                paced_csv,
+                "{k},{pace},{banned},{strikes},{}",
+                at.map(|t| t.to_string()).unwrap_or_default()
+            )?;
+            match at {
+                Some(t) => write!(paced_table, " banned after {strikes} (at {t} s) |")?,
+                None => write!(paced_table, " never ({strikes} in 6 h) |")?,
+            }
+        }
+        writeln!(paced_table)?;
+    }
+
     std::fs::create_dir_all("benches/results")?;
+    std::fs::write("benches/results/ablation_paced.csv", &paced_csv)?;
     std::fs::write("benches/results/ablation_window.csv", &csv)?;
     println!("\n=== Window ablation: share of an honest origin's 200 messages delivered ===");
     println!("{reorder_table}");
@@ -200,6 +259,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         "=== Window ablation: five repeats of a message the origin has since moved L past ==="
     );
     println!("{replay_table}");
-    println!("Wrote benches/results/ablation_window.csv");
+    println!("=== Strike threshold: one replay every P seconds for six simulated hours ===");
+    println!("{paced_table}");
+    println!("Wrote benches/results/ablation_window.csv and ablation_paced.csv");
     Ok(())
 }
