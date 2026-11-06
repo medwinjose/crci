@@ -48,7 +48,8 @@ The procedure is deterministic, so 50 trials show the harness is consistent, not
 
 ## Sliding window vs. reorder depth (preprint Table IV)
 
-- **Harness:** `crates/crci-node/benches/ablation_bench.rs`
+- **Harness (of the recorded run):** `crates/crci-node/benches/ablation_bench.rs`, since rewritten (see
+  [Replay window W](#replay-window-w))
 - **Command (recorded run):** `cargo bench -p crci-node --bench ablation_bench --features paper_v2`
   (the `paper_v2` feature has since been removed; the sliding window is now always on)
 - **Procedure:** for W ∈ {8, 16, 32, 64} and reorder depth D ∈ {1, 2, 4, 8, 16, 32}, the honest peer
@@ -66,13 +67,14 @@ The procedure is deterministic, so 50 trials show the harness is consistent, not
 **Strict-monotonic column:** the preprint's Table IV also shows a "Strict-Monotonic (W = 0)" column with a
 false-positive ban in every row. The only recorded strict-monotonic runs (default build,
 [`ablation_default-build_run1_0235.txt`](evidence/paper-v1-benches-2026-09-25/ablation_default-build_run1_0235.txt)
-and `_run2_0235.txt`) report **survival in every cell**. That column is not supported by any recorded run and
-must be re-measured before submission.
+and `_run2_0235.txt`) report **survival in every cell**. That column is not supported by any recorded run;
+it was re-measured as delivered messages (below).
 
 **Current rule:** the recorded runs above predate the stale-packet rule. Today a packet more than W behind
 is dropped without a strike, so reordering can no longer ban an honest peer at any W, and this harness
 shows survival in every cell by construction. What W now controls is delivery: packets beyond the window
-are lost. Re-measuring the window ablation as delivered packets, not bans, is planned.
+are lost. The window ablation was re-measured as delivered messages, W = 0 to 128 and reorder depth 0 to 64, in
+[Replay window W](#replay-window-w): W = 0 delivers 50 % of an origin's messages at depth 1 and strikes nobody.
 
 ## Paced attack vs. reputation recovery
 
