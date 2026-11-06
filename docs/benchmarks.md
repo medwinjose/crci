@@ -557,6 +557,54 @@ the testbed runs' `summary.json` files, the bench CSVs also in `crates/crci-node
 Criteria were fixed before each data set; two failed as written and stay recorded (delivery of `full` ≥ 0.99
 at every run of the simulation, and every testbed run faithful).
 
+### Link flapping
+
+A share of the overlay links goes down for 5–10 s, comes up for 5–10 s, and repeats (durations uniform, phase
+random per link) while honest traffic runs, so relay connections are aborted and re-dialled throughout. A
+down link silently drops every packet in the affected direction (a `tc` drop filter on the sender's veth, so
+the sender sees no reset), on top of the 40 ms ± 15 ms delay. Conditions: no flapping (`ref`); 20 % of the
+links flapping with both directions down together (`sym20`) or one direction per link (`asym20`); the same
+at 50 % (`sym50`, `asym50`: the mesh partitions for stretches). Window 90 s, links flap from 10 s to 70 s and
+are all up for the last 20 s, 1 message/s in total, 60 s of drain. Honest runs inject no fault, so every ban
+or strike is a false one. Two further conditions add the replaying relay B (fault at 20 s, N = 50): without
+flapping (`atk-ref`) and with 20 % of the links, B's included, flapping (`atk-sym20`). Every condition runs
+on the random geometric graph and the 4-regular mesh at N = 20, 50 and 100 with seeds 1–3 (the seed selects
+the topology, the roles, the traffic and the set of flapping links): 102 runs, all faithful, one node binary
+(`aa619cb0`), 50 824 link transitions applied in all.
+
+Criteria fixed before the data: every run faithful; no ban and no strike on any node in any honest run; every
+message delivered to every node by the end of the drain in every honest run; no frame paced and no relay
+queue overflow in any honest run; slowest delivery ≤ 60 s with no flapping and at 20 %; B banned by all its
+neighbours, the slowest eviction ≤ 30 s after the fault, and no honest node banned in every attack run. **All
+nine hold.**
+
+| condition (90 honest runs: 18 each) | bans | strikes | undelivered pairs | slowest delivery over the 18 runs |
+|---|---|---|---|---|
+| `ref` | 0 | 0 | 0 | 3.0 s |
+| `sym20` | 0 | 0 | 0 | 10.7 s |
+| `asym20` | 0 | 0 | 0 | 9.8 s |
+| `sym50` | 0 | 0 | 0 | 33.9 s |
+| `asym50` | 0 | 0 | 0 | 16.1 s |
+
+Delivery latency (median over messages) stays within 0.1–0.22 s at every condition and size; flapping only
+lengthens the tail, because a message that was in flight on a link when it went down arrives after the link
+returns and the receiver's anti-entropy sync (resumed link, 8 s spacing). Sync requests rise 6 % (20 %
+flapping) and 14 % (50 %) over the no-flapping runs. In the attack runs, with B's links flapping
+all of B's neighbours still ban it in every run, in a median 2.0 s and at most 7.6 s (no flapping: 2.0–2.1 s),
+and no honest node is banned. Frame pacing never engaged, no relay queue overflowed and no frame was
+rate-limited for an honest sender; 15 relay frames in all were counted as failed (frames written into a link
+that dropped them).
+
+#### Limits
+
+Down links drop packets silently (a clean TCP reset or an unreachable host is another failure signature);
+N ≤ 100, 1 message/s, one host; flapping combined with packet loss, with several attackers or with identity
+churn was not measured; the 50 % conditions partition the overlay only for the seconds a given cut lasts.
+
+Evidence: [`evidence/flapping-2026-11-07/`](evidence/flapping-2026-11-07/) (`flapping.csv`, `flapping.md`, the
+102 runs' `summary.json`, `meta.json` with the planned flap events, `flaps.csv` with the applied ones and
+`bans.csv`, `SHA256SUMS`). Reproduce: `make flapping` (about 5 h).
+
 ## In-process simulation (up to 5 000 nodes)
 
 Protocol logic at a scale one host cannot emulate with real processes. **These are simulation results, not

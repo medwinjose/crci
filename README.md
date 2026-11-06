@@ -141,11 +141,11 @@ A Docker Compose demo (two honest nodes, one adversarial node, and the dashboard
 
 CRCI is an active research project. The isolation pipeline runs in the node runtime used by both the
 networked TCP node and the test suite. Done: a network-emulation testbed of real processes (20–500
-nodes, loss, delay, jitter, reordering, attacker variants, invalid-signature floods, defence baselines and ablations) and an in-process simulation of up to 5 000
+nodes, loss, delay, jitter, reordering, attacker variants, invalid-signature floods, link flapping, defence baselines and ablations) and an in-process simulation of up to 5 000
 nodes, cross-checked against the testbed ([results](docs/benchmarks.md#in-process-simulation-up-to-5-000-nodes)).
 Current work, in order:
 
-1. Link flapping and a Byzantine-ratio sweep.
+1. A Byzantine-ratio sweep.
 2. Safety and liveness invariants of the final protocol in TLA+.
 3. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
 

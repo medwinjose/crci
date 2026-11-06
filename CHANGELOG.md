@@ -45,6 +45,12 @@ git history; `git log` is the complete record.
   attacker). Results: [benchmarks.md](docs/benchmarks.md#baselines-and-ablations).
 - `SybilGuard::set_strikes_to_ban(k)`, `NodeRuntime::set_defence_mode` and `DefenceMode` (experiments only).
 
+- Link-flapping experiment (`scripts/testbed/run_flapping.sh`, `flap_table.py`, `make flapping`; testbed options
+  `--flap-fraction`, `--flap-mode`, `--flap-min-s`, `--flap-max-s`, `--flap-start`, `--flap-stop`): a seeded share
+  of the overlay links drops packets for 5–10 s at a time, symmetrically or in one direction, and the analysis
+  reports bans, strikes, sync requests and delivery per run. Results:
+  [benchmarks.md](docs/benchmarks.md#link-flapping).
+
 ### Changed
 - The listener reads at most 200 frames per second from one connection (burst 400) and waits when a sender
   goes faster, so TCP flow control slows it. Before, a neighbour that was never struck (a flood of fresh

@@ -65,8 +65,10 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    unpunished duplicates per 8 s (without reconnecting, 16 per 30 s), only of messages the requester
    lacked when it asked; each is dropped, and each costs one signature check within the neighbour's token
    bucket. Untagged repeats are never excused. A
-   further repeat is a strike. Answers go to the `reply_to` address named in the signed request, so a
-   requester can aim an answer (at most 16 messages) at a third party. Answers are limited per requester
+   further repeat is a strike. Under link flapping (20 % and 50 % of the links down for 5–10 s at a time,
+   90 honest testbed runs) no neighbour was struck or banned, because a resumed link's sync answers are
+   tagged ([benchmarks.md](benchmarks.md#link-flapping)). Answers go to the `reply_to` address named in the signed
+   request, so a requester can aim an answer (at most 16 messages) at a third party. Answers are limited per requester
    (one per 5 s) and in total (a burst of 4, then one per second), which bounds that reflection but does
    not remove it.
 6. **New messages above the rate limit are throttled, not struck.** New messages beyond a neighbour's
@@ -103,7 +105,7 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 9. **A neighbour whose frames are duplicated is struck.** A repeat of a message ID from the same
    connection is a strike, whoever caused it, so an honest neighbour behind a transport that duplicates
    frames loses reputation. The TCP transport numbers its frames and never duplicates one, and no honest
-   strike occurred in any testbed run, but the protocol does not tell a duplicating link from a replaying
+   strike occurred in any testbed run (flapping links included), but the protocol does not tell a duplicating link from a replaying
    peer. Measured with an injected duplicate fault (simulation, N = 100; not a property of any measured
    network): with the shipped three strikes no honest link is banned up to 3 × 10⁻⁵ duplicates per frame, 0.5 %
    are at 10⁻⁴, 11 % at 3 × 10⁻⁴ and 66 % at 10⁻³ (five strikes: 0.03 %, 1 % and 42 %; one strike: 40 %, 71 % and
