@@ -7,6 +7,7 @@
 #   make netem OUT=/tmp/x     # the loss / jitter / reordering runs only (hours)
 #   make attacks OUT=/tmp/x   # attacker and eventual-delivery runs
 #   make flood OUT=/tmp/x     # invalid-signature flood runs (about 1 h)
+#   make flapping OUT=/tmp/x  # links going down and up every 5-10 s, honest and with a replayer (102 runs, about 5 h)
 #   make baselines OUT=/tmp/x # the three defence modes against replay and flood (63 runs, about 3 h)
 #   make ablation OUT=/tmp/x  # strike threshold and defence modes in the simulation, window ablation bench (about 1 h)
 #   make tables OUT=/tmp/x    # regenerate the tables from runs already in OUT*
@@ -18,7 +19,7 @@ BIN := target/release/crci-node
 TB := scripts/testbed
 SIM := target/release/examples/mesh_sim
 
-.PHONY: build testbed netem attacks flood baselines ablation tables smoke sim reproduce
+.PHONY: build testbed netem attacks flood flapping baselines ablation tables smoke sim reproduce
 
 build:
 	cargo build --release -p crci-node --bin crci-node
@@ -35,6 +36,9 @@ attacks: build
 
 flood: build
 	$(SUDO) $(TB)/run_flood.sh $(OUT)-flood $(BIN)
+
+flapping: build
+	$(SUDO) $(TB)/run_flapping.sh $(OUT)-flapping $(BIN)
 
 baselines: build
 	$(SUDO) $(TB)/run_baselines.sh $(OUT)-baselines $(BIN)
@@ -65,4 +69,4 @@ sim:
 	cp $(OUT)-sim-timing/results.csv $(OUT)-sim/timing.csv
 	python3 scripts/sim/sim_report.py $(OUT)-sim
 
-reproduce: testbed netem attacks flood baselines tables sim ablation
+reproduce: testbed netem attacks flood flapping baselines tables sim ablation

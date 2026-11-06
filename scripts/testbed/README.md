@@ -29,6 +29,8 @@ Linux only, run as root. Tested in WSL2 (Ubuntu 26.04, kernel 6.6, iproute2 6.19
 | `run_attacks.sh OUT [BIN] [SEEDS] [OLD_BIN]` | The attacker set on rgg N = 50: an over-budget replayer (B empties its budget with fresh messages from 10 s before the fault, then sends every frame 8 times; refill 5 and 20, and an older binary for comparison if given), a fresh-message flood (B originates 40 messages/s and never repeats a frame), and the 20 % loss condition with the nodes kept running 60 s after the last message (`--drain 60`). Resumable. |
 | `run_flood.sh OUT [BIN] [SEEDS]` | The invalid-signature flood on rgg N = 50: B silent, B sending 40 valid messages/s (the load-matched reference), B forging every signature at 1, 8 and 64 copies per frame (40, 320, 2 560 forged frames/s per link), B flooding 1 000 valid fresh messages/s, and one 480 s run in which B forges for 10 s and then signs correctly (readmission). Resumable. |
 | `flood_table.py OUT [BEFORE_DIR]` | `flood.csv`, `flood.md` (means over seeds and the pass/fail criteria) and `figures/flood-cost.svg`; with a directory of runs from an earlier binary, `figures/flood-cpu.svg` compares the CPU of B's neighbours. |
+| `run_flapping.sh OUT [BIN] [SEEDS] [SIZES]` | Link flapping: 20 % or 50 % of the overlay links go down and up again every 5-10 s (both directions together, or one direction per link) on rgg and mesh at N = 20/50/100, honest (reference, sym20, asym20, sym50, asym50) and, at N = 50, with the replaying relay B (atk-ref, atk-sym20); 60 s drain. Resumable. |
+| `flap_table.py OUT` | `flapping.csv`, `flapping.md` (means per condition and the pass/fail criteria). |
 | `run_baselines.sh OUT [BIN] [SEEDS]` | The three defence modes (`crci-node --defence full`, `static-bucket`, `vanilla`) on rgg N = 50 against no attack, a replayer sending every frame 2, 8 and 32 times, and a fresh-message flood of 40, 100 and 200 messages/s (63 runs). Resumable. |
 | `baselines_table.py OUT` | `baselines.csv`, `baselines.md` (means over seeds and the pass/fail criteria) and four-metric line charts in `figures/` (delivery, goodput and CPU against attack intensity). `svgplot.py` draws them. |
 
@@ -64,6 +66,13 @@ Each run uses a 60 s measurement window starting at T0, after every node is list
   so B signs correctly again (readmission). `run_flood.sh` runs the set (B silent, B sending valid messages
   at the same rate, 1/8/64 copies, one 480 s readmission run) and `flood_table.py` writes `flood.csv`,
   `flood.md` and the figures. The analysis also records process CPU seconds per role (`/proc/<pid>/stat`).
+- **Link flapping:** `--flap-fraction F` makes a seeded share F of the overlay links go down and up again
+  (`--flap-mode symmetric|asymmetric`, each state lasting a uniform time in `--flap-min-s`..`--flap-max-s`,
+  from `--flap-start` to `--flap-stop`, after which every link is up). A link is down while a `tc` u32 drop
+  filter on the sender's veth discards its frames to one neighbour: silent loss, so TCP retransmits and gives
+  up. Every toggle is logged to `flaps.csv`; the analysis counts every ban and strike on any node and the
+  delivery to every node (`flap` in `summary.json`). `run_flapping.sh` runs the set and `flap_table.py`
+  writes `flapping.csv` and `flapping.md`.
 - **Roles:** B is a node whose removal keeps the graph connected, at least two hops from S, chosen (with S)
   to maximise the downstream set D: the nodes all of whose shortest paths from S pass through B. After B is
   evicted, S's messages must reach D over longer alternate paths.

@@ -41,6 +41,7 @@ ORIGIN_DROP = re.compile(r"\[(n\d+)\] ORIGIN BUDGET DROP: '[^']+' from origin '(
 RTT = re.compile(r"time=([\d.]+) ms")
 PACED = re.compile(r"Node (n\d+) frames paced: total=(\d+)")
 BANNED_DROPPED = re.compile(r"Node (n\d+) banned-peer frames dropped: total=(\d+)")
+SYNC_REQUESTED = re.compile(r"Node (n\d+) requested sync from ")
 WARMUP_MS = 5000
 
 
@@ -151,6 +152,8 @@ def main():
                     rate_drops["from_byzantine" if m[2] == byz else "from_honest"] += 1
                 elif m := ORIGIN_DROP.search(line):
                     origin_drops["byzantine_origin" if m[2] == byz else "honest_origin"] += 1
+                if SYNC_REQUESTED.search(line):
+                    counters["sync_requests"] += 1
                 if m := RECEIVED.search(line):
                     counters["frames_received"] += 1
                     # The overlay is enforced by configuration only (one shared L2 segment):
@@ -293,6 +296,49 @@ def main():
     }
     fidelity["pass"] = all(fidelity.values())
 
+    # Link flapping (testbed.py --flap-fraction): the judgement of a flapping run counts every ban
+    # and every strike on any node, since without a fault no node deserves either, and delivery to
+    # every node from every origin, since links are up again for the last 20 s of the window and the drain.
+    flap = None
+    if cfg.get("flap_fraction") or cfg.get("no_fault"):
+        applied = 0
+        try:
+            with open(f"{out}/flaps.csv") as f:
+                applied = max(0, sum(1 for _ in f) - 1)
+        except FileNotFoundError:
+            pass
+        everyone = [name(i) for i in range(n)]
+        ratios, missing = [], 0
+        for mid, (origin, t_emit) in originated.items():
+            if not (t0 - 1000 <= t_emit <= end):
+                continue
+            got = accepted.get(mid, {})
+            receivers = [x for x in everyone if x != origin]
+            delivered = sum(1 for x in receivers if x in got)
+            ratios.append(delivered / len(receivers))
+            missing += len(receivers) - delivered
+        flap = {
+            "events_planned": meta.get("flap_events", 0),
+            "events_applied": applied,
+            "bans_total": len(bans),
+            "bans": sorted({f"{o}->{x}" for o, x, _ in bans})[:20],
+            "strikes_total": counters["MALICIOUS REPLAY"] + counters["REPLAY dropped"]
+            + counters["INVALID SIGNATURE"],
+            "sync_requests": counters["sync_requests"],
+            "messages": len(ratios),
+            "delivery_all_nodes": stats(ratios),
+            "messages_fully_delivered": sum(1 for r in ratios if r == 1.0),
+            "undelivered_pairs": missing,
+            "latency_all_ms": stats([l for _, _, _, _, l, _, _, _ in rows]),
+        }
+        fidelity_extra = {"flap_events_all_applied": applied == meta.get("flap_events", 0)}
+    else:
+        fidelity_extra = {}
+
+    if fidelity_extra:
+        fidelity.update(fidelity_extra)
+        fidelity["pass"] = all(v for k, v in fidelity.items() if k != "pass")
+
     summary = {
         "run": out,
         "topology": {k: topo[k] for k in ("kind", "seed", "metrics")},
@@ -347,6 +393,7 @@ def main():
         "ping_rtt_ms": rtt,
         "configured_rtt_ms": {"median": exp_med, "p95": exp_p95},
         "fidelity": fidelity,
+        "flap": flap,
     }
     with open(f"{out}/summary.json", "w") as f:
         json.dump(summary, f, indent=1)

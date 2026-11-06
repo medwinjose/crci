@@ -12,7 +12,13 @@ Traffic during the measurement window (WINDOW seconds from T0):
     round-robin over a seeded permutation;
   - the relay B relays honestly until T0 + FAULT_AT, then sends every gossip
     message REPLAY_COPIES times (default 2: one repeat; crci-node
-    --replay-after-ms, --replay-copies), so its neighbours strike it.
+    --replay-after-ms, --replay-copies), so its neighbours strike it;
+  - with --flap-fraction F, a seeded F share of the overlay links goes down and up again, each
+    state lasting a uniform time in [--flap-min-s, --flap-max-s], from --flap-start to
+    --flap-stop (every link is up again after that). A link is down when a drop filter on the
+    sender's veth discards its frames to one neighbour (silent loss, as a dead radio link;
+    the kernel's TCP retransmits and gives up). Mode "symmetric" drops both directions,
+    "asymmetric" one direction chosen per link. Every toggle is written to flaps.csv.
 
 Recorded in OUT: logs/n<i>.log (node stdout), host.csv (CPU, memory, swap
 every second), ping/<a>-<b>.txt (ICMP RTT on sampled overlay links during
@@ -107,6 +113,51 @@ def setup_network(n, netem, nbrs):
     batch(["bridge"], [f"fdb replace {mac_of(i)} dev vh{i} master static\n" for i in range(n)])
 
 
+def plan_flaps(edges, fraction, mode, seed, start, stop, lo, hi):
+    """Toggle events [(t_s from T0, "down"|"up", src, dst)] for directed links (src's frames to dst).
+    A chosen link starts up, goes down after a random phase in [0, hi], then alternates down and up
+    with durations uniform in [lo, hi]; every link is up again at `stop`."""
+    rng = random.Random(seed + 11)
+    ordered = sorted(tuple(sorted(e)) for e in edges)
+    chosen = rng.sample(ordered, round(len(ordered) * fraction))
+    events = []
+    for a, b in chosen:
+        directed = [(a, b), (b, a)] if mode == "symmetric" else [rng.choice([(a, b), (b, a)])]
+        t = start + rng.uniform(0, hi)
+        down = False
+        while t < stop:
+            events += [(t, "up" if down else "down", s_, d_) for s_, d_ in directed]
+            down = not down
+            t += rng.uniform(lo, hi)
+        if down:
+            events += [(stop, "up", s_, d_) for s_, d_ in directed]
+    return sorted(events)
+
+
+def flapper(events, t0, path, stop):
+    """Apply each toggle at T0 + t: one u32 drop filter per directed link on the sender's veth
+    ingress (the host side of its egress), priority = the link's index."""
+    index = {}
+    for _, _, s_, d_ in events:
+        index.setdefault((s_, d_), len(index) + 1)
+    for s_ in {s_ for s_, _ in index}:
+        sh("tc", "qdisc", "add", "dev", f"vh{s_}", "ingress")
+    with open(path, "w") as out:
+        out.write("t_ms,op,src,dst\n")
+        for t, op, s_, d_ in events:
+            wait = t0 + t - time.time()
+            if wait > 0 and stop.wait(wait):
+                return
+            dev, prio = f"vh{s_}", str(index[(s_, d_)])
+            if op == "down":
+                sh("tc", "filter", "add", "dev", dev, "parent", "ffff:", "protocol", "ip", "prio", prio,
+                   "u32", "match", "ip", "dst", f"{ip_of(d_)}/32", "action", "drop")
+            else:
+                sh("tc", "filter", "del", "dev", dev, "parent", "ffff:", "protocol", "ip", "prio", prio)
+            out.write(f"{int(time.time() * 1000)},{op},{s_},{d_}\n")
+            out.flush()
+
+
 def softnet_drops():
     with open("/proc/net/softnet_stat") as f:
         return sum(int(line.split()[1], 16) for line in f)
@@ -197,6 +248,14 @@ def main():
                          "its neighbours' budget for it is already empty when it starts replaying")
     ap.add_argument("--refill", type=float, default=None,
                     help="per-neighbour budget refill (messages/s); default: the protocol's")
+    ap.add_argument("--flap-fraction", type=float, default=0,
+                    help="share of the overlay links that flap (down and up again)")
+    ap.add_argument("--flap-mode", choices=["symmetric", "asymmetric"], default="symmetric")
+    ap.add_argument("--flap-min-s", type=float, default=5)
+    ap.add_argument("--flap-max-s", type=float, default=10)
+    ap.add_argument("--flap-start", type=float, default=10, help="seconds after T0")
+    ap.add_argument("--flap-stop", type=float, default=None,
+                    help="seconds after T0 when every link is up again (default: window - 20)")
     ap.add_argument("--settle", type=int, default=20)
     ap.add_argument("--drain", type=int, default=5)
     ap.add_argument("--pings", type=int, default=10)
@@ -281,6 +340,15 @@ def main():
         stop.set()
         raise SystemExit("launch overran the settling period; increase --settle")
 
+    flap_events = []
+    flap_thread = None
+    if args.flap_fraction:
+        flap_stop = args.flap_stop if args.flap_stop is not None else args.window - 20
+        flap_events = plan_flaps(topo["edges"], args.flap_fraction, args.flap_mode, topo["seed"],
+                                 args.flap_start, flap_stop, args.flap_min_s, args.flap_max_s)
+        flap_thread = threading.Thread(target=flapper, args=(flap_events, t0, f"{args.out}/flaps.csv", stop))
+        flap_thread.start()
+
     # Every node must be listening before T0.
     while time.time() < t0:
         time.sleep(0.5)
@@ -343,6 +411,8 @@ def main():
         p.wait()
     stop.set()
     host_thread.join()
+    if flap_thread:
+        flap_thread.join()
     cleanup()
     with open(BACKLOG, "w") as f:
         f.write(old_backlog)
@@ -352,6 +422,7 @@ def main():
         "config": {k: getattr(args, k) for k in (
             "delay_ms", "jitter_ms", "loss", "reorder", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies", "corrupt_signatures", "corrupt_for",
             "defence", "strikes_to_ban", "replay_window",
+            "flap_fraction", "flap_mode", "flap_min_s", "flap_max_s", "flap_start", "flap_stop",
             "byz_rate", "refill", "settle", "drain", "pings", "worker_threads", "backlog")},
         "t0_ms": int(t0 * 1000),
         "fault_ms": None if args.no_fault else int((t0 + args.fault_at) * 1000),
@@ -360,6 +431,7 @@ def main():
         "launch_s": round(launch_s, 1),
         "listening_at_t0": listening,
         "alive_at_end": alive,
+        "flap_events": len(flap_events),
         "ping_edges": sample,
         "plan": {str(i): plan[i] for i in range(n)},
         "addresses": {str(i): f"{ip_of(i)}:{PORT}" for i in range(n)},
