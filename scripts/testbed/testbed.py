@@ -248,6 +248,9 @@ def main():
                          "its neighbours' budget for it is already empty when it starts replaying")
     ap.add_argument("--refill", type=float, default=None,
                     help="per-neighbour budget refill (messages/s); default: the protocol's")
+    ap.add_argument("--attackers-pct", type=int, default=0,
+                    help="this percentage of the nodes (seeded, never the source) replay from the fault "
+                         "on, instead of the topology's single Byzantine node; they do not collude")
     ap.add_argument("--flap-fraction", type=float, default=0,
                     help="share of the overlay links that flap (down and up again)")
     ap.add_argument("--flap-mode", choices=["symmetric", "asymmetric"], default="symmetric")
@@ -268,6 +271,17 @@ def main():
         topo = json.load(f)
     n = topo["metrics"]["nodes"]
     roles = topo["roles"]
+    if args.attackers_pct:
+        # Same draw as scripts/sim/run_sim.py (scenario_of), so the simulation can be
+        # compared with this run node for node.
+        rng = random.Random(topo["seed"] * 1000 + args.attackers_pct)
+        source = rng.randrange(n)
+        others = [i for i in range(n) if i != source]
+        attackers = sorted(rng.sample(others, round(n * args.attackers_pct / 100)))
+        roles = {"source": source, "byzantine": attackers[0], "attackers": attackers,
+                 "byzantine_degree": 0, "downstream": []}
+        topo["roles"] = roles
+    attacker_set = set(roles.get("attackers", [roles["byzantine"]]))
     nbrs = {i: [] for i in range(n)}
     for a, b in topo["edges"]:
         nbrs[a].append(b)
@@ -316,7 +330,7 @@ def main():
         if count:
             cmd += ["--emit-count", str(count), "--emit-interval-ms", str(interval),
                     "--emit-delay-ms", str(offset)]
-        if i == roles["byzantine"] and not args.no_fault:
+        if i in attacker_set and not args.no_fault:
             cmd += ["--replay-after-ms", str(args.fault_at * 1000),
                     "--replay-copies", str(args.replay_copies)]
             if args.corrupt_signatures:
@@ -423,7 +437,7 @@ def main():
             "delay_ms", "jitter_ms", "loss", "reorder", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies", "corrupt_signatures", "corrupt_for",
             "defence", "strikes_to_ban", "replay_window",
             "flap_fraction", "flap_mode", "flap_min_s", "flap_max_s", "flap_start", "flap_stop",
-            "byz_rate", "refill", "settle", "drain", "pings", "worker_threads", "backlog")},
+            "byz_rate", "attackers_pct", "refill", "settle", "drain", "pings", "worker_threads", "backlog")},
         "t0_ms": int(t0 * 1000),
         "fault_ms": None if args.no_fault else int((t0 + args.fault_at) * 1000),
         "end_ms": int((t0 + args.window) * 1000),

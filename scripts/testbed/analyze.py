@@ -170,7 +170,9 @@ def main():
     honest = [name(i) for i in range(n) if name(i) != byz]
     byz_neighbours = sorted(adj[byz])
     byz_bans = {obs: t for obs, banned, t in bans if banned == byz}
-    false_evictions = [(o, b, t) for o, b, t in bans if b != byz]
+    # With several attackers (--attackers-pct) only the first is `byz`; a ban of any attacker is not false.
+    attacker_names = {name(a) for a in roles.get("attackers", [roles["byzantine"]])} | {byz}
+    false_evictions = [(o, b, t) for o, b, t in bans if b not in attacker_names]
     all_banned = len(byz_bans) == len(byz_neighbours) and byz_bans
     post_from = max(byz_bans.values()) if all_banned else None
 
@@ -335,6 +337,74 @@ def main():
     else:
         fidelity_extra = {}
 
+    # Several attackers (testbed.py --attackers-pct): every attacker replays from the fault on and
+    # none colludes. Bans are judged between honest observers only (an attacker's opinion of any node
+    # is not evidence), delivery is judged between honest nodes, and the honest nodes' graph without
+    # the attackers says how much of the mesh the quarantine leaves connected.
+    ratio = None
+    if cfg.get("attackers_pct"):
+        bad = {name(a) for a in roles["attackers"]}
+        good = [name(i) for i in range(n) if name(i) not in bad]
+        good_set = set(good)
+        pairs = {(o, b): t for o, b, t in bans if o in good_set and b in bad}
+        expected = {(o, a) for a in bad for o in adj[a] if o in good_set}
+        false_pairs = {(o, b) for o, b, _ in bans if o in good_set and b in good_set}
+        # Components of the honest nodes' graph (attackers removed).
+        gadj = {u: adj[u] & good_set for u in good}
+        comp, comps = {}, []
+        for v in good:
+            if v in comp:
+                continue
+            members = list(bfs(gadj, v))
+            for x in members:
+                comp[x] = len(comps)
+            comps.append(members)
+        times = [pairs[p] for p in expected if p in pairs]
+        done = max(times) if expected and len(times) == len(expected) else None
+        by_period = defaultdict(list)       # delivery to every honest node
+        by_period_comp = defaultdict(list)  # delivery inside the origin's honest component
+        lat_by_period = defaultdict(list)
+        for mid, (origin, t_emit) in originated.items():
+            if origin not in good_set or not (t0 - 1000 <= t_emit <= end):
+                continue
+            if t_emit < t0 + WARMUP_MS:
+                continue
+            if fault_ms is None or t_emit < fault_ms:
+                p = "pre"
+            elif done is not None and t_emit >= done:
+                p = "post"
+            else:
+                p = "during"
+            got = accepted.get(mid, {})
+            recv = [x for x in good if x != origin]
+            if not recv:
+                continue
+            by_period[p].append(sum(1 for x in recv if x in got) / len(recv))
+            inside = [x for x in recv if comp[x] == comp[origin]]
+            if inside:
+                by_period_comp[p].append(sum(1 for x in inside if x in got) / len(inside))
+            for x in recv:
+                if x in got:
+                    lat_by_period[p].append(got[x][0] - t_emit)
+        ratio = {
+            "attackers": len(bad),
+            "honest": len(good),
+            "attacker_honest_neighbour_pairs": len(expected),
+            "pairs_banned": len(expected & set(pairs)),
+            "coverage": round(len(expected & set(pairs)) / len(expected), 4) if expected else None,
+            "attackers_without_honest_neighbour": sum(1 for a in bad if not (adj[a] & good_set)),
+            "attackers_fully_quarantined": sum(
+                1 for a in bad if (adj[a] & good_set) and all((o, a) in pairs for o in adj[a] & good_set)),
+            "honest_false_evictions": len(false_pairs),
+            "eviction_latency_ms": stats([t - fault_ms for t in times]) if fault_ms and times else None,
+            "quarantine_done_ms_since_fault": (done - fault_ms) if done and fault_ms else None,
+            "components": len(comps),
+            "largest_component_fraction": round(max(len(c) for c in comps) / len(good), 4),
+            "delivery_all_honest": {p: stats(v) for p, v in by_period.items()},
+            "delivery_in_component": {p: stats(v) for p, v in by_period_comp.items()},
+            "latency_ms": {p: stats(v) for p, v in lat_by_period.items()},
+        }
+
     if fidelity_extra:
         fidelity.update(fidelity_extra)
         fidelity["pass"] = all(v for k, v in fidelity.items() if k != "pass")
@@ -394,6 +464,7 @@ def main():
         "configured_rtt_ms": {"median": exp_med, "p95": exp_p95},
         "fidelity": fidelity,
         "flap": flap,
+        "ratio": ratio,
     }
     with open(f"{out}/summary.json", "w") as f:
         json.dump(summary, f, indent=1)

@@ -31,6 +31,8 @@ Linux only, run as root. Tested in WSL2 (Ubuntu 26.04, kernel 6.6, iproute2 6.19
 | `flood_table.py OUT [BEFORE_DIR]` | `flood.csv`, `flood.md` (means over seeds and the pass/fail criteria) and `figures/flood-cost.svg`; with a directory of runs from an earlier binary, `figures/flood-cpu.svg` compares the CPU of B's neighbours. |
 | `run_flapping.sh OUT [BIN] [SEEDS] [SIZES]` | Link flapping: 20 % or 50 % of the overlay links go down and up again every 5-10 s (both directions together, or one direction per link) on rgg and mesh at N = 20/50/100, honest (reference, sym20, asym20, sym50, asym50) and, at N = 50, with the replaying relay B (atk-ref, atk-sym20); 60 s drain. Resumable. |
 | `flap_table.py OUT` | `flapping.csv`, `flapping.md` (means per condition and the pass/fail criteria). |
+| `run_ratio.sh OUT [BIN] [SEEDS] [SIZES]` | The share-of-attackers set: 0 (reference), 10, 20, 30 and 45 % of the nodes replaying, on rgg and mesh, delay 40 ms ± 15 ms (90 runs at the defaults). |
+| `ratio_table.py OUT` | `ratio.csv`, `ratio.md` (means per condition and the pass/fail criteria) and line charts under `OUT/figures/`. |
 | `run_baselines.sh OUT [BIN] [SEEDS]` | The three defence modes (`crci-node --defence full`, `static-bucket`, `vanilla`) on rgg N = 50 against no attack, a replayer sending every frame 2, 8 and 32 times, and a fresh-message flood of 40, 100 and 200 messages/s (63 runs). Resumable. |
 | `baselines_table.py OUT` | `baselines.csv`, `baselines.md` (means over seeds and the pass/fail criteria) and four-metric line charts in `figures/` (delivery, goodput and CPU against attack intensity). `svgplot.py` draws them. |
 
@@ -73,6 +75,15 @@ Each run uses a 60 s measurement window starting at T0, after every node is list
   up. Every toggle is logged to `flaps.csv`; the analysis counts every ban and strike on any node and the
   delivery to every node (`flap` in `summary.json`). `run_flapping.sh` runs the set and `flap_table.py`
   writes `flapping.csv` and `flapping.md`.
+- **Share of replaying nodes:** `--attackers-pct P` makes P % of the nodes replay (every frame twice, from the
+  fault on) instead of the topology's single relay B. They are drawn from the topology seed, never include the
+  source, do not originate and do not collude; the draw is the one `scripts/sim/run_sim.py` makes, so the
+  simulation's scale group has the same attackers. The analysis (`ratio` in `summary.json`) judges bans between
+  honest observers only, counts the honest nodes' components with the attackers removed, and splits delivery
+  into the origin's component and all honest nodes. `run_ratio.sh` runs f = 0 (reference), 10, 20, 30 and 45 %;
+  `ratio_table.py` writes `ratio.csv`, `ratio.md`, the criteria and the figures. The top-level fields of
+  `summary.json` that name B (delivery, latency, downstream) follow the first attacker only: use `ratio`.
+  `scripts/sim/partition_prob.py` adds the graph-only partition probability over 200 instances.
 - **Roles:** B is a node whose removal keeps the graph connected, at least two hops from S, chosen (with S)
   to maximise the downstream set D: the nodes all of whose shortest paths from S pass through B. After B is
   evicted, S's messages must reach D over longer alternate paths.
