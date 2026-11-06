@@ -15,7 +15,7 @@ import re
 import sys
 from collections import defaultdict
 
-VERIFY_US = 37.0  # Ed25519 verify, Task 11 (i5-12450HX)
+VERIFY_US = 37.0  # Ed25519 verify on the i5-12450HX (see docs/benchmarks.md, Ed25519 cost)
 
 
 def readmission(out):
@@ -107,7 +107,7 @@ def mean(v):
 
 
 def criteria(rows):
-    """Fixed before the first run (EVIDENCE.md, Task 15)."""
+    """Pass/fail criteria, each fixed before the data it judges (docs/benchmarks.md, invalid-signature flood)."""
     flood = [r for r in rows if r["forged_frames_per_s_per_link"]]
     ref = {r["seed"]: r for r in rows if r["kind"] == "reference"}
     matched = {r["seed"]: r for r in rows if r["load_matched"]}
@@ -132,7 +132,7 @@ def criteria(rows):
                 all(r["mem_used_mib_max"] <= 1.10 * ref[r["seed"]]["mem_used_mib_max"]
                     for r in flood if r["seed"] in ref)))
     # First version compared with the quiet reference (B silent), which carries none of B's 40
-    # messages/s; it failed for that reason (EVIDENCE.md, Task 15). The load-matched reference
+    # messages/s; it failed for that reason when first run. The load-matched reference
     # sends the same messages with valid signatures.
     out.append(("total log size within 2x of the load-matched reference of the same seed",
                 all(r["logs_mib"] <= 2 * matched[r["seed"]]["logs_mib"]
