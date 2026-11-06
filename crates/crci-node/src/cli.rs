@@ -91,6 +91,19 @@ pub struct Cli {
     #[arg(long)]
     pub corrupt_for_ms: Option<u64>,
 
+    /// Experiments: which defences the node applies (full, static-bucket, vanilla); the
+    /// baselines of the evaluation. Default: full, the protocol as shipped
+    #[arg(long, default_value = "full")]
+    pub defence: String,
+
+    /// Experiments: strikes that ban a peer (default 3)
+    #[arg(long)]
+    pub strikes_to_ban: Option<u32>,
+
+    /// Experiments: replay window W in sequence numbers (default 64; 0 = strict-monotonic)
+    #[arg(long)]
+    pub replay_window: Option<u64>,
+
     /// Experiments: messages per second added back to each neighbour's budget (default:
     /// the protocol's rate)
     #[arg(long)]

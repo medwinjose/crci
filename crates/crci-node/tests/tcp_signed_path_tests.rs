@@ -607,6 +607,41 @@ fn a_banned_forger_is_disconnected_and_costs_nothing() {
     );
 }
 
+/// The evaluation's baselines run in the real node: a `--defence vanilla` receiver counts a
+/// replaying peer's repeats but never bans it, and `--strikes-to-ban 1` bans at the first one.
+#[test]
+fn defence_flags_change_what_a_receiver_does_with_a_replayer() {
+    let full = start_node("tcp-def-full", &[]);
+    run_adversary(&full.addr, "byz-full", "replay");
+    let full_log = full.finish();
+    assert_eq!(count(&full_log, " banned byz-full#"), 1, "{full_log}");
+
+    let vanilla = start_node("tcp-def-vanilla", &["--defence", "vanilla"]);
+    run_adversary(&vanilla.addr, "byz-vanilla", "replay");
+    let vanilla_log = vanilla.finish();
+    assert!(
+        count(&vanilla_log, "MALICIOUS REPLAY from 'byz-vanilla#") > 3,
+        "the strikes are still counted:
+{vanilla_log}"
+    );
+    assert_eq!(
+        count(&vanilla_log, " banned byz-vanilla#"),
+        0,
+        "{vanilla_log}"
+    );
+
+    let strict = start_node("tcp-def-k1", &["--strikes-to-ban", "1"]);
+    run_adversary(&strict.addr, "byz-k1", "replay");
+    let strict_log = strict.finish();
+    assert_eq!(
+        count(&strict_log, "MALICIOUS REPLAY from 'byz-k1#"),
+        1,
+        "k = 1 bans at the first strike:
+{strict_log}"
+    );
+    assert_eq!(count(&strict_log, " banned byz-k1#"), 1, "{strict_log}");
+}
+
 /// A TCP proxy in front of one listener. While `discard` is set it swallows what the dialer
 /// sends (the dialer's TCP sees it acknowledged, as with frames left in an aborted
 /// connection); `cut` closes every proxied connection and resumes forwarding.

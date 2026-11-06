@@ -360,6 +360,8 @@ pub struct NodeRuntime {
     /// shortcut: one entry per authenticated origin, like `known_keys`; bounded with the rest
     /// of the per-node state when that is capped.
     pub origin_budgets: HashMap<String, crate::sybil::TokenBucket>,
+    /// When false, an origin may have any number of new messages accepted (baselines).
+    pub origin_budget_enabled: bool,
     /// Messages dropped because their origin was over its budget.
     pub origin_rate_limited_events: u64,
     pub metrics: CrciMetrics,
@@ -377,7 +379,43 @@ pub struct NodeRuntime {
     pub last_announced_head: Option<([u8; 32], u64)>,
 }
 
+/// Which defences a node applies. `Full` is the protocol as shipped; the others are the baselines
+/// of the evaluation. Signature checks and the same-ID dedupe stay in every mode: they are
+/// authentication and gossip's seen-cache, not reputation. Strikes are counted in every mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum DefenceMode {
+    /// Per-sender token bucket, per-origin budget, strikes and bans.
+    #[default]
+    Full,
+    /// Per-sender token bucket only: no ban, no per-origin budget.
+    StaticBucket,
+    /// No admission limit, no ban, no per-origin budget.
+    Vanilla,
+}
+
+impl std::str::FromStr for DefenceMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, String> {
+        match s {
+            "full" => Ok(Self::Full),
+            "static-bucket" => Ok(Self::StaticBucket),
+            "vanilla" => Ok(Self::Vanilla),
+            other => Err(format!(
+                "unknown defence mode '{other}' (full, static-bucket, vanilla)"
+            )),
+        }
+    }
+}
+
 impl NodeRuntime {
+    /// Switch the defences (experiments only): see `DefenceMode`. Call before the first message.
+    pub fn set_defence_mode(&mut self, mode: DefenceMode) {
+        self.sybil_guard.bans_enabled = mode == DefenceMode::Full;
+        self.sybil_guard.rate_limit_enabled = mode != DefenceMode::Vanilla;
+        self.origin_budget_enabled = mode == DefenceMode::Full;
+    }
+
     pub fn new(id: &str, zone: &str, inbox: SharedInbox) -> NodeRuntime {
         let transport = SimTransport::new(id, inbox.clone());
         let identity = Identity::new(id);
@@ -415,6 +453,7 @@ impl NodeRuntime {
             sybil_rate_limited_events: 0,
             sybil_pow_failed_events: 0,
             origin_budgets: HashMap::new(),
+            origin_budget_enabled: true,
             origin_rate_limited_events: 0,
             metrics: CrciMetrics::new(),
             recent_messages: HashMap::new(),
@@ -1027,7 +1066,7 @@ impl NodeRuntime {
                     refill_rate: crate::sybil::ORIGIN_REFILL_PER_SEC,
                     last_refill: now,
                 });
-            if !origin_budget.try_consume_at(now) {
+            if !origin_budget.try_consume_at(now) && self.origin_budget_enabled {
                 self.seen_messages.remove(&wire.id);
                 self.origin_rate_limited_events += 1;
                 println!(

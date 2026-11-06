@@ -3,7 +3,7 @@
 #[path = "../examples/mesh_sim/harness.rs"]
 mod harness;
 
-use harness::{run, Scenario};
+use harness::{run, Config, Scenario};
 
 /// Ring with chords on `n` nodes: every node has degree 4, so no single removal disconnects it.
 fn ring_edges(n: usize) -> Vec<(usize, usize)> {
@@ -34,6 +34,7 @@ fn scenario(
         drain_ms: 5_000,
         replay_copies: copies,
         tick_ms: 10,
+        config: Config::default(),
     }
 }
 
@@ -101,4 +102,95 @@ fn same_scenario_same_outcome() {
     let b = run(&scenario(30, ring_edges(30), vec![3, 11], 2));
     assert_eq!(a, b);
     assert!(a.frames > 0);
+}
+
+fn with_config(mut s: Scenario, config: Config) -> Scenario {
+    s.config = config;
+    s
+}
+
+#[test]
+fn the_baselines_strike_a_replayer_but_never_ban_it() {
+    for defence in ["static-bucket", "vanilla"] {
+        let config = Config {
+            defence: defence.to_string(),
+            ..Config::default()
+        };
+        let out = run(&with_config(
+            scenario(20, ring_edges(20), vec![5], 2),
+            config,
+        ));
+        assert_eq!(out.coverage_banned, 0, "{defence}");
+        assert!(
+            out.attacker_strikes > 4,
+            "{defence}: strikes are still counted"
+        );
+        // Nobody is banned, so the attacker's frames keep being admitted.
+        assert!(out.attacker_frames_admitted > 100, "{defence}");
+        assert_eq!(out.delivery_pre, Some(1.0), "{defence}");
+    }
+}
+
+#[test]
+fn a_lower_strike_threshold_bans_sooner_and_admits_fewer_attacker_frames() {
+    let run_k = |k: u32| {
+        run(&with_config(
+            scenario(20, ring_edges(20), vec![5], 2),
+            Config {
+                strikes_to_ban: Some(k),
+                ..Config::default()
+            },
+        ))
+    };
+    let (k1, k3, k5) = (run_k(1), run_k(3), run_k(5));
+    for out in [&k1, &k3, &k5] {
+        assert_eq!(
+            out.coverage_banned, out.coverage_links,
+            "every k bans the attacker"
+        );
+    }
+    assert!(k1.attacker_frames_admitted < k3.attacker_frames_admitted);
+    assert!(k3.attacker_frames_admitted < k5.attacker_frames_admitted);
+    assert!(k1.evict_sim_max_ms <= k3.evict_sim_max_ms);
+    assert!(k3.evict_sim_max_ms <= k5.evict_sim_max_ms);
+}
+
+#[test]
+fn injected_duplicates_strike_honest_peers_and_the_threshold_decides_how_many_are_banned() {
+    let run_q = |q: f64, k: u32| {
+        run(&with_config(
+            scenario(20, ring_edges(20), Vec::new(), 1),
+            Config {
+                strikes_to_ban: Some(k),
+                honest_dup_prob: q,
+                dup_seed: 7,
+                ..Config::default()
+            },
+        ))
+    };
+    let clean = run_q(0.0, 1);
+    assert_eq!(clean.honest_strikes, 0);
+    assert_eq!(clean.false_evictions, 0);
+
+    let (k1, k3, k5) = (run_q(0.1, 1), run_q(0.1, 3), run_q(0.1, 5));
+    assert!(k1.honest_strikes > 0, "duplicates must strike honest peers");
+    assert!(k1.false_evictions > 0, "k = 1 bans on the first duplicate");
+    assert!(k1.false_evictions >= k3.false_evictions);
+    assert!(k3.false_evictions >= k5.false_evictions);
+    assert!(k1.honest_links_ever_banned > k5.honest_links_ever_banned);
+    assert!(k1.honest_links_total > 0);
+    assert_eq!(
+        run_q(0.1, 3),
+        k3,
+        "the injected fault is seeded: same input, same outcome"
+    );
+}
+
+#[test]
+fn goodput_and_verifications_are_reported() {
+    let out = run(&scenario(20, ring_edges(20), vec![5], 2));
+    assert!(out.verifications > 0);
+    assert!(out.honest_deliveries > 0);
+    assert!(out.delivery_attack.is_some_and(|d| d > 0.99));
+    assert!(out.goodput_per_s > 0.0);
 }

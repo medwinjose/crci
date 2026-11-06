@@ -265,6 +265,14 @@ pub struct SybilGuard {
     /// Messages per second added back to each sender's budget (`SENDER_REFILL_PER_SEC`
     /// unless an experiment sets another rate before the first message arrives).
     pub sender_refill_per_sec: f32,
+    /// Score lost per strike: `STRIKE_PENALTY` unless an experiment changes it
+    /// (`set_strikes_to_ban`).
+    pub strike_penalty: f32,
+    /// When false, strikes lower a peer's score but never ban it (baselines).
+    pub bans_enabled: bool,
+    /// When false, `check` creates the per-sender budget but never refuses a message
+    /// (the vanilla baseline).
+    pub rate_limit_enabled: bool,
     /// Added to the clock. Zero in normal operation; simulations and tests advance it to
     /// run hours of reputation dynamics without waiting.
     clock_offset: Duration,
@@ -290,6 +298,9 @@ impl SybilGuard {
             buckets: HashMap::new(),
             difficulty,
             sender_refill_per_sec: SENDER_REFILL_PER_SEC,
+            strike_penalty: STRIKE_PENALTY,
+            bans_enabled: true,
+            rate_limit_enabled: true,
             clock_offset: Duration::ZERO,
             manual_epoch: None,
         }
@@ -355,7 +366,7 @@ impl SybilGuard {
                 refill_rate: self.sender_refill_per_sec,
                 last_refill: now,
             });
-        if !bucket.try_consume_at(now) {
+        if !bucket.try_consume_at(now) && self.rate_limit_enabled {
             return Err(SybilError::RateLimited(peer.clone()));
         }
 
@@ -375,7 +386,17 @@ impl SybilGuard {
             .reputations
             .entry(peer.clone())
             .or_insert_with(|| PeerReputation::new_at(now));
-        rep.penalise_at(STRIKE_PENALTY, now);
+        rep.penalise_at(self.strike_penalty, now);
+        if !self.bans_enabled {
+            rep.banned = false;
+        }
+    }
+
+    /// Make the `k`-th strike in a row ban a peer that starts at `INITIAL_SCORE`: the penalty
+    /// is `(INITIAL_SCORE - 0.05) / k`, so `k` strikes leave 0.05, below `BAN_THRESHOLD`, and
+    /// `k - 1` leave at least 0.275. `k = 3` is the shipped `STRIKE_PENALTY` (experiments only).
+    pub fn set_strikes_to_ban(&mut self, k: u32) {
+        self.strike_penalty = (INITIAL_SCORE - 0.05) / k.max(1) as f32;
     }
 
     /// Whether `peer` is banned now (recovery up to now applied first).

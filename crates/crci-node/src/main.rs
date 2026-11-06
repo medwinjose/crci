@@ -155,6 +155,19 @@ async fn main() {
         if let Some(rate) = args.sender_refill_per_sec {
             node.sybil_guard.sender_refill_per_sec = rate;
         }
+        match args.defence.parse::<crci_core::runtime::DefenceMode>() {
+            Ok(mode) => node.set_defence_mode(mode),
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+        }
+        if let Some(k) = args.strikes_to_ban {
+            node.sybil_guard.set_strikes_to_ban(k);
+        }
+        if let Some(w) = args.replay_window {
+            node.replay_filter.window_size = w;
+        }
 
         let tcp = if let Some(ref listen) = args.listen {
             let addr = match listen.parse::<std::net::SocketAddr>() {

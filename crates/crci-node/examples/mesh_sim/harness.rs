@@ -8,7 +8,7 @@
 //! says nothing about real latency; the result depends only on the scenario.
 
 use crci_core::message::{Message, Signal, Visibility};
-use crci_core::runtime::NodeRuntime;
+use crci_core::runtime::{DefenceMode, NodeRuntime};
 use crci_core::sybil::INITIAL_SCORE;
 use crci_core::transport::{LegacyTransport, SharedInbox, SimTransport};
 use serde::{Deserialize, Serialize};
@@ -24,6 +24,26 @@ const WARMUP_MS: u64 = 5_000;
 /// Without a ban by every honest neighbour of every attacker, "post" starts this long after the
 /// fault.
 const POST_FALLBACK_MS: u64 = 20_000;
+
+/// Switches of the evaluation: the defence mode (baselines), the strike threshold and the replay
+/// window (ablations), and an injected fault on honest nodes. All default to the protocol as
+/// shipped, so a scenario without `config` is the one `docs/benchmarks.md` describes.
+#[derive(Deserialize, Default, Clone, Debug)]
+#[serde(default)]
+pub struct Config {
+    /// "full" (or empty), "static-bucket" or "vanilla": see `DefenceMode`.
+    pub defence: String,
+    /// Strikes that ban a peer (3 when absent).
+    pub strikes_to_ban: Option<u32>,
+    /// Replay window W (64 when absent; 0 is strict-monotonic).
+    pub replay_window: Option<u64>,
+    /// Probability that a frame sent by an honest node reaches its peer twice. An injected
+    /// transport fault, to give honest peers something to be struck for; not a measured
+    /// network property.
+    pub honest_dup_prob: f64,
+    /// Seed of the injected fault.
+    pub dup_seed: u64,
+}
 
 #[derive(Deserialize)]
 pub struct Scenario {
@@ -42,6 +62,8 @@ pub struct Scenario {
     pub drain_ms: u64,
     pub replay_copies: usize,
     pub tick_ms: u64,
+    #[serde(default)]
+    pub config: Config,
 }
 
 #[derive(Serialize, Debug, PartialEq, Default)]
@@ -94,6 +116,20 @@ pub struct Outcome {
     pub state_window_seqs_mean: f64,
     pub state_known_keys_mean: f64,
     pub state_known_keys_max: usize,
+    /// Frames from attackers delivered to honest nodes that had not banned them yet.
+    pub attacker_frames_admitted: u64,
+    /// Signature verifications performed, over all nodes.
+    pub verifications: u64,
+    /// (honest message, honest receiver) pairs delivered, over the whole run.
+    pub honest_deliveries: u64,
+    /// Honest-honest links (one per direction), and those on which the observer ever banned.
+    pub honest_links_total: u64,
+    pub honest_links_ever_banned: u64,
+    /// Delivery of honest messages originated from the fault to the end of the window,
+    /// whether or not anyone was banned (the baselines never ban).
+    pub delivery_attack: Option<f64>,
+    /// Honest deliveries per second in that period.
+    pub goodput_per_s: f64,
 }
 
 struct Emission {
@@ -272,6 +308,13 @@ impl Sim<'_> {
         self.out.frames += 1;
         self.advance(i, now_ms);
         let sender = index_of(&sender_identity);
+        if let Some(s) = sender {
+            if self.attacker[s] && !self.attacker[i] {
+                if let Ok(pos) = self.adj[i].binary_search(&s) {
+                    self.out.attacker_frames_admitted += u64::from(!self.links[i][pos].banned);
+                }
+            }
+        }
         self.incoming
             .lock()
             .unwrap_or_else(|e| e.into_inner())
@@ -491,7 +534,46 @@ impl Sim<'_> {
         self.out.state_window_seqs_mean = window_mean;
         self.out.state_known_keys_mean = keys_mean;
         self.out.state_known_keys_max = keys_max;
+        // Honest links and what the observers did with them.
+        for &i in &honest {
+            for (pos, &peer) in self.adj[i].iter().enumerate() {
+                if self.attacker[peer] {
+                    continue;
+                }
+                self.out.honest_links_total += 1;
+                self.out.honest_links_ever_banned += u64::from(self.links[i][pos].ever_banned);
+            }
+        }
+        // Delivery and goodput from the fault to the end of the window.
+        let (mut attack_ratios, mut attack_got) = (Vec::new(), 0u64);
+        for record in &self.messages {
+            if self.attacker[record.origin] {
+                continue;
+            }
+            let receivers = honest.iter().filter(|&&x| x != record.origin);
+            let (mut got, mut total) = (0u64, 0u64);
+            for &x in receivers {
+                total += 1;
+                got += u64::from(record.got[x]);
+            }
+            self.out.honest_deliveries += got;
+            if total > 0 && record.at_ms >= s.fault_at_ms && record.at_ms < s.window_ms {
+                attack_ratios.push(got as f64 / total as f64);
+                attack_got += got;
+            }
+        }
+        self.out.delivery_attack = mean(attack_ratios.iter().copied());
+        let attack_s = s.window_ms.saturating_sub(s.fault_at_ms) as f64 / 1000.0;
+        self.out.goodput_per_s = if attack_s > 0.0 {
+            attack_got as f64 / attack_s
+        } else {
+            0.0
+        };
         for node in &self.nodes {
+            self.out.verifications += node
+                .metrics
+                .sig_verifications_performed
+                .load(Ordering::Relaxed);
             self.out.rate_drops += node.sybil_rate_limited_events;
             self.out.origin_drops += node.origin_rate_limited_events;
             self.out.sync_excused += node.sync_excused_duplicates;
@@ -499,6 +581,20 @@ impl Sim<'_> {
                 node.metrics.seen_messages_evictions.load(Ordering::Relaxed);
         }
         self.out
+    }
+}
+
+/// A small seeded generator (SplitMix64) for the injected fault.
+struct SplitMix64(u64);
+
+impl SplitMix64 {
+    fn next_f64(&mut self) -> f64 {
+        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^= z >> 31;
+        (z >> 11) as f64 / (1u64 << 53) as f64
     }
 }
 
@@ -533,6 +629,22 @@ pub fn run(scenario: &Scenario) -> Outcome {
         let mut node = NodeRuntime::new(&name(i), "sim", incoming.clone());
         node.use_router = false;
         node.sybil_guard.use_manual_clock();
+        match scenario.config.defence.as_str() {
+            "" => {}
+            mode => match mode.parse::<DefenceMode>() {
+                Ok(mode) => node.set_defence_mode(mode),
+                Err(e) => {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                }
+            },
+        }
+        if let Some(k) = scenario.config.strikes_to_ban {
+            node.sybil_guard.set_strikes_to_ban(k);
+        }
+        if let Some(w) = scenario.config.replay_window {
+            node.replay_filter.window_size = w;
+        }
         let identity = identity_of(&node);
         let outbox = attacker[i].then(|| -> SharedInbox { Arc::new(Mutex::new(HashMap::new())) });
         let link = outbox.clone().unwrap_or_else(|| outgoing.clone());
@@ -604,6 +716,8 @@ pub fn run(scenario: &Scenario) -> Outcome {
         out: Outcome::default(),
     };
 
+    let dup_prob = scenario.config.honest_dup_prob;
+    let mut dup_rng = SplitMix64(scenario.config.dup_seed);
     let mut next_emission = 0;
     let mut next_sync = 0;
     let mut in_flight: Vec<Vec<(String, Vec<u8>)>> = vec![Vec::new(); n];
@@ -629,9 +743,21 @@ pub fn run(scenario: &Scenario) -> Outcome {
             sim.sync_round(i, now_ms);
             next_sync += 1;
         }
-        for (dest, frames) in take_all(&sim.outgoing) {
-            if let Some(i) = dest.get(1..).and_then(|d| d.parse::<usize>().ok()) {
-                in_flight[i].extend(frames);
+        // Destinations in a fixed order, so the injected fault draws the same numbers every run.
+        let mut batches: Vec<_> = take_all(&sim.outgoing).into_iter().collect();
+        batches.sort_by(|a, b| a.0.cmp(&b.0));
+        for (dest, frames) in batches {
+            let Some(i) = dest.get(1..).and_then(|d| d.parse::<usize>().ok()) else {
+                continue;
+            };
+            for frame in frames {
+                let duplicate = dup_prob > 0.0
+                    && index_of(&frame.0).is_some_and(|s| !sim.attacker[s])
+                    && dup_rng.next_f64() < dup_prob;
+                if duplicate {
+                    in_flight[i].push(frame.clone());
+                }
+                in_flight[i].push(frame);
             }
         }
         now_ms += tick;
