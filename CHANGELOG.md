@@ -29,8 +29,28 @@ git history; `git log` is the complete record.
 - In-process simulation (`crates/crci-node/examples/mesh_sim`, `scripts/sim/`, `make sim`): unmodified
   `NodeRuntime` instances on the testbed's topologies, up to 5 000 nodes and 45 % replaying attackers,
   cross-checked against the testbed's runs.
+- Invalid-signature flood experiment (`scripts/testbed/run_flood.sh`, `flood_table.py`, `make flood`):
+  `crci-node --corrupt-signatures` (and `--corrupt-for-ms`) makes a node forge the signature of everything it
+  sends from its fault on; the testbed analysis reports process CPU seconds per role. Results:
+  [benchmarks.md](docs/benchmarks.md#invalid-signature-flood).
+- `TcpTransport::shun_peer`: the node's way to tell the transport that an authenticated identity is banned.
+- `TcpTransport::paced_frames` and a `frames paced: total=N` line from `crci-node` (counted by the testbed
+  analysis); `TcpTransport::bind_with_pacing` for tests.
 
 ### Changed
+- The listener reads at most 200 frames per second from one connection (burst 400) and waits when a sender
+  goes faster, so TCP flow control slows it. Before, a neighbour that was never struck (a flood of fresh
+  valid messages above its budget) made each of its neighbours read, parse and verify every frame it could
+  send: 6.3 CPU seconds and 174 MiB of log per neighbour per minute at 1 000 messages/s, against 2.0 s and
+  68 MiB now. Honest links never reach the cap.
+- A banned peer's connection is closed and its frames are no longer read: the listener refuses its
+  connections (after the handshake) for 30 s at a time and lets one probe frame through after that, so a
+  readmission is still noticed. Before, every frame of a banned peer was still read, signature-checked
+  and parsed (about 60 µs, 6.5 CPU seconds per neighbour in a 2 560 frames/s flood).
+- A `crci-node --listen` node no longer logs `SYBIL GUARD DROP … is banned` for every frame of a banned peer
+  (a flood turned that into 300 MiB of log in one minute and could stall the receive loop on a blocked
+  output): it logs `dropping frames from banned peer …` once per ban and, every 5 s while it changes,
+  `banned-peer frames dropped: total=N`.
 - The per-neighbour budget refills at 20 messages per second instead of 5, and only messages the
   receiver has not seen spend it. Chosen from a testbed sweep (refill 5/10/20/50 per second, offered load
   4–32 messages/s): 20 is the lowest rate with no honest frame dropped at 16 messages/s. Before, the

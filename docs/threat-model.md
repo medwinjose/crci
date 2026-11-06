@@ -28,7 +28,8 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 | Strikes for honest re-sync after a partition | Digest-based anti-entropy: a node asks for what it lacks; answers are tagged with the request (covered by the TCP frame signature) and a tagged answer that repeats gossip is excused once, however late it arrives; untagged and unsolicited duplicates still strike. Requests are signed, answered only from their author, rate-limited and batched | `runtime.rs` |
 | Message flood | Token bucket per sender (20 messages, +20/s) for messages not seen before, applied before the signature check; copies of known messages are dropped by ID first | `sybil.rs`, `runtime.rs` |
 | Flood of fresh, validly signed messages from one origin | Token bucket per authenticated origin (20 messages, +5/s), charged after the signature and pinned-key checks; excess dropped without a strike, so one origin cannot take the network's capacity through honest relays | `runtime.rs`, `sybil.rs` |
-| Signature-verification flood | Verifications bounded by the sender's token bucket; each invalid signature is a strike, so three bad signatures ban the sender | `runtime.rs`, `sybil.rs` |
+| Signature-verification flood | Verifications bounded by the sender's token bucket; each invalid signature is a strike, so three bad signatures ban the sender; a banned peer's connection is closed and refused (30 s at a time), so its frames are neither read nor verified (measured: [benchmarks.md](benchmarks.md#invalid-signature-flood)) | `runtime.rs`, `sybil.rs`, `transport/tcp.rs` |
+| Flood of frames on one connection (including a sender that is never struck) | The listener reads at most 200 frames per second from a connection (burst 400); beyond that the reader waits and TCP flow control slows the sender. No strike: an honest burst is never punished, and honest links stay far below the cap | `transport/tcp.rs` |
 | Malformed input | Origin-ID length, severity range, sequence overflow and note size checked before `NodeRuntime` on a TCP node | `validation.rs`, `crci-node` `main.rs` |
 | Framing an author by replaying its message | Strikes fall on the connection that delivered a message, never on the message's author | `runtime.rs`, `transport/tcp.rs` |
 | Framing a neighbour by claiming its ID | Mutual Ed25519 challenge-response on every TCP connection; strikes bind to the authenticated identity (declared ID + proved key), so a claimed ID with another key is another identity | `transport/tcp.rs` |
@@ -74,10 +75,15 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    is over budget. A neighbour that floods new messages faster than its budget loses the excess, which also
    crowds out its own relays: persistent over-budget sending degrades it to an omission fault, which the
    mesh tolerates only through path redundancy.
-   On TCP every frame's session signature is verified before any of these checks, so a neighbour with an
-   authenticated connection can make the receiver spend one signature verification (about 37 µs) per
-   frame at line rate. Copies of known messages cost that verification but no strike. Bounding this cost
-   per connection is open (invalid-signature flood experiment).
+   On TCP every frame's session signature is verified before any of these checks (about 37 µs, about
+   100 µs with the read, the parse and the log lines). A banned neighbour is disconnected, so this cost
+   stops after the ban; a neighbour that is never struck is limited by frame pacing to 200 frames/s per
+   connection, which is about 2 % of a core at the measured per-frame cost. Measured with a neighbour that
+   floods 1 000 valid fresh messages/s: 1.98 CPU seconds per neighbour over a 60 s run against 1.0 for a
+   40 messages/s reference, 68 MiB of logs per run against 31 MiB (without pacing: 6.3 s and 174 MiB).
+   What remains: each connection can still make its receiver do that much, and every dropped frame
+   still prints log lines (three per frame at 200 frames/s is about 4 MiB per minute per connection);
+   a sender that reconnects pays a handshake each time, the same as any stranger.
 7. **Aggregate gossip rate is bounded by the per-neighbour budget.** Every node relays every new message
    to all its neighbours, so each link carries every message once. Copies of messages the receiver already
    has spend no budget, but a node whose first copies all arrive through one neighbour (a node of degree 1,

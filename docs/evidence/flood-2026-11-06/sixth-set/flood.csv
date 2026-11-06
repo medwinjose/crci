@@ -1,0 +1,19 @@
+run,config,seed,forged_frames_per_s_per_link,neighbours,banned_by,evict_median_ms,evict_max_ms,kind,load_matched,invalid_verifications,verifications_per_neighbour,verify_cpu_ms_total,pacing_only_at_byz_neighbours,frames_paced,nodes_pacing,frames_dropped_banned,honest_false_evictions,deliv_pre,deliv_post,down_post,cpu_mean_pct,cpu_max_pct,mem_used_mib_max,rss_mib_per_node,logs_mib,cpu_s_byzantine,cpu_s_neighbour_mean,cpu_s_neighbour_max,cpu_s_other_mean,faithful
+forged-x1-s1,forged-x1,1,40,10,10/10,136,136,forged,False,30,3.0,1.11,True,0,[],37,0,1.0,1.0,342/342,2.62,13.2,625,7.28,12.63,2.7,0.54,0.62,0.2,True
+forged-x1-s2,forged-x1,2,40,10,10/10,136,136,forged,False,30,3.0,1.11,True,0,[],40,0,1.0,1.0,228/228,2.79,14.6,631,7.32,13.81,2.37,0.55,0.61,0.23,True
+forged-x1-s3,forged-x1,3,40,10,10/10,112,137,forged,False,30,3.0,1.11,True,0,[],40,0,1.0,1.0,380/380,2.63,12.5,630,7.22,11.7,2.74,0.55,0.63,0.18,True
+forged-x64-s1,forged-x64,1,2560,10,10/10,57,59,forged,False,10,1.0,0.37,True,0,[],128,0,1.0,1.0,342/342,2.61,13.3,630,7.26,12.81,2.71,0.56,0.65,0.2,True
+forged-x64-s2,forged-x64,2,2560,10,10/10,57,59,forged,False,10,1.0,0.37,True,0,[],130,0,1.0,1.0,228/228,2.72,13.1,638,7.34,13.81,2.59,0.55,0.62,0.23,True
+forged-x64-s3,forged-x64,3,2560,10,10/10,79,82,forged,False,20,2.0,0.74,True,0,[],241,0,1.0,1.0,380/380,2.52,12.4,633,7.28,12.2,2.76,0.57,0.63,0.18,True
+forged-x8-s1,forged-x8,1,320,10,10/10,36,38,forged,False,10,1.0,0.37,True,0,[],85,0,1.0,1.0,342/342,2.74,12.8,628,7.29,12.53,2.75,0.55,0.64,0.2,True
+forged-x8-s2,forged-x8,2,320,10,10/10,32,33,forged,False,10,1.0,0.37,True,0,[],80,0,1.0,1.0,228/228,2.68,13.5,633,7.34,13.34,2.51,0.54,0.6,0.23,True
+forged-x8-s3,forged-x8,3,320,10,10/10,111,111,forged,False,27,2.7,1.0,True,0,[],107,0,1.0,1.0,380/380,2.67,11.8,637,7.26,12.39,2.84,0.57,0.64,0.19,True
+fresh-1000-s1,fresh-1000,1,0,10,0/10,,,fresh,False,0,0.0,0.0,True,106739,"['n002', 'n007', 'n014', 'n025', 'n031', 'n032', 'n033', 'n034', 'n043', 'n049']",0,0,1.0,,/,6.41,20.0,651,7.61,67.21,8.55,1.93,2.15,0.43,True
+fresh-1000-s2,fresh-1000,2,0,10,0/10,,,fresh,False,0,0.0,0.0,True,106716,"['n009', 'n013', 'n014', 'n017', 'n023', 'n025', 'n033', 'n041', 'n044', 'n048']",0,0,1.0,,/,6.45,22.7,660,7.66,69.86,8.58,1.99,2.14,0.51,True
+fresh-1000-s3,fresh-1000,3,0,10,0/10,,,fresh,False,0,0.0,0.0,True,106688,"['n002', 'n007', 'n010', 'n021', 'n027', 'n030', 'n035', 'n038', 'n039', 'n043']",0,0,1.0,,/,6.41,19.0,656,7.58,66.68,8.38,2.02,2.29,0.4,True
+reference-s1,reference,1,0,10,0/10,,,reference,False,0,0.0,0.0,True,0,[],0,0,1.0,,/,0.78,3.8,600,6.95,4.6,0.15,0.11,0.15,0.1,True
+reference-s2,reference,2,0,10,0/10,,,reference,False,0,0.0,0.0,True,0,[],0,0,1.0,,/,0.84,4.1,612,7.04,5.13,0.15,0.11,0.14,0.11,True
+reference-s3,reference,3,0,10,0/10,,,reference,False,0,0.0,0.0,True,0,[],0,0,1.0,,/,0.81,3.7,614,6.99,4.58,0.14,0.12,0.15,0.09,True
+valid-x1-s1,valid-x1,1,0,10,0/10,,,valid,True,0,0.0,0.0,True,0,[],0,0,1.0,,/,3.86,12.5,627,7.38,30.52,1.6,0.98,1.15,0.42,True
+valid-x1-s2,valid-x1,2,0,10,0/10,,,valid,True,0,0.0,0.0,True,0,[],0,0,1.0,,/,4.42,13.3,637,7.49,33.42,1.6,0.99,1.18,0.49,True
+valid-x1-s3,valid-x1,3,0,10,0/10,,,valid,True,0,0.0,0.0,True,0,[],0,0,1.0,,/,4.04,11.1,636,7.38,30.63,1.57,1.04,1.21,0.4,True

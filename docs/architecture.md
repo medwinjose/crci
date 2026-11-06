@@ -120,8 +120,28 @@ message. A frame with a wrong counter or signature closes the connection. Nothin
 `message` is the origin-signed `WireMessage`; its author (`origin`) is kept separate from the connection's
 identity, so a replay of an honest node's message is charged to whoever replayed it.
 
+**Banned peers are shunned.** When `NodeRuntime` bans an authenticated identity, the node tells the
+transport (`TcpTransport::shun_peer`). The listener then closes that identity's connections before it reads
+the next frame, and closes its new connections right after the handshake, so a banned peer's frames are
+neither read, parsed nor signature-checked, and each frame it had in flight is dropped by the first check
+below (`is_banned`, which also performs the time-based readmission) with one log line per ban and a running
+total, not one line per frame. The shun lasts 30 s (`SHUN_PROBE_INTERVAL`); the first frame after it is
+delivered as a probe, and the node shuns the peer again if it is still banned. A ban lasts at least 300 s, so
+the probe delays readmission by at most 30 s. What a banned peer can still cost is one handshake per
+reconnect attempt (about 50 µs, bounded by the listener's 100 connections) and one frame per 30 s
+(measured: [benchmarks.md](benchmarks.md#invalid-signature-flood)).
+
+**Frame pacing.** Before it reads each frame the listener takes a token from a per-connection bucket
+(`FRAME_PACING_RATE` = 200 frames/s, burst `FRAME_PACING_BURST` = 400) and waits when it is empty, so the
+kernel's buffers fill and TCP flow control slows the sender. It strikes and bans nothing: over-budget
+messages are still only throttled. Honest links carry about one frame per message (about 32 frames/s per
+link at 32 messages/s network-wide), so they never wait (`TcpTransport::paced_frames` counts the frames that
+did; `crci-node` prints `frames paced: total=N` when it changes). This bounds the work a sender that is never
+struck can make its neighbour do (measured: [benchmarks.md](benchmarks.md#invalid-signature-flood)).
+
 For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`):
 
+0. drops it if its sender is banned (see above);
 1. checks the field rules from `validation.rs` (origin ID length, severity 1–5, sequence overflow, note at
    most 255 bytes) and drops a malformed message without a strike;
 2. passes the message to `NodeRuntime`, which applies the checks above;
@@ -232,7 +252,7 @@ the Android `.so` as well.
 
 | Binary | Purpose |
 |---|---|
-| `crci-node` | Main CLI. `--listen` (+ `--peers`/`--dial`) runs a TCP node with the HTTP API on port 8080. `--send … --to …` sends one message. `--byzantine <mode> --to …` runs an adversary that sends signed frames (`replay`, `false_allclear`, `sybil`, `flood`, `partition_heal`) or frames that must be rejected (`bad_signature`, `unsigned`, `unsigned_mce`). With no arguments it runs a scripted in-process demonstration and serves the API. Experiment options for a `--listen` node: `--emit-count`/`--emit-interval-ms`/`--emit-delay-ms` originate signed messages periodically; `--replay-after-ms`/`--replay-copies` make the node send every gossip message several times from then on (fault injection); both delays count from process start, or from `--experiment-epoch-unix-ms` so that many nodes share one schedule. Origination, acceptance and bans are logged with a Unix-millisecond timestamp (`at_ms=`). |
+| `crci-node` | Main CLI. `--listen` (+ `--peers`/`--dial`) runs a TCP node with the HTTP API on port 8080. `--send … --to …` sends one message. `--byzantine <mode> --to …` runs an adversary that sends signed frames (`replay`, `false_allclear`, `sybil`, `flood`, `partition_heal`) or frames that must be rejected (`bad_signature`, `unsigned`, `unsigned_mce`). With no arguments it runs a scripted in-process demonstration and serves the API. Experiment options for a `--listen` node: `--emit-count`/`--emit-interval-ms`/`--emit-delay-ms` originate signed messages periodically; `--replay-after-ms`/`--replay-copies` make the node send every gossip message several times from then on (fault injection); both delays count from process start, or from `--experiment-epoch-unix-ms` so that many nodes share one schedule. `--corrupt-signatures` (with `--corrupt-for-ms` to stop after a while) makes the node corrupt the signature of everything it sends from the fault on. Origination, acceptance and bans are logged with a Unix-millisecond timestamp (`at_ms=`). |
 | `byzantine_agent`, `adv_client` | Stand-alone adversary clients. |
 | `uniffi-bindgen` (in `crci-core`) | Generates Kotlin bindings. |
 

@@ -1,0 +1,235 @@
+{
+ "run": "/root/tb-runs/attacks-2026-11-06f/flood/flood40-s3",
+ "topology": {
+  "kind": "rgg",
+  "seed": 3,
+  "metrics": {
+   "nodes": 50,
+   "edges": 150,
+   "mean_degree": 6.0,
+   "min_degree": 2,
+   "max_degree": 10,
+   "diameter": 10,
+   "avg_shortest_path": 4.5265,
+   "clustering": 0.709
+  }
+ },
+ "config": {
+  "delay_ms": 10,
+  "jitter_ms": 0,
+  "loss": 0,
+  "reorder": 0,
+  "window": 60,
+  "source_rate": 0.5,
+  "bg_rate": 0.5,
+  "fault_at": 20,
+  "no_fault": false,
+  "replay_copies": 1,
+  "corrupt_signatures": false,
+  "corrupt_for": null,
+  "byz_rate": 40.0,
+  "refill": null,
+  "settle": 20,
+  "drain": 5,
+  "pings": 10,
+  "worker_threads": 2,
+  "backlog": 30000
+ },
+ "launch": {
+  "listening_at_t0": 50,
+  "alive_at_end": 50,
+  "nodes": 50
+ },
+ "roles": {
+  "source": "n004",
+  "byzantine": "n045",
+  "byzantine_degree": 10,
+  "downstream": 20
+ },
+ "messages_originated_in_window": 2060,
+ "delivery_ratio": {
+  "during": {
+   "n": 40,
+   "median": 1.0,
+   "p95": 1.0,
+   "max": 1.0,
+   "mean": 1.0
+  },
+  "pre": {
+   "n": 14,
+   "median": 1.0,
+   "p95": 1.0,
+   "max": 1.0,
+   "mean": 1.0
+  },
+  "warmup": {
+   "n": 6,
+   "median": 1.0,
+   "p95": 1.0,
+   "max": 1.0,
+   "mean": 1.0
+  }
+ },
+ "messages_fully_delivered": {
+  "during": 40,
+  "pre": 14,
+  "warmup": 6
+ },
+ "latency_ms": {
+  "during": {
+   "n": 1920,
+   "median": 52,
+   "p95": 85,
+   "max": 106,
+   "mean": 48.89
+  },
+  "pre": {
+   "n": 672,
+   "median": 45,
+   "p95": 86,
+   "max": 97,
+   "mean": 49.32
+  },
+  "warmup": {
+   "n": 288,
+   "median": 55,
+   "p95": 366,
+   "max": 439,
+   "mean": 122.96
+  }
+ },
+ "per_hop_excess_ms": {
+  "n": 2880,
+  "median": 0.75,
+  "p95": 14.67,
+  "max": 64.0,
+  "mean": 3.21
+ },
+ "protocol_compute_us_per_hop": {
+  "n": 16127,
+  "median": 118,
+  "p95": 235,
+  "max": 3725,
+  "mean": 134.1
+ },
+ "downstream_delivery": {
+  "warmup": [
+   60,
+   60
+  ],
+  "pre": [
+   140,
+   140
+  ],
+  "during": [
+   400,
+   400
+  ]
+ },
+ "downstream_latency_ms": {
+  "warmup": {
+   "n": 60,
+   "median": 47,
+   "p95": 365,
+   "max": 365,
+   "mean": 120.92
+  },
+  "pre": {
+   "n": 140,
+   "median": 43,
+   "p95": 55,
+   "max": 66,
+   "mean": 42.5
+  },
+  "during": {
+   "n": 400,
+   "median": 43,
+   "p95": 65,
+   "max": 96,
+   "mean": 45.76
+  }
+ },
+ "accepted_via_byzantine": {
+  "warmup": 46,
+  "pre": 638,
+  "during": 1613
+ },
+ "fault_ms_since_t0": 20002,
+ "byzantine_banned_by": "0/10",
+ "eviction_latency_ms": {
+  "n": 0
+ },
+ "honest_false_evictions": 0,
+ "honest_nodes_banned_by_anyone": 0,
+ "honest_nodes": 49,
+ "readmissions": 0,
+ "banned_frames_dropped": 0,
+ "rate_limit_drops": {
+  "from_byzantine": 10187
+ },
+ "origin_budget_drops": {
+  "byzantine_origin": 16959
+ },
+ "relay_drops": {
+  "failed": 0,
+  "queue_full": 0,
+  "nodes_with_drops": 0
+ },
+ "deliveries_by_path": {
+  "gossip": 2880
+ },
+ "late_deliveries_over_5s_by_path": {},
+ "log_counters": {
+  "frames_received": 120981,
+  "chain_head_frames": 3779
+ },
+ "frames_from_non_neighbours": 0,
+ "frames_received_per_message": 58.73,
+ "host": {
+  "cpu_busy_pct": {
+   "n": 60,
+   "median": 4.8,
+   "p95": 7.1,
+   "max": 12.3,
+   "mean": 4.4
+  },
+  "mem_used_mib_max": 644,
+  "swap_used_mib_max": 0,
+  "swap_pages_in_out": 0,
+  "kernel_backlog_drops": 0
+ },
+ "rss_kib_per_node": {
+  "n": 50,
+  "median": 7528,
+  "p95": 7896,
+  "max": 8728,
+  "mean": 7559.12
+ },
+ "cpu_seconds_per_process": {
+  "byzantine": 2.06,
+  "byzantine_neighbours_mean": 1.22,
+  "byzantine_neighbours_max": 1.48,
+  "others_mean": 0.43
+ },
+ "rss_total_mib": 369.1,
+ "ping_rtt_ms": {
+  "n": 1000,
+  "median": 20.4,
+  "p95": 20.9,
+  "max": 21.6,
+  "mean": 20.45
+ },
+ "configured_rtt_ms": {
+  "median": 20.0,
+  "p95": 20.0
+ },
+ "fidelity": {
+  "all_nodes_listening_at_t0": true,
+  "cpu_mean_below_70": true,
+  "no_kernel_backlog_drops": true,
+  "no_swap_io": true,
+  "rtt_median_within_10pct": true,
+  "rtt_p95_within_25pct": true,
+  "pass": true
+ }
+}

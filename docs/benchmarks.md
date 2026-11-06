@@ -334,6 +334,73 @@ its fault, so its neighbours' budget for it is already empty when the fault star
   requests and lost no relay frame, so the difference is run-to-run variation) and honest delivery while
   B is active was 97.4–100 %; the default refill is 20/s.
 
+### Invalid-signature flood
+
+A Byzantine relay B (rgg N = 50, seeds 1–3, 10 ms per hop, `scripts/testbed/run_flood.sh`, `make flood`) forges
+the signature of every message it sends from its fault on, each frame sent 1, 8 or 64 times: 40, 320 and
+2 560 forged frames per second on each of its 10 links (B has degree 10 in all three seeds). Before the
+fault B sends 40 valid messages per second, so its neighbours' budget for it is already empty. References:
+B silent, and B sending the same 40 messages per second with valid signatures (the load-matched reference).
+A third kind of attacker is never struck: B floods 1 000 valid fresh messages per second (over its budget).
+
+Final binary (`cc996fbb`), mean over three seeds:
+
+| | Forged, 40/s per link | Forged, 320/s | Forged, 2 560/s | Valid fresh flood, 1 000/s |
+|---|---|---|---|---|
+| B banned by all its neighbours | 3/3 | 3/3 | 3/3 | never struck |
+| Eviction latency from the fault start, median / max of the runs | 128 / 136 ms | 60 / 61 ms | 64 / 67 ms | — |
+| Signature verifications of forged messages per neighbour | 3.0 | 1.6 | 1.3 | — |
+| Frames of B that still reach a neighbour after its ban | 39 | 91 | 166 | — |
+| Frames whose connection had to wait (pacing) | 0 | 0 | 0 | about 106 700 per run, only at B's neighbours |
+| Honest delivery | 100 % | 100 % | 100 % | 100 % |
+| Honest false evictions | 0 | 0 | 0 | 0 |
+| CPU seconds per neighbour of B over the 60 s run | 0.55 | 0.55 | 0.56 | 1.98 |
+| CPU seconds of B itself | 2.6 | 2.7 | 2.7 | 8.5 |
+| Node log size per run | 12.7 MiB | 12.8 MiB | 12.9 MiB | 67.9 MiB |
+| Peak host memory | 629 MiB | 633 MiB | 634 MiB | 656 MiB |
+
+References: B silent: 0.11 CPU seconds per neighbour, 4.8 MiB of logs, 609 MiB peak memory; B sending 40 valid
+messages per second: 1.0 CPU second per neighbour, 31.5 MiB of logs, 633 MiB.
+
+- **Three strikes, and few verifications.** With one copy per message the three strikes are three invalid
+  signatures. With more copies they are one invalid signature plus two same-ID repeats of messages B relayed
+  (judged by ID before any signature check, so they cost no verification): at 2 560 frames/s a neighbour
+  verifies 1.3 signatures on average before it bans B, about 49 µs of CPU at 37 µs each.
+- **A banned peer costs almost nothing afterwards.** The node closes a banned peer's connection and refuses its
+  reconnects, so its frames are neither read nor verified; 166 of the roughly 105 000 frames B sends per link at
+  2 560/s were still in flight at the ban. Three defects were found and fixed on the way, each measured before and
+  after on the same configurations (the earlier binaries' runs are in the evidence folder):
+
+  | Binary | What the attacker still caused at its neighbours | Result at the heaviest load |
+  |---|---|---|
+  | `7644ec0d` | every frame of a banned peer parsed, locked and logged (two or three lines) | logs 299.5 MiB per run (17 MiB at 40/s); host CPU mean 15.3 % against 0.9 % with B silent |
+  | `4a2e7963` | frame read and signature-checked by the transport (about 60 µs per frame) | logs 12.9 MiB; neighbour CPU 6.55 s (reference 1.0 s) |
+  | `77f1a010` | one handshake per reconnect attempt, one frame per 30 s | neighbour CPU 0.56 s; but a never-struck flood of 1 000 valid fresh messages/s cost 6.3 s and 174 MiB of logs |
+  | `cc996fbb` | at most 200 frames/s per connection are read, whoever sends them | the fresh flood costs 1.98 s and 67.9 MiB |
+
+  [Figure: neighbour CPU before and after the shun](evidence/flood-2026-11-06/sixth-set/figures/flood-cpu.svg).
+- **Frame pacing bounds what is never struck.** Over-budget fresh messages are throttled, not struck, so a flood
+  of them is never banned and never shunned. The listener reads at most 200 frames per second from one
+  connection (burst 400): when the bucket is empty the reader waits and TCP flow control slows the sender. No
+  strike, no ban. Honest links never reach it: the counter reads 0 on every node in every load run, including
+  32 messages/s (about 32 frames/s per link). The flooder's neighbours still pay about 0.9 CPU seconds each over
+  the minute (1.98 against 1.0 for the 40/s reference), a small constant per connection.
+- **Readmission still works.** In a 480 s run B forged for 10 s and then signed correctly. A ban lasts at
+  least 300 s; all 10 neighbours readmitted B through the 30 s probe and accepted 104 of its later messages.
+- **Honest throughput is unchanged** on the final binary (same configurations as the recorded main and load
+  tables): load 8 and load 16, delivery 100 % and no honest frame rate-limited; load 32, delivery 91–99 %
+  and 2 479–3 507 honest frames rate-limited per run (recorded: 2 343–3 615 over three sets); main rgg-50 and
+  rgg-100 eviction 2.0 s; the attacker and 20 % loss sets give the same outcomes as in the sections above.
+- **What an attacker can still do:** open connections. Each reconnect attempt costs a handshake (a signature
+  and a verification, about 50 µs), the same as any stranger can cause, bounded by the listener's 100
+  connections; a banned identity gets one probe frame per 30 s. A fresh key pair is a new identity at
+  reputation 0.5 and pays three strikes again ([threat-model.md](threat-model.md), gap 1).
+
+Evidence: [`evidence/flood-2026-11-06/`](evidence/flood-2026-11-06/) (six run sets, the last on the final binary; `flood.csv`, `flood.md`,
+every run's `summary.json`, raw logs of one 2 560 frames/s run and of the readmission run). Criteria were fixed
+before each data set; three failed as written and stay recorded as failed there (a log-size comparison against a
+reference without B's traffic, the first CPU bound, and a 3 454 honest-frame bound for load 32 taken from one set).
+
 ## In-process simulation (up to 5 000 nodes)
 
 Protocol logic at a scale one host cannot emulate with real processes. **These are simulation results, not

@@ -1,0 +1,13 @@
+run,config,seed,forged_frames_per_s_per_link,neighbours,banned_by,evict_median_ms,evict_max_ms,kind,load_matched,invalid_verifications,verifications_per_neighbour,verify_cpu_ms_total,pacing_only_at_byz_neighbours,frames_paced,nodes_pacing,frames_dropped_banned,honest_false_evictions,deliv_pre,deliv_post,down_post,cpu_mean_pct,cpu_max_pct,mem_used_mib_max,rss_mib_per_node,logs_mib,cpu_s_byzantine,cpu_s_neighbour_mean,cpu_s_neighbour_max,cpu_s_other_mean,faithful
+forged-x1-s1,forged-x1,1,40,10,10/10,138,138,forged,False,30,3.0,1.11,True,,,16414,0,1.0,1.0,342/342,2.54,13.2,616,7.12,16.91,,,,,True
+forged-x1-s2,forged-x1,2,40,10,10/10,111,135,forged,False,30,3.0,1.11,True,,,16423,0,1.0,1.0,228/228,2.33,14.0,630,7.15,18.0,,,,,True
+forged-x1-s3,forged-x1,3,40,10,10/10,136,136,forged,False,30,3.0,1.11,True,,,16419,0,1.0,1.0,380/380,2.54,13.2,630,7.08,16.48,,,,,True
+forged-x64-s1,forged-x64,1,2560,10,10/10,57,62,forged,False,12,1.2,0.44,True,,,1054246,0,1.0,1.0,342/342,16.23,36.3,624,7.24,299.19,,,,,True
+forged-x64-s2,forged-x64,2,2560,10,10/10,57,59,forged,False,10,1.0,0.37,True,,,1054124,0,1.0,1.0,228/228,14.75,29.7,634,7.25,300.17,,,,,True
+forged-x64-s3,forged-x64,3,2560,10,10/10,80,88,forged,False,17,1.7,0.63,True,,,1053279,0,1.0,1.0,380/380,14.83,30.4,641,7.22,299.15,,,,,True
+forged-x8-s1,forged-x8,1,320,10,10/10,33,112,forged,False,12,1.2,0.44,True,,,131726,0,1.0,1.0,342/342,3.62,15.1,621,7.14,48.51,,,,,True
+forged-x8-s2,forged-x8,2,320,10,10/10,36,36,forged,False,10,1.0,0.37,True,,,131748,0,1.0,1.0,228/228,4.13,15.0,626,7.14,49.08,,,,,True
+forged-x8-s3,forged-x8,3,320,10,10/10,111,136,forged,False,28,2.8,1.04,True,,,131422,0,1.0,1.0,380/380,4.06,13.3,630,7.11,48.06,,,,,True
+reference-s1,reference,1,0,10,0/10,,,reference,False,0,0.0,0.0,True,,,0,0,1.0,,/,0.85,3.3,601,6.91,4.6,,,,,True
+reference-s2,reference,2,0,10,0/10,,,reference,False,0,0.0,0.0,True,,,0,0,1.0,,/,0.91,3.8,616,6.96,5.14,,,,,True
+reference-s3,reference,3,0,10,0/10,,,reference,False,0,0.0,0.0,True,,,0,0,1.0,,/,0.89,4.6,615,6.91,4.58,,,,,True

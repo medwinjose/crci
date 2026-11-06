@@ -7,6 +7,44 @@ line endings, noted per folder below. SHA-256 hashes are of the files as committ
 Benchmark CSVs that feed the paper live next to their harness in
 `crates/crci-node/benches/results/` (see [docs/benchmarks.md](../benchmarks.md)).
 
+## `flood-2026-11-06/`
+
+Six run sets of the invalid-signature flood (`scripts/testbed/run_flood.sh`; rgg N = 50, seeds 1–3), one
+folder per node binary, in the order they were measured. Every run folder holds its `summary.json` and the
+topology line; each set holds `flood.csv`, `flood.md` (means and the pass/fail criteria), `results.csv`, the
+figures and the runner's log.
+
+| Folder | Node binary | What it shows |
+|---|---|---|
+| `first-set/` | `7644ec0d` | before any fix: every frame of a banned peer parsed and logged (299.5 MiB of logs at 2 560 forged frames/s per link) |
+| `second-set/` | `4a2e7963` | banned peers' frames dropped before parsing, logs flat at 13 MiB; no CPU data |
+| `third-set/` | `4a2e7963` | with CPU seconds per process: a banned peer still costs its neighbours 6.55 s (reference 1.0 s) |
+| `fourth-set/` | `77f1a010` (SHA-256 `77f1a01033400efc381e0361863e2378973fa0635e43c646cf91baaacf93d220`) | banned peers' connections closed: 0.56 s; readmission 10/10; the valid fresh flood (`fresh-1000`) costs 6.3 s and 174 MiB |
+| `fifth-set/` | `22703b6d` | frame pacing; also the honest-throughput runs (`load/`) and the attacker sets (`attacks/`) |
+| `sixth-set/` | `cc996fbb` (SHA-256 `cc996fbb38a70afbc1349bba3af096d9422add4ad4e5bb990df71e1ddbeac8c4`) | final binary: pacing counter, flood set, `load/`, `attacks/` |
+
+Raw logs are kept for the final binary only (`sixth-set/`): one 2 560 frames/s run, the readmission run and one
+valid fresh flood run.
+
+| File | SHA-256 |
+|---|---|
+| `sixth-set/flood.csv` | `67536e1e808c38e197f56bbc30eca79e98a895a2cef531451e5a911e19c332f5` |
+| `sixth-set/raw-logs-forged-x64-s1.tar.gz` | `5aacf0a2204a87847f758389e06148c1c0e4b37ce581706b8cb2bb7ce592e114` |
+| `sixth-set/raw-logs-readmit-s1.tar.gz` | `73e64338a903a0a48894ea69c483d932ab34e8bfff1716c4624493c86c0411bb` |
+| `sixth-set/raw-logs-fresh-1000-s1.tar.gz` | `b1b439344ed2bedb1c3ee9fe0b224fb636144237025581bf2019b4d16dda76cb` |
+
+- **What it proves:** a relay that forges signatures is banned by all its neighbours in 32–136 ms (median per run) with 0 honest
+  false evictions; after the ban it costs them no more CPU than the same load with valid signatures; a banned
+  peer is readmitted through the probe; a sender that is never struck is bounded by frame pacing, which no
+  honest link ever reaches (counter 0 in every load run).
+- **What it does not prove:** behaviour above N = 100 under flood, identity churn (a banned peer returning
+  with a new key pair), or a flood from several neighbours at once. Raw logs of the earlier binaries are not
+  kept; their numbers are in each set's `flood.csv` and `summary.json` files.
+- **Criteria failed as written:** log size compared with a reference that lacked the attacker's valid traffic;
+  the first neighbour-CPU bound; the 3 454 honest-frame bound for load 32 taken from one earlier set (the three
+  recorded sets span 2 343–3 615 for the same seeds). They are listed in
+  [benchmarks.md](../benchmarks.md#invalid-signature-flood).
+
 ## `ci-wan-smoke-2026-09-13/`
 
 | File | SHA-256 |

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 300" font-family="sans-serif" font-size="11"><rect width="560" height="300" fill="white"/>
+<text x="60" y="16" font-size="12">CPU seconds spent by each neighbour of the forging node (mean of 3 seeds)</text>
+<rect x="79" y="227" width="58" height="17" fill="#cc6677"/>
+<text x="79" y="223">0.6</text>
+<rect x="143" y="229" width="58" height="15" fill="#4477aa"/>
+<text x="143" y="225">0.54</text>
+<text x="92" y="258">40 frames/s per link</text>
+<rect x="239" y="207" width="58" height="37" fill="#cc6677"/>
+<text x="239" y="203">1.3</text>
+<rect x="303" y="228" width="58" height="16" fill="#4477aa"/>
+<text x="303" y="224">0.55</text>
+<text x="252" y="258">320 frames/s per link</text>
+<rect x="399" y="56" width="58" height="188" fill="#cc6677"/>
+<text x="399" y="52">6.55</text>
+<rect x="463" y="228" width="58" height="16" fill="#4477aa"/>
+<text x="463" y="224">0.56</text>
+<text x="412" y="258">2560 frames/s per link</text>
+<line x1="60" y1="215" x2="550" y2="215" stroke="#555" stroke-dasharray="4 3"/>
+<text x="310" y="211">same load, valid signatures: 1.0</text>
+<line x1="60" y1="244" x2="550" y2="244" stroke="black"/>
+<rect x="60" y="270" width="10" height="10" fill="#cc6677"/><text x="74" y="279">before: frames of a banned peer still read and verified</text>
+<rect x="390" y="270" width="10" height="10" fill="#4477aa"/><text x="404" y="279">after: connection closed</text></svg>
