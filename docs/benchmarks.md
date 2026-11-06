@@ -690,7 +690,7 @@ The summary's generic fields (`byzantine_*`, delivery) follow the first attacker
 
 Evidence: [`evidence/ratio-2026-11-07/`](evidence/ratio-2026-11-07/) (`ratio.csv`, `ratio.md`, `partition.csv`,
 `partition-check.txt`, the figures, the 90 runs' `summary.json`, `meta.json` and `bans.csv`, `SHA256SUMS`).
-Reproduce: `make ratio` (about 3.5 h for the runs, seconds for the graph computation).
+Reproduce: `make ratio` (about 3 h for the runs, under a minute for the graph computation).
 
 ## In-process simulation (up to 5 000 nodes)
 
