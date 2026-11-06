@@ -7,6 +7,38 @@ line endings, noted per folder below. SHA-256 hashes are of the files as committ
 Benchmark CSVs that feed the paper live next to their harness in
 `crates/crci-node/benches/results/` (see [docs/benchmarks.md](../benchmarks.md)).
 
+## `ablation-2026-11-06/`
+
+Baselines (defence modes) and the strike-threshold and replay-window ablations. Each CSV in `simulation/` and
+`testbed/` is regenerated from the run summaries by `scripts/sim/ablation_table.py` and
+`scripts/testbed/baselines_table.py`; the window and paced-attacker tables are the committed bench CSVs
+`crates/crci-node/benches/results/ablation_window.csv` and `ablation_paced.csv` (`cargo bench -p crci-node
+--bench ablation_bench`, deterministic).
+
+| Folder / file | What it is | SHA-256 |
+|---|---|---|
+| `simulation/results.csv` | 234 in-process runs (N = 100, rgg and mesh, seeds 1–3): 108 strike-threshold runs and 126 defence-mode runs; `mesh_sim` binary `0f8dcceb26e5a786f8e867da2527bd0377edcdd1e8accd4f4b85d9f0a28bbaa6` | `bbe919675de6e108b48a165958d5e0b02f3e0fbfa45a520ae257e8a93dd22ded` |
+| `simulation/k_tradeoff.csv` | the threshold table, means over runs | `4b05a0bacee6332d808200ac9879a62a38ca364521e2146ecd57ab9c3b6f1c21` |
+| `simulation/modes.csv` | the defence-mode table, means over runs | `3e52715468a6bf36fac366cfd3805da0e96b67540918f6117c66a7f126a94d87` |
+| `testbed/baselines.csv` | 63 real-process runs (rgg N = 50, seeds 1–3), `crci-node` binary `aa619cb0e480cd729e282cf4800974e6c984e4e83438dd057ad6510f42b48ad8` | `12ca5704d6913c9b73a38f45c70b44f86b4b80c2db9a22d1ae931244b098b494` |
+| `testbed/results.csv` | the generic per-run table of the same runs | `9984b18da839e01500eb65194d60f460a3a9757cfdeb3adb32ca787b1dfc8419` |
+| `crates/crci-node/benches/results/ablation_window.csv` | window ablation | `49f07c4d8705368821be80db56800ed904f2d7d94a0dcba32855568d2e3ea0ae` |
+| `crates/crci-node/benches/results/ablation_paced.csv` | strike threshold against a paced attacker | `14f7550e4b812564952f841ca9487c8f97fa3b4289c051df99ad525214346933` |
+
+`testbed/first-attempt/` holds the `summary.json` of eight runs that failed only the "no swap I/O" criterion
+and were repeated; `testbed/runs/` has the repeats. Per-run raw logs are not kept (about 15 MiB each).
+
+- **What it proves:** against replay only the ban isolates the attacker (10 of 10 neighbours in all nine
+  replay runs; 0 for the baselines); against a fresh-message flood nothing is struck and the per-origin
+  budget is what keeps delivery at 1.0 (`static-bucket` falls to 0.74); removing the admission limit keeps
+  delivery but multiplies the neighbours' CPU by up to six; the strike threshold trades honest-link bans
+  under duplicate frames against a faster sustainable paced replay; a strict-monotonic window loses
+  reordered messages and bans nobody.
+- **What it does not prove:** behaviour above N = 100, colluding or churning identities, multi-neighbour
+  floods, or any real network's duplicate rate (the duplicates are injected). The simulation has no
+  capacity model, so its delivery numbers for `vanilla` say nothing about overload; three `vanilla` runs at
+  200 messages/s exceed the testbed's CPU limit and are marked not faithful.
+
 ## `flood-2026-11-06/`
 
 Six run sets of the invalid-signature flood (`scripts/testbed/run_flood.sh`; rgg N = 50, seeds 1–3), one

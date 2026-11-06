@@ -100,3 +100,20 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    "start at 0.2 if the /24 subnet has a banned peer" rule, which only applies to sender IDs that parse
    as socket addresses. Fresh key pairs are otherwise free, so the per-origin budget (5 messages per
    second per origin) does not bound a node that signs its flood with many new identities.
+9. **A neighbour whose frames are duplicated is struck.** A repeat of a message ID from the same
+   connection is a strike, whoever caused it, so an honest neighbour behind a transport that duplicates
+   frames loses reputation. The TCP transport numbers its frames and never duplicates one, and no honest
+   strike occurred in any testbed run, but the protocol does not tell a duplicating link from a replaying
+   peer. Measured with an injected duplicate fault (simulation, N = 100; not a property of any measured
+   network): with the shipped three strikes no honest link is banned up to 3 × 10⁻⁵ duplicates per frame, 0.5 %
+   are at 10⁻⁴, 11 % at 3 × 10⁻⁴ and 66 % at 10⁻³ (five strikes: 0.03 %, 1 % and 42 %; one strike: 40 %, 71 % and
+   88 %). The price of a higher threshold is a faster sustainable paced replay: one per 300 s at three strikes,
+   one per 180 s at five ([benchmarks.md](benchmarks.md#strike-threshold-k)).
+10. **Without the per-origin budget a flood costs delivery; without bans a replayer is never isolated.**
+    Switching defences off shows which one does what (emulation, 50 nodes): with only the per-sender
+    bucket, delivery falls to 74 % under a flood of 200 fresh messages/s and 89–91 % under a replayer that
+    also sends 40/s; with no admission limit at all delivery holds but a neighbour of the attacker spends up
+    to six times the CPU ([benchmarks.md](benchmarks.md#defence-modes-on-real-processes)). A strict-monotonic
+    replay window (W = 0) loses reordered messages and strikes nobody; a replay older than W is dropped
+    without a strike, so the window also bounds how old a replay can be and still be punished
+    ([benchmarks.md](benchmarks.md#replay-window-w)).

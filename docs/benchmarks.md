@@ -401,6 +401,160 @@ every run's `summary.json`, raw logs of one 2 560 frames/s run and of the readmi
 before each data set; three failed as written and stay recorded as failed there (a log-size comparison against a
 reference without B's traffic, the first CPU bound, and a 3 454 honest-frame bound for load 32 taken from one set).
 
+### Baselines and ablations
+
+What each defence contributes, measured by switching it off. `crci-node --defence` (and the same field in
+the simulation scenarios) selects one of three modes; `--strikes-to-ban` and `--replay-window` set the
+strike threshold k and the window W. Signature checks and the same-ID dedupe stay in every mode: they are
+authentication and gossip's seen-cache, not reputation. Strikes are counted in every mode, so a run can
+report what a mode would have punished.
+
+| Mode | Per-sender token bucket (20/s) | Per-origin budget (5/s) | Strikes ban |
+|---|---|---|---|
+| `full` (as shipped) | yes | yes | yes, k = 3 |
+| `static-bucket` | yes | no | no |
+| `vanilla` | no | no | no |
+
+#### Defence modes on real processes
+
+`make baselines`: real `crci-node` processes on one host (emulation), rgg N = 50, seeds 1–3, 10 ms per
+hop, binary `aa619cb0`. B runs from 10 s before its fault at 20 s. In the replay rows B also originates 40
+fresh messages per second (so that its budget is already empty) and sends every frame 2, 8 or 32 times; in
+the flood rows B originates 40, 100 or 200 fresh valid messages per second and never repeats a frame.
+Delivery and goodput count the honest messages originated from the fault to the end of the 60 s window,
+whether or not anyone was banned.
+
+| Attack | Mode | Delivery | Goodput (msgs/s) | B banned by (of 10) | Honest frames rate-limited | CPU s per neighbour of B | Host CPU, mean / peak |
+|---|---|---|---|---|---|---|---|
+| none | full / static-bucket / vanilla | 1.0 / 1.0 / 1.0 | 48.0 | 0 | 0 | 0.12 | 0.9 / 3.9 % |
+| replay ×2 | full | 1.0 | 47.2 | 10 | 0 | 0.63 | 3.0 / 12.9 % |
+| | static-bucket | 0.91 | 43.7 | 0 | 5 579 | 2.41 | 13.6 / 19.0 % |
+| | vanilla | 1.0 | 47.6 | 0 | 0 | 3.10 | 18.6 / 27.7 % |
+| replay ×8 | full | 1.0 | 48.0 | 10 | 2 | 0.62 | 2.9 / 12.8 % |
+| | static-bucket | 0.89 | 41.7 | 0 | 2 752 | 2.92 | 13.5 / 21.0 % |
+| | vanilla | 1.0 | 47.2 | 0 | 0 | 3.22 | 15.3 / 25.9 % |
+| replay ×32 | full | 1.0 | 48.0 | 10 | 0 | 0.63 | 3.0 / 12.8 % |
+| | static-bucket | 0.997 | 47.5 | 0 | 1 199 | 2.89 | 9.7 / 25.9 % |
+| | vanilla | 1.0 | 47.6 | 0 | 0 | 3.08 | 10.9 / 27.1 % |
+| flood 40/s | full | 1.0 | 48.0 | not struck | 0 | 1.15 | 4.6 / 12.9 % |
+| | static-bucket | 0.88 | 41.8 | not struck | 4 505 | 2.21 | 12.7 / 18.9 % |
+| | vanilla | 1.0 | 48.0 | not struck | 0 | 2.95 | 18.3 / 25.9 % |
+| flood 100/s | full | 1.0 | 46.8 | not struck | 0 | 1.64 | 5.1 / 14.9 % |
+| | static-bucket | 0.75 | 35.8 | not struck | 18 097 | 3.53 | 18.1 / 25.9 % |
+| | vanilla | 1.0 | 46.8 | not struck | 0 | 8.10 | 47.1 / 77.2 % |
+| flood 200/s | full | 1.0 | 46.8 | not struck | 3 | 2.27 | 6.9 / 16.4 % |
+| | static-bucket | 0.74 | 35.0 | not struck | 13 896 | 3.96 | 18.8 / 27.2 % |
+| | vanilla (not faithful) | 1.0 | 47.2 | not struck | 0 | 13.56 | 81.2 / 100 % |
+
+- **Reputation is what isolates a replayer; the per-origin budget is what protects delivery against a flood.**
+  `full` bans B at all 10 neighbours in all 9 replay runs; neither baseline bans anyone (0 of 10 in every
+  run). Against a flood nothing is struck in any mode (a fresh, validly signed message is not misbehaviour),
+  and `full` keeps delivery at 1.0 up to 200 messages/s where `static-bucket` falls to 0.74: with only a
+  per-sender bucket every honest node relays the flood and the honest frames behind it are rate-limited
+  (4 505 to 18 097 per run). The same happens in the replay rows, because B's own 40 messages/s are a flood
+  too (`static-bucket` 0.91 and 0.89 at ×2 and ×8); at ×32 it is 0.997, and these runs do not explain why
+  more copies lose fewer honest messages (the run-to-run spread was not measured separately).
+- **`vanilla` keeps delivery but pays in work.** It delivered every honest message at every intensity
+  (goodput 46.8 to 48), but a neighbour of B spent 3.1 CPU seconds against 0.63 for `full` under replay,
+  and 13.6 against 2.3 under a 200 messages/s flood; host CPU rose to 81 % mean and 100 % peak. Those three
+  runs break the testbed's 70 % CPU limit and are marked not faithful: on this host, 50 nodes under
+  200 flooded messages/s are at the limit of what one machine can emulate, and vanilla's delivery there
+  says nothing about a larger network.
+- The `frames_per_message` column of `baselines.md` divides by every message originated, the attacker's own
+  included, so it is not comparable across attacks; the table above compares delivery, goodput and CPU.
+- 60 of the 63 runs are faithful; eight runs that failed only the "no swap I/O" criterion (a few dozen pages
+  swapped while 6.9 GiB of page cache was held) were repeated after dropping the page cache and are
+  faithful; the first attempts are in the evidence folder.
+
+#### Strike threshold k
+
+The penalty is 0.45 / k, so k strikes ban a peer that starts at 0.5 (k = 3 is the shipped 0.15) and recovery
+stays 0.0005/s. Two costs pull in opposite directions.
+
+*Honest duplicates (simulation, N = 100, 108 runs).* Honest nodes duplicate an outgoing frame with
+probability q: an injected transport fault, not a measured network property (the TCP transport numbers its
+frames and the testbed at 20 % loss shows no honest strike). A duplicate is a same-ID repeat from the same
+sender, so it is a strike. Share of honest links on which the observer ever banned its peer:
+
+| q (duplicates per frame) | k = 1 | k = 3 | k = 5 |
+|---|---|---|---|
+| 0 | 0 | 0 | 0 |
+| 1e-5 | 5.4 % | 0 | 0 |
+| 3e-5 | 14.2 % | 0 | 0 |
+| 1e-4 | 40.2 % | 0.5 % | 0.03 % |
+| 3e-4 | 70.7 % | 10.9 % | 1 % |
+| 1e-3 | 88.2 % | 66.4 % | 41.6 % |
+
+*Attackers.* An attacker that repeats every frame is banned at all of its neighbours for every k, and the
+extra cost of a larger k is small: 171 / 177 / 181 of its frames admitted per link before the ban for
+k = 1 / 3 / 5 and a median simulated eviction of 0.04 / 0.29 / 0.54 s. A paced attacker is where k costs
+(`ablation_bench`, one replay every P seconds for six simulated hours):
+
+| Seconds between replays | k = 1 | k = 3 | k = 5 |
+|---|---|---|---|
+| 30 | banned after 1 | banned after 3 | banned after 5 |
+| 120 | banned after 1 | banned after 4 | banned after 6 |
+| 180 | banned after 1 | banned after 4 | never (120 in 6 h) |
+| 240 | banned after 1 | banned after 7 | never (90 in 6 h) |
+| 270 | banned after 1 | banned after 12 | never (80 in 6 h) |
+| 300 | banned after 1 | never (72 in 6 h) | never (72 in 6 h) |
+| 600 | banned after 1 | never (36 in 6 h) | never (36 in 6 h) |
+
+k = 3 sustains at most one replay per 300 s (12 per hour); k = 5 sustains one per 180 s (20 per hour, 67 %
+more); k = 1 bans any replay, and the table above shows what that costs when honest peers misbehave
+rarely. k = 3 keeps every honest link up to q = 3e-5 and loses 0.5 % at 1e-4; k = 5 buys about another
+factor of three in q for 67 % more tolerated paced replays. k = 3 was chosen before this measurement; it is
+a defensible middle, not an optimum.
+
+#### Replay window W
+
+`ablation_bench` drives a real `NodeRuntime`: an honest origin sends 200 messages in blocks of D + 1
+delivered in reverse, so a message can arrive D sequence numbers behind the newest. Share delivered:
+
+| Reorder depth D | W = 0 | W = 8 | W = 16 | W = 32 | W = 64 | W = 128 |
+|---|---|---|---|---|---|---|
+| 0 | 100 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+| 1 | 50 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+| 4 | 20 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+| 8 | 12 % | 100 % | 100 % | 100 % | 100 % | 100 % |
+| 16 | 6 % | 54 % | 100 % | 100 % | 100 % | 100 % |
+| 32 | 4 % | 28 % | 52 % | 100 % | 100 % | 100 % |
+| 64 | 2 % | 16 % | 28 % | 52 % | 100 % | 100 % |
+
+A message is delivered when D ≤ W and otherwise dropped as stale **without a strike**: no cell strikes or
+bans the honest relay. So strict-monotonic delivery (W = 0) does not ban honest peers on this protocol;
+it loses their reordered messages. The earlier claim of a false-positive ban for W = 0 had no recorded run
+and does not hold. The window's other effect is on replays: five repeats of a message the origin has since
+moved L sequence numbers past are banned when L ≤ W and silently dropped when L > W (W = 0 ignores even
+L = 1; W = 64 bans up to L = 64 and ignores L = 128), so a replay older than W costs the attacker nothing.
+The window keeps at most W + 1 sequence numbers per origin. W = 64 delivers every depth tested up to 64 and
+detects replays up to lag 64.
+
+#### Simulation: work per delivery
+
+The same modes in the simulation (N = 100, 10 % attackers, `make ablation`, 126 runs), which has **no
+capacity model**: a mode cannot lose messages to overload there, so only work and bans are comparable.
+Attacker frames admitted per link before the ban: replay ×2 / ×8 / ×32 gives 174 / 172 / 172 for `full`
+(the ban bounds the attacker's volume whatever its intensity) against 833 / 2 830 / 10 800 for the
+baselines. Against a flood of 2 / 8 / 32 messages/s from each attacker (20 / 80 / 320 in all), delivery is
+0.992 / 0.974 / 0.955 for `full`, 0.992 / 0.858 / 0.419 for `static-bucket` (the per-sender budget alone
+collapses) and 1 for `vanilla`, which pays with 231 frames and 45.8 signature checks per honest delivery
+at 32/s against 47.7 and 9.6 for `full`. One criterion failed as written: `full` delivered 0.983 (not
+≥ 0.99) on one topology (rgg, seed 1) because removing the ten attackers cuts one honest node off
+(2 components; delivery inside the reachable component is 1.0), which the baselines never do.
+
+#### Limits
+
+Emulation at N = 50 and simulation at N = 100 only; floods from several neighbours at once, colluding
+attackers and identity churn (a banned peer returning with a new key pair) were not measured; k ∈ {1, 3, 5}
+and W ≤ 128 only; the injected-duplicate fault is an assumption about what honest peers might do, not a
+measurement of any network; `vanilla` at 200 messages/s exceeds this host's CPU fidelity limit.
+
+Evidence: [`evidence/ablation-2026-11-06/`](evidence/ablation-2026-11-06/) (simulation CSVs and figures,
+the testbed runs' `summary.json` files, the bench CSVs also in `crates/crci-node/benches/results/`).
+Criteria were fixed before each data set; two failed as written and stay recorded (delivery of `full` ≥ 0.99
+at every run of the simulation, and every testbed run faithful).
+
 ## In-process simulation (up to 5 000 nodes)
 
 Protocol logic at a scale one host cannot emulate with real processes. **These are simulation results, not

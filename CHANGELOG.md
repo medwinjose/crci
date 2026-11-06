@@ -37,6 +37,14 @@ git history; `git log` is the complete record.
 - `TcpTransport::paced_frames` and a `frames paced: total=N` line from `crci-node` (counted by the testbed
   analysis); `TcpTransport::bind_with_pacing` for tests.
 
+- Baselines and ablations (`crci-node --defence`, `--strikes-to-ban`, `--replay-window`; the same switches in
+  the `mesh_sim` scenarios; `scripts/testbed/run_baselines.sh`, `scripts/sim/run_ablation.py`,
+  `make baselines`, `make ablation`): the `static-bucket` and `vanilla` defence modes, the strike threshold k,
+  an injected duplicate fault for honest nodes in the simulation, and a window ablation in `ablation_bench`
+  (delivery under reordering and replay detection for W = 0 to 128, and the strike threshold against a paced
+  attacker). Results: [benchmarks.md](docs/benchmarks.md#baselines-and-ablations).
+- `SybilGuard::set_strikes_to_ban(k)`, `NodeRuntime::set_defence_mode` and `DefenceMode` (experiments only).
+
 ### Changed
 - The listener reads at most 200 frames per second from one connection (burst 400) and waits when a sender
   goes faster, so TCP flow control slows it. Before, a neighbour that was never struck (a flood of fresh
