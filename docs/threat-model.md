@@ -119,3 +119,13 @@ semantically false but correctly signed reports, radio jamming, side channels, c
     replay window (W = 0) loses reordered messages and strikes nobody; a replay older than W is dropped
     without a strike, so the window also bounds how old a replay can be and still be punished
     ([benchmarks.md](benchmarks.md#replay-window-w)).
+11. **Banning an attacker removes its links, and that can cut honest nodes off.** The isolation is local and
+    correct (every honest neighbour of every replayer banned it in all 90 emulated runs with 10–45 % of the nodes
+    replaying, 0 honest nodes banned), but a node whose paths to the source all ran through attackers is
+    disconnected once they are banned: 27 of the 72 emulated runs with attackers left honest nodes unreachable
+    from the source, and a graph computation over 200 topology instances per point puts the probability that
+    at least one honest node is cut off at 1–19 % with 10 % of the nodes replaying and 85–100 % with 45 %
+    (mostly single nodes up to 20 %). The protocol does not rebuild the overlay; path redundancy is the only
+    remedy, and an attacker with no honest neighbour is banned by nobody. Replay-only attackers that do not
+    collude and do not originate; N ≤ 100 on real processes
+    ([benchmarks.md](benchmarks.md#share-of-replaying-nodes)).
