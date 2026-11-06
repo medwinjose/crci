@@ -201,6 +201,21 @@ def main():
             h = hops[origin].get(x)
             rows.append((mid, origin, x, h, t_acc - t_emit, p, x in downstream and origin == src, path))
 
+    # Delivery and goodput of honest messages originated from the fault (the configured fault time
+    # when no fault was injected) to the end of the window, whether or not anyone was banned: the
+    # baselines never ban, so the "post" period does not exist for them.
+    attack_from = fault_ms if fault_ms else t0 + meta["config"].get("fault_at", 20) * 1000
+    attack_ratios, attack_deliveries = [], 0
+    for mid, (origin, t_emit) in originated.items():
+        if origin == byz or not (attack_from <= t_emit <= end):
+            continue
+        receivers = [x for x in honest if x != origin]
+        got = accepted.get(mid, {})
+        delivered = sum(1 for x in receivers if x in got)
+        attack_ratios.append(delivered / len(receivers))
+        attack_deliveries += delivered
+    attack_seconds = max(1.0, (end - attack_from) / 1000)
+
     with open(f"{out}/latency.csv", "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["message", "origin", "receiver", "hops", "latency_ms", "period", "downstream_of_byzantine",
@@ -288,6 +303,10 @@ def main():
                   "downstream": len(downstream)},
         "messages_originated_in_window": sum(1 for _, t in originated.values() if t0 - 1000 <= t <= end),
         "delivery_ratio": {p: stats(v) for p, v in delivery.items()},
+        "attack_window": {"messages": len(attack_ratios), "delivery": stats(attack_ratios),
+                          "honest_deliveries": attack_deliveries,
+                          "goodput_per_s": round(attack_deliveries / attack_seconds, 2),
+                          "seconds": round(attack_seconds, 1)},
         "messages_fully_delivered": {p: sum(1 for d in v if d == 1.0) for p, v in delivery.items()},
         "latency_ms": {p: stats(v) for p, v in lat.items()},
         "per_hop_excess_ms": stats(per_hop_excess),

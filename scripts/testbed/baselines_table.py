@@ -117,7 +117,7 @@ def main():
         return result
 
     for metric, ylabel, ymin, ymax, title in (
-            ("mdr", "message delivery ratio (honest messages)", 0.0, 1.05, "Delivery"),
+            ("mdr", "message delivery ratio (honest messages)", 0.0, 1.0, "Delivery"),
             ("goodput_per_s", "honest deliveries per second", 0.0, None, "Goodput"),
             ("cpu_s_neighbour_mean", "CPU seconds per neighbour of B (60 s run)", 0.0, None, "Cost")):
         for attack, xlab in (("replay", "copies of every frame sent by B (0 = no attack)"),
@@ -125,7 +125,7 @@ def main():
             svgplot.line_chart(
                 f"{out}/figures/{metric}-{attack}.svg",
                 f"{title} against {'replay' if attack == 'replay' else 'a fresh-message flood'}",
-                "emulation: real crci-node processes on one host, rgg N = 50, mean of 3 seeds",
+                "emulation: real crci-node processes on one host, rgg N = 50, mean of 3 seeds; lines with equal values overlap",
                 [str(x) for x in ATTACKS[attack]], series(metric, attack), ylabel, ymin, ymax, xlab)
 
 

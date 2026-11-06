@@ -29,14 +29,18 @@ Linux only, run as root. Tested in WSL2 (Ubuntu 26.04, kernel 6.6, iproute2 6.19
 | `run_attacks.sh OUT [BIN] [SEEDS] [OLD_BIN]` | The attacker set on rgg N = 50: an over-budget replayer (B empties its budget with fresh messages from 10 s before the fault, then sends every frame 8 times; refill 5 and 20, and an older binary for comparison if given), a fresh-message flood (B originates 40 messages/s and never repeats a frame), and the 20 % loss condition with the nodes kept running 60 s after the last message (`--drain 60`). Resumable. |
 | `run_flood.sh OUT [BIN] [SEEDS]` | The invalid-signature flood on rgg N = 50: B silent, B sending 40 valid messages/s (the load-matched reference), B forging every signature at 1, 8 and 64 copies per frame (40, 320, 2 560 forged frames/s per link), B flooding 1 000 valid fresh messages/s, and one 480 s run in which B forges for 10 s and then signs correctly (readmission). Resumable. |
 | `flood_table.py OUT [BEFORE_DIR]` | `flood.csv`, `flood.md` (means over seeds and the pass/fail criteria) and `figures/flood-cost.svg`; with a directory of runs from an earlier binary, `figures/flood-cpu.svg` compares the CPU of B's neighbours. |
+| `run_baselines.sh OUT [BIN] [SEEDS]` | The three defence modes (`crci-node --defence full`, `static-bucket`, `vanilla`) on rgg N = 50 against no attack, a replayer sending every frame 2, 8 and 32 times, and a fresh-message flood of 40, 100 and 200 messages/s (63 runs). Resumable. |
+| `baselines_table.py OUT` | `baselines.csv`, `baselines.md` (means over seeds and the pass/fail criteria) and four-metric line charts in `figures/` (delivery, goodput and CPU against attack intensity). `svgplot.py` draws them. |
 
 ```bash
 make testbed OUT=/tmp/crci-testbed
 make attacks OUT=/tmp/crci-testbed   # writes /tmp/crci-testbed-attacks
 make flood OUT=/tmp/crci-testbed     # writes /tmp/crci-testbed-flood
+make baselines OUT=/tmp/crci-testbed # writes /tmp/crci-testbed-baselines
+make ablation OUT=/tmp/crci-testbed  # simulation and window bench; writes /tmp/crci-testbed-ablation
 make tables OUT=/tmp/crci-testbed    # main table and netem tables from runs already there
 make smoke OUT=/tmp/crci-testbed     # seed 1, N = 20 netem runs only, to check the scripts
-make reproduce OUT=/tmp/crci-testbed # all runs (about 8.5 h), then the tables
+make reproduce OUT=/tmp/crci-testbed # all runs (about 12 h), then the tables
 # or: cargo build --release -p crci-node --bin crci-node
 #     sudo scripts/testbed/run_all.sh /tmp/crci-testbed target/release/crci-node
 ```
@@ -54,6 +58,7 @@ Each run uses a 60 s measurement window starting at T0, after every node is list
 - **Attacker options:** `--byz-rate R` makes B originate R messages/s of its own from 10 s before the
   fault; `--replay-copies 1` turns the fault into a pure fresh-message flood; `--refill` sets the
   per-neighbour budget refill; `--drain S` keeps the nodes running S seconds after the window.
+- **Baselines:** `--defence full|static-bucket|vanilla`, `--strikes-to-ban K` and `--replay-window W` apply to every node of a run (`testbed.py` passes them on). The analysis reports `attack_window`: delivery and goodput of honest messages originated from the fault to the end of the window, whether or not anyone was banned.
 - **Invalid-signature flood:** `--corrupt-signatures` makes B corrupt the signature of everything it sends
   from the fault on (with `--replay-copies N`, each frame N times); `--corrupt-for S` stops after S seconds
   so B signs correctly again (readmission). `run_flood.sh` runs the set (B silent, B sending valid messages

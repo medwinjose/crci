@@ -186,6 +186,12 @@ def main():
                     help="from the fault on, the Byzantine node corrupts the signature of every message it sends")
     ap.add_argument("--corrupt-for", type=int, default=None,
                     help="with --corrupt-signatures: forge for this many seconds from the fault, then sign correctly")
+    ap.add_argument("--defence", default=None,
+                    help="every node's defence mode: full (default), static-bucket or vanilla")
+    ap.add_argument("--strikes-to-ban", type=int, default=None,
+                    help="every node's strike threshold (default 3)")
+    ap.add_argument("--replay-window", type=int, default=None,
+                    help="every node's replay window W (default 64)")
     ap.add_argument("--byz-rate", type=float, default=0,
                     help="messages/s the Byzantine node originates from 10 s before the fault on, so "
                          "its neighbours' budget for it is already empty when it starts replaying")
@@ -260,6 +266,12 @@ def main():
                     cmd += ["--corrupt-for-ms", str(args.corrupt_for * 1000)]
         if args.refill is not None:
             cmd += ["--sender-refill-per-sec", str(args.refill)]
+        if args.defence is not None:
+            cmd += ["--defence", args.defence]
+        if args.strikes_to_ban is not None:
+            cmd += ["--strikes-to-ban", str(args.strikes_to_ban)]
+        if args.replay_window is not None:
+            cmd += ["--replay-window", str(args.replay_window)]
         log = open(f"{args.out}/logs/n{i}.log", "w")
         procs.append(subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, env=env))
         log.close()
@@ -339,6 +351,7 @@ def main():
         "topology": {k: topo[k] for k in ("kind", "seed", "params", "metrics", "roles")},
         "config": {k: getattr(args, k) for k in (
             "delay_ms", "jitter_ms", "loss", "reorder", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies", "corrupt_signatures", "corrupt_for",
+            "defence", "strikes_to_ban", "replay_window",
             "byz_rate", "refill", "settle", "drain", "pings", "worker_threads", "backlog")},
         "t0_ms": int(t0 * 1000),
         "fault_ms": None if args.no_fault else int((t0 + args.fault_at) * 1000),
