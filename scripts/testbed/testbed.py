@@ -182,6 +182,10 @@ def main():
     ap.add_argument("--fault-at", type=int, default=20)
     ap.add_argument("--no-fault", action="store_true")
     ap.add_argument("--replay-copies", type=int, default=2)
+    ap.add_argument("--corrupt-signatures", action="store_true",
+                    help="from the fault on, the Byzantine node corrupts the signature of every message it sends")
+    ap.add_argument("--corrupt-for", type=int, default=None,
+                    help="with --corrupt-signatures: forge for this many seconds from the fault, then sign correctly")
     ap.add_argument("--byz-rate", type=float, default=0,
                     help="messages/s the Byzantine node originates from 10 s before the fault on, so "
                          "its neighbours' budget for it is already empty when it starts replaying")
@@ -250,6 +254,10 @@ def main():
         if i == roles["byzantine"] and not args.no_fault:
             cmd += ["--replay-after-ms", str(args.fault_at * 1000),
                     "--replay-copies", str(args.replay_copies)]
+            if args.corrupt_signatures:
+                cmd += ["--corrupt-signatures"]
+                if args.corrupt_for is not None:
+                    cmd += ["--corrupt-for-ms", str(args.corrupt_for * 1000)]
         if args.refill is not None:
             cmd += ["--sender-refill-per-sec", str(args.refill)]
         log = open(f"{args.out}/logs/n{i}.log", "w")
@@ -291,9 +299,17 @@ def main():
         p.wait()
 
     with open(f"{args.out}/rss.csv", "w") as out:
-        out.write("node,pid,rss_kib,threads\n")
+        out.write("node,pid,rss_kib,threads,cpu_s\n")
         for i, p in enumerate(procs):
             rss = threads = -1
+            cpu_s = -1.0
+            try:
+                # utime + stime (fields 14, 15 after the command name) in clock ticks
+                with open(f"/proc/{p.pid}/stat") as f:
+                    fields = f.read().rsplit(")", 1)[1].split()
+                cpu_s = (int(fields[11]) + int(fields[12])) / os.sysconf("SC_CLK_TCK")
+            except (FileNotFoundError, IndexError, ValueError):
+                pass
             try:
                 with open(f"/proc/{p.pid}/status") as f:
                     for line in f:
@@ -303,7 +319,7 @@ def main():
                             threads = int(line.split()[1])
             except FileNotFoundError:
                 pass
-            out.write(f"{i},{p.pid},{rss},{threads}\n")
+            out.write(f"{i},{p.pid},{rss},{threads},{cpu_s:.2f}\n")
     alive = sum(1 for p in procs if p.poll() is None)
 
     for p in procs:
@@ -322,7 +338,7 @@ def main():
     meta = {
         "topology": {k: topo[k] for k in ("kind", "seed", "params", "metrics", "roles")},
         "config": {k: getattr(args, k) for k in (
-            "delay_ms", "jitter_ms", "loss", "reorder", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies",
+            "delay_ms", "jitter_ms", "loss", "reorder", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies", "corrupt_signatures", "corrupt_for",
             "byz_rate", "refill", "settle", "drain", "pings", "worker_threads", "backlog")},
         "t0_ms": int(t0 * 1000),
         "fault_ms": None if args.no_fault else int((t0 + args.fault_at) * 1000),

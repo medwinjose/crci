@@ -27,13 +27,16 @@ Linux only, run as root. Tested in WSL2 (Ubuntu 26.04, kernel 6.6, iproute2 6.19
 | `run_netem.sh OUT [BIN] [SEEDS] [SIZES]` | The impairment set: one-way delay 40 ms ± 15 ms (uniform) on every egress, with loss 0/5/10/15/20 %, reordering 5/10/15 % and loss 10 % + reordering 10 %; rgg and mesh, N = 20/50/100, seeds 1–3. Resumable. |
 | `netem_table.py OUT` | One CSV per condition, `summary.csv` (mean over seeds) and `table.md` under `OUT/netem/`, and `conditions.md`: each condition aggregated over all its runs. |
 | `run_attacks.sh OUT [BIN] [SEEDS] [OLD_BIN]` | The attacker set on rgg N = 50: an over-budget replayer (B empties its budget with fresh messages from 10 s before the fault, then sends every frame 8 times; refill 5 and 20, and an older binary for comparison if given), a fresh-message flood (B originates 40 messages/s and never repeats a frame), and the 20 % loss condition with the nodes kept running 60 s after the last message (`--drain 60`). Resumable. |
+| `run_flood.sh OUT [BIN] [SEEDS]` | The invalid-signature flood on rgg N = 50: B silent, B sending 40 valid messages/s (the load-matched reference), B forging every signature at 1, 8 and 64 copies per frame (40, 320, 2 560 forged frames/s per link), B flooding 1 000 valid fresh messages/s, and one 480 s run in which B forges for 10 s and then signs correctly (readmission). Resumable. |
+| `flood_table.py OUT [BEFORE_DIR]` | `flood.csv`, `flood.md` (means over seeds and the pass/fail criteria) and `figures/flood-cost.svg`; with a directory of runs from an earlier binary, `figures/flood-cpu.svg` compares the CPU of B's neighbours. |
 
 ```bash
 make testbed OUT=/tmp/crci-testbed
 make attacks OUT=/tmp/crci-testbed   # writes /tmp/crci-testbed-attacks
+make flood OUT=/tmp/crci-testbed     # writes /tmp/crci-testbed-flood
 make tables OUT=/tmp/crci-testbed    # main table and netem tables from runs already there
 make smoke OUT=/tmp/crci-testbed     # seed 1, N = 20 netem runs only, to check the scripts
-make reproduce OUT=/tmp/crci-testbed # all runs (about 7.5 h), then the tables
+make reproduce OUT=/tmp/crci-testbed # all runs (about 8.5 h), then the tables
 # or: cargo build --release -p crci-node --bin crci-node
 #     sudo scripts/testbed/run_all.sh /tmp/crci-testbed target/release/crci-node
 ```
@@ -51,6 +54,11 @@ Each run uses a 60 s measurement window starting at T0, after every node is list
 - **Attacker options:** `--byz-rate R` makes B originate R messages/s of its own from 10 s before the
   fault; `--replay-copies 1` turns the fault into a pure fresh-message flood; `--refill` sets the
   per-neighbour budget refill; `--drain S` keeps the nodes running S seconds after the window.
+- **Invalid-signature flood:** `--corrupt-signatures` makes B corrupt the signature of everything it sends
+  from the fault on (with `--replay-copies N`, each frame N times); `--corrupt-for S` stops after S seconds
+  so B signs correctly again (readmission). `run_flood.sh` runs the set (B silent, B sending valid messages
+  at the same rate, 1/8/64 copies, one 480 s readmission run) and `flood_table.py` writes `flood.csv`,
+  `flood.md` and the figures. The analysis also records process CPU seconds per role (`/proc/<pid>/stat`).
 - **Roles:** B is a node whose removal keeps the graph connected, at least two hops from S, chosen (with S)
   to maximise the downstream set D: the nodes all of whose shortest paths from S pass through B. After B is
   evicted, S's messages must reach D over longer alternate paths.

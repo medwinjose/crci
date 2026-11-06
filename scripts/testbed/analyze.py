@@ -39,6 +39,8 @@ FAULT = re.compile(r"Node (n\d+) fault: .* at_ms=(\d+)")
 RATE = re.compile(r"\[(n\d+)\] SYBIL GUARD DROP: peer ([^#]+)#\S+ exceeded rate limit")
 ORIGIN_DROP = re.compile(r"\[(n\d+)\] ORIGIN BUDGET DROP: '[^']+' from origin '([^']+)'")
 RTT = re.compile(r"time=([\d.]+) ms")
+PACED = re.compile(r"Node (n\d+) frames paced: total=(\d+)")
+BANNED_DROPPED = re.compile(r"Node (n\d+) banned-peer frames dropped: total=(\d+)")
 WARMUP_MS = 5000
 
 
@@ -118,6 +120,8 @@ def main():
     rate_drops = defaultdict(int)
     origin_drops = defaultdict(int)
     relay_drops = {}
+    banned_dropped = {}
+    paced_frames = {}
     proc_us = []
     fault_ms = None
     counters = defaultdict(int)
@@ -139,6 +143,10 @@ def main():
                     fault_ms = int(m[2])
                 elif m := RELAY_DROPS.search(line):
                     relay_drops[m[1]] = (int(m[2]), int(m[3]))  # cumulative: keep the last
+                elif m := PACED.search(line):
+                    paced_frames[m[1]] = int(m[2])  # cumulative: keep the last
+                elif m := BANNED_DROPPED.search(line):
+                    banned_dropped[m[1]] = int(m[2])  # cumulative: keep the last
                 elif m := RATE.search(line):
                     rate_drops["from_byzantine" if m[2] == byz else "from_honest"] += 1
                 elif m := ORIGIN_DROP.search(line):
@@ -234,10 +242,24 @@ def main():
                int(host[-1]["pswpout"]) - int(host[0]["pswpout"])) if host else None
     kernel_drops = (int(host[-1]["softnet_drops"]) - int(host[0]["softnet_drops"])) if host else None
     rss = []
+    cpu_by_node = {}
     with open(f"{out}/rss.csv") as f:
         for r in csv.DictReader(f):
             if int(r["rss_kib"]) > 0:
                 rss.append(int(r["rss_kib"]))
+            if float(r.get("cpu_s", -1)) >= 0:
+                cpu_by_node[name(int(r["node"]))] = float(r["cpu_s"])
+    # Process CPU seconds over the whole run (utime + stime), by role.
+    byz_nbrs = set(adj[byz])
+    cpu_roles = {
+        "byzantine": cpu_by_node.get(byz),
+        "byzantine_neighbours_mean": stats([v for k, v in cpu_by_node.items() if k in byz_nbrs])
+        .get("mean"),
+        "byzantine_neighbours_max": stats([v for k, v in cpu_by_node.items() if k in byz_nbrs])
+        .get("max"),
+        "others_mean": stats([v for k, v in cpu_by_node.items() if k not in byz_nbrs and k != byz])
+        .get("mean"),
+    }
 
     rtts = []
     for a, b in meta["ping_edges"]:
@@ -282,6 +304,8 @@ def main():
         "honest_nodes_banned_by_anyone": len({b for _, b, _ in false_evictions}),
         "honest_nodes": len(honest),
         "readmissions": len(readmits),
+        "banned_frames_dropped": sum(banned_dropped.values()),
+        "frames_paced": {"total": sum(paced_frames.values()), "nodes": sorted(paced_frames)},
         "rate_limit_drops": dict(rate_drops),
         "origin_budget_drops": dict(origin_drops),
         "relay_drops": {"failed": sum(f for f, _ in relay_drops.values()),
@@ -299,6 +323,7 @@ def main():
                  "swap_pages_in_out": swap_io,
                  "kernel_backlog_drops": kernel_drops},
         "rss_kib_per_node": stats(rss),
+        "cpu_seconds_per_process": cpu_roles,
         "rss_total_mib": round(sum(rss) / 1024, 1),
         "ping_rtt_ms": rtt,
         "configured_rtt_ms": {"median": exp_med, "p95": exp_p95},

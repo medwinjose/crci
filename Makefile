@@ -6,6 +6,7 @@
 #   make testbed OUT=/tmp/x   # the emulation testbed runs only
 #   make netem OUT=/tmp/x     # the loss / jitter / reordering runs only (hours)
 #   make attacks OUT=/tmp/x   # attacker and eventual-delivery runs
+#   make flood OUT=/tmp/x     # invalid-signature flood runs (about 1 h)
 #   make tables OUT=/tmp/x    # regenerate the tables from runs already in OUT*
 #   make sim OUT=/tmp/x       # the in-process simulation, 20 to 5 000 nodes (no root; about 1 h)
 
@@ -15,7 +16,7 @@ BIN := target/release/crci-node
 TB := scripts/testbed
 SIM := target/release/examples/mesh_sim
 
-.PHONY: build testbed netem attacks tables smoke sim reproduce
+.PHONY: build testbed netem attacks flood tables smoke sim reproduce
 
 build:
 	cargo build --release -p crci-node --bin crci-node
@@ -29,6 +30,9 @@ netem: build
 
 attacks: build
 	$(SUDO) $(TB)/run_attacks.sh $(OUT)-attacks $(BIN)
+
+flood: build
+	$(SUDO) $(TB)/run_flood.sh $(OUT)-flood $(BIN)
 
 # Markdown for docs/benchmarks.md: the main table (testbed) and per-condition tables (netem).
 tables:
@@ -47,4 +51,4 @@ sim:
 	cp $(OUT)-sim-timing/results.csv $(OUT)-sim/timing.csv
 	python3 scripts/sim/sim_report.py $(OUT)-sim
 
-reproduce: testbed netem attacks tables sim
+reproduce: testbed netem attacks flood tables sim
