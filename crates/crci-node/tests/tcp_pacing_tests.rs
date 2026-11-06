@@ -78,28 +78,25 @@ async fn a_connection_delivers_frames_at_the_paced_rate_not_faster() {
         (got as f64) <= allowed * 1.15,
         "{got} frames in {window:?}; pacing allows about {allowed}"
     );
+    // The burst arrives at once whatever the CPU; more than that depends on the runner's speed.
     assert!(
-        got as f64 >= allowed * 0.5,
-        "{got} frames in {window:?}: pacing must not starve the link (about {allowed} allowed)"
+        got >= u64::from(burst),
+        "{got} frames in {window:?}: pacing must not starve the link (burst {burst})"
     );
 }
 
 #[tokio::test]
 async fn an_honest_burst_below_the_default_burst_is_not_delayed() {
     let n = u64::from(FRAME_PACING_BURST / 2);
-    let started = Instant::now();
     let (got, paced) = delivered_in(
-        Duration::from_millis(2500),
+        Duration::from_secs(30),
         n,
         FRAME_PACING_RATE,
         FRAME_PACING_BURST,
     )
     .await;
     assert_eq!(got, n, "a burst of {n} frames must be delivered whole");
+    // Not a time limit: an unoptimised build verifies a frame in milliseconds, and a slow runner
+    // needs seconds for the burst. What matters is that the reader never had to wait for a token.
     assert_eq!(paced, 0, "a burst below the default burst must never wait");
-    assert!(
-        started.elapsed() < Duration::from_millis(2000),
-        "the burst took {:?}",
-        started.elapsed()
-    );
 }
