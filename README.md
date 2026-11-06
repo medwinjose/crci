@@ -92,7 +92,8 @@ emulated on one host; three seeds per configuration, every run within the testbe
 | 10–45 % of the nodes replaying, N = 20/50/100 (90 runs) | Every honest neighbour of every replayer bans it (3 958 of 3 958), median ≈ 2 s, 0 honest nodes banned; honest delivery inside the connected part 100 %. Removing up to 45 % of the nodes can cut honest nodes off: 27 of 72 runs, see the [partition probabilities](docs/benchmarks.md#share-of-replaying-nodes) |
 
 Every number above links back to a raw data file and the exact command in
-[docs/benchmarks.md](docs/benchmarks.md).
+[docs/benchmarks.md](docs/benchmarks.md). Four summary figures, each marked emulation or simulation, are in
+[docs/figures](docs/figures) ([how they are made](docs/benchmarks.md#figures)).
 
 ## Engineering
 

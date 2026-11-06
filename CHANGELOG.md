@@ -55,6 +55,11 @@ git history; `git log` is the complete record.
   bans between honest observers and reports the honest nodes' components after the attackers are removed.
   `scripts/sim/partition_prob.py` computes the probability of a partition over many topology instances and
   checks it against the simulation. Results: [benchmarks.md](docs/benchmarks.md#share-of-replaying-nodes).
+- Four evaluation figures in `docs/figures/` (`scripts/figures/make_figures.py`, `make figures`): latency against
+  N with 0, 10 and 30 % of the nodes replaying, the reputation of a paced attacker, survivability against packet
+  loss, and goodput against the baselines. Every figure is drawn from committed data, states whether it is
+  emulation or simulation, and has error bars over seeds where there is any variation. The plot helper gained
+  error bars and a numeric-axis chart. [benchmarks.md](docs/benchmarks.md#figures).
 
 ### Changed
 - The listener reads at most 200 frames per second from one connection (burst 400) and waits when a sender

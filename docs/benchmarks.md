@@ -28,7 +28,28 @@ Two harness details affect what the results mean:
 
 Bench targets have `test = false`, so `cargo test` never runs them or rewrites their CSVs.
 
-## Byzantine eviction (preprint Table III)
+## Figures
+
+Four figures summarise the evaluation; `python3 scripts/figures/make_figures.py` (standard library only,
+`make figures`) draws them as SVG into [`docs/figures/`](figures/) from data committed in this repository,
+and fails if a run count behind a point is not the one stated. Each figure says in its subtitle whether it
+is **emulation** (real processes on one host) or **simulation**; error bars are the sample standard
+deviation over the runs behind a point.
+
+| Figure | Shows | Kind | Data |
+|---|---|---|---|
+| [`fig-a-latency-vs-n.svg`](figures/fig-a-latency-vs-n.svg) | p95 delivery latency after the quarantine against N, 0 / 10 / 30 % of the nodes replaying, rgg and mesh; 3 seeds per point | emulation | [`evidence/ratio-2026-11-07/ratio.csv`](evidence/ratio-2026-11-07/ratio.csv) |
+| [`fig-b-paced-attack.svg`](figures/fig-b-paced-attack.svg) | Reputation of a paced replayer over six hours, replay every 120, 290 and 330 s; deterministic, no error bars | simulation | `crates/crci-node/benches/results/recovery_trajectory.csv` |
+| [`fig-c-survivability-vs-loss.svg`](figures/fig-c-survivability-vs-loss.svg) | Delivery after the ban and honest nodes not banned against packet loss 0–20 %; 18 runs per point | emulation | [`evidence/testbed-fast-recovery-2026-11-04/netem/results.csv`](evidence/testbed-fast-recovery-2026-11-04/netem/results.csv) |
+| [`fig-d-goodput-vs-baselines.svg`](figures/fig-d-goodput-vs-baselines.svg) | Honest deliveries per second under replay and flood attacks for `full`, `static-bucket` and `vanilla`; rgg N = 50, 3 seeds per point (vanilla at 200 messages/s omitted: three runs exceed the host-CPU limit) | emulation | [`evidence/ablation-2026-11-06/testbed/baselines.csv`](evidence/ablation-2026-11-06/testbed/baselines.csv) |
+
+The emulation figures come from two node builds (`04ec7be5` for figure c, `aa619cb0` for figures a and d), as
+the sections above say; planned: regenerate all of them on one final build before submission.
+
+## Byzantine eviction, in-process
+
+The preprint no longer prints this table; the emulation figures above replace it. It stays here as the
+description of the in-process harness.
 
 - **Harness:** `crates/crci-node/benches/byzantine_bench.rs`
 - **Command:** `cargo bench -p crci-node --bench byzantine_bench` (writes to `crates/crci-node/benches/results/`)
