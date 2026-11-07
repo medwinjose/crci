@@ -1,7 +1,7 @@
-run,honest_nodes,attackers,frames,messages,false_evictions,honest_strikes,honest_nodes_banned,honest_links_total,honest_links_ever_banned,attackers_fully_banned,coverage_links,coverage_banned,attacker_strikes,accepted_via_attacker_post,sync_requests,sync_excused,verifications,runtime_s
-attack5-s1,107,6,1090605,13108,0,0,0,3934,0,0,224,168,1215,3466,48607,7579,573953,89.8054141
-attack5-s2,107,6,1076310,13108,0,0,0,4038,0,1,172,124,650,1477,48583,4586,573245,109.4897212
-attack5-s3,107,6,1069581,13108,0,0,0,4066,0,2,162,129,833,2045,48664,5227,569064,107.7197238
-honest-s1,113,0,1091384,13108,0,0,0,4392,0,0,0,0,0,0,48556,1413,604542,105.1753259
-honest-s2,113,0,1069134,13108,0,0,0,4392,0,0,0,0,0,0,48659,1558,591200,102.1106096
-honest-s3,113,0,1062857,13108,0,0,0,4392,0,0,0,0,0,0,48661,1988,586952,115.3329392
+run,honest_nodes,attackers,frames,messages,false_evictions,honest_strikes,honest_nodes_banned,honest_links_total,honest_links_ever_banned,attackers_fully_banned,coverage_links,coverage_banned,coverage_links_in_contact,coverage_banned_in_contact,attacker_strikes,accepted_via_attacker_post,sync_requests,sync_excused,verifications,runtime_s
+attack5-s1,107,6,1090605,13108,0,0,0,3934,0,0,224,168,168,168,1215,3466,48607,7579,573953,58.4981959
+attack5-s2,107,6,1076310,13108,0,0,0,4038,0,1,172,124,124,124,650,1477,48583,4586,573245,56.5876387
+attack5-s3,107,6,1069581,13108,0,0,0,4066,0,2,162,129,129,129,833,2045,48664,5227,569064,56.6868594
+honest-s1,113,0,1091384,13108,0,0,0,4392,0,0,0,0,,,0,0,48556,1413,604542,59.3667612
+honest-s2,113,0,1069134,13108,0,0,0,4392,0,0,0,0,,,0,0,48659,1558,591200,57.3931586
+honest-s3,113,0,1062857,13108,0,0,0,4392,0,0,0,0,,,0,0,48661,1988,586952,57.571386

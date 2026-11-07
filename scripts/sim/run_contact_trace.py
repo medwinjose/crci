@@ -89,7 +89,8 @@ def main():
                 "honest_nodes", "attackers", "frames", "messages", "false_evictions",
                 "honest_strikes", "honest_links_total", "honest_links_ever_banned",
                 "coverage_links", "coverage_banned", "attacker_strikes", "sync_requests",
-                "sync_excused", "verifications", "runtime_s")})
+                "sync_excused", "verifications", "runtime_s")},
+                  {k: o.get(k) for k in ("coverage_links_in_contact", "coverage_banned_in_contact")})
             os.remove(sc)
 
 

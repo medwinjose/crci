@@ -9,6 +9,8 @@
   "attacker_strikes": 1215,
   "coverage_links": 224,
   "coverage_banned": 168,
+  "coverage_links_in_contact": 168,
+  "coverage_banned_in_contact": 168,
   "attackers_fully_banned": 0,
   "readmissions": 249,
   "non_neighbour_records": 0,
@@ -53,6 +55,6 @@
   "honest_links_ever_banned": 0,
   "delivery_attack": 0.2461774167588611,
   "goodput_per_s": 1.5173227852075093,
-  "runtime_s": 89.8054141,
+  "runtime_s": 58.4981959,
   "peak_rss_kib": null
 }

@@ -125,6 +125,21 @@ fn a_contact_trace_limits_delivery_to_the_time_respecting_paths_and_strikes_nobo
     assert_eq!(run(&s), out);
 }
 
+#[test]
+fn coverage_in_contact_counts_only_links_used_after_the_fault() {
+    // Attacker 1 meets node 0 only before the fault (20 s) and node 2 after it.
+    let mut s = scenario(3, vec![(0, 1), (1, 2)], vec![1], 2);
+    s.contacts = vec![(0, 10_000, 0, 1), (30_000, 60_000, 2, 1)];
+    let out = run(&s);
+    assert_eq!(out.coverage_links, 2);
+    assert_eq!(out.coverage_links_in_contact, Some(1));
+    // Without a trace the fields are absent.
+    assert_eq!(
+        run(&scenario(3, vec![(0, 1), (1, 2)], vec![1], 2)).coverage_links_in_contact,
+        None
+    );
+}
+
 fn with_config(mut s: Scenario, config: Config) -> Scenario {
     s.config = config;
     s

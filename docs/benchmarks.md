@@ -810,11 +810,12 @@ originates a message every 30 minutes (13 108 in all). The tick is 1 s.
 | All honest | 0 | 0 | 0 of 4 392 |
 | 6 of 113 nodes replay every frame twice from a quarter of the way in | 0 | 0 | 0 of 3 934 / 4 038 / 4 066 |
 
-With the 6 replaying nodes, the honest observers that banned an attacker were 168 of 224, 124 of
-172 and 129 of 162 (per seed); a replayer was banned by every neighbour for 0, 1 and 2 of its 6
-nodes in the three seeds. Isolation is partial here: a neighbour can only strike a link that carries
-repeated frames, and in this trace many pairs meet briefly or rarely. The share of unbanned links is
-measured, not explained further. The seeds change the message offsets, the anti-entropy phases and
+With the 6 replaying nodes (they start a quarter of the way in), 168 of 224, 124 of 172 and 129 of
+162 (per seed) of the honest nodes that are ever in contact with one of them banned it. The rest
+never had a contact with that attacker after the replay began, so they could not be struck: of the
+links that did, every one banned (168 of 168, 124 of 124, 129 of 129), even when the only contact
+lasted one 20 s snapshot. A replayer was therefore banned by every neighbour in 0, 1 and 2 of its 6
+nodes only because the others had neighbours they never met again. The seeds change the message offsets, the anti-entropy phases and
 the choice of attackers; the contact trace is fixed, so the three runs are not independent samples
 of a population. Raw outcomes and `results.csv`: `docs/evidence/contact-trace-2026-11-08/`.
 Not measured: delivery against the best possible on this trace, other contact traces, attackers

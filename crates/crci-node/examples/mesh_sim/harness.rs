@@ -88,6 +88,12 @@ pub struct Outcome {
     /// (honest node, neighbouring attacker) pairs, and those where the node banned the attacker.
     pub coverage_links: u64,
     pub coverage_banned: u64,
+    /// With a contact trace only: the same pairs restricted to those with a contact that ended
+    /// after the fault began (an attacker cannot be struck on a link it never uses again).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coverage_links_in_contact: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coverage_banned_in_contact: Option<u64>,
     pub attackers_fully_banned: usize,
     pub readmissions: u64,
     /// Records of senders that are not neighbours, over all nodes' guards at the end.
@@ -428,7 +434,18 @@ impl Sim<'_> {
                 }
                 self.out.coverage_links += 1;
                 let view_pos = self.adj[observer].binary_search(&a).unwrap_or(0);
-                if self.links[observer][view_pos].ever_banned {
+                let banned = self.links[observer][view_pos].ever_banned;
+                if !s.contacts.is_empty() {
+                    let in_contact = s.contacts.iter().any(|&(_, end, x, y)| {
+                        end > s.fault_at_ms && (x, y) == (a.min(observer), a.max(observer))
+                            || end > s.fault_at_ms && (y, x) == (a.min(observer), a.max(observer))
+                    });
+                    if in_contact {
+                        *self.out.coverage_links_in_contact.get_or_insert(0) += 1;
+                        *self.out.coverage_banned_in_contact.get_or_insert(0) += u64::from(banned);
+                    }
+                }
+                if banned {
                     self.out.coverage_banned += 1;
                 } else {
                     full = false;
