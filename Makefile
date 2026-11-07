@@ -16,6 +16,7 @@
 #   make tables OUT=/tmp/x    # regenerate the tables from runs already in OUT*
 #   make sim OUT=/tmp/x       # the in-process simulation, 20 to 5 000 nodes (no root; about 1 h)
 #   make state OUT=/tmp/x     # one node's memory under floods of a million signed messages (no root; about 8 min)
+#   make tcp-flood OUT=/tmp/x # the same through a real node over TCP, 90 identities (about 10 min)
 
 OUT ?= /tmp/crci-testbed
 SUDO ?= sudo
@@ -23,7 +24,7 @@ BIN := target/release/crci-node
 TB := scripts/testbed
 SIM := target/release/examples/mesh_sim
 
-.PHONY: tla build testbed netem attacks flood flapping ratio figures baselines ablation tables smoke sim state reproduce
+.PHONY: tla build testbed netem attacks flood flapping ratio figures baselines ablation tables smoke sim state tcp-flood reproduce
 
 tla:
 	python3 docs/tla/check.py
@@ -71,6 +72,11 @@ state:
 	cargo build --release -p crci-node --example state_flood
 	scripts/sim/run_state_flood.sh $(OUT)-state
 
+# A flood of a million signed messages from 90 identities through one real node (root; about 10 minutes).
+tcp-flood: build
+	cargo build --release -p crci-node --example tcp_flood
+	$(SUDO) $(TB)/run_tcp_flood.sh $(OUT)-tcp-flood $(BIN) target/release/examples/tcp_flood
+
 # Markdown for docs/benchmarks.md: the main table (testbed) and per-condition tables (netem).
 tables:
 	python3 $(TB)/main_table.py $(OUT) | tee $(OUT)/main-table.md
@@ -88,4 +94,4 @@ sim:
 	cp $(OUT)-sim-timing/results.csv $(OUT)-sim/timing.csv
 	python3 scripts/sim/sim_report.py $(OUT)-sim
 
-reproduce: testbed netem attacks flood flapping ratio baselines tables sim ablation state figures
+reproduce: testbed netem attacks flood flapping ratio baselines tables sim ablation state tcp-flood figures
