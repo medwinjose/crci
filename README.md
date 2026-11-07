@@ -108,7 +108,8 @@ Every number above links back to a raw data file and the exact command in
   ([docs/formal-verification.md](docs/formal-verification.md)), and a Linux network-namespace test with
   `tc netem` delay and loss in CI.
 - **CI:** formatting, Clippy with warnings denied, the full test suite on Ubuntu and Windows,
-  cross-compilation for ARMv7 and AArch64 (Raspberry Pi), and a documentation check.
+  cross-compilation for ARMv7 and AArch64 (Raspberry Pi), a documentation check, and model checking of the
+  TLA+ specifications (the quick configurations) with a check that the replayed exports are current.
 
 ## Quick start
 
@@ -134,6 +135,12 @@ Reproduce the benchmarks:
 cargo bench -p crci-node --bench byzantine_bench
 cargo bench -p crci-node --bench ablation_bench
 cargo bench -p crci-node --bench recovery_bench
+```
+
+Re-run every model-checking configuration (needs Java 11+; about 35 min on 12 cores):
+
+```bash
+make tla
 ```
 
 A Docker Compose demo (two honest nodes, one adversarial node, and the dashboard) is in

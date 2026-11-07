@@ -15,7 +15,7 @@ fail. `results.txt` is the script's summary; `mutants.txt` is the run that break
 and replays the model through it. Changed: CRLF to LF, and the run's temporary folder removed from file paths.
 `no-fifo-before-the-fix.txt` is the counterexample that led to the excuse for a gossip copy following its answer,
 from the specification as it stood before that fix.
-`smoke-results.csv` is the testbed's small netem set (N = 20, seed 1, 18 runs) on the node build with both fixes,
+`SHA256SUMS` holds the hash of every file here as committed. `smoke-results.csv` is the testbed's small netem set (N = 20, seed 1, 18 runs) on the node build with both fixes,
 `crci-node` binary `835498dfa28e943f7cd2fd05c54daf3f90fabbe68aa357678b6ef0e298cff908`.
 
 ## `ratio-2026-11-07/`
