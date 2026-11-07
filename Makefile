@@ -9,6 +9,7 @@
 #   make flood OUT=/tmp/x     # invalid-signature flood runs (about 1 h)
 #   make flapping OUT=/tmp/x  # links going down and up every 5-10 s, honest and with a replayer (102 runs, about 5 h)
 #   make ratio OUT=/tmp/x     # 0-45 % of the nodes replaying, N = 20/50/100, plus the partition probability (90 runs, about 3 h)
+#   make tla                  # model-check the TLA+ specifications (needs Java; about 35 min on 12 cores, no root)
 #   make figures              # the four evaluation figures from the committed data (docs/figures/, seconds, no root)
 #   make baselines OUT=/tmp/x # the three defence modes against replay and flood (63 runs, about 3 h)
 #   make ablation OUT=/tmp/x  # strike threshold and defence modes in the simulation, window ablation bench (about 1 h)
@@ -21,7 +22,10 @@ BIN := target/release/crci-node
 TB := scripts/testbed
 SIM := target/release/examples/mesh_sim
 
-.PHONY: build testbed netem attacks flood flapping ratio figures baselines ablation tables smoke sim reproduce
+.PHONY: tla build testbed netem attacks flood flapping ratio figures baselines ablation tables smoke sim reproduce
+
+tla:
+	python3 docs/tla/check.py
 
 build:
 	cargo build --release -p crci-node --bin crci-node

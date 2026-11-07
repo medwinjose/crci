@@ -1,6 +1,13 @@
 --------------------------- MODULE MC ---------------------------
+(* Topologies for the configurations. a is the adversary. *)
 EXTENDS CRCI
-mc_MsgIds == {"m1"}
-mc_Zones == {"z1"}
-mc_MessageKind == {"RESCUE"}
+
+\* s - h - r, with the adversary a next to h and r.
+mc_Kite == { {"s", "h"}, {"h", "r"}, {"a", "h"}, {"a", "r"} }
+
+\* s - h - r, adversary a next to r only: the honest path is the only way in.
+mc_Line == { {"s", "h"}, {"h", "r"}, {"a", "r"} }
+
+\* s - h - r without an adversary.
+mc_Honest == { {"s", "h"}, {"h", "r"} }
 =================================================================
