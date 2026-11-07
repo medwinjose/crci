@@ -46,7 +46,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Model-check the TLA+ specifications (configurations under a minute)
+      - name: Model-check the TLA+ specifications (the quick configurations)
         run: python3 docs/tla/check.py --quick
       - name: Committed model exports match the specifications
         run: |

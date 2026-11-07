@@ -117,7 +117,8 @@ CHECKS = {
 }
 
 
-SLOW = {"honest-loss-sync", "adversary", "adversary-sync", "adversary-loss", "adversary-time"}
+SLOW = {"honest-loss-sync", "adversary", "adversary-sync", "adversary-loss", "adversary-time",
+        "reordering-links"}
 
 # Random behaviours replayed through the real code (name, constants, seed, traces). Time moves in
 # one set only, with no requests: sessions last 120 s, which the model leaves as an assumption.
