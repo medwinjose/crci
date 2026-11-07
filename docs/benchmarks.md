@@ -5,7 +5,7 @@ raw output file. Anything without a recorded run is listed under [Not measured](
 
 ## How the benchmarks run (read this first)
 
-All three paper benchmarks drive `NodeRuntime` **in-process**. A test writes JSON-encoded `WireMessage`
+The three cargo benchmarks drive `NodeRuntime` **in-process** (the emulation testbed below runs real processes). A test writes JSON-encoded `WireMessage`
 bytes into a shared `HashMap` inbox and calls `NodeRuntime::process_inbox()` directly. There are no
 sockets, no TCP, no second process and no network stack. Latencies are therefore processing time plus any
 `std::thread::sleep` the harness inserts, measured with `Instant::elapsed().as_millis()` (whole
@@ -45,6 +45,13 @@ deviation over the runs behind a point.
 
 The emulation figures come from two node builds (`04ec7be5` for figure c, `aa619cb0` for figures a and d), as
 the sections above say; planned: regenerate all of them on one final build before submission.
+
+Two protocol fixes came after every testbed set on this page: messages are keyed by signing key and ID, and one
+gossip copy that follows its sync answer is excused ([model checking](formal-verification.md)). On the node build
+with both, one small set has been run: the netem conditions at N = 20, seed 1, rgg and mesh, 18 runs. All were
+faithful, no honest node was banned, delivery after the ban was 1.0 and all of the attacker's neighbours banned it
+([`smoke-results.csv`](evidence/tla-2026-11-07/smoke-results.csv)). That is a check, not a re-measurement: the larger
+sets have not been repeated on that build.
 
 ## Byzantine eviction, in-process
 
