@@ -1,0 +1,56 @@
+[package]
+name = "crci-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+crci-core = { path = "../crates/crci-core" }
+ed25519-dalek = "2"
+serde_json = "1"
+
+# Not a member of the root workspace: it needs nightly and is built only by cargo-fuzz.
+[workspace]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "wire_decode"
+path = "fuzz_targets/wire_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "replay_filter"
+path = "fuzz_targets/replay_filter.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "runtime_state"
+path = "fuzz_targets/runtime_state.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sybil_guard"
+path = "fuzz_targets/sybil_guard.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "log_gates"
+path = "fuzz_targets/log_gates.rs"
+test = false
+doc = false
+bench = false

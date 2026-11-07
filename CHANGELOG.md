@@ -6,6 +6,10 @@ git history; `git log` is the complete record.
 
 ## [Unreleased]
 
+### Fixed
+- `crci-node --replay-window` accepted any value; one above what a peer record can hold overflowed or
+  tried to allocate without limit on the first message. Values above 1 024 are now refused at start-up.
+
 ### Changed
 - Per-node state is bounded: origins (896, the least active forgotten first), the seen cache (1 792 entries, was
   5 000), recent messages (1 024), rescue messages (256), transport peers (1 024, banned peers kept longest,
@@ -18,6 +22,8 @@ git history; `git log` is the complete record.
   line per delivered message and the pipeline's `Accept` verdict line are no longer printed by the TCP node.
 
 ### Added
+- Fuzz targets (`fuzz/`, `make fuzz`) for the frame decoders, the replay filter (against a reference model),
+  a whole node, the sybil guard and the log gates.
 - `examples/state_flood`, `make state`: one node's heap under floods of a million signed messages.
 - `examples/tcp_flood`, `scripts/testbed/run_tcp_flood.sh`, `make tcp-flood`: a flood of validly signed messages
   from many identities through a real `crci-node`, with its memory, CPU and log output sampled.

@@ -1,5 +1,8 @@
 # ── Build outputs ────────────────────────────────────────────────────────────
 /target/
+/fuzz/target/
+/fuzz/corpus/
+/fuzz/artifacts/
 **/*.rs.bk
 *.profraw
 web/dashboard/node_modules/

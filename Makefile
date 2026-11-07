@@ -24,7 +24,7 @@ BIN := target/release/crci-node
 TB := scripts/testbed
 SIM := target/release/examples/mesh_sim
 
-.PHONY: tla build testbed netem attacks flood flapping ratio figures baselines ablation tables smoke sim state tcp-flood reproduce
+.PHONY: tla build testbed netem attacks flood flapping ratio figures baselines ablation tables smoke sim state tcp-flood fuzz reproduce
 
 tla:
 	python3 docs/tla/check.py
@@ -93,5 +93,13 @@ sim:
 	python3 scripts/sim/run_sim.py $(OUT)-sim-timing $(SIM) --groups scale --seeds 1 --max-workers 1
 	cp $(OUT)-sim-timing/results.csv $(OUT)-sim/timing.csv
 	python3 scripts/sim/sim_report.py $(OUT)-sim
+
+FUZZ_TIME ?= 60
+
+# Needs nightly and cargo-fuzz (see fuzz/README.md); not part of `make reproduce`.
+fuzz:
+	for t in wire_decode replay_filter runtime_state sybil_guard log_gates; do \
+		cargo +nightly fuzz run $$t -- -max_total_time=$(FUZZ_TIME) -max_len=8192 >/dev/null || exit 1; \
+	done
 
 reproduce: testbed netem attacks flood flapping ratio baselines tables sim ablation state tcp-flood figures
