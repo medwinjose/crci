@@ -50,6 +50,17 @@ python3 docs/tla/check.py --export-traces docs/tla/protocol-traces.jsonl
 make tla
 ```
 
+## Fuzzing
+
+`fuzz/` holds cargo-fuzz targets for the frame decoders, the replay filter, a whole node, the sybil guard and
+the log gates (`fuzz/README.md`). They need Linux and a nightly toolchain. A change to the code they drive is
+worth a run of the matching target:
+
+```bash
+make fuzz                 # every target, 60 s each
+make fuzz FUZZ_TIME=600
+```
+
 ## Pull Request Expectations
 
 - Ensure your code adheres to the existing architectural boundaries (e.g., UI/CLI concerns belong in `crci-node`, not `crci-core`).
