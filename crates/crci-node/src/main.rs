@@ -1852,7 +1852,8 @@ async fn run_node(
             for _ in 0..experiment.emit_count {
                 ticker.tick().await;
                 let msg_id = uuid::Uuid::new_v4().to_string();
-                let outbound = {
+                let copies = copies_to_send(&emit_id, &experiment, started, &emit_fault);
+                {
                     let mut n = emit_node.lock().unwrap_or_else(|e| e.into_inner());
                     n.originate(Message::new(
                         &msg_id,
@@ -1860,16 +1861,17 @@ async fn run_node(
                         Signal::new(3, false, false, true, 3, Visibility::Direct),
                         Some("testbed"),
                     ));
-                    take_outbound(&n)
-                };
+                    // Queued under the lock: a sync answer carrying this message must not
+                    // overtake it, or the neighbour would strike this node for the gossip copy.
+                    let outbound = take_outbound(&n);
+                    relay_outbound(&emit_tcp, outbound, copies, corrupting_now(&experiment));
+                }
                 println!(
                     "Node {} originated '{}' at_ms={}",
                     emit_id,
                     msg_id,
                     unix_ms()
                 );
-                let copies = copies_to_send(&emit_id, &experiment, started, &emit_fault);
-                relay_outbound(&emit_tcp, outbound, copies, corrupting_now(&experiment));
             }
         });
     }
