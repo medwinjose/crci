@@ -6,7 +6,17 @@ git history; `git log` is the complete record.
 
 ## [Unreleased]
 
+### Changed
+- Per-node state is bounded: origins (896, the least active forgotten first), the seen cache (1 792 entries, was
+  5 000), recent messages (1 024), rescue messages (256), transport peers (1 024, banned peers kept longest,
+  where the old pruning deleted exactly those), sync sessions, the Merkle chain (the newest blocks), relay queues
+  and the application pipeline. Replay windows hold one bit per sequence number per peer, and peer identities
+  are kept as keyed hashes. The threat model states what forgetting costs.
+- Frames dropped by a budget print at most 5 lines per second per sender or origin, and `received message` at most
+  100 per second per sender, with the number of lines held back at the end of the next one.
+
 ### Added
+- `examples/state_flood`, `make state`: one node's heap under floods of a million signed messages.
 - TLA+ models of the final protocol: `docs/tla/Reputation.tla` (strikes, bans, recovery, damping) and
   `docs/tla/CRCI.tla` (seen cache, replay window, strikes, signatures, anti-entropy, an adversary that
   replays, forges, reuses IDs and omits). `docs/tla/check.py` / `make tla` runs every configuration,

@@ -55,7 +55,7 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    replaying through repeated bans gets about 15 replays per hour past admission while banned 99.6 % of the time. Every
    replay is dropped and costs one signature check (measured in
    [benchmarks.md](benchmarks.md#paced-attack-vs-reputation-recovery)).
-4. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 5 000 entries, after which
+4. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 1 792 entries, after which
    earlier IDs can be resent. Inside the replay window the sequence filter still strikes a repeat from the
    same sender; outside it the packet is dropped without a strike.
 5. **Re-synchronisation has a small excused set.** A neighbour that was asked for a sync may repeat a
@@ -85,9 +85,8 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    connection, which is about 2 % of a core at the measured per-frame cost. Measured with a neighbour that
    floods 1 000 valid fresh messages/s: 1.98 CPU seconds per neighbour over a 60 s run against 1.0 for a
    40 messages/s reference, 68 MiB of logs per run against 31 MiB (without pacing: 6.3 s and 174 MiB).
-   What remains: each connection can still make its receiver do that much, and every dropped frame
-   still prints log lines (three per frame at 200 frames/s is about 4 MiB per minute per connection);
-   a sender that reconnects pays a handshake each time, the same as any stranger.
+   What remains: each connection can still make its receiver do that much; a sender that reconnects pays a
+   handshake each time, the same as any stranger.
 7. **Aggregate gossip rate is bounded by the per-neighbour budget.** Every node relays every new message
    to all its neighbours, so each link carries every message once. Copies of messages the receiver already
    has spend no budget, but a node whose first copies all arrive through one neighbour (a node of degree 1,
@@ -131,3 +130,15 @@ semantically false but correctly signed reports, radio jamming, side channels, c
     remedy, and an attacker with no honest neighbour is banned by nobody. Replay-only attackers that do not
     collude and do not originate; N ≤ 100 on real processes
     ([benchmarks.md](benchmarks.md#share-of-replaying-nodes)).
+12. **Bounded memory forgets, and identities are free.** A node keeps state for at most 896 origins and
+    forgets the least active first. A forgotten origin loses its pinned key and its replay window, so an old
+    message of that origin is accepted again as new and relayed, and a neighbour that still remembers the
+    origin strikes the honest relay for the repeat. Three such replays ban it there. The adversary has to
+    displace the origin first, by signing more messages than the origin has had accepted on each of 896 fresh
+    identities, within the budgets of the neighbours it reaches; an origin with few messages is cheap to displace
+    and a busy one is not. Both effects are shown by the model checker (`origin-forgotten-delivery`,
+    `origin-forgotten-framing`) and by a test on the real code. Limits on the rest of the state have smaller
+    costs: a clean transport peer that is forgotten loses nothing, and a banned one goes only when 1 024 peers
+    are all banned; the recent store under a flood keeps less to answer sync requests with; a rescue message
+    can be pushed out of the store by 256 newer ones, as the store has no way to tell a real rescue from a forged
+    claim by a new identity. Key-derived origin IDs and identity minting cost are planned, and only raise the price.

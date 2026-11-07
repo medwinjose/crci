@@ -1,0 +1,33 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 33 and seed -5427765284784936577 with 12 workers on 12 cores with 3577MB heap and 64MB offheap memory [pid: 29464] (Windows 11 10.0 amd64, Eclipse Adoptium 17.0.19 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file TEMP\MC.tla
+Parsing file TEMP\CRCI.tla
+Parsing file TEMP\CRCITypes.tla
+Parsing file TEMP\FiniteSets.tla
+Parsing file TEMP\TLC.tla
+Parsing file TEMP\Naturals.tla
+Parsing file TEMP\Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module CRCITypes
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module CRCI
+Semantic processing of module MC
+Starting... (2026-11-07 13:23:33)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-07 13:23:33.
+Progress(11) at 2026-11-07 13:23:36: 182,604 states generated (182,604 s/min), 64,202 distinct states found (64,202 ds/min), 35,784 states left on queue.
+Progress(18) at 2026-11-07 13:24:36: 10,878,561 states generated (10,695,957 s/min), 2,670,953 distinct states found (2,606,751 ds/min), 843,528 states left on queue.
+Progress(20) at 2026-11-07 13:25:36: 21,189,359 states generated (10,310,798 s/min), 4,726,699 distinct states found (2,055,746 ds/min), 1,036,983 states left on queue.
+Progress(22) at 2026-11-07 13:26:36: 31,371,789 states generated (10,182,430 s/min), 6,551,619 distinct states found (1,824,920 ds/min), 867,328 states left on queue.
+Progress(25) at 2026-11-07 13:27:36: 40,480,310 states generated (9,108,521 s/min), 8,011,267 distinct states found (1,459,648 ds/min), 320,092 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.6E-5
+  based on the actual fingerprints:  val = 2.8E-5
+42825864 states generated, 8344894 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 31.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 13 and the 95th percentile is 3).
+Finished in 04min 18s at (2026-11-07 13:27:51)

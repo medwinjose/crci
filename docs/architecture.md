@@ -41,7 +41,7 @@ applies, in order:
    sync request (see anti-entropy below). Every link carries every message, so these copies are most of the
    traffic; and because repeats are judged before the rate limit, a sender that keeps its budget empty
    cannot hide replays behind it. Apart from those sync answers, an honest node sends each message to a
-   neighbour once. The cache is cleared when it reaches 5 000 entries.
+   neighbour once. The cache is cleared when it reaches 1 792 entries.
 3. **Admission** (`SybilGuard::check`), for messages not seen before: token bucket of 20 messages per
    transport sender, refilled at 20 per second (chosen from a testbed sweep: the lowest of 5, 10, 20
    and 50 per second with no honest frame dropped at 16 messages/s network-wide; re-measured with the
@@ -187,9 +187,39 @@ each link close to one per gossip message: every node relays every new message t
 the per-neighbour token bucket (20 per second, spent only by messages the receiver has not seen) bounds
 the network-wide sustained message rate.
 
+### Per-node limits
+
+Identities are free, so every table keyed by something a peer chooses has a limit. Peer identities are kept as
+keyed 64-bit hashes (the key is random per node, so a collision cannot be aimed at anyone), and the replay window
+holds one bit per sequence number per peer.
+
+| State | Limit | What goes first |
+|---|---|---|
+| Origins (pinned key, budget, both replay windows, recent messages) | 896 origins, 7 168 (origin, peer) records | Fewest accepted messages, then longest idle; forgotten whole, 1/8 at a time |
+| Peers per origin in the window | 128; later peers count as holding the message and are never struck | |
+| Seen cache | 1 792 message keys, 128 peers per key | Cleared whole |
+| Recent messages (sync answers) | 1 024 | Oldest |
+| Rescue and mass-casualty messages | 256 | Oldest |
+| Transport peers (reputation, budget) | 1 024 | Clean and idle first, banned last |
+| Open sync sessions | 4 per peer, 96 in all | Oldest |
+| Merkle chain | 512–1 023 newest blocks; older heads cannot be compared | Oldest half |
+| Observations, divergence alerts | 1 024, 64 | Oldest |
+| Relay queues and connections | 256 addresses | Longest idle |
+| Application pipeline (TTL store, AEDA log and histories, zone members, severities) | 200 messages, 1 024 entries per table | Oldest, or the table is reset |
+
+Forgetting the least active origin means a flood of new identities pushes out its own identities first: to displace
+an origin with k accepted messages an adversary signs more than k messages on each of 896 identities, at the rate
+its neighbours' budgets allow. What forgetting costs is in the [threat model](threat-model.md), and measurements
+are in [benchmarks](benchmarks.md#memory-per-node).
+
+A frame dropped by a budget prints at most 5 lines per second per sender or origin, and the `received message` line
+at most 100 per second per sender; a printed line ends in `(+N not printed)` when lines were held back, so the
+testbed's counts stay exact up to the last second of a run.
+
 ### Re-synchronisation after a partition (anti-entropy)
 
-`NodeRuntime` (`runtime.rs`) keeps the last W accepted messages of each origin (at most 1 024 origins).
+`NodeRuntime` (`runtime.rs`) keeps the last W accepted messages of each origin (at most 1 024 messages over
+all origins, the oldest goes first).
 To catch up, a node sends a neighbour a signed `sync_request`: a `WireMessage` whose `sync` digest lists,
 per origin, the highest accepted sequence number and every sequence number held inside the window
 (at most 256 origins), plus an optional `reply_to` address. The digest is covered by the requester's

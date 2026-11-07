@@ -1,0 +1,390 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 27 and seed -1097864794996695349 with 12 workers on 12 cores with 3577MB heap and 64MB offheap memory [pid: 40328] (Windows 11 10.0 amd64, Eclipse Adoptium 17.0.19 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file TEMP\Reputation.tla
+Parsing file TEMP\CRCITypes.tla
+Parsing file TEMP\Naturals.tla
+Parsing file TEMP\Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module CRCITypes
+Semantic processing of module Reputation
+Starting... (2026-11-07 13:07:33)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-07 13:07:33.
+Error: Invariant NeverBanned is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ elapsed = 0
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 0
+
+State 2: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 10
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 1
+
+State 3: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 20
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 2
+
+State 4: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 30
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 3
+
+State 5: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 40
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 4
+
+State 6: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 50
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 5
+
+State 7: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 60
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 6
+
+State 8: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 70
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 7
+
+State 9: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 80
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 8
+
+State 10: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 90
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 9
+
+State 11: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 100
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 10
+
+State 12: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 110
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 11
+
+State 13: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 120
+/\ peer = [banned |-> FALSE, score |-> 100, ages |-> <<>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 12
+
+State 14: <Strike line 38, col 5 to line 44, col 24 of module Reputation>
+/\ elapsed = 120
+/\ peer = [banned |-> FALSE, score |-> 70, ages |-> <<0>>]
+/\ struck = 0
+/\ burst = 1
+/\ since = 0
+
+State 15: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 130
+/\ peer = [banned |-> FALSE, score |-> 71, ages |-> <<1>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 1
+
+State 16: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 140
+/\ peer = [banned |-> FALSE, score |-> 72, ages |-> <<2>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 2
+
+State 17: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 150
+/\ peer = [banned |-> FALSE, score |-> 73, ages |-> <<3>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 3
+
+State 18: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 160
+/\ peer = [banned |-> FALSE, score |-> 74, ages |-> <<4>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 4
+
+State 19: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 170
+/\ peer = [banned |-> FALSE, score |-> 75, ages |-> <<5>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 5
+
+State 20: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 180
+/\ peer = [banned |-> FALSE, score |-> 76, ages |-> <<6>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 6
+
+State 21: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 190
+/\ peer = [banned |-> FALSE, score |-> 77, ages |-> <<7>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 7
+
+State 22: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 200
+/\ peer = [banned |-> FALSE, score |-> 78, ages |-> <<8>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 8
+
+State 23: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 210
+/\ peer = [banned |-> FALSE, score |-> 79, ages |-> <<9>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 9
+
+State 24: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 220
+/\ peer = [banned |-> FALSE, score |-> 80, ages |-> <<10>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 10
+
+State 25: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 230
+/\ peer = [banned |-> FALSE, score |-> 81, ages |-> <<11>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 11
+
+State 26: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 240
+/\ peer = [banned |-> FALSE, score |-> 82, ages |-> <<12>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 12
+
+State 27: <Strike line 38, col 5 to line 44, col 24 of module Reputation>
+/\ elapsed = 240
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<12, 0>>]
+/\ struck = 0
+/\ burst = 1
+/\ since = 0
+
+State 28: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 250
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<13, 1>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 1
+
+State 29: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 260
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<14, 2>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 2
+
+State 30: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 270
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<15, 3>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 3
+
+State 31: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 280
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<16, 4>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 4
+
+State 32: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 290
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<17, 5>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 5
+
+State 33: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 300
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<18, 6>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 6
+
+State 34: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 310
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<19, 7>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 7
+
+State 35: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 320
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<20, 8>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 8
+
+State 36: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 330
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<21, 9>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 9
+
+State 37: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 340
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<22, 10>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 10
+
+State 38: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 350
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<23, 11>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 11
+
+State 39: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 360
+/\ peer = [banned |-> FALSE, score |-> 52, ages |-> <<24, 12>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 12
+
+State 40: <Strike line 38, col 5 to line 44, col 24 of module Reputation>
+/\ elapsed = 360
+/\ peer = [banned |-> FALSE, score |-> 22, ages |-> <<24, 12, 0>>]
+/\ struck = 0
+/\ burst = 1
+/\ since = 0
+
+State 41: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 370
+/\ peer = [banned |-> FALSE, score |-> 23, ages |-> <<25, 13, 1>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 1
+
+State 42: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 380
+/\ peer = [banned |-> FALSE, score |-> 24, ages |-> <<26, 14, 2>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 2
+
+State 43: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 390
+/\ peer = [banned |-> FALSE, score |-> 25, ages |-> <<27, 15, 3>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 3
+
+State 44: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 400
+/\ peer = [banned |-> FALSE, score |-> 26, ages |-> <<28, 16, 4>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 4
+
+State 45: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 410
+/\ peer = [banned |-> FALSE, score |-> 27, ages |-> <<29, 17, 5>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 5
+
+State 46: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 420
+/\ peer = [banned |-> FALSE, score |-> 28, ages |-> <<18, 6>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 6
+
+State 47: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 430
+/\ peer = [banned |-> FALSE, score |-> 29, ages |-> <<19, 7>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 7
+
+State 48: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 440
+/\ peer = [banned |-> FALSE, score |-> 30, ages |-> <<20, 8>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 8
+
+State 49: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 450
+/\ peer = [banned |-> FALSE, score |-> 31, ages |-> <<21, 9>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 9
+
+State 50: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 460
+/\ peer = [banned |-> FALSE, score |-> 32, ages |-> <<22, 10>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 10
+
+State 51: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 470
+/\ peer = [banned |-> FALSE, score |-> 33, ages |-> <<23, 11>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 11
+
+State 52: <Tick line 47, col 5 to line 52, col 23 of module Reputation>
+/\ elapsed = 480
+/\ peer = [banned |-> FALSE, score |-> 34, ages |-> <<24, 12>>]
+/\ struck = 0
+/\ burst = 0
+/\ since = 12
+
+State 53: <Strike line 38, col 5 to line 44, col 24 of module Reputation>
+/\ elapsed = 480
+/\ peer = [banned |-> TRUE, score |-> 4, ages |-> <<24, 12, 0>>]
+/\ struck = 0
+/\ burst = 1
+/\ since = 0
+
+53 states generated, 53 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 53.
+The average outdegree of the complete state graph is 1 (minimum is 1, the maximum 1 and the 95th percentile is 1).
+Finished in 00s at (2026-11-07 13:07:33)

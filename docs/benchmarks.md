@@ -783,14 +783,53 @@ runtime and memory excepted (`recheck/sim-on-final-source.txt`).
 | mesh | 2 000 | 4.00 | 10.1 s | 523 MiB | 0.26 MiB |
 | mesh | 5 000 | 4.00 | 26.4 s | 1 304 MiB | 0.26 MiB |
 
-**State per node is not bounded yet.** It grows with time and degree: the long runs peak at 17 MiB per node (rgg
-N = 150) and 12 MiB per node (mesh N = 300), and the same runs at larger sizes did not fit in the host's 7.8 GiB,
-which is why the long runs use these sizes. Peak memory includes the harness's own records. Each sync session
-keeps its own copy of the digest, and the replay window and seen-ID cache keep a sender identity per copy
-received.
+**State per node** was not bounded on the build of these runs: the long runs peaked at 17 MiB per node (rgg
+N = 150) and 12 MiB per node (mesh N = 300). With the per-node limits the same runs peak at 1.36–1.50 MiB per node
+([Memory per node](#memory-per-node)).
 
 **Not shown by these runs:** anything about packet loss, timing or real transport (the testbed covers those);
 colluding or omitting attackers; attackers that originate.
+
+## Memory per node
+
+The limits are listed in [architecture.md](architecture.md#per-node-limits). Evidence:
+[`evidence/state-2026-11-07/`](evidence/state-2026-11-07/). Pass/fail criteria were written before the final data.
+
+**One node under floods of a million validly signed messages** (`make state`, `examples/state_flood`: one
+`NodeRuntime` and the application pipeline the TCP node runs, in-process; the simulated clock keeps every sender and
+origin inside its budget, so every message reaches the state measured; live heap from a counting allocator):
+
+| Flood (10⁶ messages, 50 senders unless stated) | Heap at 10⁵ | Heap at 10⁶ | Peak | Process RSS at the end |
+|---|---|---|---|---|
+| One new origin per message: protocol state only | 1.93 MB | 1.93 MB | 2.06 MB | 7.8 MiB |
+| One new origin per message, with the pipeline | 2.73 MB | 2.73 MB | 2.89 MB | 8.9 MiB |
+| 100 origins | 1.75 MB | 1.73 MB | 1.91 MB | 5.4 MiB |
+| One new origin and one new sender per message | 3.30 MB | 3.30 MB | 3.46 MB | 9.4 MiB |
+
+![Live heap of one node under four floods](evidence/state-2026-11-07/flood/heap.svg)
+
+Before the limits the heap grew by 1.5 KB per new origin (154 MB after 10⁵) and by 1.3 KB per rescue message
+(258 MB after 2 × 10⁵ over 100 origins). A first version of the limits held protocol state flat at 2.58 MB, above
+the 2 MB aimed for; most of the difference was hash tables doubling one entry past their limits, and the limits
+were set to fit (`flood-first-set/`). The flood forgets about 999 000 origins in each run with new origins:
+that is the limit working, and its cost is stated in the [threat model](threat-model.md) (gap 12).
+
+**Simulation on the build with the limits** (`make sim`, 210 runs): the 198 cross and scale runs give the same
+outcome as the recorded set in every one of 8 910 values (state sizes, seen-cache clears, verifications, runtime and
+memory excepted). The 12 long runs (8 messages/s for 15 minutes) peak at 1.36–1.39 MiB per node (mesh N = 300,
+was 11.4–11.8) and 1.46–1.50 MiB per node (rgg N = 150, was 16.9–17.4), with 0 honest bans, 0 honest strikes, the
+same delivery, and no origin forgotten: under honest load the limits are not reached.
+
+**Testbed on the build with the limits** (93 runs, all faithful: the attack set, the invalid-signature flood, the
+main, load and capacity runs up to 500 nodes, and the netem smoke set): 0 honest false evictions, B banned by all
+its neighbours in every run, every flood criterion holds. Process memory per node: 6.8–7.2 MiB in the main runs and
+up to 500 nodes, 8.4–8.5 MiB at 32 messages/s (was 10.6–11.2), 7.7 MiB in the 500-node stress run (was 8.6): most
+of a process is the runtime and binary, not protocol state. A fresh-message flood of 1 000 messages/s logs 42 MiB
+per run (68 MiB before the per-sender limit on log lines).
+
+**Not shown:** a flood through the real TCP node (the transport paces each connection at 200 frames/s, so a million
+messages take hours there; the same state code runs in-process above); memory on 1 GB devices; floods from many
+neighbours at once.
 
 ## WAN smoke test
 

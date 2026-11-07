@@ -1,0 +1,15 @@
+S1: 8910 values over 198 cross/scale runs, 0 differences
+S2: long runs
+  long-mesh-300-f0-s1: peak 1.39 MiB/node (was 11.84), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+  long-mesh-300-f0-s2: peak 1.39 MiB/node (was 11.83), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+  long-mesh-300-f0-s3: peak 1.39 MiB/node (was 11.83), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+  long-mesh-300-f10-s1: peak 1.38 MiB/node (was 11.46), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+  long-mesh-300-f10-s2: peak 1.36 MiB/node (was 11.40), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 0.9947281215458642 (was 0.9944438691297187)
+  long-mesh-300-f10-s3: peak 1.38 MiB/node (was 11.45), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+  long-rgg-150-f0-s1: peak 1.49 MiB/node (was 17.33), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+  long-rgg-150-f0-s2: peak 1.47 MiB/node (was 17.04), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+  long-rgg-150-f0-s3: peak 1.50 MiB/node (was 17.29), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+  long-rgg-150-f10-s1: peak 1.47 MiB/node (was 17.35), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+  long-rgg-150-f10-s2: peak 1.46 MiB/node (was 16.93), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+  long-rgg-150-f10-s3: peak 1.46 MiB/node (was 17.27), honest bans 0, honest strikes 0, false evictions 0, forgotten 0, delivery_post 1.0 (was 1.0)
+runs that forgot origins: 0 []

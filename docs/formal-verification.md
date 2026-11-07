@@ -40,7 +40,9 @@ There is one adversary and no collusion. Links are queues that can lose frames, 
 neighbour gives, and in `reordering-links` and one set of replayed traces they also reorder, as two connections
 to one neighbour can. A frame dropped by a token bucket has the same effect as a lost one, so budgets are
 modelled as loss. Honest nodes keep the seen cache, window and recent store as the code does, and the seen
-cache can be cleared whole, as its limit of 5 000 entries does.
+cache can be cleared whole, as its limit of 1 792 entries does. A switch lets a node forget an origin whole, as its
+limit on tracked origins does; it is off in every check that must hold, because the two checks with it on
+(`origin-forgotten-delivery`, `origin-forgotten-framing`) must break: bounded memory has a price while identities are free.
 
 ## Properties
 
@@ -73,8 +75,8 @@ Safety needs none. Liveness needs the following, and no more:
 
 ## Results
 
-Run on 2026-11-07 on an Intel i5-12450HX (12 logical CPUs); 22 of 22 checks gave the expected outcome,
-36.5 min in total. *Diameter* is the depth of TLC's complete state-graph search.
+Run on 2026-11-07 on an Intel i5-12450HX (12 logical CPUs); 24 of 24 checks gave the expected outcome,
+51.8 min in total with other jobs on the host (36.5 min alone, before the last two checks were added). *Diameter* is the depth of TLC's complete state-graph search.
 
 ### Reputation (one observer, one peer)
 
@@ -121,6 +123,8 @@ that the assumption is needed. These are the assumptions the results above rest 
 | `no-signatures` | Signature checks | `NoForgedDelivery` | 3 | |
 | `seen-by-id` | The signing key in the seen-cache key | `DeliveredWhenQuiescent` | 14 | The defect below. |
 | `window-too-small` | W at least the loss depth (W = 1, 3 messages, 1 loss) | `DeliveredWhenQuiescent` | 11 | A message that falls out of every neighbour's window before it is recovered is lost for good. |
+| `origin-forgotten-delivery` | Remembering every origin (forgetting switched on) | `NoDoubleDelivery` | 8 | After a node forgets an origin and clears its seen cache, a replay is delivered again. |
+| `origin-forgotten-framing` | The same | `HonestNeverStruck` | 8 | The node relays that replay, and a neighbour that still remembers the origin strikes it. |
 | `paced-replayer-spared` | Replays faster than recovery (a fair clock) | `EveryNeighbourBans` | 25 | The residual bound: an adversary that replays at most once per 300 s is never banned. |
 
 ## Defects this work found

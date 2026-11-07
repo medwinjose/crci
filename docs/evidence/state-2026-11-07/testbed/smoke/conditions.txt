@@ -1,0 +1,1 @@
+18 netem runs, 0 unfaithful; wrote /root/t21/smoke/netem/
