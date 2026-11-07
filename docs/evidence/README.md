@@ -14,7 +14,7 @@ one CSV per run of `examples/state_flood` (`scripts/sim/run_state_flood.sh`; hea
 50 000 messages; these runs also wrapped each in `/usr/bin/time -v`, whose output ends each file), `heap.svg`. `tla/`: TLC output of every
 configuration of `docs/tla/check.py` with the switch that lets a node forget an origin, `results.txt` the summary
 (local paths replaced by `TEMP\` and `REPO\`). `sim/results.csv`: `make sim` on the build with the limits, and
-`comparison.txt`, its comparison with `sim-2026-11-04/results.csv`. `testbed/`: `results.csv` of the attack set, the
+`comparison.txt`, its comparison with `sim-2026-11-04/results.csv`. `testbed/`: `results.csv` of the attack set (one per kind: `over-budget/`, `flood/`, `eventual/`), the
 main, load and capacity runs and the netem smoke set (`report.py`), the main table, the flood criteria
 (`flood_table.py`), and the attack set compared per run with `flood-2026-11-06/sixth-set/attacks/`.
 `binary.sha256`: the `crci-node` and `mesh_sim` binaries all of these ran on, rebuilt from the committed source with
