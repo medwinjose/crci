@@ -1,0 +1,32 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 34 and seed 5967557458486255613 with 12 workers on 12 cores with 3577MB heap and 64MB offheap memory [pid: 18804] (Windows 11 10.0 amd64, Eclipse Adoptium 17.0.19 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file MC.tla
+Parsing file CRCI.tla
+Parsing file CRCITypes.tla
+Parsing file FiniteSets.tla
+Parsing file TLC.tla
+Parsing file Naturals.tla
+Parsing file Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module CRCITypes
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module CRCI
+Semantic processing of module MC
+Starting... (2026-11-07 06:26:24)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-07 06:26:24.
+Progress(15) at 2026-11-07 06:26:27: 552,685 states generated (552,685 s/min), 195,019 distinct states found (195,019 ds/min), 113,692 states left on queue.
+Progress(20) at 2026-11-07 06:27:27: 15,358,947 states generated (14,806,262 s/min), 3,837,529 distinct states found (3,642,510 ds/min), 1,557,709 states left on queue.
+Progress(21) at 2026-11-07 06:28:27: 29,958,264 states generated (14,599,317 s/min), 6,612,466 distinct states found (2,774,937 ds/min), 1,937,885 states left on queue.
+Progress(22) at 2026-11-07 06:29:27: 44,639,279 states generated (14,681,015 s/min), 8,903,741 distinct states found (2,291,275 ds/min), 1,451,854 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 2.5E-5
+  based on the actual fingerprints:  val = 1.5E-5
+54648052 states generated, 10205074 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 26.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 16 and the 95th percentile is 5).
+Finished in 03min 44s at (2026-11-07 06:30:09)

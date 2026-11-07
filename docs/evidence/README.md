@@ -7,6 +7,17 @@ line endings, noted per folder below. SHA-256 hashes are of the files as committ
 Benchmark CSVs that feed the paper live next to their harness in
 `crates/crci-node/benches/results/` (see [docs/benchmarks.md](../benchmarks.md)).
 
+## `tla-2026-11-07/`
+
+TLC output of every configuration in `docs/tla/check.py` (TLC 2.19, rev 5a47802, Java 17, 12 workers) on the
+specifications as committed: one file per check, including the counterexample traces of the checks that must
+fail. `results.txt` is the script's summary; `mutants.txt` is the run that breaks the code one way at a time
+and replays the model through it. Changed: CRLF to LF, and the run's temporary folder removed from file paths.
+`no-fifo-before-the-fix.txt` is the counterexample that led to the excuse for a gossip copy following its answer,
+from the specification as it stood before that fix.
+`smoke-results.csv` is the testbed's small netem set (N = 20, seed 1, 18 runs) on the node build with both fixes,
+`crci-node` binary `835498dfa28e943f7cd2fd05c54daf3f90fabbe68aa357678b6ef0e298cff908`.
+
 ## `ratio-2026-11-07/`
 
 Share of replaying nodes (`scripts/testbed/run_ratio.sh`): 90 real-process runs (rgg and mesh, N = 20/50/100,

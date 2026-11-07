@@ -104,7 +104,7 @@ Every number above links back to a raw data file and the exact command in
 - **Interfaces:** HTTP + WebSocket API ([OpenAPI](docs/openapi.json)), Prometheus metrics, a React
   dashboard, and an Android app that calls the Rust core directly through UniFFI-generated Kotlin bindings.
 - **Verification:** unit and integration test suite, property-based tests (proptest) showing that honest
-  reordering within the replay window never costs a relay reputation or loses a message, a TLA+ model of message dissemination
+  reordering within the replay window never costs a relay reputation or loses a message, TLA+ models of the isolation protocol, exhaustively model-checked on small instances for safety and delivery and tied to the code by replaying TLC's transitions and behaviours through the real runtime
   ([docs/formal-verification.md](docs/formal-verification.md)), and a Linux network-namespace test with
   `tc netem` delay and loss in CI.
 - **CI:** formatting, Clippy with warnings denied, the full test suite on Ubuntu and Windows,
@@ -147,8 +147,7 @@ nodes, loss, delay, jitter, reordering, attacker variants, invalid-signature flo
 nodes, cross-checked against the testbed ([results](docs/benchmarks.md#in-process-simulation-up-to-5-000-nodes)).
 Current work, in order:
 
-1. Safety and liveness invariants of the final protocol in TLA+.
-2. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
+1. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
 
 Out of scope: large-scale Sybil attacks, colluding adversaries, and physical LoRa/BLE radios (the BLE and
 LoRa transports are interface stubs). Known gaps are tracked in [docs/threat-model.md](docs/threat-model.md).

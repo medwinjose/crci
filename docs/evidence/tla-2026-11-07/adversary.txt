@@ -1,0 +1,32 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 93 and seed -8597764447484664149 with 12 workers on 12 cores with 3577MB heap and 64MB offheap memory [pid: 5832] (Windows 11 10.0 amd64, Eclipse Adoptium 17.0.19 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file MC.tla
+Parsing file CRCI.tla
+Parsing file CRCITypes.tla
+Parsing file FiniteSets.tla
+Parsing file TLC.tla
+Parsing file Naturals.tla
+Parsing file Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module CRCITypes
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module CRCI
+Semantic processing of module MC
+Starting... (2026-11-07 06:02:05)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-07 06:02:05.
+Progress(11) at 2026-11-07 06:02:08: 591,172 states generated (591,172 s/min), 183,931 distinct states found (183,931 ds/min), 106,226 states left on queue.
+Progress(16) at 2026-11-07 06:03:08: 15,274,542 states generated (14,683,370 s/min), 3,631,611 distinct states found (3,447,680 ds/min), 1,213,270 states left on queue.
+Progress(18) at 2026-11-07 06:04:08: 29,558,690 states generated (14,284,148 s/min), 6,463,961 distinct states found (2,832,350 ds/min), 1,446,395 states left on queue.
+Progress(21) at 2026-11-07 06:05:08: 43,469,669 states generated (13,910,979 s/min), 8,883,196 distinct states found (2,419,235 ds/min), 993,243 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 2.2E-5
+  based on the actual fingerprints:  val = 5.4E-5
+50474929 states generated, 9913640 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 25.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 18 and the 95th percentile is 4).
+Finished in 03min 35s at (2026-11-07 06:05:40)

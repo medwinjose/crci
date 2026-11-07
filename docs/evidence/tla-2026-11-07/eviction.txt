@@ -1,0 +1,35 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 47 and seed 4565913265286139633 with 12 workers on 12 cores with 3577MB heap and 64MB offheap memory [pid: 28880] (Windows 11 10.0 amd64, Eclipse Adoptium 17.0.19 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file MC.tla
+Parsing file CRCI.tla
+Parsing file CRCITypes.tla
+Parsing file FiniteSets.tla
+Parsing file TLC.tla
+Parsing file Naturals.tla
+Parsing file Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module CRCITypes
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module CRCI
+Semantic processing of module MC
+Starting... (2026-11-07 06:30:50)
+Implied-temporal checking--satisfiability problem has 2 branches.
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-07 06:30:50.
+Checking 2 branches of temporal properties for the current state space with 23829 total distinct states at (2026-11-07 06:30:53)
+Finished checking temporal properties in 00s at 2026-11-07 06:30:53
+Progress(17) at 2026-11-07 06:30:53: 46,723 states generated (46,723 s/min), 12,270 distinct states found (12,270 ds/min), 2,429 states left on queue.
+Progress(29) at 2026-11-07 06:30:57: 119,957 states generated, 26,048 distinct states found, 0 states left on queue.
+Checking 2 branches of temporal properties for the complete state space with 52096 total distinct states at (2026-11-07 06:30:57)
+Finished checking temporal properties in 00s at 2026-11-07 06:30:57
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.3E-10
+  based on the actual fingerprints:  val = 3.3E-10
+119957 states generated, 26048 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 29.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 6 and the 95th percentile is 3).
+Finished in 07s at (2026-11-07 06:30:57)

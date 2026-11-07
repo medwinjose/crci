@@ -1,0 +1,26 @@
+killed          pub const DAMPED_CEILING: f32 = 0.20;
+killed          pub const STRIKE_MEMORY: Duration = Duration::from_secs(280);
+killed          pub const UNBAN_THRESHOLD: f32 = 0.22;
+killed          pub const RECOVERY_PER_SEC: f32 = 0.0006;
+killed          pub const DAMPING_STRIKES: usize = 3;
+5 of 5 killed; file restored: True
+
+killed          seen cache keyed by message ID alone: trace 1 (set window), step 4: h's seen cache
+killed          excuse also what the digest held: trace 7 (set window), step 21: h's score of a: code 0.5, model 35
+killed          excuse any number of repeats: trace 61 (set strikes), step 21: h's score of a: code 0.5, model 35
+killed          excuse an answer whatever its sender: trace 78 (set strikes), step 20: h's score of a: code 0.2, model 5
+killed          no excuse for gossip after its answer: trace 66 (set strikes), step 33: h's score of a: code 0.35, model 50
+killed          excuse any untagged repeat inside a session: trace 45 (set window), step 43: h's score of a: code 0.5, model 35
+killed          no strike-free drop for a stale same-sender repeat: trace 145 (set stale), step 18: r's score of a: code 0.35, model 50
+killed          answer ignores the requester's window: trace 51 (set window), step 45: answer batch
+killed          answer includes what the digest holds: trace 1 (set window), step 42: answer batch
+killed          relay back to the origin: trace 1 (set window), step 4: relayed to
+killed          invalid signature is not a strike: trace 1 (set window), step 13: r's score of a: code 0.5, model 35
+killed          banned sender's frames are judged: trace 78 (set strikes), step 25: h's score of a: code 0, model 5
+killed          own echo after a seen-cache clear is accepted: trace 19 (set window), step 35: relayed to
+killed          recent messages keep one too few: trace 1 (set window), step 31: answer batch
+killed          a gossip copy from another path is not recorded: trace 1 (set window), step 9: h's seen cache
+killed          redundant copy from another peer is a replay: trace 1 (set window), step 20: h's score of s: code 0.35, model 50
+killed          window never slides: trace 1 (set window), step 27: s's replay window
+killed          out-of-window frame treated as new: trace 2 (set window), step 42: relayed to
+18 of 18 killed; files restored: True
