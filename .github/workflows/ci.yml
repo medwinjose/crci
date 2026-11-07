@@ -38,6 +38,22 @@ jobs:
       - name: Build all binaries
         run: cargo build --bins --release
 
+  model-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Model-check the TLA+ specifications (configurations under a minute)
+        run: python3 docs/tla/check.py --quick
+      - name: Committed model exports match the specifications
+        run: |
+          python3 docs/tla/check.py --export-transitions docs/tla/reputation-transitions.csv
+          python3 docs/tla/check.py --export-traces docs/tla/protocol-traces.jsonl
+          git diff --exit-code docs/tla/reputation-transitions.csv docs/tla/protocol-traces.jsonl
+
   cross-compile:
     needs: [build-and-test]
     runs-on: ubuntu-latest
