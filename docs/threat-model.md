@@ -21,13 +21,13 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 |---|---|---|
 | Forged or altered message content | Ed25519 signature on every `WireMessage`, every message type included, covering every field in an unambiguous, domain-separated encoding; invalid → dropped, sender struck | `runtime.rs` |
 | Impersonating a known origin | Public key pinned on first sight; a different key → dropped (no strike: the receiver cannot tell which key is genuine) | `runtime.rs` |
-| Direct replay | Same message ID from the same sender → strike, judged before the rate limit so a sender over budget cannot hide it; from a different sender → ignored | `runtime.rs` |
+| Direct replay | Same message (signing key and ID) from the same sender → strike, judged before the rate limit so a sender over budget cannot hide it; from a different sender → ignored | `runtime.rs` |
 | Suppressing a message by signing another under its ID | A message ID is chosen by its signer, so the seen cache and the rescue store key messages by signing key and ID: a message under an honest message's ID, or a frame rejected for its key, is a different message and suppresses nothing. Found while writing the TLA+ model; TLC reproduces the loss with the old key ([formal-verification.md](formal-verification.md)) | `runtime.rs` |
 | Sequence replay | Sliding window W = 64 per origin: same sequence from the same sender → strike; from another sender → ignored; older than the window → dropped without a strike. The sequence number is signed | `replay.rs` |
 | Repeat offender | Reputation 0.5, −0.15 per strike, banned below 0.1; banned senders are dropped on admission | `sybil.rs` |
 | Paced replays | Recovery depends on elapsed time only (0.0005/s, capped at the initial 0.5, so credit cannot be banked); two strikes within 300 s cap recovery at 0.18 | `sybil.rs` |
 | Strikes for honest re-sync after a partition | Digest-based anti-entropy: a node asks for what it lacks; answers are tagged with the request (covered by the TCP frame signature) and a tagged answer that repeats gossip is excused once, however late it arrives, and so is one gossip copy that follows its accepted answer, since the two can take different connections; every other untagged or unsolicited duplicate strikes. Requests are signed, answered only from their author, rate-limited and batched | `runtime.rs` |
-| Message flood | Token bucket per sender (20 messages, +20/s) for messages not seen before, applied before the signature check; copies of known messages are dropped by ID first | `sybil.rs`, `runtime.rs` |
+| Message flood | Token bucket per sender (20 messages, +20/s) for messages not seen before, applied before the signature check; copies of known messages are dropped first, by signing key and ID | `sybil.rs`, `runtime.rs` |
 | Flood of fresh, validly signed messages from one origin | Token bucket per authenticated origin (20 messages, +5/s), charged after the signature and pinned-key checks; excess dropped without a strike, so one origin cannot take the network's capacity through honest relays | `runtime.rs`, `sybil.rs` |
 | Signature-verification flood | Verifications bounded by the sender's token bucket; each invalid signature is a strike, so three bad signatures ban the sender; a banned peer's connection is closed and refused (30 s at a time), so its frames are neither read nor verified (measured: [benchmarks.md](benchmarks.md#invalid-signature-flood)) | `runtime.rs`, `sybil.rs`, `transport/tcp.rs` |
 | Flood of frames on one connection (including a sender that is never struck) | The listener reads at most 200 frames per second from a connection (burst 400); beyond that the reader waits and TCP flow control slows the sender. No strike: an honest burst is never punished, and honest links stay far below the cap | `transport/tcp.rs` |
@@ -65,8 +65,9 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    most once per 8 s. A malicious neighbour that reconnects on purpose can therefore send at most 16
    unpunished duplicates per 8 s (without reconnecting, 16 per 30 s), only of messages the requester
    lacked when it asked; each is dropped, and each costs one signature check within the neighbour's token
-   bucket. Untagged repeats are never excused. A
-   further repeat is a strike. Under link flapping (20 % and 50 % of the links down for 5–10 s at a time,
+   bucket. One untagged copy of a message accepted as an answer to that request is excused too (an answer
+   can overtake the gossip copy on another connection), within the same limits; every other untagged
+   repeat, and any further repeat, is a strike. Under link flapping (20 % and 50 % of the links down for 5–10 s at a time,
    90 honest testbed runs) no neighbour was struck or banned, because a resumed link's sync answers are
    tagged ([benchmarks.md](benchmarks.md#link-flapping)). Answers go to the `reply_to` address named in the signed
    request, so a requester can aim an answer (at most 16 messages) at a third party. Answers are limited per requester

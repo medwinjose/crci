@@ -180,8 +180,8 @@
         <text x="572" y="382" fill="#94a3b8" font-size="7.5">map of (sender, JSON WireMessage), filled from TCP or in-process</text>
 
         <rect x="560" y="402" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
-        <text x="572" y="420" fill="white" font-size="9" font-weight="600">2  Ban list · duplicate message ID</text>
-        <text x="572" y="434" fill="#94a3b8" font-size="7.5">banned sender → drop · same ID: same sender → strike, other sender → ignored</text>
+        <text x="572" y="420" fill="white" font-size="9" font-weight="600">2  Ban list · duplicate message</text>
+        <text x="572" y="434" fill="#94a3b8" font-size="7.5">banned sender → drop · same key + ID: same sender → strike, other → ignored</text>
 
         <rect x="560" y="454" width="380" height="42" rx="5" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.2"/>
         <text x="572" y="472" fill="white" font-size="9" font-weight="600">3  Admission — sybil.rs</text>
@@ -283,14 +283,14 @@
         </div>
         <ul>
           <li>• Strikes, bans and the replay filter run in NodeRuntime for every message, TCP included</li>
-          <li>• All paper benchmarks drive NodeRuntime in-process (docs/benchmarks.md)</li>
+          <li>• cargo benches run in-process; the testbed runs real processes (docs/benchmarks.md)</li>
           <li>• On TCP strikes bind to the key a neighbour proved in the handshake</li>
         </ul>
       </div>
     </div>
 
     <p class="footer">
-      CRCI v2.1.0 · diagram of the code as of 2026-11-03 · details in docs/architecture.md
+      CRCI v2.1.0 · diagram of the code as of 2026-11-07 · details in docs/architecture.md
     </p>
   </div>
 

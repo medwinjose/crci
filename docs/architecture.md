@@ -33,14 +33,15 @@ whether messages arrive in-process (simulator, tests, benchmarks, Android FFI) o
 applies, in order:
 
 1. **Ban list** (`sybil.rs`, `SybilGuard`): frames from a banned sender are dropped.
-2. **Duplicate check**, by message ID, before the sender's budget and before any signature check: a copy
-   of a message already received from a *different* sender is dropped as gossip redundancy, spending no
-   budget and no signature check; the same ID again from the *same* sender is a strike, unless it is older
-   than the replay window (dropped) or a tagged answer to this node's sync request (see anti-entropy
-   below). Every link carries every message, so these copies are most of the traffic; and because repeats
-   are judged before the rate limit, a sender that keeps its budget empty cannot hide replays behind it.
-   An honest node sends each message ID to a neighbour once. The ID cache is cleared when it reaches
-   5 000 entries.
+2. **Duplicate check**, by signing key and message ID (`message_key`: the signer chooses the ID, so by ID
+   alone anyone's validly signed message could suppress an honest one), before the sender's budget and
+   before any signature check: a copy of a message already received from a *different* sender is dropped
+   as gossip redundancy, spending no budget and no signature check; the same message again from the *same*
+   sender is a strike, unless it is older than the replay window (dropped) or excused under this node's
+   sync request (see anti-entropy below). Every link carries every message, so these copies are most of the
+   traffic; and because repeats are judged before the rate limit, a sender that keeps its budget empty
+   cannot hide replays behind it. Apart from those sync answers, an honest node sends each message to a
+   neighbour once. The cache is cleared when it reaches 5 000 entries.
 3. **Admission** (`SybilGuard::check`), for messages not seen before: token bucket of 20 messages per
    transport sender, refilled at 20 per second (chosen from a testbed sweep: the lowest of 5, 10, 20
    and 50 per second with no honest frame dropped at 16 messages/s network-wide; re-measured with the
@@ -70,6 +71,9 @@ applies, in order:
    and chain-head announcements have a counter and a window of their own: a node sends one request per
    neighbour per round whether or not it has anything to say, and in the origin's message window those
    would push out its messages (measured in the in-process simulation).
+
+These checks, their order and the anti-entropy below are modelled in TLA+ and replayed through this code
+([formal-verification.md](formal-verification.md)): a change to them changes the model too.
 
 A strike is −0.15 reputation (start 0.5, ban below 0.1, so three strikes ban). Between strikes a score
 recovers with elapsed time, 0.0005 per second (one strike forgiven in 300 s), whatever the peer sends,
@@ -202,19 +206,21 @@ and under packet loss the request itself can arrive seconds late (measured: hone
 for such answers at 10–20 % loss before the tag existed). The requester keeps a sync session per request
 (120 s, at most 4 per neighbour). A repeat from the asked neighbour is dropped without a strike only if it
 is tagged with that request, the request's digest did **not** list the message as held, and it is the
-first such repeat of that message under the request, for at most 16 messages per request. An untagged
-repeat, a repeat of a message the digest listed as held, a second repeat, any repeat beyond the first 16,
-and repeats from any other peer follow the normal rules and strike. An open session therefore excuses only
-answers, never ordinary gossip.
+first such repeat of that message under the request, for at most 16 messages per request. The order can
+also be the other way round: an answer goes to the address named in the request and gossip to the address
+configured for the peer, and if those differ they take different connections, so an answer can overtake the
+gossip copy of the same message. One untagged copy of a message accepted as an answer to a request made to
+that neighbour is therefore excused too, under the same limits (one excuse per message per request). Any
+other untagged repeat, a repeat of a message the digest listed as held, a second repeat, any repeat beyond
+the first 16, and repeats from any other peer follow the normal rules and strike. An open session therefore
+excuses only answers and the one copy that goes with each, never ordinary gossip.
 
 In-process, `MeshSimulator::heal(a, b)` restores a link and has both ends request. A TCP node requests
 from every `--peers` / `--dial` address 0.5 s after start and every 30 s, and retries an unreachable peer
 every 5 s, so a healed link is re-synchronised within about 5 s. It also requests from a peer as soon as
 that peer re-establishes its relay connection (`link_resumed`, see the message path above), at least
 8 s after its previous request. The session is opened after the
-listener's identity has been authenticated and before the request frame is sent. Answers travel on the
-same ordered connection as the neighbour's gossip, so an answer never arrives before the neighbour's
-own gossip copy of the same message. `reply_to` is the
+listener's identity has been authenticated and before the request frame is sent. `reply_to` is the
 node's listen address, so it must be an address the peers can reach: a node listening on `0.0.0.0` or
 `::` prints a warning and does not request sync.
 

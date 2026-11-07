@@ -940,12 +940,12 @@ impl NodeRuntime {
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 }
 
-                // Copies of messages already received are judged by ID first, before the sender's
+                // Copies of messages already received are judged first, before the sender's
                 // budget and before any signature check: every link carries every message, so these
                 // copies are most of the traffic. A copy from another path is dropped for free; a
                 // repeat from the same sender is a replay whatever its budget, so a sender that
-                // keeps its budget empty cannot hide replays behind the rate limit. An honest node
-                // sends each message ID to a neighbour once (sync answers are tagged).
+                // keeps its budget empty cannot hide replays behind the rate limit. Apart from sync
+                // answers, an honest node sends each message to a neighbour once.
                 let repeat_from_sender = self
                     .seen_messages
                     .get(&key)
