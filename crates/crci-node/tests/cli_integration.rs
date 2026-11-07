@@ -220,3 +220,46 @@ async fn test_cli_peers_dial() {
         stdout
     );
 }
+
+/// A replay window far beyond what the filter stores per peer is refused at start-up instead of
+/// aborting on the first message (the filter sizes a bitset by `W + 1`).
+#[test]
+fn an_oversized_replay_window_is_refused_at_start() {
+    for window in ["18446744073709551615", "1000000000000", "1025"] {
+        let mut child = Command::new(get_bin_path())
+            .args(["--listen", "127.0.0.1:0", "--replay-window", window])
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("Failed to start node");
+        let start = Instant::now();
+        let status = loop {
+            if let Some(status) = child.try_wait().expect("wait") {
+                break Some(status);
+            }
+            if start.elapsed() > Duration::from_secs(5) {
+                let _ = child.kill();
+                let _ = child.wait();
+                break None;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        };
+        let status = status.unwrap_or_else(|| panic!("--replay-window {window} was accepted"));
+        assert_eq!(status.code(), Some(1), "--replay-window {window}");
+    }
+}
+
+#[test]
+fn the_largest_replay_window_is_accepted() {
+    let mut child = Command::new(get_bin_path())
+        .args(["--listen", "127.0.0.1:0", "--replay-window", "1024"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("Failed to start node");
+    std::thread::sleep(Duration::from_millis(1500));
+    let running = child.try_wait().expect("wait").is_none();
+    let _ = child.kill();
+    let _ = child.wait();
+    assert!(running, "--replay-window 1024 must be accepted");
+}

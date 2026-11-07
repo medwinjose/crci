@@ -25,6 +25,9 @@ use std::collections::HashMap;
 use std::hash::BuildHasher;
 
 pub const DEFAULT_WINDOW_SIZE: u64 = 64;
+/// Largest window an operator may configure: each peer record holds `W + 1` bits, so a larger
+/// value costs memory per peer and `W + 1` overflows at `u64::MAX`.
+pub const MAX_WINDOW_SIZE: u64 = 1024;
 /// Transport peers remembered per origin: above the listener's connection cap. Deliveries by
 /// further peers count as held but cannot be attributed, so they are never a strike.
 pub const MAX_PEERS_PER_ORIGIN: usize = 128;

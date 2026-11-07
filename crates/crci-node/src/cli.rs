@@ -100,7 +100,8 @@ pub struct Cli {
     #[arg(long)]
     pub strikes_to_ban: Option<u32>,
 
-    /// Experiments: replay window W in sequence numbers (default 64; 0 = strict-monotonic)
+    /// Experiments: replay window W in sequence numbers (default 64; 0 = strict-monotonic;
+    /// at most 1024)
     #[arg(long)]
     pub replay_window: Option<u64>,
 

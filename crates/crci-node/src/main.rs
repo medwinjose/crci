@@ -166,6 +166,13 @@ async fn main() {
             node.sybil_guard.set_strikes_to_ban(k);
         }
         if let Some(w) = args.replay_window {
+            if w > crci_core::replay::MAX_WINDOW_SIZE {
+                eprintln!(
+                    "--replay-window {w} is above the maximum of {}",
+                    crci_core::replay::MAX_WINDOW_SIZE
+                );
+                std::process::exit(1);
+            }
             node.replay_filter.window_size = w;
         }
 
