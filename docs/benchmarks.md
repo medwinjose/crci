@@ -751,7 +751,7 @@ not as partition probabilities. At 45 % the small RGGs fall apart: the mean of N
 of a single message can reach 0 when its origin ends up alone.
 
 **Long runs (12 runs: 8 messages/s for 15 simulated minutes, mesh N = 300 and rgg N = 150, f = 0 and 10 %, seeds
-1–3):** past the seen-ID limit of 5 000 (222–300 cache clears per run, all nodes together), the digest limit of
+1–3):** past the seen-ID limit of 5 000 on that build (1 792 since the per-node limits; 222–300 cache clears per run, all nodes together), the digest limit of
 256 origins (mesh only) and the time a banned peer needs to be readmitted. 0 honest false evictions, 0 strikes
 on honest senders, 0 budget drops; f = 0 delivers 100 %; every honest neighbour banned every attacker, and
 attackers that kept replaying were banned again after readmission (118–127 readmissions per run with attackers).
@@ -827,9 +827,11 @@ up to 500 nodes, 8.4–8.5 MiB at 32 messages/s (was 10.6–11.2), 7.7 MiB in th
 of a process is the runtime and binary, not protocol state. A fresh-message flood of 1 000 messages/s logs 42 MiB
 per run (68 MiB before the per-sender limit on log lines).
 
-**Not shown:** a flood through the real TCP node (the transport paces each connection at 200 frames/s, so a million
-messages take hours there; the same state code runs in-process above); memory on 1 GB devices; floods from many
-neighbours at once.
+**Not shown:** a flood through the real TCP node. It is feasible on this host: a sender gets 20 new messages/s, so
+one connection would take 14 hours for a million, but 100 connections with fresh identities (the listener's cap)
+would take about 8 minutes; it has not been run. Such a run would also measure the node's log output, which grows
+with every accepted message and so with the number of identities (only lines for dropped frames are limited).
+Memory on 1 GB devices (no device here) and floods from many neighbours at once are not measured either.
 
 ## WAN smoke test
 
