@@ -25,8 +25,13 @@ pub const MIN_TRUSTED_REP: f64 = 0.41;
 // request and drops such a repeat without a strike if it is tagged with a request this
 // node sent to that neighbour, the request's digest did *not* list the message as held,
 // and the message was not excused under that request before; at most `SYNC_MAX_BATCH`
-// per request (an answer cannot carry more). A repeat without the tag is never excused,
-// so an open session is no licence to replay gossip. Sessions last `SYNC_SESSION_TTL`.
+// per request (an answer cannot carry more). The order can also be the other way round: an
+// answer goes to the address in the request, gossip to the address configured for the peer,
+// and if those differ they take different connections. So one untagged copy of a message is
+// excused too, if the message was accepted as an answer to a request made to that sender. Any
+// other repeat without the tag strikes, so an open session is no licence to replay gossip, and
+// a message gets one excuse per request whichever way it arrived. Sessions last
+// `SYNC_SESSION_TTL`.
 // Other duplicates are judged by the normal rules. A request is answered only when it
 // comes straight from its author (a relayed copy is ignored), at most once per
 // `SYNC_COOLDOWN` per requester.
@@ -71,6 +76,24 @@ pub struct SyncSession {
     pub held: HashSet<(String, u64)>,
     /// (origin, seq) pairs already excused once in this session.
     pub exempted: HashSet<(String, u64)>,
+    /// (origin, seq) pairs accepted as answers to this request (at most `SYNC_MAX_BATCH`).
+    pub answered: HashSet<(String, u64)>,
+}
+
+impl SyncSession {
+    /// Whether a repeat of `key` from `sender` is excused under this session, recording it.
+    fn excuse(&mut self, sender: &str, now: Instant, key: &(String, u64)) -> bool {
+        if self.peer != sender || now.saturating_duration_since(self.opened_at) > SYNC_SESSION_TTL {
+            return false;
+        }
+        if self.held.contains(key)
+            || self.exempted.len() >= SYNC_MAX_BATCH
+            || !self.exempted.insert(key.clone())
+        {
+            return false;
+        }
+        true
+    }
 }
 
 /// Identifies a message for the seen cache and the rescue store. A message ID is chosen by its
@@ -567,6 +590,7 @@ impl NodeRuntime {
                 opened_at: now,
                 held,
                 exempted: HashSet::new(),
+                answered: HashSet::new(),
             },
         );
     }
@@ -582,9 +606,10 @@ impl NodeRuntime {
         request.id
     }
 
-    /// Whether a same-sender duplicate of (`origin`, `seq`) from `sender`, tagged as an
-    /// answer to request `answers`, is excused (at most once per message, and at most
-    /// `SYNC_MAX_BATCH` messages, per request).
+    /// Whether a same-sender duplicate of (`origin`, `seq`) from `sender` is excused: tagged as
+    /// an answer to request `answers`, or untagged after the message was accepted as an answer
+    /// from that sender (at most once per message, and at most `SYNC_MAX_BATCH` messages, per
+    /// request).
     fn excused_as_sync_answer(
         &mut self,
         sender: &str,
@@ -593,26 +618,36 @@ impl NodeRuntime {
         seq: u64,
     ) -> bool {
         let now = self.sybil_guard.now();
-        let Some(request_id) = answers else {
-            return false;
-        };
-        let Some(session) = self.sync_sessions.get_mut(request_id) else {
-            return false;
-        };
-        if session.peer != sender
-            || now.saturating_duration_since(session.opened_at) > SYNC_SESSION_TTL
-        {
-            return false;
-        }
         let key = (origin.to_string(), seq);
-        if session.held.contains(&key)
-            || session.exempted.len() >= SYNC_MAX_BATCH
-            || !session.exempted.insert(key)
-        {
-            return false;
+        let excused = match answers {
+            Some(request_id) => self
+                .sync_sessions
+                .get_mut(request_id)
+                .is_some_and(|session| session.excuse(sender, now, &key)),
+            None => {
+                let mut any = false;
+                for session in self.sync_sessions.values_mut() {
+                    if session.answered.contains(&key) && session.excuse(sender, now, &key) {
+                        any = true;
+                    }
+                }
+                any
+            }
+        };
+        if excused {
+            self.sync_excused_duplicates += 1;
         }
-        self.sync_excused_duplicates += 1;
-        true
+        excused
+    }
+
+    /// Record that (`origin`, `seq`) was accepted as an answer to request `answers` from `sender`.
+    fn note_answered(&mut self, sender: &str, answers: Option<&str>, origin: &str, seq: u64) {
+        let Some(session) = answers.and_then(|id| self.sync_sessions.get_mut(id)) else {
+            return;
+        };
+        if session.peer == sender && session.answered.len() < SYNC_MAX_BATCH {
+            session.answered.insert((origin.to_string(), seq));
+        }
     }
 
     /// Answer a sync request from `sender` with up to `SYNC_MAX_BATCH` recent messages its
@@ -1199,6 +1234,7 @@ impl NodeRuntime {
             if wire.message_type == "rescue" || wire.message_type == "mce" {
                 self.persistent_messages.insert(key, wire.clone());
             }
+            self.note_answered(&sender_id, answers.as_deref(), &wire.origin, wire.seq);
             self.remember_recent(&wire);
 
             if !self.is_trusted() {

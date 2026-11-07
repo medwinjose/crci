@@ -275,6 +275,85 @@ fn untagged_repeat_inside_a_session_strikes() {
     assert_eq!(pair.b.byzantine_events, 1);
 }
 
+/// An answer can overtake the gossip copy of the same message when the two take different
+/// connections: the neighbour's relay target for this node may not be the address this node
+/// asked it to answer at. The late gossip copy is excused, once.
+#[test]
+fn a_gossip_copy_after_its_answer_is_not_struck() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    let request = pair.b.request_sync("a");
+    pair.take("a");
+    pair.inject("a", "b", &answer(&sent[0], &request));
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.byzantine_events, 0);
+    assert_eq!(pair.b.sync_excused_duplicates, 1);
+}
+
+/// The excuse covers one copy per message: gossip after an answer does not open a licence.
+#[test]
+fn a_second_copy_after_an_answer_strikes() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    let request = pair.b.request_sync("a");
+    pair.take("a");
+    pair.inject("a", "b", &answer(&sent[0], &request));
+    pair.inject("a", "b", &sent[0]);
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.sync_excused_duplicates, 1);
+    assert_eq!(pair.b.byzantine_events, 1);
+}
+
+/// A tagged repeat and an untagged one share the single excuse of a message.
+#[test]
+fn a_tagged_and_an_untagged_copy_share_one_excuse() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    let request = pair.b.request_sync("a");
+    pair.take("a");
+    let tagged = answer(&sent[0], &request);
+    pair.inject("a", "b", &tagged);
+    pair.inject("a", "b", &tagged);
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.sync_excused_duplicates, 1);
+    assert_eq!(pair.b.byzantine_events, 1);
+}
+
+/// A message earns the excuse only as an answer to a request made to its sender.
+#[test]
+fn a_tag_naming_a_request_to_someone_else_earns_no_excuse() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    let request = pair.b.request_sync("c");
+    pair.take("c");
+    pair.inject("a", "b", &answer(&sent[0], &request));
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.sync_excused_duplicates, 0);
+    assert_eq!(pair.b.byzantine_events, 1);
+}
+
+/// The excuse for a copy after its answer ends with the session, like the other one.
+#[test]
+fn a_gossip_copy_after_the_session_ended_strikes() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    let request = pair.b.request_sync("a");
+    pair.take("a");
+    pair.inject("a", "b", &answer(&sent[0], &request));
+    pair.b.process_inbox();
+    pair.b
+        .sybil_guard
+        .advance_time(SYNC_SESSION_TTL + Duration::from_secs(1));
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.sync_excused_duplicates, 0);
+    assert_eq!(pair.b.byzantine_events, 1);
+}
+
 /// `wire` as `from` sends it in answer to sync request `request`.
 fn answer(wire: &WireMessage, request: &str) -> WireMessage {
     let mut copy = wire.clone();
