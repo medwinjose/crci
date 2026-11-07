@@ -1680,6 +1680,8 @@ async fn run_node(
         let mut banned: std::collections::HashSet<String> = std::collections::HashSet::new();
         // Banned peers whose dropped frames were already announced (one line per ban).
         let mut dropping: std::collections::HashSet<String> = std::collections::HashSet::new();
+        // Above what an honest link carries (tens of frames per second at the measured capacity).
+        let mut received_lines = runtime::LogGate::new(100);
         while let Ok((sender_id, wire)) = recv_tcp.receive().await {
             let dequeued = std::time::Instant::now();
             // A banned peer's frames are dropped by NodeRuntime's admission check anyway; doing
@@ -1713,10 +1715,12 @@ async fn run_node(
                 continue;
             }
             dropping.remove(&sender_id);
-            println!(
-                "Node {} received message from {}: id={}, type={}, origin={}",
-                recv_id, sender_id, wire.id, wire.message_type, wire.origin
-            );
+            if let Some(more) = received_lines.pass(&sender_id, dequeued) {
+                println!(
+                    "Node {} received message from {}: id={}, type={}, origin={}{}",
+                    recv_id, sender_id, wire.id, wire.message_type, wire.origin, more
+                );
+            }
             if let Err(reason) = check_fields(&wire) {
                 println!(
                     "Node {} rejected '{}' from {}: {}",
@@ -2006,6 +2010,10 @@ async fn run_node(
 fn add_api_peer(api_state: &api::ApiState, peer: &str) {
     if let Ok(mut peer_list) = api_state.peer_list.write() {
         if !peer_list.iter().any(|p| p == peer) {
+            // A status list for the API: new identities are free, so it keeps the newest.
+            if peer_list.len() >= 256 {
+                peer_list.remove(0);
+            }
             peer_list.push(peer.to_string());
         }
     }

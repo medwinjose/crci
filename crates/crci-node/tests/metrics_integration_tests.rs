@@ -4,6 +4,7 @@
 //! occur in NodeRuntime — not just that they exist and are zero.
 
 use crci_core::message::{Message, MessagePriority, MessageType, Signal, Visibility};
+use crci_core::runtime::SEEN_MAX;
 use crci_core::runtime::{NodeRuntime, WireMessage};
 use crci_core::transport::SharedInbox;
 use std::collections::HashMap;
@@ -141,9 +142,9 @@ fn test_metrics_seen_messages_evictions_on_bft046() {
     let mut node = NodeRuntime::new("bft046-metrics-node", "zone-alpha", inbox.clone());
 
     // Pre-fill seen_messages to just below threshold
-    for i in 0..5000 {
+    for i in 0..SEEN_MAX {
         node.seen_messages
-            .insert(format!("prefill-{}", i), std::collections::HashSet::new());
+            .insert(format!("prefill-{}", i), Vec::new());
     }
 
     // Send one more message to trigger eviction
@@ -161,7 +162,7 @@ fn test_metrics_seen_messages_evictions_on_bft046() {
     let evictions = node.metrics.seen_messages_evictions.load(Ordering::Relaxed);
     assert_eq!(
         evictions, 1,
-        "Expected exactly 1 seen_messages_eviction after hitting 5000 ceiling, got {}",
+        "Expected exactly 1 seen_messages_eviction after hitting the ceiling, got {}",
         evictions
     );
 }

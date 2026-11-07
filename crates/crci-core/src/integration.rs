@@ -55,6 +55,9 @@ pub enum PipelineVerdict {
 
 // ── Integrated pipeline ───────────────────────────────────────────
 
+/// Entries in the pipeline's tables keyed by origin or by rescue.
+const MAX_TRACKED_NODES: usize = 1024;
+
 pub struct GossipPipeline {
     pub rate_limiter: ThreadSafeRateLimiter,
     pub aeda: AedaEngine,
@@ -207,7 +210,12 @@ impl GossipPipeline {
                 },
                 self.current_round,
             );
-            // Rescue acknowledgment: increment ack count
+            // Rescue acknowledgment: increment ack count, only for rescues still stored
+            if self.rescue_ack_counts.len() >= MAX_TRACKED_NODES {
+                let stored = &self.ttl_store.messages;
+                self.rescue_ack_counts
+                    .retain(|id, _| stored.contains_key(id));
+            }
             *self.rescue_ack_counts.entry(msg.id.clone()).or_insert(0) += 1;
         } else {
             // Normal report: check for suspicious all-clear in active zone
@@ -218,6 +226,10 @@ impl GossipPipeline {
         if self.zone_registry.is_verified(&msg.origin_node, &msg.zone)
             || msg.reputation >= MIN_TRUSTED_REP
         {
+            // Past the limit the severity check starts over with the next reports.
+            if self.peer_severities.len() >= MAX_TRACKED_NODES {
+                self.peer_severities.clear();
+            }
             self.peer_severities
                 .insert(msg.origin_node.clone(), msg.severity);
         }

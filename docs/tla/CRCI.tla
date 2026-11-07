@@ -32,7 +32,8 @@ CONSTANTS
     ByzSeqs,             \* sequence numbers an adversary signs with its own key
     PersistentReplayer,  \* the adversary keeps replaying its own message
     TicksEnabled,
-    SeenMayClear,        \* the seen cache can be cleared (its limit of 5 000 entries)
+    SeenMayClear,        \* the seen cache can be cleared (its limit of 1 792 entries)
+    OriginsMayBeForgotten, \* a node can forget an origin whole (its limit on tracked origins)
     FifoLinks,           \* FALSE: a frame can overtake another on a link
     LinksDuplicate,      \* TRUE: the network can duplicate a frame
     SessionsMayExpire,   \* TRUE: a sync session can end before its answers arrive
@@ -293,13 +294,25 @@ Answer(q) ==
     /\ UNCHANGED <<counter, seen, seqMax, deliveredBy, rep, sessions, recent, delivered,
                    twice, known, asked, faults, byzSent>>
 
-\* The seen cache is cleared whole at its limit of 5 000 entries.
+\* The seen cache is cleared whole at its limit of 1 792 entries.
 ClearSeen(n) ==
     /\ SeenMayClear
     /\ seen[n] # {}
     /\ seen' = [seen EXCEPT ![n] = {}]
     /\ UNCHANGED <<counter, link, requests, seqMax, deliveredBy, rep, sessions, recent,
                    delivered, twice, known, asked, faults, byzSent>>
+
+\* Above its limit on tracked origins a node forgets an origin's window and recent messages. Not
+\* part of the checks that must hold: the two checks with this switch on must break, which shows
+\* what bounded memory costs while identities are free.
+ForgetOrigin(n, o) ==
+    /\ OriginsMayBeForgotten
+    /\ seqMax[n][o] # 0
+    /\ seqMax' = [seqMax EXCEPT ![n][o] = 0]
+    /\ deliveredBy' = [deliveredBy EXCEPT ![n] = {x \in @ : x[1] # o}]
+    /\ recent' = [recent EXCEPT ![n] = {m \in @ : m.origin # o}]
+    /\ UNCHANGED <<counter, link, requests, seen, rep, sessions, delivered, twice, known, asked,
+                   faults, byzSent>>
 
 Tick ==
     /\ TicksEnabled
@@ -404,6 +417,7 @@ Next ==
     \/ \E p \in Pairs : RequestSync(p[1], p[2])
     \/ \E q \in requests : Answer(q) \/ LoseRequest(q) \/ ByzIgnoreRequest(q)
     \/ \E n \in Honest : ClearSeen(n) \/ \E ses \in sessions[n] : ExpireSession(n, ses)
+    \/ \E n \in Honest, o \in Nodes : ForgetOrigin(n, o)
     \/ Tick
     \/ \E p \in Pairs : LoseFrame(p[1], p[2]) \/ DuplicateFrame(p[1], p[2])
     \/ \E p \in Pairs : ByzReceive(p[1], p[2]) \/ ByzSend(p[1], p[2]) \/ ByzPersist(p[1], p[2])

@@ -173,6 +173,10 @@ impl AuditLog {
 /// This prevents zone spoofing: an attacker cannot inject sev-1
 /// "all clear" reports into zone-alpha without a peer in zone-alpha
 /// acknowledging them.
+/// Members one zone keeps through `register_bootstrap`, which a node calls for every origin it
+/// delivers. Past this an arbitrary member goes; the next message of that origin registers it again.
+const MAX_BOOTSTRAP_MEMBERS: usize = 1024;
+
 pub struct ZoneMembershipRegistry {
     /// zone → set of verified node IDs
     members: HashMap<String, HashSet<String>>,
@@ -191,10 +195,14 @@ impl ZoneMembershipRegistry {
     /// Register a node as verified in a zone.
     /// Call this for bootstrap nodes (first node in a new deployment).
     pub fn register_bootstrap(&mut self, node_id: &str, zone: &str) {
-        self.members
-            .entry(zone.to_string())
-            .or_default()
-            .insert(node_id.to_string());
+        let members = self.members.entry(zone.to_string()).or_default();
+        if members.len() >= MAX_BOOTSTRAP_MEMBERS && !members.contains(node_id) {
+            let any = members.iter().next().cloned();
+            if let Some(member) = any {
+                members.remove(&member);
+            }
+        }
+        members.insert(node_id.to_string());
     }
 
     /// A node claims to join a zone. Returns true if accepted immediately

@@ -1,6 +1,7 @@
 use ed25519_dalek::{Signature, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::hash::BuildHasher;
 use std::time::{Duration, Instant};
 
 use crate::identity::Identity;
@@ -56,8 +57,12 @@ pub const SYNC_SESSION_TTL: Duration = Duration::from_secs(120);
 pub const SYNC_SESSIONS_PER_PEER: usize = 4;
 /// Most origins one digest lists.
 pub const SYNC_MAX_ORIGINS: usize = 256;
-/// Most origins whose recent messages a node keeps for answering sync requests.
-pub const RECENT_MAX_ORIGINS: usize = 1024;
+/// Accepted messages a node keeps for answering sync requests, over all origins (newest kept):
+/// about a minute of the highest load measured without drops (16 messages/s), two sync rounds.
+pub const RECENT_MAX_MESSAGES: usize = 1024;
+/// Open sync sessions over all peers (the oldest goes first): `SYNC_SESSIONS_PER_PEER` for 24
+/// neighbours, above the highest degree measured (22).
+pub const SYNC_SESSIONS_MAX: usize = 96;
 /// Answers a node sends in a burst, across all requesters. A request names where its
 /// answer goes (`reply_to`), so this caps how much a node can be made to send to a third
 /// party by requesters with many identities.
@@ -67,32 +72,136 @@ pub const SYNC_ANSWERS_PER_SEC: f32 = 1.0;
 /// Requesters remembered for the per-requester cooldown before old entries are pruned.
 const SYNC_ANSWERED_MAX: usize = 1024;
 
-/// A sync request this node sent and is waiting on.
+// Per-node limits. Memory must not grow with the number of identities an adversary can mint, so
+// every table keyed by something a peer chooses has a limit.
+//
+// An origin costs state in several tables (`known_keys`, `origin_budgets`, both replay windows,
+// the recent store). Above `MAX_TRACKED_ORIGINS` or `MAX_PEER_RECORDS` the node forgets a batch of
+// origins whole, those with the fewest accepted messages first, the longest idle among equals.
+// A flood of new identities therefore pushes out its own identities first: to displace an origin
+// with k accepted messages an adversary signs more than k messages on each of
+// `MAX_TRACKED_ORIGINS` identities, at the rate its neighbours' budgets allow.
+//
+// Forgetting has a price, and bounded memory cannot avoid it while identities are free: the
+// origin's key pin and window are gone, so one of its old messages can be accepted again, and
+// relaying that copy gets this node struck by a neighbour that still remembers the origin.
+
+/// Origins a node keeps state for. A hash table holds 7/8 of its buckets before it doubles, so
+/// this is the most that fits 1 024 buckets: one origin more would double five tables.
+pub const MAX_TRACKED_ORIGINS: usize = 896;
+/// (origin, transport peer) records in the replay windows: about 8 per origin at the limit above,
+/// the average degree of the meshes measured.
+pub const MAX_PEER_RECORDS: usize = 7_168;
+/// Share of the tracked origins forgotten at once (1/8), so that the sort is rare.
+const FORGET_BATCH_DIVISOR: usize = 8;
+/// Message IDs in the seen cache; the cache is cleared whole at this size (7/8 of 2 048 buckets).
+/// What it forgets is still judged by the replay window, after a signature check. Lasts about
+/// two minutes at the highest load measured without drops (16 messages/s).
+pub const SEEN_MAX: usize = 1792;
+/// Transport peers remembered per seen message, above the listener's connection cap. A later
+/// peer's copies are dropped as copies from another path.
+const SEEN_MAX_SENDERS: usize = 128;
+/// Rescue and mass-casualty messages kept (the oldest goes first).
+pub const PERSISTENT_MAX: usize = 256;
+/// Severity observations kept for `run_consensus`; the older half goes when this is exceeded.
+pub const OBSERVATIONS_MAX: usize = 1024;
+/// Divergence alerts kept (the oldest goes first).
+pub const DIVERGENCE_LOG_MAX: usize = 64;
+
+/// Lines per second one key may print. A frame dropped by a budget costs no strike, so its sender
+/// is never stopped; without this its frames cost log volume at the pacing rate.
+pub struct LogGate {
+    per_second: u32,
+    entries: HashMap<String, (Instant, u32, u64)>,
+}
+
+impl LogGate {
+    pub fn new(per_second: u32) -> Self {
+        Self {
+            per_second,
+            entries: HashMap::new(),
+        }
+    }
+
+    /// Whether a line for `key` may be printed: its suffix naming the lines held back since the
+    /// last one printed, or `None` to print nothing.
+    pub fn pass(&mut self, key: &str, now: Instant) -> Option<String> {
+        if self.entries.len() >= 1024 && !self.entries.contains_key(key) {
+            self.entries.clear();
+        }
+        let entry = self.entries.entry(key.to_string()).or_insert((now, 0, 0));
+        if now.saturating_duration_since(entry.0) >= Duration::from_secs(1) {
+            entry.0 = now;
+            entry.1 = 0;
+        }
+        if entry.1 >= self.per_second {
+            entry.2 += 1;
+            return None;
+        }
+        entry.1 += 1;
+        let held_back = std::mem::take(&mut entry.2);
+        Some(if held_back > 0 {
+            format!(" (+{held_back} not printed)")
+        } else {
+            String::new()
+        })
+    }
+}
+
+/// Lines per second per sender or origin for frames dropped by a budget.
+const DROP_LINES_PER_SEC: u32 = 5;
+
+/// How much an origin has done, which decides whom to forget first.
+pub struct OriginActivity {
+    pub accepted: u64,
+    pub last_active: u64,
+}
+
+/// Which seqs one origin's digest listed, as bits from `floor`.
+struct HeldSeqs {
+    origin_tag: u64,
+    floor: u64,
+    bits: [u64; 2],
+}
+
+impl HeldSeqs {
+    fn holds(&self, seq: u64) -> bool {
+        // shortcut: W above 127 (experiments only) reads older held seqs as not held, which
+        // excuses a little more; widen `bits` if such a window ever ships.
+        match seq.checked_sub(self.floor) {
+            Some(offset) if offset < 128 => {
+                self.bits[(offset / 64) as usize] & (1 << (offset % 64)) != 0
+            }
+            _ => false,
+        }
+    }
+}
+
+/// A sync request this node sent and is waiting on. Origins and seqs are kept as keyed hashes:
+/// a session lives two minutes and a node holds several per neighbour.
 pub struct SyncSession {
     /// The peer that was asked; its answers arrive from this identity.
     pub peer: String,
     pub opened_at: Instant,
-    /// (origin, seq) pairs the request declared as already held.
-    pub held: HashSet<(String, u64)>,
-    /// (origin, seq) pairs already excused once in this session.
-    pub exempted: HashSet<(String, u64)>,
+    /// What the request declared as already held, sorted by `origin_tag`.
+    held: Vec<HeldSeqs>,
+    /// (origin, seq) pairs already excused once in this session (at most `SYNC_MAX_BATCH`).
+    exempted: HashSet<u64>,
     /// (origin, seq) pairs accepted as answers to this request (at most `SYNC_MAX_BATCH`).
-    pub answered: HashSet<(String, u64)>,
+    answered: HashSet<u64>,
 }
 
 impl SyncSession {
     /// Whether a repeat of `key` from `sender` is excused under this session, recording it.
-    fn excuse(&mut self, sender: &str, now: Instant, key: &(String, u64)) -> bool {
+    fn excuse(&mut self, sender: &str, now: Instant, origin_tag: u64, seq: u64, key: u64) -> bool {
         if self.peer != sender || now.saturating_duration_since(self.opened_at) > SYNC_SESSION_TTL {
             return false;
         }
-        if self.held.contains(key)
-            || self.exempted.len() >= SYNC_MAX_BATCH
-            || !self.exempted.insert(key.clone())
-        {
-            return false;
-        }
-        true
+        let declared = self
+            .held
+            .binary_search_by_key(&origin_tag, |h| h.origin_tag)
+            .is_ok_and(|i| self.held[i].holds(seq));
+        !declared && self.exempted.len() < SYNC_MAX_BATCH && self.exempted.insert(key)
     }
 }
 
@@ -365,8 +474,13 @@ pub struct NodeRuntime {
     pub zone: String,
     pub peers: Vec<String>,
     pub is_online: bool,
-    pub seen_messages: HashMap<String, HashSet<String>>,
+    /// Message key -> `sender_tag` of the transport peers that delivered it.
+    pub seen_messages: HashMap<String, Vec<u64>>,
     pub persistent_messages: HashMap<String, WireMessage>,
+    persistent_order: std::collections::VecDeque<String>,
+    /// Keys the hashes kept in place of peer identities. Random per node, so a collision (a
+    /// false strike) cannot be aimed at anyone.
+    tag_key: std::collections::hash_map::RandomState,
     pub transport: SimTransport,
     pub inbox: SharedInbox,
     pub storage: crate::storage::legacy::NodeStorage,
@@ -394,16 +508,24 @@ pub struct NodeRuntime {
     pub sybil_rate_limited_events: u64,
     pub sybil_pow_failed_events: u64,
     /// New messages accepted per origin (`ORIGIN_BURST`, `ORIGIN_REFILL_PER_SEC`).
-    /// shortcut: one entry per authenticated origin, like `known_keys`; bounded with the rest
-    /// of the per-node state when that is capped.
     pub origin_budgets: HashMap<String, crate::sybil::TokenBucket>,
     /// When false, an origin may have any number of new messages accepted (baselines).
     pub origin_budget_enabled: bool,
     /// Messages dropped because their origin was over its budget.
     pub origin_rate_limited_events: u64,
     pub metrics: CrciMetrics,
-    /// The last `window_size` accepted messages per origin, kept to answer sync requests.
-    pub recent_messages: HashMap<String, BTreeMap<u64, WireMessage>>,
+    /// The last `window_size` accepted messages per origin, kept to answer sync requests. Boxed:
+    /// a map node holds 11 values, which would cost 3 KB per origin that sent one message.
+    pub recent_messages: HashMap<String, BTreeMap<u64, Box<WireMessage>>>,
+    recent_order: std::collections::VecDeque<(String, u64)>,
+    /// Accepted messages and last activity per origin (see `MAX_TRACKED_ORIGINS`).
+    pub origin_activity: HashMap<String, OriginActivity>,
+    activity_clock: u64,
+    /// `MAX_TRACKED_ORIGINS` unless a test or an experiment sets another limit.
+    pub max_tracked_origins: usize,
+    /// Origins forgotten because of the limits.
+    pub origins_forgotten: u64,
+    drop_lines: LogGate,
     /// Open sync sessions, keyed by request ID.
     pub sync_sessions: HashMap<String, SyncSession>,
     /// When each requester was last answered.
@@ -467,6 +589,8 @@ impl NodeRuntime {
             is_online: true,
             seen_messages: HashMap::new(),
             persistent_messages: HashMap::new(),
+            persistent_order: std::collections::VecDeque::new(),
+            tag_key: std::collections::hash_map::RandomState::new(),
             transport,
             inbox,
             observations: Vec::new(),
@@ -494,6 +618,12 @@ impl NodeRuntime {
             origin_rate_limited_events: 0,
             metrics: CrciMetrics::new(),
             recent_messages: HashMap::new(),
+            recent_order: std::collections::VecDeque::new(),
+            origin_activity: HashMap::new(),
+            activity_clock: 0,
+            max_tracked_origins: MAX_TRACKED_ORIGINS,
+            origins_forgotten: 0,
+            drop_lines: LogGate::new(DROP_LINES_PER_SEC),
             sync_sessions: HashMap::new(),
             sync_answered: HashMap::new(),
             sync_answer_budget: crate::sybil::TokenBucket::new(
@@ -510,25 +640,103 @@ impl NodeRuntime {
         if is_control(wire) {
             return;
         }
-        if !self.recent_messages.contains_key(&wire.origin)
-            && self.recent_messages.len() >= RECENT_MAX_ORIGINS
-        {
-            // Bounded store: drop the origin whose newest message is oldest.
-            let oldest = self
-                .recent_messages
-                .iter()
-                .min_by_key(|(_, m)| m.keys().next_back().copied().unwrap_or(0))
-                .map(|(o, _)| o.clone());
-            if let Some(origin) = oldest {
-                self.recent_messages.remove(&origin);
-            }
-        }
         let window = self.replay_filter.window_size;
         let per_origin = self.recent_messages.entry(wire.origin.clone()).or_default();
-        per_origin.insert(wire.seq, wire.clone());
+        per_origin.insert(wire.seq, Box::new(wire.clone()));
         let newest = per_origin.keys().next_back().copied().unwrap_or(0);
         let floor = newest.saturating_sub(window);
         per_origin.retain(|seq, _| *seq >= floor);
+        self.recent_order.push_back((wire.origin.clone(), wire.seq));
+        while self.recent_order.len() > RECENT_MAX_MESSAGES {
+            let Some((origin, seq)) = self.recent_order.pop_front() else {
+                break;
+            };
+            if let Some(per_origin) = self.recent_messages.get_mut(&origin) {
+                per_origin.remove(&seq);
+                if per_origin.is_empty() {
+                    self.recent_messages.remove(&origin);
+                }
+            }
+        }
+    }
+
+    /// What this node keeps in place of the transport identity `sender`.
+    pub fn sender_tag(&self, sender: &str) -> u64 {
+        self.tag_key.hash_one(sender)
+    }
+
+    fn message_tag(&self, origin: &str, seq: u64) -> u64 {
+        self.tag_key.hash_one((origin, seq))
+    }
+
+    /// Keep a rescue or mass-casualty message, dropping the oldest above `PERSISTENT_MAX`.
+    fn keep_persistent(&mut self, key: String, wire: WireMessage) {
+        if self.persistent_messages.insert(key.clone(), wire).is_none() {
+            self.persistent_order.push_back(key);
+        }
+        while self.persistent_order.len() > PERSISTENT_MAX {
+            if let Some(oldest) = self.persistent_order.pop_front() {
+                self.persistent_messages.remove(&oldest);
+            }
+        }
+    }
+
+    fn observe(&mut self, observation: (String, u8, u8, bool)) {
+        self.observations.push(observation);
+        if self.observations.len() > OBSERVATIONS_MAX {
+            self.observations.drain(..OBSERVATIONS_MAX / 2);
+        }
+    }
+
+    /// Count an accepted message of `origin`, and forget other origins if a limit is passed.
+    fn note_origin_active(&mut self, origin: &str) {
+        self.activity_clock += 1;
+        let now = self.activity_clock;
+        match self.origin_activity.get_mut(origin) {
+            Some(activity) => {
+                activity.accepted += 1;
+                activity.last_active = now;
+            }
+            None => {
+                self.origin_activity.insert(
+                    origin.to_string(),
+                    OriginActivity {
+                        accepted: 1,
+                        last_active: now,
+                    },
+                );
+            }
+        }
+        let records = self.replay_filter.peer_records() + self.control_replay_filter.peer_records();
+        if self.origin_activity.len() >= self.max_tracked_origins || records >= MAX_PEER_RECORDS {
+            self.forget_origins(origin);
+        }
+    }
+
+    /// Forget a batch of origins whole, the least active first; never `active`.
+    fn forget_origins(&mut self, active: &str) {
+        let mut ranked: Vec<(u64, u64, &String)> = self
+            .origin_activity
+            .iter()
+            .filter(|(origin, _)| origin.as_str() != active)
+            .map(|(origin, a)| (a.accepted, a.last_active, origin))
+            .collect();
+        ranked.sort_unstable();
+        let batch = (self.origin_activity.len() / FORGET_BATCH_DIVISOR).max(1);
+        let victims: Vec<String> = ranked
+            .into_iter()
+            .take(batch)
+            .map(|(_, _, origin)| origin.clone())
+            .collect();
+        for origin in &victims {
+            self.origin_activity.remove(origin);
+            self.known_keys.remove(origin);
+            self.origin_budgets.remove(origin);
+            self.replay_filter.forget(origin);
+            self.control_replay_filter.forget(origin);
+            self.recent_messages.remove(origin);
+        }
+        self.origins_forgotten += victims.len() as u64;
     }
 
     /// Build a signed sync request listing what this node holds. `reply_to` is the address
@@ -563,12 +771,27 @@ impl NodeRuntime {
 
     /// Record that `request` was sent to `peer` (the identity its answers will arrive from).
     pub fn open_sync_session(&mut self, peer: &str, request: &WireMessage) {
-        let held = request
+        let mut held: Vec<HeldSeqs> = request
             .sync
             .iter()
             .flat_map(|d| d.origins.iter())
-            .flat_map(|o| o.held.iter().map(move |seq| (o.origin.clone(), *seq)))
+            .filter_map(|o| {
+                let floor = *o.held.iter().min()?;
+                let mut bits = [0u64; 2];
+                for seq in &o.held {
+                    let offset = seq - floor;
+                    if offset < 128 {
+                        bits[(offset / 64) as usize] |= 1 << (offset % 64);
+                    }
+                }
+                Some(HeldSeqs {
+                    origin_tag: self.tag_key.hash_one(o.origin.as_str()),
+                    floor,
+                    bits,
+                })
+            })
             .collect();
+        held.sort_unstable_by_key(|h| h.origin_tag);
         let now = self.sybil_guard.now();
         self.sync_sessions
             .retain(|_, s| now.saturating_duration_since(s.opened_at) <= SYNC_SESSION_TTL);
@@ -582,6 +805,16 @@ impl NodeRuntime {
         let excess = (to_peer.len() + 1).saturating_sub(SYNC_SESSIONS_PER_PEER);
         for (_, id) in to_peer.into_iter().take(excess) {
             self.sync_sessions.remove(&id);
+        }
+        if self.sync_sessions.len() >= SYNC_SESSIONS_MAX {
+            let oldest = self
+                .sync_sessions
+                .iter()
+                .min_by_key(|(_, s)| s.opened_at)
+                .map(|(id, _)| id.clone());
+            if let Some(id) = oldest {
+                self.sync_sessions.remove(&id);
+            }
         }
         self.sync_sessions.insert(
             request.id.clone(),
@@ -618,16 +851,19 @@ impl NodeRuntime {
         seq: u64,
     ) -> bool {
         let now = self.sybil_guard.now();
-        let key = (origin.to_string(), seq);
+        let origin_tag = self.tag_key.hash_one(origin);
+        let key = self.message_tag(origin, seq);
         let excused = match answers {
             Some(request_id) => self
                 .sync_sessions
                 .get_mut(request_id)
-                .is_some_and(|session| session.excuse(sender, now, &key)),
+                .is_some_and(|session| session.excuse(sender, now, origin_tag, seq, key)),
             None => {
                 let mut any = false;
                 for session in self.sync_sessions.values_mut() {
-                    if session.answered.contains(&key) && session.excuse(sender, now, &key) {
+                    if session.answered.contains(&key)
+                        && session.excuse(sender, now, origin_tag, seq, key)
+                    {
                         any = true;
                     }
                 }
@@ -642,11 +878,12 @@ impl NodeRuntime {
 
     /// Record that (`origin`, `seq`) was accepted as an answer to request `answers` from `sender`.
     fn note_answered(&mut self, sender: &str, answers: Option<&str>, origin: &str, seq: u64) {
+        let key = self.message_tag(origin, seq);
         let Some(session) = answers.and_then(|id| self.sync_sessions.get_mut(id)) else {
             return;
         };
         if session.peer == sender && session.answered.len() < SYNC_MAX_BATCH {
-            session.answered.insert((origin.to_string(), seq));
+            session.answered.insert(key);
         }
     }
 
@@ -718,7 +955,7 @@ impl NodeRuntime {
                     Some((seq_max, held)) => *seq + window >= *seq_max && !held.contains(seq),
                 };
                 if wanted {
-                    let mut answer = wire.clone();
+                    let mut answer = (**wire).clone();
                     answer.answers_sync = Some(request.id.clone());
                     if let Ok(payload) = serde_json::to_vec(&answer) {
                         batch.push(payload);
@@ -845,12 +1082,10 @@ impl NodeRuntime {
             MessageType::RescueRequest | MessageType::MassCasualtyEvent
         ) || msg.signal.can_help_others;
         if is_persistent {
-            self.persistent_messages
-                .insert(message_key(&wire), wire.clone());
+            self.keep_persistent(message_key(&wire), wire.clone());
         }
-        let mut senders = HashSet::new();
-        senders.insert(self.id.clone());
-        self.seen_messages.insert(message_key(&wire), senders);
+        let own_tag = self.sender_tag(&self.id);
+        self.seen_messages.insert(message_key(&wire), vec![own_tag]);
         let payload = match serde_json::to_vec(&wire) {
             Ok(bytes) => bytes,
             Err(e) => {
@@ -889,7 +1124,7 @@ impl NodeRuntime {
         }
 
         if !wire.message_type.contains("ChainHeadAnnouncement") {
-            self.observations.push((
+            self.observe((
                 self.id.clone(),
                 wire.severity,
                 wire.confidence,
@@ -927,13 +1162,14 @@ impl NodeRuntime {
             // The answer tag belongs to this hop only: it is never stored or relayed.
             let answers = wire.answers_sync.take();
             let key = message_key(&wire);
+            let sender_tag = self.sender_tag(&sender_id);
 
             // A banned sender's frames are dropped by the admission check below.
             if !self.sybil_guard.is_banned(&sender_id) {
                 // BFT-046: Hard ceiling on observed message ID cache.
                 // This eviction must not touch the per-sender budget (BFT-008): otherwise a peer
                 // could refill its own budget by flooding enough IDs to trip the ceiling (BFT-047).
-                if self.seen_messages.len() >= 5000 {
+                if self.seen_messages.len() >= SEEN_MAX {
                     self.seen_messages.clear();
                     self.metrics
                         .seen_messages_evictions
@@ -949,7 +1185,7 @@ impl NodeRuntime {
                 let repeat_from_sender = self
                     .seen_messages
                     .get(&key)
-                    .map(|senders| senders.contains(&sender_id));
+                    .map(|senders| senders.contains(&sender_tag));
                 match repeat_from_sender {
                     Some(true) => {
                         // This specific peer has already sent us this exact message.
@@ -993,7 +1229,9 @@ impl NodeRuntime {
                     Some(false) => {
                         // Normal gossip duplicate from a DIFFERENT path. Silently drop without penalty.
                         if let Some(senders) = self.seen_messages.get_mut(&key) {
-                            senders.insert(sender_id.clone());
+                            if senders.len() < SEEN_MAX_SENDERS {
+                                senders.push(sender_tag);
+                            }
                         }
                         continue;
                     }
@@ -1020,10 +1258,13 @@ impl NodeRuntime {
                     self.metrics
                         .sybil_rate_limited_total
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    println!(
-                        "  ⚠ [{}] SYBIL GUARD DROP: peer {} exceeded rate limit",
-                        self.id, peer
-                    );
+                    let now = self.sybil_guard.now();
+                    if let Some(more) = self.drop_lines.pass(&peer, now) {
+                        println!(
+                            "  ⚠ [{}] SYBIL GUARD DROP: peer {} exceeded rate limit{}",
+                            self.id, peer, more
+                        );
+                    }
                     continue;
                 }
                 Err(crate::sybil::SybilError::PowFailed(peer)) => {
@@ -1068,9 +1309,7 @@ impl NodeRuntime {
             }
 
             // First time seeing this message. Record the sender.
-            let mut new_senders = HashSet::new();
-            new_senders.insert(sender_id.clone());
-            self.seen_messages.insert(key.clone(), new_senders);
+            self.seen_messages.insert(key.clone(), vec![sender_tag]);
 
             // This node's own message, echoed by a neighbour after the seen-ID limit above cleared
             // the cache. Accepting it would relay it again and get this node struck for the repeat.
@@ -1119,10 +1358,12 @@ impl NodeRuntime {
             if !origin_budget.try_consume_at(now) && self.origin_budget_enabled {
                 self.seen_messages.remove(&key);
                 self.origin_rate_limited_events += 1;
-                println!(
-                    "  ⚠ [{}] ORIGIN BUDGET DROP: '{}' from origin '{}' via '{}'",
-                    self.id, wire.id, wire.origin, sender_id
-                );
+                if let Some(more) = self.drop_lines.pass(&wire.origin, now) {
+                    println!(
+                        "  ⚠ [{}] ORIGIN BUDGET DROP: '{}' from origin '{}' via '{}'{}",
+                        self.id, wire.id, wire.origin, sender_id, more
+                    );
+                }
                 continue;
             }
 
@@ -1174,6 +1415,7 @@ impl NodeRuntime {
                 }
                 continue;
             }
+            self.note_origin_active(&wire.origin);
 
             // Anti-entropy requests are answered, never delivered, stored or forwarded.
             if wire.message_type == SYNC_REQUEST_TYPE {
@@ -1222,6 +1464,9 @@ impl NodeRuntime {
                             self.id, wire.origin, alert.divergence_seq
                         );
                         self.divergence_log.push(alert.clone());
+                        if self.divergence_log.len() > DIVERGENCE_LOG_MAX {
+                            self.divergence_log.remove(0);
+                        }
                         if let Some(tx) = &self.divergence_tx {
                             let _ = tx.send(alert);
                         }
@@ -1232,7 +1477,7 @@ impl NodeRuntime {
             }
 
             if wire.message_type == "rescue" || wire.message_type == "mce" {
-                self.persistent_messages.insert(key, wire.clone());
+                self.keep_persistent(key, wire.clone());
             }
             self.note_answered(&sender_id, answers.as_deref(), &wire.origin, wire.seq);
             self.remember_recent(&wire);
@@ -1242,7 +1487,7 @@ impl NodeRuntime {
                 continue;
             }
 
-            self.observations.push((
+            self.observe((
                 wire.origin.clone(),
                 wire.severity,
                 wire.confidence,
@@ -1250,12 +1495,14 @@ impl NodeRuntime {
             ));
 
             let now_ms = crate::message::now_ts();
-            self.router.upsert(crate::routing::RoutingEntry {
-                peer_id: wire.origin.clone(), // assume direct connection for hop_count 1
-                last_seen_ms: now_ms,
-                hop_count: 1,
-                freshness_ms: 30_000,
-            });
+            if self.use_router {
+                self.router.upsert(crate::routing::RoutingEntry {
+                    peer_id: wire.origin.clone(), // assume direct connection for hop_count 1
+                    last_seen_ms: now_ms,
+                    hop_count: 1,
+                    freshness_ms: 30_000,
+                });
+            }
 
             self.messages_handled += 1;
             self.metrics
@@ -1268,9 +1515,8 @@ impl NodeRuntime {
                 Err(_) => continue,
             };
 
-            self.router.evict_stale(now_ms);
-
             let next_hop = if self.use_router {
+                self.router.evict_stale(now_ms);
                 self.router.best_next_hop(&[&wire.origin], now_ms)
             } else {
                 None

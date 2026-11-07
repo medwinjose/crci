@@ -74,6 +74,19 @@ impl std::fmt::Display for AedaDecision {
 
 // ── AEDA Engine ───────────────────────────────────────────────────
 
+/// Rescue events kept per zone and decisions kept in the log; the older half goes when exceeded.
+const MAX_KEPT: usize = 1024;
+/// Nodes with a severity history; all histories are dropped when exceeded.
+const MAX_HISTORIES: usize = 1024;
+/// Reports per node that flip detection reads.
+const FLIP_REPORTS: usize = 6;
+
+fn trim_half<T>(items: &mut Vec<T>) {
+    if items.len() > MAX_KEPT {
+        items.drain(..MAX_KEPT / 2);
+    }
+}
+
 pub struct AedaEngine {
     /// All rescue events seen, keyed by zone
     zone_rescues: HashMap<String, Vec<RescueEvent>>,
@@ -115,10 +128,10 @@ impl AedaEngine {
         self.track_severity_flip(&event.node_id, event.severity);
 
         // Store event
-        self.zone_rescues
-            .entry(event.zone.clone())
-            .or_default()
-            .push(event);
+        let rescues = self.zone_rescues.entry(event.zone.clone()).or_default();
+        rescues.push(event);
+        trim_half(rescues);
+        trim_half(&mut self.decisions);
     }
 
     /// Ingest a normal (non-rescue) status report.
@@ -135,6 +148,7 @@ impl AedaEngine {
                 node_id: node_id.to_string(),
                 zone: zone.to_string(),
             });
+            trim_half(&mut self.decisions);
         }
     }
 
@@ -173,18 +187,26 @@ impl AedaEngine {
     }
 
     fn track_severity_flip(&mut self, node_id: &str, severity: u8) {
+        if self.severity_history.len() >= MAX_HISTORIES
+            && !self.severity_history.contains_key(node_id)
+        {
+            self.severity_history.clear();
+        }
         let history = self
             .severity_history
             .entry(node_id.to_string())
             .or_default();
         history.push(severity);
+        if history.len() > FLIP_REPORTS {
+            history.remove(0);
+        }
 
         if history.len() < 2 {
             return;
         }
 
         // Count large swings in the last 6 reports
-        let window = &history[history.len().saturating_sub(6)..];
+        let window = &history[history.len().saturating_sub(FLIP_REPORTS)..];
         let flips = window
             .windows(2)
             .filter(|pair| {

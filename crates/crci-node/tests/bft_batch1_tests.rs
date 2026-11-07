@@ -1,5 +1,6 @@
 use crci_core::discovery::{DiscoveryMethod, PeerRecord, PeerTable};
 use crci_core::message::{Message, Signal, Visibility};
+use crci_core::runtime::SEEN_MAX;
 use crci_core::runtime::{NodeRuntime, WireMessage};
 use crci_core::sybil::{PeerReputation, SybilGuard};
 use crci_core::transport::SharedInbox;
@@ -533,11 +534,11 @@ fn test_bft_seen_messages_cache_ceiling() {
     let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
     let mut node = NodeRuntime::new("bft-046-node", "zone-alpha", inbox.clone());
 
-    for i in 0..5000 {
+    for i in 0..SEEN_MAX {
         node.seen_messages
-            .insert(format!("msg-id-{}", i), std::collections::HashSet::new());
+            .insert(format!("msg-id-{}", i), Vec::new());
     }
-    assert_eq!(node.seen_messages.len(), 5000);
+    assert_eq!(node.seen_messages.len(), SEEN_MAX);
 
     let msg = Message::new(
         "msg-id-5001",
@@ -558,7 +559,7 @@ fn test_bft_seen_messages_cache_ceiling() {
 
     node.process_inbox();
 
-    assert_eq!(node.seen_messages.len(), 2, "BFT-046: after hard-clear eviction at 5000 entries, cache should contain exactly the triggering message and a chain-head announcement");
+    assert_eq!(node.seen_messages.len(), 2, "BFT-046: after hard-clear eviction at SEEN_MAX entries, cache should contain exactly the triggering message and a chain-head announcement");
     assert!(node
         .seen_messages
         .keys()
@@ -577,11 +578,11 @@ fn test_bft008_persists_across_bft046_eviction() {
     let drained = node.sybil_guard.available_tokens(&peer).unwrap();
     assert!(drained < 1.0);
 
-    for i in 0..5000 {
+    for i in 0..SEEN_MAX {
         node.seen_messages
-            .insert(format!("msg-id-{}", i), std::collections::HashSet::new());
+            .insert(format!("msg-id-{}", i), Vec::new());
     }
-    assert_eq!(node.seen_messages.len(), 5000);
+    assert_eq!(node.seen_messages.len(), SEEN_MAX);
 
     let msg = Message::new(
         "msg-id-5001",

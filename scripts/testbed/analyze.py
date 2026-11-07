@@ -31,13 +31,16 @@ from collections import defaultdict, deque
 ORIGINATED = re.compile(r"Node (n\d+) originated '([^']+)' at_ms=(\d+)")
 ACCEPTED = re.compile(r"Node (n\d+) accepted '([^']+)' \(origin (\S+), via ([^#]+)#\S*\) at_ms=(\d+)"
                       r"(?: path=(\w+))?(?: proc_us=(\d+))?")
-RECEIVED = re.compile(r"Node (n\d+) received message from ([^#]+)#")
+RECEIVED = re.compile(r"Node (n\d+) received message from ([^#]+)#.*?"
+                      r"(?: \(\+(\d+) not printed\))?$")
 RELAY_DROPS = re.compile(r"Node (n\d+) relay drops: failed=(\d+) queue_full=(\d+)")
 BANNED = re.compile(r"Node (n\d+) banned ([^#]+)#\S+ at_ms=(\d+)")
 READMITTED = re.compile(r"Node (n\d+) readmitted ([^#]+)#\S+ at_ms=(\d+)")
 FAULT = re.compile(r"Node (n\d+) fault: .* at_ms=(\d+)")
-RATE = re.compile(r"\[(n\d+)\] SYBIL GUARD DROP: peer ([^#]+)#\S+ exceeded rate limit")
-ORIGIN_DROP = re.compile(r"\[(n\d+)\] ORIGIN BUDGET DROP: '[^']+' from origin '([^']+)'")
+RATE = re.compile(r"\[(n\d+)\] SYBIL GUARD DROP: peer ([^#]+)#\S+ exceeded rate limit"
+                  r"(?: \(\+(\d+) not printed\))?")
+ORIGIN_DROP = re.compile(r"\[(n\d+)\] ORIGIN BUDGET DROP: '[^']+' from origin '([^']+)'.*?"
+                         r"(?: \(\+(\d+) not printed\))?$")
 RTT = re.compile(r"time=([\d.]+) ms")
 PACED = re.compile(r"Node (n\d+) frames paced: total=(\d+)")
 BANNED_DROPPED = re.compile(r"Node (n\d+) banned-peer frames dropped: total=(\d+)")
@@ -149,13 +152,13 @@ def main():
                 elif m := BANNED_DROPPED.search(line):
                     banned_dropped[m[1]] = int(m[2])  # cumulative: keep the last
                 elif m := RATE.search(line):
-                    rate_drops["from_byzantine" if m[2] == byz else "from_honest"] += 1
+                    rate_drops["from_byzantine" if m[2] == byz else "from_honest"] += 1 + int(m[3] or 0)
                 elif m := ORIGIN_DROP.search(line):
-                    origin_drops["byzantine_origin" if m[2] == byz else "honest_origin"] += 1
+                    origin_drops["byzantine_origin" if m[2] == byz else "honest_origin"] += 1 + int(m[3] or 0)
                 if SYNC_REQUESTED.search(line):
                     counters["sync_requests"] += 1
                 if m := RECEIVED.search(line):
-                    counters["frames_received"] += 1
+                    counters["frames_received"] += 1 + int(m[3] or 0)
                     # The overlay is enforced by configuration only (one shared L2 segment):
                     # count frames from nodes that are not overlay neighbours.
                     if m[2] not in adj[m[1]]:

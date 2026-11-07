@@ -11,8 +11,8 @@ Groups (each over rgg and the 4-regular mesh, seeds 1 2 3):
   cross  N = 20, 50, 100, one attacker: same topology, roles and plan as the testbed's main runs
   scale  N = 100, 500, 1000, 2000, 5000; one attacker and f = 0, 10, 20, 30, 45 % attackers
   long   mesh N = 300 and rgg N = 150, f = 0 and 10 %, 8 messages/s for 15 min: past the seen-ID
-         cache limit (5000), the digest limit (256 origins, mesh only) and the time a banned peer
-         needs to be readmitted. Sizes are what fits in 7.8 GiB: per-node state grows with time.
+         cache limit (1792), the digest limit (256 origins, mesh only) and the time a banned peer
+         needs to be readmitted.
 
 Usage: run_sim.py OUT BIN [--groups cross,scale,long] [--sizes 100,500] [--seeds 1,2,3]
                           [--max-mem-gib 7]

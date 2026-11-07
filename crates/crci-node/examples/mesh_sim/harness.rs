@@ -116,6 +116,8 @@ pub struct Outcome {
     pub state_window_seqs_mean: f64,
     pub state_known_keys_mean: f64,
     pub state_known_keys_max: usize,
+    /// Origins forgotten because of the per-node limits, over all nodes.
+    pub origins_forgotten: u64,
     /// Frames from attackers delivered to honest nodes that had not banned them yet.
     pub attacker_frames_admitted: u64,
     /// Signature verifications performed, over all nodes.
@@ -577,6 +579,7 @@ impl Sim<'_> {
             self.out.rate_drops += node.sybil_rate_limited_events;
             self.out.origin_drops += node.origin_rate_limited_events;
             self.out.sync_excused += node.sync_excused_duplicates;
+            self.out.origins_forgotten += node.origins_forgotten;
             self.out.seen_cache_clears +=
                 node.metrics.seen_messages_evictions.load(Ordering::Relaxed);
         }

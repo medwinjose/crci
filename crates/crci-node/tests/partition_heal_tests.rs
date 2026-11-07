@@ -179,7 +179,7 @@ fn authored_by_a(pair: &mut Pair, n: u64) -> Vec<WireMessage> {
     pair.a
         .recent_messages
         .get("a")
-        .map(|m| m.values().cloned().collect())
+        .map(|m| m.values().map(|w| (**w).clone()).collect())
         .unwrap_or_default()
 }
 

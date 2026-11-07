@@ -23,6 +23,9 @@ const PANIC_COOLDOWN_ROUNDS: u64 = 60;
 /// Max payload bytes (LoRa constraint).
 const MAX_PAYLOAD_BYTES: usize = 255;
 
+/// Panic cooldowns tracked at once.
+const MAX_PANIC_COOLDOWNS: usize = 1024;
+
 /// Valid severity range.
 const MIN_SEVERITY: u8 = 1;
 const MAX_SEVERITY: u8 = 5;
@@ -175,6 +178,10 @@ impl RateLimiter {
                     rounds_remaining: PANIC_COOLDOWN_ROUNDS - elapsed,
                 });
             }
+        }
+        // Past the limit every cooldown restarts: an origin can then press once more.
+        if self.panic_last_round.len() >= MAX_PANIC_COOLDOWNS {
+            self.panic_last_round.clear();
         }
         self.panic_last_round
             .insert(node_id.to_string(), current_round);

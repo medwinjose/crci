@@ -126,6 +126,19 @@ impl TtlStore {
         if self.messages.len() >= self.max_stored_messages {
             self.evict_oldest_normal();
         }
+        // Only rescues left: the store still has a limit, or a flood of rescue requests from new
+        // identities would grow it for good. The oldest goes.
+        if self.messages.len() >= self.max_stored_messages {
+            let oldest_id = self
+                .messages
+                .values()
+                .min_by_key(|m| m.created_round)
+                .map(|m| m.id.clone());
+            if let Some(id) = oldest_id {
+                self.messages.remove(&id);
+                self.total_evicted += 1;
+            }
+        }
         self.total_stored += 1;
         self.messages.insert(msg.id.clone(), msg);
         true

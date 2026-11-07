@@ -240,6 +240,9 @@ pub const ORIGIN_BURST: f32 = 20.0;
 /// Messages per second added back to an origin's budget: above any single origin's rate in
 /// the testbed's honest load (4/s), a quarter of the per-neighbour rate.
 pub const ORIGIN_REFILL_PER_SEC: f32 = 5.0;
+/// Transport senders with a reputation record. Past this, `make_room` forgets a batch: idle peers
+/// with a clean record first, banned peers last, because forgetting a ban readmits the peer.
+pub const MAX_TRACKED_PEERS: usize = 1024;
 
 fn get_subnet(id: &str) -> Option<String> {
     if let Ok(addr) = id.parse::<std::net::SocketAddr>() {
@@ -325,10 +328,34 @@ impl SybilGuard {
         self.clock_offset += by;
     }
 
+    /// Forget 1/8 of the records if `MAX_TRACKED_PEERS` is reached: a peer that has done nothing
+    /// wrong loses nothing by being forgotten, and new identities are free anyway.
+    fn make_room(&mut self) {
+        if self.reputations.len() < MAX_TRACKED_PEERS {
+            return;
+        }
+        let mut ranked: Vec<(bool, bool, Instant, &NodeId)> = self
+            .reputations
+            .iter()
+            .map(|(id, r)| (r.banned, !r.strikes.is_empty(), r.last_updated, id))
+            .collect();
+        ranked.sort_unstable();
+        let victims: Vec<NodeId> = ranked
+            .into_iter()
+            .take(MAX_TRACKED_PEERS / 8)
+            .map(|(_, _, _, id)| id.clone())
+            .collect();
+        for id in &victims {
+            self.reputations.remove(id);
+            self.buckets.remove(id);
+        }
+    }
+
     pub fn check(&mut self, peer: &NodeId) -> Result<(), SybilError> {
         let now = self.now();
         let is_new = !self.reputations.contains_key(peer);
         if is_new {
+            self.make_room();
             // Sybil cluster correlation: new peers from a subnet with a banned peer start penalised
             if let Some(subnet) = get_subnet(peer) {
                 let has_banned_in_subnet = self.reputations.iter().any(|(other_id, other_rep)| {
@@ -352,11 +379,6 @@ impl SybilGuard {
             return Err(SybilError::Banned(peer.clone()));
         }
 
-        // BFT-039: Prune low/zero reputation records when reputations map exceeds 1000 to prevent memory exhaustion
-        if self.reputations.len() > 1000 {
-            self.reputations.retain(|_, r| !r.is_banned());
-        }
-
         let bucket = self
             .buckets
             .entry(peer.clone())
@@ -373,6 +395,11 @@ impl SybilGuard {
         Ok(())
     }
 
+    /// Number of transport senders with a reputation record.
+    pub fn tracked_peers(&self) -> usize {
+        self.reputations.len()
+    }
+
     /// Tokens left in `peer`'s budget as last recorded (no refill is applied), or `None`
     /// if the peer has not been seen.
     pub fn available_tokens(&self, peer: &NodeId) -> Option<f32> {
@@ -381,6 +408,9 @@ impl SybilGuard {
 
     /// Record one strike against `peer`.
     pub fn report_violation(&mut self, peer: &NodeId) {
+        if !self.reputations.contains_key(peer) {
+            self.make_room();
+        }
         let now = self.now();
         let rep = self
             .reputations
@@ -417,6 +447,9 @@ impl SybilGuard {
     }
 
     pub fn reputation(&mut self, peer: &NodeId) -> f32 {
+        if !self.reputations.contains_key(peer) {
+            self.make_room();
+        }
         let now = self.now();
         let rep = self
             .reputations

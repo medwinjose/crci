@@ -89,6 +89,11 @@ impl FramePacer {
     }
 }
 
+/// Addresses with a relay queue, connection and task. Above any degree measured (22); past it the
+/// address idle longest loses them, and its queued frames. A configured peer in use is never
+/// the idle one.
+pub const MAX_RELAY_TARGETS: usize = 256;
+
 /// Entries above which expired shun entries are purged on insert.
 const SHUN_PURGE_ABOVE: usize = 1024;
 
@@ -628,7 +633,9 @@ struct Outbound {
     node_id: String,
     key: SigningKey,
     links: std::sync::Mutex<HashMap<String, Arc<tokio::sync::Mutex<Link>>>>,
-    queues: std::sync::Mutex<HashMap<String, mpsc::Sender<NetworkMessage>>>,
+    /// Relay queue and last use per address. A sync request names where its answer goes, so a
+    /// peer chooses addresses: see `MAX_RELAY_TARGETS`.
+    queues: std::sync::Mutex<HashMap<String, (mpsc::Sender<NetworkMessage>, std::time::Instant)>>,
     handshakes: Arc<AtomicU64>,
     failures: Arc<AtomicU64>,
 }
@@ -909,6 +916,15 @@ impl TcpTransport {
     /// order over that peer's persistent connection, so a slow or unreachable peer delays
     /// only its own frames. A frame that cannot be delivered is logged and dropped;
     /// anti-entropy recovers it. Must be called inside a Tokio runtime.
+    /// Addresses that currently have a relay queue.
+    pub fn relay_targets(&self) -> usize {
+        self.outbound
+            .queues
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .len()
+    }
+
     pub fn relay(&self, addr: &str, message: NetworkMessage) -> Result<(), TransportError> {
         let sender = {
             let mut queues = self
@@ -916,9 +932,28 @@ impl TcpTransport {
                 .queues
                 .lock()
                 .unwrap_or_else(|e| e.into_inner());
-            match queues.get(addr) {
-                Some(tx) => tx.clone(),
+            let now = std::time::Instant::now();
+            match queues.get_mut(addr) {
+                Some((tx, last_used)) => {
+                    *last_used = now;
+                    tx.clone()
+                }
                 None => {
+                    if queues.len() >= MAX_RELAY_TARGETS {
+                        let idle = queues
+                            .iter()
+                            .min_by_key(|(_, (_, last_used))| *last_used)
+                            .map(|(target, _)| target.clone());
+                        if let Some(target) = idle {
+                            // Dropping the sender ends that queue's task.
+                            queues.remove(&target);
+                            self.outbound
+                                .links
+                                .lock()
+                                .unwrap_or_else(|e| e.into_inner())
+                                .remove(&target);
+                        }
+                    }
                     let (tx, mut rx) = mpsc::channel::<NetworkMessage>(RELAY_QUEUE_LEN);
                     let outbound = self.outbound.clone();
                     let cancel = self.cancel_token.clone();
@@ -943,7 +978,7 @@ impl TcpTransport {
                             }
                         }
                     });
-                    queues.insert(addr.to_string(), tx.clone());
+                    queues.insert(addr.to_string(), (tx.clone(), now));
                     tx
                 }
             }

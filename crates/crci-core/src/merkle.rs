@@ -20,7 +20,12 @@ pub struct MerkleBlock {
     pub block_hash: [u8; 32],
 }
 
-/// The append-only chain kept by a node.
+/// Blocks a node keeps at least; the older half goes at twice this. A block is written per 50
+/// messages, so this compares heads up to 25 600 messages back.
+pub const MERKLE_KEEP_BLOCKS: usize = 512;
+
+/// The append-only chain kept by a node: its newest blocks, each still linked to the one before.
+/// A peer's head older than the oldest block kept can no longer be compared.
 pub struct MerkleChain {
     blocks: Vec<MerkleBlock>,
 }
@@ -73,6 +78,9 @@ impl MerkleChain {
         };
 
         self.blocks.push(block);
+        if self.blocks.len() >= 2 * MERKLE_KEEP_BLOCKS {
+            self.blocks.drain(..MERKLE_KEEP_BLOCKS);
+        }
         self.blocks.last()
     }
 
@@ -92,8 +100,17 @@ impl MerkleChain {
         self.blocks.is_empty()
     }
 
+    fn block_at(&self, sequence: u64) -> Option<&MerkleBlock> {
+        let oldest = self.blocks.first()?.sequence;
+        let index = sequence.checked_sub(oldest)? as usize;
+        self.blocks.get(index)
+    }
+
     pub fn verify_integrity(&self) -> bool {
-        let mut expected_prev_hash = [0; 32];
+        let Some(oldest) = self.blocks.first() else {
+            return true;
+        };
+        let mut expected_prev_hash = oldest.prev_hash;
 
         for block in &self.blocks {
             if block.prev_hash != expected_prev_hash {
@@ -118,12 +135,8 @@ impl MerkleChain {
             return false;
         }
 
-        let idx = other_seq as usize;
-        if idx >= self.blocks.len() {
-            return false;
-        }
-
-        self.blocks[idx].block_hash != other_head
+        self.block_at(other_seq)
+            .is_some_and(|block| block.block_hash != other_head)
     }
 
     pub fn build_divergence_alert(
@@ -137,9 +150,8 @@ impl MerkleChain {
         }
 
         if self.diverges_from(their_head_hash, their_head_seq) {
-            let idx = their_head_seq as usize;
-            if idx < self.blocks.len() {
-                let our_hash = self.blocks[idx].block_hash;
+            if let Some(block) = self.block_at(their_head_seq) {
+                let our_hash = block.block_hash;
                 let expected_head_hash = our_hash
                     .iter()
                     .map(|b| format!("{:02x}", b))

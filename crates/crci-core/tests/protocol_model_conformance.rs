@@ -277,11 +277,15 @@ impl Replay {
                     "{at}: {name}'s ban of {peer} at {got}"
                 );
             }
-            let got_seen: BTreeSet<(String, String)> = node
+            let want_seen: BTreeSet<(String, u64)> = want_seen
+                .into_iter()
+                .map(|(key, sender)| (key, node.sender_tag(&sender)))
+                .collect();
+            let got_seen: BTreeSet<(String, u64)> = node
                 .seen_messages
                 .iter()
                 .filter(|(key, _)| !key.contains(":sync-") && !key.contains(":head-"))
-                .flat_map(|(key, senders)| senders.iter().map(move |s| (key.clone(), s.clone())))
+                .flat_map(|(key, senders)| senders.iter().map(move |s| (key.clone(), *s)))
                 .collect();
             assert_eq!(got_seen, want_seen, "{at}: {name}'s seen cache");
             let got_window: BTreeMap<String, (u64, Vec<u64>)> = node
@@ -431,7 +435,7 @@ impl Replay {
             if node
                 .seen_messages
                 .get(&message_key(&wire))
-                .is_some_and(|senders| senders.contains(&s))
+                .is_some_and(|senders| senders.contains(&node.sender_tag(&s)))
             {
                 coverage.stale_repeats += 1;
             }
