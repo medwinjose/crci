@@ -790,6 +790,36 @@ N = 150) and 12 MiB per node (mesh N = 300). With the per-node limits the same r
 **Not shown by these runs:** anything about packet loss, timing or real transport (the testbed covers those);
 colluding or omitting attackers; attackers that originate.
 
+## Replay of a human contact trace (simulation)
+
+`scripts/sim/run_contact_trace.py` replays a real face-to-face contact trace through `mesh_sim`:
+the SocioPatterns ACM Hypertext 2009 data (113 conference attendees wearing proximity badges, about
+2.5 days, 20 s resolution; CC BY-NC-SA 3.0; L. Isella et al., *What's in a crowd? Analysis of
+face-to-face behavioral networks*, J. Theor. Biol. 271, 166, 2011; http://www.sociopatterns.org).
+Download and SHA-256 check are in the script; the data are not committed. This is a **human
+contact trace, not a disaster trace**, and the simulation has no radio model.
+
+Mapping: a node is a person; a link is up only while two badges are in contact (consecutive 20 s
+snapshots merge: 10 593 intervals over 2 498 pairs); a frame crosses a link only while it is up,
+otherwise it is dropped; both ends ask each other for what they miss when a contact starts (at
+most one request per 8 s per peer) and every node asks its current contacts every 30 s. Every node
+originates a message every 30 minutes (13 108 in all). The tick is 1 s.
+
+| Run (3 seeds each) | Honest nodes banned | Honest strikes | Honest links ever banned |
+|---|---|---|---|
+| All honest | 0 | 0 | 0 of 4 392 |
+| 6 of 113 nodes replay every frame twice from a quarter of the way in | 0 | 0 | 0 of 3 934 / 4 038 / 4 066 |
+
+With the 6 replaying nodes, the honest observers that banned an attacker were 168 of 224, 124 of
+172 and 129 of 162 (per seed); a replayer was banned by every neighbour for 0, 1 and 2 of its 6
+nodes in the three seeds. Isolation is partial here: a neighbour can only strike a link that carries
+repeated frames, and in this trace many pairs meet briefly or rarely. The share of unbanned links is
+measured, not explained further. The seeds change the message offsets, the anti-entropy phases and
+the choice of attackers; the contact trace is fixed, so the three runs are not independent samples
+of a population. Raw outcomes and `results.csv`: `docs/evidence/contact-trace-2026-11-08/`.
+Not measured: delivery against the best possible on this trace, other contact traces, attackers
+that replay across contacts on purpose, and real radios.
+
 ## Memory per node
 
 The limits are listed in [architecture.md](architecture.md#per-node-limits). Evidence:

@@ -399,3 +399,7 @@ What these files show, stated plainly:
 ## `envelope-2026-11-08/`
 
 `envelope_sizes.csv`: output of `cargo run --release -p crci-node --example envelope_size` (1 000 identities per row; min / mean / max of the JSON sizes; the canonical size is constant).
+
+## `contact-trace-2026-11-08/`
+
+`results.csv` and the six `mesh_sim` outcomes of `scripts/sim/run_contact_trace.py` on the SocioPatterns Hypertext 2009 trace (`ht2009_contact_list.dat.gz`, SHA-256 `43014e65bb8f6aa7d75d36a8ab61279b617bee88197e04a330c4386305ae1738`, not committed). Honest runs and runs with 6 of 113 replaying nodes, seeds 1-3.
