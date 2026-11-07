@@ -1,0 +1,7 @@
+variant,json_min,json_mean,json_max,frame_min,frame_mean,frame_max,canonical,canonical_plus_sig
+gossip_no_note,568,587.3,605,830,856.7,879,125,189
+gossip_note_20,589,605.7,623,855,875.0,894,153,217
+gossip_note_100,668,685.9,701,933,955.1,975,233,297
+sync_request_1_origin_0_held,664,686.4,702,931,955.9,976,192,256
+sync_request_1_origin_8_held,693,710.2,728,958,979.4,1003,256,320
+sync_request_5_origins_16_held,1087,1106.4,1123,1348,1376.0,1397,956,1020

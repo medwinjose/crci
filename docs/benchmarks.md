@@ -854,6 +854,51 @@ line, and their frame counts agree with the build before the limit to within 0.4
 **Not shown:** memory on 1 GB devices (no device here; a node uses 7–20 MiB of RSS in every run above); floods
 through several receivers at once.
 
+## Message size against LoRa and BLE payload limits
+
+`cargo run --release -p crci-node --example envelope_size` serializes real signed messages (1 000 fresh
+identities per row; keys and signatures are byte vectors, which JSON writes as arrays of decimal numbers, so the
+JSON size varies with the byte values). Output: `docs/evidence/envelope-2026-11-08/envelope_sizes.csv`.
+Sizes in bytes:
+
+| Message | WireMessage as JSON (min / mean / max) | TCP frame: JSON + 4-byte length prefix (mean) | Canonical signed encoding | + 64-byte signature |
+|---|---|---|---|---|
+| gossip, no note | 568 / 587.3 / 605 | 856.7 | 125 | 189 |
+| gossip, 20-byte note | 589 / 605.7 / 623 | 875.0 | 153 | 217 |
+| gossip, 100-byte note | 668 / 685.9 / 701 | 955.1 | 233 | 297 |
+| sync request, 1 origin, 0 held | 664 / 686.4 / 702 | 955.9 | 192 | 256 |
+| sync request, 1 origin, 8 held | 693 / 710.2 / 728 | 979.4 | 256 | 320 |
+| sync request, 5 origins, 16 held | 1087 / 1106.4 / 1123 | 1376.0 | 956 | 1020 |
+
+The canonical encoding is the byte string the origin signs (`WireMessage::signing_bytes`): every field, with
+8-byte length prefixes and a 21-byte domain tag that a purpose-built radio encoding would not need to send. It is
+not a wire format today (the wire format is JSON); its size plus the 64-byte signature is a measured
+reference for what the same fields cost in binary, not a design. The frame also carries a per-hop session
+signature and counter that a radio link has no equivalent for yet.
+
+Payload limits (application payload, bytes):
+
+| Link | Limit | Source |
+|---|---|---|
+| LoRaWAN EU868, DR0–DR2 (SF12–SF10, 125 kHz) | 51 | The Things Network EU868 page (repeater-compatible table) |
+| LoRaWAN EU868, DR3 (SF9) | 115 | same |
+| LoRaWAN EU868, DR4–DR7 (SF8, SF7, SF7/250 kHz, FSK) | 222 | same |
+| LoRaWAN EU868, DR8, DR10 (LR-FHSS 1/3) | 50 | same |
+| BLE GATT write at the default ATT_MTU of 23 | 20 | vendor documentation and forum posts (ATT_MTU 23 minus 3 bytes ATT header) |
+| BLE with data length extension, ATT_MTU 247 | 244 | same (link-layer payload up to 251 bytes) |
+
+The LoRaWAN numbers are read from The Things Network's documentation of the LoRa Alliance regional parameters,
+not from the specification document; the page does not name the specification version. The BLE numbers are
+implementation-dependent and come from vendor documentation, not from the Bluetooth Core Specification.
+
+Reading: the JSON message (587 bytes for the smallest gossip message) fits none of the LoRaWAN data rates; at DR0
+it would take 12 frames, at DR4–DR7 three. In the canonical encoding plus signature, the smallest gossip message
+(189 bytes) fits one DR4–DR7 frame and one BLE frame with data length extension, needs four DR0 frames and
+ten BLE frames at the default MTU, and a message with a 100-byte note (297 bytes) fits no single LoRaWAN frame.
+A sync request is larger than a gossip message and its digest grows with the origins and held sequence numbers:
+five origins already need 1 020 bytes. Nothing here measures airtime, duty-cycle limits or fragmentation
+overhead, and no radio code exists (the LoRa and BLE transports are stubs).
+
 ## WAN smoke test
 
 - **Test:** `crates/crci-node/tests/chaos_wan_real_tests.rs::test_real_wan_chaos_netns` (`#[ignore]`,

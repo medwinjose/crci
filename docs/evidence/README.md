@@ -395,3 +395,7 @@ What these files show, stated plainly:
 - Output of an earlier `byzantine_bench` that sent garbage bytes over loopback TCP and waited on a fixed
   500 ms poll (mean ≈ 514 ms). That harness no longer exists. Moved here from
   `crates/crci-node/benches/results/byzantine_eviction.csv` on 2026-11-01. **Not used by the preprint.**
+
+## `envelope-2026-11-08/`
+
+`envelope_sizes.csv`: output of `cargo run --release -p crci-node --example envelope_size` (1 000 identities per row; min / mean / max of the JSON sizes; the canonical size is constant).
