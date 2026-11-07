@@ -239,7 +239,11 @@ pub fn test_network_partition() {
     let right_has_rescue = sim
         .nodes
         .get("right-001")
-        .map(|n| n.persistent_messages.contains_key("msg-rescue-left"))
+        .map(|n| {
+            n.persistent_messages
+                .values()
+                .any(|m| m.id == "msg-rescue-left")
+        })
         .unwrap_or(false);
 
     println!(

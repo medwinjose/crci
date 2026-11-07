@@ -8,7 +8,7 @@ use crci_core::identity::Identity;
 use crci_core::mesh::MeshSimulator;
 use crci_core::message::{Message, Signal, Visibility};
 use crci_core::runtime::{
-    NodeRuntime, WireMessage, SYNC_MAX_BATCH, SYNC_REQUEST_TYPE, SYNC_SESSION_TTL,
+    message_key, NodeRuntime, WireMessage, SYNC_MAX_BATCH, SYNC_REQUEST_TYPE, SYNC_SESSION_TTL,
 };
 use crci_core::transport::SharedInbox;
 use std::collections::HashMap;
@@ -26,7 +26,9 @@ fn msg(id: &str, origin: &str) -> Message {
 
 /// Has `node` received (or authored) message `id`?
 fn holds(node: &NodeRuntime, id: &str) -> bool {
-    node.seen_messages.contains_key(id)
+    node.seen_messages
+        .keys()
+        .any(|k| k.ends_with(&format!(":{id}")))
         || node
             .recent_messages
             .values()
@@ -540,7 +542,7 @@ fn sync_requests_use_a_window_of_their_own() {
         .push(("a".to_string(), serde_json::to_vec(&old).unwrap()));
     b.process_inbox();
     assert_eq!(b.byzantine_events, 0);
-    assert!(b.seen_messages.contains_key(&old.id));
+    assert!(b.seen_messages.contains_key(&message_key(&old)));
     assert!(!inbox.lock().unwrap().contains_key("a"));
 }
 

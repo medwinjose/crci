@@ -161,14 +161,17 @@ fn strikes_to_ban_bans_exactly_at_the_kth_strike() {
         let (mut node, inbox) = new_node(DefenceMode::Full);
         node.sybil_guard.set_strikes_to_ban(k);
         let relay = "relay".to_string();
+        let wire = signed(&Identity::new("origin-a"), "replayed", 1);
         // The first copy is accepted; each further copy is one strike.
-        replay(&mut node, &inbox, "relay", k as usize);
+        for _ in 0..k {
+            deliver(&mut node, &inbox, "relay", &wire);
+        }
         assert!(
             !node.sybil_guard.is_banned(&relay),
             "k = {k}: {} strikes must not ban",
             k - 1
         );
-        replay(&mut node, &inbox, "relay", 1);
+        deliver(&mut node, &inbox, "relay", &wire);
         assert!(
             node.sybil_guard.is_banned(&relay),
             "k = {k}: the {k}th strike must ban"

@@ -290,37 +290,28 @@ impl MeshSimulator {
         }
 
         // Re-announce persistent rescue requests from offline nodes
-        let offline_rescues: Vec<(String, String)> = self
+        let offline_rescues: Vec<(String, String, String)> = self
             .nodes
             .values()
             .flat_map(|n| {
                 n.persistent_messages
                     .values()
                     .filter(|m| m.message_type == "rescue")
-                    .map(move |m| (n.id.clone(), m.id.clone()))
+                    .map(move |m| (n.id.clone(), m.id.clone(), m.origin.clone()))
             })
             .collect();
 
-        for (holder_id, msg_id) in offline_rescues {
-            let origin = self
+        for (holder_id, msg_id, origin_id) in offline_rescues {
+            let origin_online = self
                 .nodes
-                .values()
-                .find(|n| n.persistent_messages.contains_key(&msg_id))
-                .and_then(|n| n.persistent_messages.get(&msg_id))
-                .map(|m| m.origin.clone());
-
-            if let Some(origin_id) = origin {
-                let origin_online = self
-                    .nodes
-                    .get(&origin_id)
-                    .map(|n| n.is_online)
-                    .unwrap_or(false);
-                if !origin_online {
-                    println!(
-                        "  📡 [{}] keeping rescue '{}' alive — origin OFFLINE",
-                        holder_id, msg_id
-                    );
-                }
+                .get(&origin_id)
+                .map(|n| n.is_online)
+                .unwrap_or(false);
+            if !origin_online {
+                println!(
+                    "  📡 [{}] keeping rescue '{}' alive — origin OFFLINE",
+                    holder_id, msg_id
+                );
             }
         }
     }

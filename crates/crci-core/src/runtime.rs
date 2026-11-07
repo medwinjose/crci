@@ -73,6 +73,20 @@ pub struct SyncSession {
     pub exempted: HashSet<(String, u64)>,
 }
 
+/// Identifies a message for the seen cache and the rescue store. A message ID is chosen by its
+/// signer, so it is unique only per signing key: by ID alone, a validly signed message from anyone
+/// under an honest message's ID would make that message look like a copy, and neither gossip nor
+/// sync answers could ever deliver it. Matching the first 16 bytes of a key takes 2^128 work.
+pub fn message_key(wire: &WireMessage) -> String {
+    let mut key = String::with_capacity(33 + wire.id.len());
+    for byte in wire.origin_pubkey.iter().take(16) {
+        key.push_str(&format!("{byte:02x}"));
+    }
+    key.push(':');
+    key.push_str(&wire.id);
+    key
+}
+
 /// True if `sender` is the request's author: the same node ID in-process, or the
 /// authenticated TCP identity (`node_id#key`) of the signing key.
 fn sender_is_author(sender: &str, wire: &WireMessage) -> bool {
@@ -797,11 +811,11 @@ impl NodeRuntime {
         ) || msg.signal.can_help_others;
         if is_persistent {
             self.persistent_messages
-                .insert(wire.id.clone(), wire.clone());
+                .insert(message_key(&wire), wire.clone());
         }
         let mut senders = HashSet::new();
         senders.insert(self.id.clone());
-        self.seen_messages.insert(wire.id.clone(), senders);
+        self.seen_messages.insert(message_key(&wire), senders);
         let payload = match serde_json::to_vec(&wire) {
             Ok(bytes) => bytes,
             Err(e) => {
@@ -877,6 +891,7 @@ impl NodeRuntime {
             };
             // The answer tag belongs to this hop only: it is never stored or relayed.
             let answers = wire.answers_sync.take();
+            let key = message_key(&wire);
 
             // A banned sender's frames are dropped by the admission check below.
             if !self.sybil_guard.is_banned(&sender_id) {
@@ -898,7 +913,7 @@ impl NodeRuntime {
                 // sends each message ID to a neighbour once (sync answers are tagged).
                 let repeat_from_sender = self
                     .seen_messages
-                    .get(&wire.id)
+                    .get(&key)
                     .map(|senders| senders.contains(&sender_id));
                 match repeat_from_sender {
                     Some(true) => {
@@ -942,7 +957,7 @@ impl NodeRuntime {
                     }
                     Some(false) => {
                         // Normal gossip duplicate from a DIFFERENT path. Silently drop without penalty.
-                        if let Some(senders) = self.seen_messages.get_mut(&wire.id) {
+                        if let Some(senders) = self.seen_messages.get_mut(&key) {
                             senders.insert(sender_id.clone());
                         }
                         continue;
@@ -1020,7 +1035,7 @@ impl NodeRuntime {
             // First time seeing this message. Record the sender.
             let mut new_senders = HashSet::new();
             new_senders.insert(sender_id.clone());
-            self.seen_messages.insert(wire.id.clone(), new_senders);
+            self.seen_messages.insert(key.clone(), new_senders);
 
             // This node's own message, echoed by a neighbour after the seen-ID limit above cleared
             // the cache. Accepting it would relay it again and get this node struck for the repeat.
@@ -1067,7 +1082,7 @@ impl NodeRuntime {
                     last_refill: now,
                 });
             if !origin_budget.try_consume_at(now) && self.origin_budget_enabled {
-                self.seen_messages.remove(&wire.id);
+                self.seen_messages.remove(&key);
                 self.origin_rate_limited_events += 1;
                 println!(
                     "  ⚠ [{}] ORIGIN BUDGET DROP: '{}' from origin '{}' via '{}'",
@@ -1182,8 +1197,7 @@ impl NodeRuntime {
             }
 
             if wire.message_type == "rescue" || wire.message_type == "mce" {
-                self.persistent_messages
-                    .insert(wire.id.clone(), wire.clone());
+                self.persistent_messages.insert(key, wire.clone());
             }
             self.remember_recent(&wire);
 

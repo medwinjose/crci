@@ -559,7 +559,10 @@ fn test_bft_seen_messages_cache_ceiling() {
     node.process_inbox();
 
     assert_eq!(node.seen_messages.len(), 2, "BFT-046: after hard-clear eviction at 5000 entries, cache should contain exactly the triggering message and a chain-head announcement");
-    assert!(node.seen_messages.contains_key("msg-id-5001"));
+    assert!(node
+        .seen_messages
+        .keys()
+        .any(|k| k.ends_with(":msg-id-5001")));
 }
 
 // BFT-047: BFT-008 persists across BFT-046 eviction
