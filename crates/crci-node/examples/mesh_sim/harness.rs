@@ -12,13 +12,15 @@ use crci_core::runtime::{DefenceMode, NodeRuntime};
 use crci_core::sybil::INITIAL_SCORE;
 use crci_core::transport::{LegacyTransport, SharedInbox, SimTransport};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 /// `crci-node`'s anti-entropy interval.
 const SYNC_INTERVAL_MS: u64 = 30_000;
+/// Least time between two sync requests to one peer (`crci-node`'s resume spacing).
+const SYNC_RESUME_SPACING_MS: u64 = 8_000;
 /// Messages originated earlier are "warmup" in the testbed analysis (`analyze.py`).
 const WARMUP_MS: u64 = 5_000;
 /// Without a ban by every honest neighbour of every attacker, "post" starts this long after the
@@ -64,6 +66,11 @@ pub struct Scenario {
     pub tick_ms: u64,
     #[serde(default)]
     pub config: Config,
+    /// Contact trace: (start ms, end ms, a, b). When present, a frame crosses a link only while
+    /// its contact is active (everything else is dropped), anti-entropy runs only towards active
+    /// peers, and both ends sync when a contact starts. `edges` must hold every contact pair.
+    #[serde(default)]
+    pub contacts: Vec<(u64, u64, usize, usize)>,
 }
 
 #[derive(Serialize, Debug, PartialEq, Default)]
@@ -229,9 +236,16 @@ struct Sim<'a> {
     message_index: HashMap<String, usize>,
     evict_ms: Vec<u64>,
     out: Outcome,
+    /// Active contact pairs (smaller index first); unused without a trace.
+    active: HashSet<(usize, usize)>,
+    last_sync: HashMap<(usize, usize), u64>,
 }
 
 impl Sim<'_> {
+    fn link_up(&self, a: usize, b: usize) -> bool {
+        self.scenario.contacts.is_empty() || self.active.contains(&(a.min(b), a.max(b)))
+    }
+
     fn advance(&mut self, i: usize, now_ms: u64) {
         let by = now_ms - self.clocks_ms[i];
         if by > 0 {
@@ -362,14 +376,37 @@ impl Sim<'_> {
         self.advance(i, now_ms);
         for pos in 0..self.adj[i].len() {
             let peer = self.adj[i][pos];
-            let request = self.nodes[i].build_sync_request(Some(address(i)));
-            self.nodes[i].open_sync_session(&self.identities[peer], &request);
-            if let Ok(payload) = serde_json::to_vec(&request) {
-                self.nodes[i].transport.send(&address(peer), &payload);
+            if self.link_up(i, peer) {
+                self.sync_one(i, peer, now_ms);
             }
-            self.out.sync_requests += 1;
         }
         self.flush_attacker(i, 1);
+    }
+
+    fn sync_one(&mut self, i: usize, peer: usize, now_ms: u64) {
+        let request = self.nodes[i].build_sync_request(Some(address(i)));
+        self.nodes[i].open_sync_session(&self.identities[peer], &request);
+        if let Ok(payload) = serde_json::to_vec(&request) {
+            self.nodes[i].transport.send(&address(peer), &payload);
+        }
+        self.last_sync.insert((i, peer), now_ms);
+        self.out.sync_requests += 1;
+    }
+
+    /// A contact started: each end asks the other, as a resumed link does, unless it asked
+    /// less than the resume spacing ago.
+    fn contact_started(&mut self, a: usize, b: usize, now_ms: u64) {
+        for (x, y) in [(a, b), (b, a)] {
+            let recent = self
+                .last_sync
+                .get(&(x, y))
+                .is_some_and(|&t| now_ms.saturating_sub(t) < SYNC_RESUME_SPACING_MS);
+            if !recent {
+                self.advance(x, now_ms);
+                self.sync_one(x, y, now_ms);
+                self.flush_attacker(x, 1);
+            }
+        }
     }
 
     fn finish(mut self) -> Outcome {
@@ -717,7 +754,17 @@ pub fn run(scenario: &Scenario) -> Outcome {
         message_index,
         evict_ms: Vec::new(),
         out: Outcome::default(),
+        active: HashSet::new(),
+        last_sync: HashMap::new(),
     };
+    // Contact starts and ends by time, ends first.
+    let mut contact_events: Vec<(u64, bool, usize, usize)> = Vec::new();
+    for &(start, end, a, b) in &scenario.contacts {
+        contact_events.push((start, true, a.min(b), a.max(b)));
+        contact_events.push((end, false, a.min(b), a.max(b)));
+    }
+    contact_events.sort_unstable();
+    let mut next_contact = 0;
 
     let dup_prob = scenario.config.honest_dup_prob;
     let mut dup_rng = SplitMix64(scenario.config.dup_seed);
@@ -726,6 +773,18 @@ pub fn run(scenario: &Scenario) -> Outcome {
     let mut in_flight: Vec<Vec<(String, Vec<u8>)>> = vec![Vec::new(); n];
     let mut now_ms = 0;
     while now_ms <= end_ms {
+        while let Some(&(at, start, a, b)) = contact_events.get(next_contact) {
+            if at > now_ms {
+                break;
+            }
+            if start {
+                sim.active.insert((a, b));
+                sim.contact_started(a, b, now_ms);
+            } else {
+                sim.active.remove(&(a, b));
+            }
+            next_contact += 1;
+        }
         // Frames sent in the previous tick arrive, nodes in index order.
         for (i, frames) in in_flight.iter_mut().enumerate() {
             for (sender, bytes) in std::mem::take(frames) {
@@ -754,6 +813,9 @@ pub fn run(scenario: &Scenario) -> Outcome {
                 continue;
             };
             for frame in frames {
+                if index_of(&frame.0).is_some_and(|s| !sim.link_up(s, i)) {
+                    continue;
+                }
                 let duplicate = dup_prob > 0.0
                     && index_of(&frame.0).is_some_and(|s| !sim.attacker[s])
                     && dup_rng.next_f64() < dup_prob;

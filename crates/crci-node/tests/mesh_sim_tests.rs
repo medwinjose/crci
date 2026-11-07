@@ -35,6 +35,7 @@ fn scenario(
         replay_copies: copies,
         tick_ms: 10,
         config: Config::default(),
+        contacts: Vec::new(),
     }
 }
 
@@ -102,6 +103,26 @@ fn same_scenario_same_outcome() {
     let b = run(&scenario(30, ring_edges(30), vec![3, 11], 2));
     assert_eq!(a, b);
     assert!(a.frames > 0);
+}
+
+#[test]
+fn a_contact_trace_limits_delivery_to_the_time_respecting_paths_and_strikes_nobody() {
+    // 0-1 are in contact for the first 30 s, 1-2 from 40 s: what node 0 sends later never
+    // reaches node 2, and nothing crosses a link while it is down.
+    let mut s = scenario(3, vec![(0, 1), (1, 2)], Vec::new(), 1);
+    s.fault_at_ms = s.window_ms;
+    s.contacts = vec![(0, 30_000, 0, 1), (40_000, 65_000, 1, 2)];
+    let out = run(&s);
+    assert_eq!(out.false_evictions, 0);
+    assert_eq!(out.honest_strikes, 0);
+    assert!(out.sync_requests > 0);
+    // Without the trace every message reaches both receivers.
+    let mut open = scenario(3, vec![(0, 1), (1, 2)], Vec::new(), 1);
+    open.fault_at_ms = open.window_ms;
+    assert_eq!(run(&open).delivery_pre, Some(1.0));
+    // Node 1 holds about half the messages and node 2 only some of those: well below 1.
+    assert!(out.delivery_pre.is_some_and(|d| d > 0.2 && d < 0.8));
+    assert_eq!(run(&s), out);
 }
 
 fn with_config(mut s: Scenario, config: Config) -> Scenario {
