@@ -30,7 +30,7 @@ from collections import defaultdict, deque
 
 ORIGINATED = re.compile(r"Node (n\d+) originated '([^']+)' at_ms=(\d+)")
 ACCEPTED = re.compile(r"Node (n\d+) accepted '([^']+)' \(origin (\S+), via ([^#]+)#\S*\) at_ms=(\d+)"
-                      r"(?: path=(\w+))?(?: proc_us=(\d+))?")
+                      r"(?: path=(\w+))?(?: proc_us=(\d+))?(?: \(\+(\d+) not printed\))?")
 RECEIVED = re.compile(r"Node (n\d+) received message from ([^#]+)#.*?"
                       r"(?: \(\+(\d+) not printed\))?$")
 RELAY_DROPS = re.compile(r"Node (n\d+) relay drops: failed=(\d+) queue_full=(\d+)")
@@ -44,6 +44,7 @@ ORIGIN_DROP = re.compile(r"\[(n\d+)\] ORIGIN BUDGET DROP: '[^']+' from origin '(
 RTT = re.compile(r"time=([\d.]+) ms")
 PACED = re.compile(r"Node (n\d+) frames paced: total=(\d+)")
 BANNED_DROPPED = re.compile(r"Node (n\d+) banned-peer frames dropped: total=(\d+)")
+LINES_HELD = re.compile(r"Node (n\d+) log lines not printed: received=(\d+) accepted=(\d+)")
 SYNC_REQUESTED = re.compile(r"Node (n\d+) requested sync from ")
 WARMUP_MS = 5000
 
@@ -129,6 +130,10 @@ def main():
     proc_us = []
     fault_ms = None
     counters = defaultdict(int)
+    # Lines a node held back (its log limit): the cumulative totals it prints every 5 s and at
+    # shutdown, or, for the accepted lines, the counts at the end of later lines if larger.
+    held_total = {}
+    accepted_suffix = defaultdict(int)
     for i in range(n):
         with open(f"{out}/logs/n{i}.log", errors="replace") as f:
             for line in f:
@@ -139,6 +144,7 @@ def main():
                     via.append((m[1], m[2], m[4], int(m[5])))
                     if m[7]:
                         proc_us.append(int(m[7]))
+                    accepted_suffix[m[1]] += int(m[8] or 0)
                 elif m := BANNED.search(line):
                     bans.append((m[1], m[2], int(m[3])))
                 elif m := READMITTED.search(line):
@@ -149,6 +155,8 @@ def main():
                     relay_drops[m[1]] = (int(m[2]), int(m[3]))  # cumulative: keep the last
                 elif m := PACED.search(line):
                     paced_frames[m[1]] = int(m[2])  # cumulative: keep the last
+                elif m := LINES_HELD.search(line):
+                    held_total[m[1]] = (int(m[2]), int(m[3]))  # cumulative: keep the last
                 elif m := BANNED_DROPPED.search(line):
                     banned_dropped[m[1]] = int(m[2])  # cumulative: keep the last
                 elif m := RATE.search(line):
@@ -158,17 +166,22 @@ def main():
                 if SYNC_REQUESTED.search(line):
                     counters["sync_requests"] += 1
                 if m := RECEIVED.search(line):
-                    counters["frames_received"] += 1 + int(m[3] or 0)
+                    counters["frames_received"] += 1
                     # The overlay is enforced by configuration only (one shared L2 segment):
                     # count frames from nodes that are not overlay neighbours.
                     if m[2] not in adj[m[1]]:
-                        counters["frames_from_non_neighbours"] += 1
+                        counters["frames_from_non_neighbours"] += 1 + int(m[3] or 0)
                     if "id=head-" in line:
                         counters["chain_head_frames"] += 1
                 for key in ("MALICIOUS REPLAY", "REPLAY dropped", "INVALID SIGNATURE",
                             "STALE", "PUBKEY MISMATCH", "is banned"):
                     if key in line:
                         counters[key] += 1
+
+    counters["frames_received"] += sum(received for received, _ in held_total.values())
+    counters["accepted_lines_not_printed"] = sum(
+        max(held_total.get(node, (0, 0))[1], accepted_suffix[node])
+        for node in set(held_total) | set(accepted_suffix))
 
     honest = [name(i) for i in range(n) if name(i) != byz]
     byz_neighbours = sorted(adj[byz])
@@ -298,6 +311,9 @@ def main():
         "rtt_median_within_10pct": rtt.get("median") is not None
         and 0.90 * exp_med <= rtt["median"] <= 1.10 * exp_med,
         "rtt_p95_within_25pct": rtt.get("p95") is not None and rtt["p95"] <= 1.25 * exp_p95,
+        # A node above its per-second line limit holds acceptance lines back: delivery would be
+        # undercounted.
+        "every_acceptance_logged": counters["accepted_lines_not_printed"] == 0,
     }
     fidelity["pass"] = all(fidelity.values())
 

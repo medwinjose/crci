@@ -317,3 +317,42 @@ fn a_chain_keeps_only_its_newest_blocks_and_still_verifies() {
     assert!(chain.diverges_from(wrong, chain.head_sequence()));
     assert!(!chain.diverges_from(chain.head_hash(), chain.head_sequence()));
 }
+
+#[test]
+fn per_message_lines_are_bounded_per_node_and_a_light_sender_keeps_every_line() {
+    use crci_core::runtime::{FairLogGate, FAIR_LOG_WINDOW};
+    let now = std::time::Instant::now();
+
+    // Below the soft limit nothing is held back.
+    let mut gate = FairLogGate::new(1000, 20);
+    for i in 0..999 {
+        assert_eq!(gate.pass(&format!("s{}", i % 5), now), Some(String::new()));
+    }
+
+    // One window: 90 senders at 200 lines each, plus an honest sender with a burst of 15.
+    let mut gate = FairLogGate::new(1000, 20);
+    let mut printed = 0;
+    let mut honest_printed = 0;
+    for round in 0..200 {
+        for s in 0..90 {
+            printed += gate.pass(&format!("flood-{s}"), now).is_some() as u32;
+        }
+        if (150..165).contains(&round) {
+            honest_printed += gate.pass("honest", now).is_some() as u32;
+        }
+    }
+    assert_eq!(
+        honest_printed, 15,
+        "a sender under its share never loses a line"
+    );
+    assert!(printed <= 2 * 1000 + 20 * 91, "{printed} lines printed");
+    assert!(printed < 90 * 200 / 4, "{printed} lines printed");
+
+    // The next window, a held-back sender's line says how many were not printed.
+    let later = now + FAIR_LOG_WINDOW;
+    let line = gate.pass("flood-0", later).unwrap_or_default();
+    assert!(
+        line.starts_with(" (+") && line.ends_with(" not printed)"),
+        "{line}"
+    );
+}

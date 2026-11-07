@@ -150,6 +150,76 @@ impl LogGate {
 
 /// Lines per second per sender or origin for frames dropped by a budget.
 const DROP_LINES_PER_SEC: u32 = 5;
+/// The window of `FairLogGate`.
+pub const FAIR_LOG_WINDOW: Duration = Duration::from_secs(10);
+
+/// A per-node limit on lines printed per message, shared fairly between senders. Each sender
+/// stays inside its own budget, so the volume of such lines grows with the number of identities.
+/// Counted over windows of `FAIR_LOG_WINDOW`, so that a burst from a light sender fits its share:
+/// below `soft` lines in a window every line is printed; above it a sender still gets
+/// `max(floor, soft / senders active in the window)` lines, so a node prints at most about
+/// `2 × soft + floor × senders` lines per window, and a sender sending less than its share never
+/// loses a line, however many identities flood the node.
+pub struct FairLogGate {
+    soft: u32,
+    floor: u32,
+    window: Option<Instant>,
+    total: u32,
+    per_sender: HashMap<String, u32>,
+    held_back: HashMap<String, u64>,
+    held_back_total: u64,
+}
+
+impl FairLogGate {
+    /// `soft` and `floor` are lines per window of `FAIR_LOG_WINDOW`.
+    pub fn new(soft: u32, floor: u32) -> Self {
+        Self {
+            soft,
+            floor,
+            window: None,
+            total: 0,
+            per_sender: HashMap::new(),
+            held_back: HashMap::new(),
+            held_back_total: 0,
+        }
+    }
+
+    /// Lines held back since the start, whether or not a later line reported them.
+    pub fn held_back_total(&self) -> u64 {
+        self.held_back_total
+    }
+
+    /// Like `LogGate::pass`, for a line about a message from `sender`.
+    pub fn pass(&mut self, sender: &str, now: Instant) -> Option<String> {
+        if self
+            .window
+            .is_none_or(|start| now.saturating_duration_since(start) >= FAIR_LOG_WINDOW)
+        {
+            self.window = Some(now);
+            self.total = 0;
+            self.per_sender.clear();
+        }
+        let count = {
+            let c = self.per_sender.entry(sender.to_string()).or_insert(0);
+            *c += 1;
+            *c
+        };
+        let share = (self.soft / self.per_sender.len().max(1) as u32).max(self.floor);
+        if self.total >= self.soft && count > share {
+            if self.held_back.len() >= 1024 && !self.held_back.contains_key(sender) {
+                self.held_back.clear();
+            }
+            *self.held_back.entry(sender.to_string()).or_insert(0) += 1;
+            self.held_back_total += 1;
+            return None;
+        }
+        self.total += 1;
+        Some(match self.held_back.remove(sender) {
+            Some(n) => format!(" (+{n} not printed)"),
+            None => String::new(),
+        })
+    }
+}
 
 /// How much an origin has done, which decides whom to forget first.
 pub struct OriginActivity {
@@ -526,6 +596,8 @@ pub struct NodeRuntime {
     /// Origins forgotten because of the limits.
     pub origins_forgotten: u64,
     drop_lines: LogGate,
+    /// When false, no line is printed per delivered message (the TCP node prints its own).
+    pub delivery_lines: bool,
     /// Open sync sessions, keyed by request ID.
     pub sync_sessions: HashMap<String, SyncSession>,
     /// When each requester was last answered.
@@ -624,6 +696,7 @@ impl NodeRuntime {
             max_tracked_origins: MAX_TRACKED_ORIGINS,
             origins_forgotten: 0,
             drop_lines: LogGate::new(DROP_LINES_PER_SEC),
+            delivery_lines: true,
             sync_sessions: HashMap::new(),
             sync_answered: HashMap::new(),
             sync_answer_budget: crate::sybil::TokenBucket::new(
@@ -1438,16 +1511,18 @@ impl NodeRuntime {
                     }
                 }
             };
-            println!(
-                "  [{}][{}] {} | sev:{} conf:{} vis:{} | note: {}",
-                self.id,
-                self.zone,
-                type_label,
-                wire.severity,
-                wire.confidence,
-                wire.visibility,
-                wire.note.as_deref().unwrap_or("—")
-            );
+            if self.delivery_lines {
+                println!(
+                    "  [{}][{}] {} | sev:{} conf:{} vis:{} | note: {}",
+                    self.id,
+                    self.zone,
+                    type_label,
+                    wire.severity,
+                    wire.confidence,
+                    wire.visibility,
+                    wire.note.as_deref().unwrap_or("—")
+                );
+            }
 
             if is_chain_head {
                 if let Ok(MessageType::ChainHeadAnnouncement {

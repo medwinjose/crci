@@ -1502,8 +1502,15 @@ async fn run_node(
     let fault_announced = Arc::new(std::sync::atomic::AtomicBool::new(false));
     // Frames from banned peers, dropped before they are parsed; reported with the statistics.
     let banned_frames_dropped = Arc::new(std::sync::atomic::AtomicU64::new(0));
+    // Lines the receive loop held back (see `FairLogGate`): (received, accepted), reported with the
+    // statistics and at shutdown, so that counts made from the log stay exact.
+    let lines_held = Arc::new((
+        std::sync::atomic::AtomicU64::new(0),
+        std::sync::atomic::AtomicU64::new(0),
+    ));
     // Forward to every dialed peer: the router's next hops are node IDs, not TCP addresses.
     node.use_router = false;
+    node.delivery_lines = false;
     let mut pipeline = integration::GossipPipeline::new();
     pipeline.register_bootstrap("zone-host", &node_id);
 
@@ -1675,13 +1682,16 @@ async fn run_node(
     let recv_id = node_id.clone();
     let recv_fault = fault_announced.clone();
     let recv_banned_dropped = banned_frames_dropped.clone();
+    let recv_lines_held = lines_held.clone();
     tokio::spawn(async move {
         // Peers this node has banned, so each ban (and readmission) is printed once.
         let mut banned: std::collections::HashSet<String> = std::collections::HashSet::new();
         // Banned peers whose dropped frames were already announced (one line per ban).
         let mut dropping: std::collections::HashSet<String> = std::collections::HashSet::new();
-        // Above what an honest link carries (tens of frames per second at the measured capacity).
-        let mut received_lines = runtime::LogGate::new(100);
+        // Every line below 1 000 per 10 s (three times the highest honest load measured); above,
+        // a fair share per sender, at least 20 per 10 s.
+        let mut received_lines = runtime::FairLogGate::new(1000, 20);
+        let mut accepted_lines = runtime::FairLogGate::new(1000, 20);
         while let Ok((sender_id, wire)) = recv_tcp.receive().await {
             let dequeued = std::time::Instant::now();
             // A banned peer's frames are dropped by NodeRuntime's admission check anyway; doing
@@ -1715,7 +1725,12 @@ async fn run_node(
                 continue;
             }
             dropping.remove(&sender_id);
-            if let Some(more) = received_lines.pass(&sender_id, dequeued) {
+            let received_printed = received_lines.pass(&sender_id, dequeued);
+            recv_lines_held.0.store(
+                received_lines.held_back_total(),
+                std::sync::atomic::Ordering::Relaxed,
+            );
+            if let Some(more) = received_printed {
                 println!(
                     "Node {} received message from {}: id={}, type={}, origin={}{}",
                     recv_id, sender_id, wire.id, wire.message_type, wire.origin, more
@@ -1788,25 +1803,35 @@ async fn run_node(
             }
 
             for msg in &delivered {
-                println!(
-                    "Node {} accepted '{}' (origin {}, via {}) at_ms={} path={} proc_us={}",
-                    recv_id,
-                    msg.id,
-                    msg.origin,
-                    sender_id,
-                    unix_ms(),
-                    path,
-                    proc_us
+                let printed = accepted_lines.pass(&sender_id, dequeued);
+                recv_lines_held.1.store(
+                    accepted_lines.held_back_total(),
+                    std::sync::atomic::Ordering::Relaxed,
                 );
+                if let Some(more) = &printed {
+                    println!(
+                        "Node {} accepted '{}' (origin {}, via {}) at_ms={} path={} proc_us={}{}",
+                        recv_id,
+                        msg.id,
+                        msg.origin,
+                        sender_id,
+                        unix_ms(),
+                        path,
+                        proc_us,
+                        more
+                    );
+                }
                 let verdict = {
                     let mut p = recv_pipeline.lock().unwrap_or_else(|e| e.into_inner());
                     p.register_bootstrap("zone-host", &msg.origin);
                     p.process(&to_pipeline_message(msg, sender_rep))
                 };
-                println!(
-                    "Node {} pipeline verdict for '{}': {:?}",
-                    recv_id, msg.id, verdict
-                );
+                if printed.is_some() && verdict != integration::PipelineVerdict::Accept {
+                    println!(
+                        "Node {} pipeline verdict for '{}': {:?}",
+                        recv_id, msg.id, verdict
+                    );
+                }
 
                 add_api_peer(&recv_api, &sender_id);
                 let api_msg = api::ApiMessage {
@@ -1888,12 +1913,19 @@ async fn run_node(
     let cons_api = api_state.clone();
     let stats_tcp = tcp.clone();
     let stats_banned_dropped = banned_frames_dropped.clone();
+    let stats_lines_held = lines_held.clone();
     let mut last_paced = 0;
     tokio::spawn(async move {
         let mut last_stats = (0, 0);
         let mut last_banned_dropped = 0;
+        let mut last_held = (0, 0);
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            let held = lines_held_now(&stats_lines_held);
+            if held != last_held {
+                last_held = held;
+                print_lines_held(&cons_node_id, held);
+            }
             // Relayed frames that never left this node; anti-entropy is their only recovery.
             let stats = (
                 stats_tcp
@@ -2004,7 +2036,28 @@ async fn run_node(
 
     println!("Node {} listening on {}", node_id, tcp.listen_addr);
     tokio::signal::ctrl_c().await.unwrap_or(());
+    print_lines_held(&node_id, lines_held_now(&lines_held));
     println!("Shutting down.");
+}
+
+fn lines_held_now(
+    held: &(std::sync::atomic::AtomicU64, std::sync::atomic::AtomicU64),
+) -> (u64, u64) {
+    (
+        held.0.load(std::sync::atomic::Ordering::Relaxed),
+        held.1.load(std::sync::atomic::Ordering::Relaxed),
+    )
+}
+
+/// Cumulative counts of the per-message lines held back by the node's log limit.
+fn print_lines_held(node_id: &str, (received, accepted): (u64, u64)) {
+    println!(
+        "Node {} log lines not printed: received={} accepted={} at_ms={}",
+        node_id,
+        received,
+        accepted,
+        unix_ms()
+    );
 }
 
 fn add_api_peer(api_state: &api::ApiState, peer: &str) {
