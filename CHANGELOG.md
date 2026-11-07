@@ -12,11 +12,15 @@ git history; `git log` is the complete record.
   where the old pruning deleted exactly those), sync sessions, the Merkle chain (the newest blocks), relay queues
   and the application pipeline. Replay windows hold one bit per sequence number per peer, and peer identities
   are kept as keyed hashes. The threat model states what forgetting costs.
-- Frames dropped by a budget print at most 5 lines per second per sender or origin, and `received message` at most
-  100 per second per sender, with the number of lines held back at the end of the next one.
+- Log output is bounded per node: frames dropped by a budget print at most 5 lines per second per sender or
+  origin; the TCP node's `received message` and `accepted` lines are shared fairly between senders above 1 000
+  per 10 s (each sender keeps at least 20); a printed line names the lines held back before it. The runtime's
+  line per delivered message and the pipeline's `Accept` verdict line are no longer printed by the TCP node.
 
 ### Added
 - `examples/state_flood`, `make state`: one node's heap under floods of a million signed messages.
+- `examples/tcp_flood`, `scripts/testbed/run_tcp_flood.sh`, `make tcp-flood`: a flood of validly signed messages
+  from many identities through a real `crci-node`, with its memory, CPU and log output sampled.
 - TLA+ models of the final protocol: `docs/tla/Reputation.tla` (strikes, bans, recovery, damping) and
   `docs/tla/CRCI.tla` (seen cache, replay window, strikes, signatures, anti-entropy, an adversary that
   replays, forges, reuses IDs and omits). `docs/tla/check.py` / `make tla` runs every configuration,

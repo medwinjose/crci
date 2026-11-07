@@ -827,11 +827,32 @@ up to 500 nodes, 8.4–8.5 MiB at 32 messages/s (was 10.6–11.2), 7.7 MiB in th
 of a process is the runtime and binary, not protocol state. A fresh-message flood of 1 000 messages/s logs 42 MiB
 per run (68 MiB before the per-sender limit on log lines).
 
-**Not shown:** a flood through the real TCP node. It is feasible on this host: a sender gets 20 new messages/s, so
-one connection would take 14 hours for a million, but 100 connections with fresh identities (the listener's cap)
-would take about 8 minutes; it has not been run. Such a run would also measure the node's log output, which grows
-with every accepted message and so with the number of identities (only lines for dropped frames are limited).
-Memory on 1 GB devices (no device here) and floods from many neighbours at once are not measured either.
+**Through a real node** (`make tcp-flood`, `scripts/testbed/run_tcp_flood.sh`): one receiving `crci-node`, one
+honest node sending it 1 message/s, and `examples/tcp_flood` sending validly signed messages, each from a new
+origin, over 90 authenticated connections with fresh identities at 20 messages/s each (inside every budget):
+1 800 messages/s, all on loopback in one network namespace. Criteria were written before the data.
+
+| Receiver build | Messages | Accepted | Honest messages accepted and logged | RSS at a tenth → end | CPU | Log output |
+|---|---|---|---|---|---|---|
+| Before the per-node log limit | 10⁶ | 1 000 650 | 568 of 568 | 17.6 → 19.8 MiB | 164 s | 458 MB (437 MiB) |
+| With the limit, 1 s window | 10⁶ | ≥ 993 877 | 568 of 568, 2 not logged (held back) | 18.0 → 21.8 MiB | 167 s | 36 MB |
+| With the limit, 10 s window | 3 × 10⁶ | ≥ 2 988 002 | 1 679 of 1 679 | 18.1 → 20.3 MiB | 487 s | 106 MB |
+| Final | 10⁶ | 1 000 650 | 568 of 568 | 16.0 → 17.9 MiB | 171 s | 35 MB |
+
+The flood found that a node's log grew by about 0.8 MB/s (3 GB an hour): every accepted message printed four lines,
+and each identity stays inside its own budget. The TCP node now shares its per-message lines fairly between
+senders ([architecture](architecture.md#per-node-limits)), which keeps every line of a sender below its share. A
+first version counted over 1 s windows and held back two acceptance lines of the honest node, whose two messages
+and a relayed copy fell in one second; with 10 s windows none. RSS rises over the first minutes and then levels
+off (the 3 × 10⁶ run: 18.7 MiB after 6 minutes, 20.3 MiB after 28); the first 10 s-window run's end-to-tenth ratio
+of 1.21 broke the 1.15 written beforehand; the 28-minute run (1.13) and the final run (1.12) stay inside it. Counts
+marked ≥ come from builds that reported held-back lines only on a sender's next line, so the last window is missing. Nine heavy
+honest-load runs on the final build (load 16 and 32 messages/s at N = 50, 500 nodes) held back no acceptance
+line, and their frame counts agree with the build before the limit to within 0.4 %
+([`evidence/state-2026-11-07/testbed/load-log-limit/`](evidence/state-2026-11-07/testbed/load-log-limit/)).
+
+**Not shown:** memory on 1 GB devices (no device here; a node uses 7–20 MiB of RSS in every run above); floods
+through several receivers at once.
 
 ## WAN smoke test
 

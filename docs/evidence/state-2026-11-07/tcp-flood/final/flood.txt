@@ -1,0 +1,1 @@
+sent=1000080 failed=0 connections=90 rate_per_connection=20 seconds=555.6

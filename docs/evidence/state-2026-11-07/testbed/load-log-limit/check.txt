@@ -1,0 +1,9 @@
+load16-rgg-50-s1 faithful True every_acceptance_logged True frames_received 295375 (build before the log limit: 295397 ) honest false evictions 0 honest rate drops 0
+load16-rgg-50-s2 faithful True every_acceptance_logged True frames_received 339432 (build before the log limit: 339391 ) honest false evictions 0 honest rate drops 0
+load16-rgg-50-s3 faithful True every_acceptance_logged True frames_received 293303 (build before the log limit: 293315 ) honest false evictions 0 honest rate drops 0
+load32-rgg-50-s1 faithful True every_acceptance_logged True frames_received 587121 (build before the log limit: 586521 ) honest false evictions 0 honest rate drops 2972
+load32-rgg-50-s2 faithful True every_acceptance_logged True frames_received 674581 (build before the log limit: 674810 ) honest false evictions 0 honest rate drops 2809
+load32-rgg-50-s3 faithful True every_acceptance_logged True frames_received 548312 (build before the log limit: 546322 ) honest false evictions 0 honest rate drops 3566
+stress4-rgg-500-s1 faithful True every_acceptance_logged True frames_received 1415797 (build before the log limit: 1415798 ) honest false evictions 0 honest rate drops 0
+stress4-rgg-500-s2 faithful True every_acceptance_logged True frames_received 1401431 (build before the log limit: 1401443 ) honest false evictions 0 honest rate drops 0
+stress4-rgg-500-s3 faithful True every_acceptance_logged True frames_received 1445448 (build before the log limit: 1445449 ) honest false evictions 0 honest rate drops 0

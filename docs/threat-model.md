@@ -142,3 +142,6 @@ semantically false but correctly signed reports, radio jamming, side channels, c
     are all banned; the recent store under a flood keeps less to answer sync requests with; a rescue message
     can be pushed out of the store by 256 newer ones, as the store has no way to tell a real rescue from a forged
     claim by a new identity. Key-derived origin IDs and identity minting cost are planned, and only raise the price.
+    Measured through a real node, 90 fresh identities sending 3 × 10⁶ validly signed messages inside every budget
+    leave its memory at about 20 MiB and its log at 35 bytes per message, and an honest neighbour loses nothing
+    ([benchmarks.md](benchmarks.md#memory-per-node)).

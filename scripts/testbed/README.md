@@ -27,6 +27,7 @@ Linux only, run as root. Tested in WSL2 (Ubuntu 26.04, kernel 6.6, iproute2 6.19
 | `run_netem.sh OUT [BIN] [SEEDS] [SIZES]` | The impairment set: one-way delay 40 ms ± 15 ms (uniform) on every egress, with loss 0/5/10/15/20 %, reordering 5/10/15 % and loss 10 % + reordering 10 %; rgg and mesh, N = 20/50/100, seeds 1–3. Resumable. |
 | `netem_table.py OUT` | One CSV per condition, `summary.csv` (mean over seeds) and `table.md` under `OUT/netem/`, and `conditions.md`: each condition aggregated over all its runs. |
 | `run_attacks.sh OUT [BIN] [SEEDS] [OLD_BIN]` | The attacker set on rgg N = 50: an over-budget replayer (B empties its budget with fresh messages from 10 s before the fault, then sends every frame 8 times; refill 5 and 20, and an older binary for comparison if given), a fresh-message flood (B originates 40 messages/s and never repeats a frame), and the 20 % loss condition with the nodes kept running 60 s after the last message (`--drain 60`). Resumable. |
+| `run_tcp_flood.sh OUT [BIN] [FLOODER] [MESSAGES] [CONNECTIONS]` | One receiver, one honest node emitting 1 message/s and `examples/tcp_flood` sending validly signed messages from a new origin each, over 90 connections with fresh identities at 20 messages/s each (inside every budget), in one network namespace on loopback. Samples the receiver's RSS, CPU and log size every 5 s. |
 | `run_flood.sh OUT [BIN] [SEEDS]` | The invalid-signature flood on rgg N = 50: B silent, B sending 40 valid messages/s (the load-matched reference), B forging every signature at 1, 8 and 64 copies per frame (40, 320, 2 560 forged frames/s per link), B flooding 1 000 valid fresh messages/s, and one 480 s run in which B forges for 10 s and then signs correctly (readmission). Resumable. |
 | `flood_table.py OUT [BEFORE_DIR]` | `flood.csv`, `flood.md` (means over seeds and the pass/fail criteria) and `figures/flood-cost.svg`; with a directory of runs from an earlier binary, `figures/flood-cpu.svg` compares the CPU of B's neighbours. |
 | `run_flapping.sh OUT [BIN] [SEEDS] [SIZES]` | Link flapping: 20 % or 50 % of the overlay links go down and up again every 5-10 s (both directions together, or one direction per link) on rgg and mesh at N = 20/50/100, honest (reference, sym20, asym20, sym50, asym50) and, at N = 50, with the replaying relay B (atk-ref, atk-sym20); 60 s drain. Resumable. |
@@ -98,7 +99,8 @@ window: mean host CPU busy is below 70 %, there is no swap-in or swap-out, the k
 from its input backlog, and the ICMP round trip on sampled overlay links has a median within 10 % and a
 95th percentile within 25 % of the configured round trip (2 × netem delay). The CPU, swap and RTT
 criteria were fixed before the first run; the listening and backlog criteria were added after a first
-200–500-node pass lost nodes and packets to start-up ARP flooding.
+200–500-node pass lost nodes and packets to start-up ARP flooding. Since nodes limit their log output, a run also
+needs every acceptance line printed (`every_acceptance_logged`): a held-back line would undercount delivery.
 
 ## Known limits
 

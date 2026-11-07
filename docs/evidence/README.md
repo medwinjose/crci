@@ -17,8 +17,14 @@ configuration of `docs/tla/check.py` with the switch that lets a node forget an 
 `comparison.txt`, its comparison with `sim-2026-11-04/results.csv`. `testbed/`: `results.csv` of the attack set (one per kind: `over-budget/`, `flood/`, `eventual/`), the
 main, load and capacity runs and the netem smoke set (`report.py`), the main table, the flood criteria
 (`flood_table.py`), and the attack set compared per run with `flood-2026-11-06/sixth-set/attacks/`.
-`binary.sha256`: the `crci-node` and `mesh_sim` binaries all of these ran on, rebuilt from the committed source with
-the same hashes; `flood/binary.sha256` the `state_flood` binary. `SHA256SUMS` holds the hash of every file here.
+`tcp-flood/`: `run_tcp_flood.sh` runs (`before`: the build before the per-node log limit; `after-1s-window`;
+`after-3m-messages`: 10 s windows, 3 × 10⁶ messages; `final`: the committed build), each with the receiver's
+samples, the summary, the first and last 200 lines of its log and the honest node's log; the summaries of the
+first three runs were written by an earlier version of the script that counted printed acceptance lines only
+(`after-3m-messages/acceptances.txt` adds the held-back ones). `testbed/load-log-limit/`: nine heavy honest-load
+runs on the final build and their frame counts against the build before the log limit.
+`binary.sha256`: the `crci-node` and `mesh_sim` binaries the simulation and testbed sets ran on (the build before
+the per-node log limit), rebuilt from that source with the same hashes; `flood/binary.sha256` the `state_flood` binary. `SHA256SUMS` holds the hash of every file here.
 
 ## `tla-2026-11-07/`
 

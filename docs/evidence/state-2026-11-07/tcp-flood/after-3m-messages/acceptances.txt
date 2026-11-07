@@ -1,0 +1,30 @@
+--- RSS every 120 s
+0 6680 0.00
+120 17860 36.47
+240 18916 72.38
+361 19160 107.79
+481 19436 143.10
+602 19916 177.71
+722 20028 212.33
+842 20188 246.97
+963 20252 280.82
+1083 20432 315.50
+1203 20564 350.32
+1324 20604 386.25
+1444 20732 422.09
+1564 20748 457.49
+1675,20820,487.35,105509114
+--- acceptances: printed + held back on accepted lines
+printed 302280 held back 2685722 total 2988002
+--- received lines: printed + held back
+printed 304651 held back 2697819 total 3002470
+--- lines per kind
+0
+ 304651 received
+ 302280 accepted
+  60035 originating
+    336 guard
+    247 seq
+     57 answering
+      1 server
+      1 listening

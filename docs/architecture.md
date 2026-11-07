@@ -212,9 +212,14 @@ an origin with k accepted messages an adversary signs more than k messages on ea
 its neighbours' budgets allow. What forgetting costs is in the [threat model](threat-model.md), and measurements
 are in [benchmarks](benchmarks.md#memory-per-node).
 
-A frame dropped by a budget prints at most 5 lines per second per sender or origin, and the `received message` line
-at most 100 per second per sender; a printed line ends in `(+N not printed)` when lines were held back, so the
-testbed's counts stay exact up to the last second of a run.
+Log output is bounded too: each sender stays inside its own budget, so lines printed per message would grow with the
+number of identities. A frame dropped by a budget prints at most 5 lines per second per sender or origin. The
+`received message` and `accepted` lines of the TCP node are shared fairly (`FairLogGate`): every line is printed
+while a node prints fewer than 1 000 of a kind in 10 s; above that each sender still gets
+`max(20, 1 000 / senders active)` lines per 10 s, so a sender below its share loses none, however many identities
+flood the node. The runtime's own line per delivered message is off on the TCP node. A printed line ends in
+`(+N not printed)` when lines were held back, so the testbed's counts stay exact; its analysis marks a run
+unfaithful if any acceptance line was held back.
 
 ### Re-synchronisation after a partition (anti-entropy)
 

@@ -1,0 +1,8 @@
+sent=1000080 failed=0 connections=90 rate_per_connection=20 seconds=555.6
+receiver accepted: 100417
+honest originated: 568
+honest accepted by receiver: 566
+honest rate-limited lines: 0
+honest banned: 0
+receiver log bytes: 36321920
+samples=112 run_s=564 rss_at_tenth_kib=18432 rss_end_kib=22352 rss_max_kib=22352 cpu_s=166.98
