@@ -899,6 +899,36 @@ A sync request is larger than a gossip message and its digest grows with the ori
 five origins already need 1 020 bytes. Nothing here measures airtime, duty-cycle limits or fragmentation
 overhead, and no radio code exists (the LoRa and BLE transports are stubs).
 
+## Proof-of-work identity minting cost
+
+`cargo run --release -p crci-node --example pow_mint` measures the cost of the candidate scheme "find a nonce
+such that SHA-256(`crci-pow-v1` ‖ public key ‖ nonce) has at least *d* leading zero bits" on one core of the
+i5-12450HX (SHA-256 from the `sha2` crate, one thread, release build). The protocol does not use this scheme:
+identities are free Ed25519 keys. Output: `docs/evidence/pow-2026-11-08/pow_mint.csv`. Expected work is 2^*d*
+hashes, so the time per identity is a random variable; the table gives the median and mean over the stated
+number of fresh keys, and the hash rate over all trials.
+
+| *d* (bits) | Trials | Expected hashes | Median (ms) | Mean (ms) | Max (ms) | Hash rate (M/s) |
+|---|---|---|---|---|---|---|
+| 8 | 200 | 256 | 0.006 | 0.010 | 0.097 | 23.8 |
+| 12 | 200 | 4 096 | 0.137 | 0.198 | 1.19 | 23.1 |
+| 14 | 200 | 16 384 | 0.518 | 0.756 | 3.84 | 22.1 |
+| 16 | 100 | 65 536 | 2.28 | 3.07 | 13.6 | 22.8 |
+| 18 | 50 | 262 144 | 9.90 | 11.7 | 44.0 | 23.2 |
+| 20 | 20 | 1 048 576 | 35.6 | 54.2 | 209 | 23.2 |
+| 22 | 10 | 4 194 304 | 130 | 129 | 259 | 22.4 |
+| 24 | 5 | 16 777 216 | 1 081 | 988 | 1 594 | 20.7 |
+| 26 | 3 | 67 108 864 | 2 199 | 1 994 | 2 950 | 20.4 |
+
+Reading: *d* = 14 (2^14 hashes) costs about 0.8 ms on average, so one core mints about 1 400 identities per second;
+*d* = 24 costs about one second per identity. Each two extra bits multiply the cost by four, so a deliberate
+dampener (several seconds per identity) is cheap for an honest node that mints once, but the same cost falls
+linearly with the attacker's hash power: more cores or a GPU divide it directly. No GPU, multi-core or phone
+measurement was made, so the cost for an attacker with specialised hardware and for a low-end device is not
+measured here. The 22–26 bit rows have 3–10 trials and are rough; the random spread is large (the 20-bit
+maximum is four times the mean). The scheme limits the *rate* at which an adversary can create identities, not
+their number, and gives no protection against an adversary that can afford the work once.
+
 ## WAN smoke test
 
 - **Test:** `crates/crci-node/tests/chaos_wan_real_tests.rs::test_real_wan_chaos_netns` (`#[ignore]`,
