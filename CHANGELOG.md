@@ -9,7 +9,8 @@ git history; `git log` is the complete record.
 ### Added
 - `mesh_sim` accepts a contact trace (`contacts`): frames cross a link only while it is up, and both ends
   sync when a contact starts. `scripts/sim/run_contact_trace.py` replays the SocioPatterns Hypertext 2009
-  trace; results in `docs/benchmarks.md`.
+  trace (`make contact-trace`); results in `docs/benchmarks.md`. Trace runs also report coverage over the
+  links that had a contact after the fault (`coverage_*_in_contact`).
 
 ### Fixed
 - `crci-node --replay-window` accepted any value; one above what a peer record can hold overflowed or

@@ -15,6 +15,7 @@
 #   make ablation OUT=/tmp/x  # strike threshold and defence modes in the simulation, window ablation bench (about 1 h)
 #   make tables OUT=/tmp/x    # regenerate the tables from runs already in OUT*
 #   make sim OUT=/tmp/x       # the in-process simulation, 20 to 5 000 nodes (no root; about 1 h)
+#   make contact-trace OUT=/tmp/x # replay a human contact trace (downloads 67 KB, checksum-checked; 6 runs, about 6 min)
 #   make state OUT=/tmp/x     # one node's memory under floods of a million signed messages (no root; about 8 min)
 #   make tcp-flood OUT=/tmp/x # the same through a real node over TCP, 90 identities (about 10 min)
 
@@ -24,7 +25,7 @@ BIN := target/release/crci-node
 TB := scripts/testbed
 SIM := target/release/examples/mesh_sim
 
-.PHONY: tla build testbed netem attacks flood flapping ratio figures baselines ablation tables smoke sim state tcp-flood fuzz reproduce
+.PHONY: tla build testbed netem attacks flood flapping ratio figures baselines ablation tables smoke sim contact-trace state tcp-flood fuzz reproduce
 
 tla:
 	python3 docs/tla/check.py
@@ -87,6 +88,10 @@ smoke: build
 	$(SUDO) $(TB)/run_netem.sh $(OUT)-smoke $(BIN) "1" "20"
 
 # Writes results.csv, cross-check.csv (against the recorded testbed runs), tables.md and figures/.
+contact-trace:
+	cargo build --release -p crci-node --example mesh_sim
+	python3 scripts/sim/run_contact_trace.py $(OUT)-contact $(SIM) --data $(OUT)-contact-data
+
 sim:
 	cargo build --release -p crci-node --example mesh_sim
 	python3 scripts/sim/run_sim.py $(OUT)-sim $(SIM)
