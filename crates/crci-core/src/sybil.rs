@@ -76,6 +76,10 @@ pub const STRIKE_MEMORY: Duration = Duration::from_secs(300);
 pub const DAMPING_STRIKES: usize = 2;
 /// Recovery cap while strike damping applies.
 pub const DAMPED_CEILING: f32 = 0.18;
+/// Shortest interval over which recovery is applied, except right before a strike. The score is
+/// an `f32`, and adding a tiny increment rounds: applied on every frame of a peer that sends one
+/// per millisecond, recovery ran 1.3 % fast. In steps of a second the error is below 0.01 %.
+pub const RECOVERY_STEP: Duration = Duration::from_secs(1);
 
 pub struct PeerReputation {
     pub score: f32,
@@ -129,9 +133,17 @@ impl PeerReputation {
         }
     }
 
-    /// Apply recovery for the time between the last update and `now`. The interval is
-    /// split where the oldest remembered strike expires, since the cap can change there.
+    /// Apply recovery for the time between the last update and `now`, once at least
+    /// `RECOVERY_STEP` has passed (a ban can therefore be lifted up to that much late).
     pub fn recover_at(&mut self, now: Instant) {
+        if now.saturating_duration_since(self.last_updated) >= RECOVERY_STEP {
+            self.recover_to(now);
+        }
+    }
+
+    /// Apply recovery up to `now`. The interval is split where the oldest remembered strike
+    /// expires, since the cap can change there.
+    fn recover_to(&mut self, now: Instant) {
         let mut t = self.last_updated;
         while t < now {
             self.forget_strikes_before(t);
@@ -161,7 +173,7 @@ impl PeerReputation {
 
     /// Record a strike of `amount` at `now`.
     pub fn penalise_at(&mut self, amount: f32, now: Instant) {
-        self.recover_at(now);
+        self.recover_to(now);
         let new_score = self.score - amount;
         // Clamp to [0.0, 1.0] and round to 3 decimal places
         self.score = round_to_3_dec_f32(new_score.clamp(0.0, 1.0));
@@ -583,4 +595,5 @@ mod tests {
         guard.advance_time(300 * SEC);
         assert!((guard.reputation(&peer) - 0.5).abs() < 1e-3);
     }
+
 }

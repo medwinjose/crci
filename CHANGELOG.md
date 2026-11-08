@@ -21,6 +21,9 @@ git history; `git log` is the complete record.
   accepted. If a third neighbour delivered the message first, the seen cache had cleared, or the origin's ID
   was squatted, the asked neighbour's gossip copy was struck. A tagged answer now counts once it enters the
   seen cache; the per-request limits are unchanged.
+- Reputation recovery was applied on every frame, and the rounding of each small `f32` increment made it up
+  to 1.3 % faster for a peer sending a frame per millisecond. It is now applied in steps of at least one
+  second (`RECOVERY_STEP`), so a ban can be lifted up to a second late.
 - `crci-node --replay-window` accepted any value; one above what a peer record can hold overflowed or
   tried to allocate without limit on the first message. Values above 1 024 are now refused at start-up.
 

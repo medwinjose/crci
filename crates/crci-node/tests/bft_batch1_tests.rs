@@ -247,8 +247,9 @@ fn test_bft_reputation_recovery() {
     rep.penalise(0.4); // Drop to 0.1
     assert_eq!(rep.score, 0.1);
 
-    // Recovery is linear in time: 0.0005 per second, so 0.5 s adds 0.00025.
-    let later = rep.last_updated + Duration::from_millis(500);
+    // Recovery is linear in time: 0.0005 per second, so 2 s adds 0.001 (it is applied in
+    // steps of at least one second).
+    let later = rep.last_updated + Duration::from_secs(2);
     rep.recover_at(later);
 
     // Score should recover slightly but not immediately jump back.
@@ -439,7 +440,7 @@ fn test_bft_reputation_based_eviction_hysteresis() {
 
     // Recover more to cross 0.25
     rep.score = 0.26;
-    rep.recover_at(later);
+    rep.recover_at(later + Duration::from_secs(1));
     assert!(!rep.is_banned()); // Successfully reinstated
 }
 
