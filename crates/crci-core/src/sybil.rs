@@ -596,4 +596,166 @@ mod tests {
         assert!((guard.reputation(&peer) - 0.5).abs() < 1e-3);
     }
 
+    // Checks of the analytical bounds (docs/formal-verification.md, "Analytical bounds") against
+    // the code. The theorems are stated in exact arithmetic; the code rounds a score to 0.001
+    // after each strike, which moves a score by at most 0.0005, the recovery of one second.
+
+    /// Time `secs` after `t0`.
+    fn at(t0: Instant, secs: f64) -> Instant {
+        t0 + Duration::from_secs_f64(secs)
+    }
+
+    /// Deterministic pseudo-random numbers in [0, 1).
+    struct Lcg(u64);
+    impl Lcg {
+        fn next(&mut self) -> f64 {
+            self.0 = self
+                .0
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (self.0 >> 11) as f64 / (1u64 << 53) as f64
+        }
+    }
+
+    /// Theorem 1: k strikes in an interval of L seconds, none of which bans, satisfy
+    /// k (penalty - 0.0005) <= score before the first - 0.1 + 0.0005 L.
+    #[test]
+    fn no_strike_schedule_beats_the_strike_budget() {
+        let t0 = Instant::now();
+        let mut rng = Lcg(27);
+        let mut windows = 0u64;
+        for schedule in 0..3_000 {
+            let mut rep = PeerReputation::new_at(t0);
+            let poll = if schedule % 10 == 0 {
+                0.003
+            } else {
+                0.5 + 20.0 * rng.next()
+            };
+            let scale = [5.0, 60.0, 200.0, 400.0][schedule % 4];
+            let (mut t, mut last_poll) = (0.0, 0.0);
+            // (time, score just before, banned after) of each strike
+            let mut strikes: Vec<(f64, f32, bool)> = Vec::new();
+            for _ in 0..(3 + schedule % 30) {
+                t += scale * rng.next();
+                while last_poll + poll < t {
+                    last_poll += poll;
+                    rep.recover_at(at(t0, last_poll));
+                }
+                // what the strike starts from: all recovery up to t
+                rep.recover_to(at(t0, t));
+                let before = rep.score;
+                let was_banned = rep.is_banned();
+                rep.penalise_at(STRIKE_PENALTY, at(t0, t));
+                strikes.push((t, before, was_banned || rep.is_banned()));
+            }
+            for i in 0..strikes.len() {
+                for j in i..strikes.len() {
+                    if strikes[i..=j].iter().any(|s| s.2) {
+                        break;
+                    }
+                    let k = (j - i + 1) as f64;
+                    let budget = strikes[i].1 as f64 - BAN_THRESHOLD as f64
+                        + RECOVERY_PER_SEC as f64 * (strikes[j].0 - strikes[i].0);
+                    assert!(
+                        k * (STRIKE_PENALTY as f64 - 0.0005) <= budget + 1e-5,
+                        "schedule {schedule}: strikes {i}..={j} beat the budget"
+                    );
+                    windows += 1;
+                }
+            }
+        }
+        assert!(windows > 10_000, "only {windows} windows checked");
+    }
+
+    /// Strike number at which a peer struck every `period` seconds is first banned (0: never
+    /// within `max` strikes), with recovery polled every `poll` seconds (0: only at strikes).
+    fn banned_at_strike(period: f64, max: u64, poll: f64) -> u64 {
+        let t0 = Instant::now();
+        let mut rep = PeerReputation::new_at(t0);
+        let mut last_poll = 0.0;
+        for n in 1..=max {
+            let t = n as f64 * period;
+            while poll > 0.0 && last_poll + poll < t {
+                last_poll += poll;
+                rep.recover_at(at(t0, last_poll));
+            }
+            rep.penalise_at(STRIKE_PENALTY, at(t0, t));
+            if rep.is_banned() {
+                return n;
+            }
+        }
+        0
+    }
+
+    /// Theorem 2 in the code: a strike every P >= 299 s never bans (300 s in exact arithmetic;
+    /// the rounding gives back the one second); a faster pace bans by the strike the theorem bounds.
+    #[test]
+    fn periodic_strikes_ban_exactly_when_faster_than_the_forgiveness_period() {
+        for p in 1..=400u64 {
+            let pf = p as f64;
+            let got = banned_at_strike(pf, 400, 0.0);
+            if p >= 299 {
+                assert_eq!(got, 0, "a strike every {p} s was banned at strike {got}");
+                continue;
+            }
+            let bound = if p < 150 {
+                4
+            } else {
+                // a_2 <= 0.2 + rho P (+ 0.001 rounding); each period then loses
+                // at least rho (300 - P), less 0.0005 for rounding.
+                let rho = RECOVERY_PER_SEC as f64;
+                3 + ((0.101 + rho * pf) / (rho * (299.0 - pf))).floor() as u64
+            };
+            assert!(
+                got >= 3 && got <= bound,
+                "P = {p}: banned at strike {got}, bound {bound}"
+            );
+            if p < 97 {
+                assert_eq!(got, 3, "P = {p}");
+            }
+        }
+        // The values TLC and recovery_bench give for 120 s and 290 s (480 s and 10 150 s).
+        assert_eq!(banned_at_strike(120.0, 400, 0.0), 4);
+        assert_eq!(banned_at_strike(290.0, 400, 0.0), 35);
+        // How often recovery is applied in between changes nothing.
+        for (p, poll) in [(120.0, 0.004), (250.0, 0.5), (290.0, 7.3)] {
+            assert_eq!(
+                banned_at_strike(p, 400, poll),
+                banned_at_strike(p, 400, 0.0)
+            );
+        }
+        assert_eq!(banned_at_strike(299.0, 3_000, 0.0), 0);
+        assert_eq!(banned_at_strike(300.0, 3_000, 5.0), 0);
+    }
+
+    /// Theorem 3: with no strike after the one that bans, a peer is readmitted between 300 s and
+    /// 500 s after it (plus the one-second recovery step).
+    #[test]
+    fn a_ban_lasts_between_300_and_500_seconds() {
+        let t0 = Instant::now();
+        let mut rng = Lcg(3);
+        let (mut shortest, mut longest) = (f64::MAX, 0.0f64);
+        for case in 0..2_000 {
+            let mut rep = PeerReputation::new_at(t0);
+            let mut t = 0.0;
+            let gap = [0.0, 10.0, 60.0, 150.0][case % 4];
+            while !rep.is_banned() {
+                t += gap * rng.next();
+                rep.penalise_at(STRIKE_PENALTY, at(t0, t));
+            }
+            let banned_at = t;
+            let mut step = 0.0;
+            while rep.is_banned() {
+                step += 1.0;
+                rep.recover_at(at(t0, banned_at + step));
+            }
+            shortest = shortest.min(step);
+            longest = longest.max(step);
+            assert!(
+                (300.0..=501.0).contains(&step),
+                "case {case}: ban lasted {step} s"
+            );
+        }
+        println!("ban lengths {shortest}..{longest} s");
+    }
 }
