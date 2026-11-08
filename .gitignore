@@ -37,5 +37,5 @@ Thumbs.db
 __pycache__/
 
 # ── Working drafts kept outside version control ──────────────────────────────
-docs/preprint/
+docs/paper/
 paper_workspace/
