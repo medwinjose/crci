@@ -34,7 +34,6 @@ async fn byzantine_peer_does_not_corrupt_honest_connection(
 
     let addr_a_req: SocketAddr = "127.0.0.1:0".parse()?;
     let tcp_a = TcpTransport::bind(
-        "node-a".to_string(),
         addr_a_req,
         crci_core::identity::Identity::new("transport").signing_key,
     )
@@ -56,7 +55,6 @@ async fn byzantine_peer_does_not_corrupt_honest_connection(
 
     let addr_b_req: SocketAddr = "127.0.0.1:0".parse()?;
     let tcp_b = TcpTransport::bind(
-        "node-b".to_string(),
         addr_b_req,
         crci_core::identity::Identity::new("transport").signing_key,
     )

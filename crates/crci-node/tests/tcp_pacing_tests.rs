@@ -27,7 +27,6 @@ fn signed(identity: &Identity, seq: u64) -> WireMessage {
 /// verify (about 140 frames/s), so that pacing, not the CPU, is what limits the link.
 async fn listener_paced(node_id: &str, rate: f64, burst: u32) -> TcpTransport {
     TcpTransport::bind_with_pacing(
-        node_id.to_string(),
         "127.0.0.1:0".parse().unwrap(),
         Identity::new(node_id).signing_key,
         rate,

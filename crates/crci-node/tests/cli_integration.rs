@@ -2,6 +2,17 @@ use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+/// The node ID a process printed at start (`Node <label> id <id>`).
+fn id_in(stdout: &str) -> String {
+    stdout
+        .lines()
+        .find(|l| l.starts_with("Node ") && l.contains(" id "))
+        .and_then(|l| l.split(" id ").nth(1))
+        .unwrap_or_else(|| panic!("no ID line in: {stdout}"))
+        .trim()
+        .to_string()
+}
+
 fn get_bin_path() -> std::path::PathBuf {
     let mut path = std::env::current_exe().unwrap();
     path.pop(); // remove dependency file name
@@ -17,7 +28,7 @@ async fn test_cli_message_send_and_receive() {
     let bin_path = get_bin_path();
     // 1. Start Node B as a listener
     let mut node_b = Command::new(&bin_path)
-        .args(["--listen", "127.0.0.1:0", "--node-id", "node-b"])
+        .args(["--listen", "127.0.0.1:0", "--label", "node-b"])
         .stdout(Stdio::piped())
         .spawn()
         .expect("Failed to start node-b");
@@ -61,7 +72,7 @@ async fn test_cli_message_send_and_receive() {
             &listen_addr,
             "--severity",
             "rescue",
-            "--node-id",
+            "--label",
             "node-a",
         ])
         .output()
@@ -69,6 +80,7 @@ async fn test_cli_message_send_and_receive() {
 
     assert!(output_a.status.success(), "node-a process failed");
     let stdout_a = String::from_utf8_lossy(&output_a.stdout);
+    let sender_id = id_in(&stdout_a);
     assert!(
         stdout_a.contains("SUCCESS: Message originated and sent to"),
         "node-a did not print success message. Output: {}",
@@ -89,7 +101,7 @@ async fn test_cli_message_send_and_receive() {
         if n == 0 {
             break;
         }
-        if line_b.contains("Node node-b received message from node-a") {
+        if line_b.contains(&format!("Node node-b received message from {sender_id}:")) {
             received = true;
             break;
         }
@@ -104,7 +116,7 @@ async fn test_cli_byzantine_mode() {
     let bin_path = get_bin_path();
     // 1. Start Node A as a listener
     let mut node_a = Command::new(&bin_path)
-        .args(["--listen", "127.0.0.1:0", "--node-id", "node-a"])
+        .args(["--listen", "127.0.0.1:0", "--label", "node-a"])
         .stdout(Stdio::piped())
         .spawn()
         .expect("Failed to start node-a");
@@ -150,7 +162,7 @@ async fn test_cli_byzantine_mode() {
             "1",
             "--interval",
             "10",
-            "--node-id",
+            "--label",
             "byz-node",
         ])
         .output()
@@ -158,6 +170,7 @@ async fn test_cli_byzantine_mode() {
 
     assert!(output_byz.status.success(), "byzantine node failed to run");
     let stdout_byz = String::from_utf8_lossy(&output_byz.stdout);
+    let byz_id = id_in(&stdout_byz);
     assert!(
         stdout_byz.contains("[byzantine-agent] Done. Total injections attempted"),
         "Byzantine output didn't contain done message. Output: {}",
@@ -178,7 +191,7 @@ async fn test_cli_byzantine_mode() {
         if n == 0 {
             break;
         }
-        if line_a.contains("Node node-a received message from byz-node") {
+        if line_a.contains(&format!("Node node-a received message from {byz_id}:")) {
             count += 1;
         }
         line_a.clear();
@@ -200,7 +213,7 @@ async fn test_cli_peers_dial() {
     // Start a node that dials both A and B (running without --listen exits immediately after dial attempts)
     let output = Command::new(&bin_path)
         .args([
-            "--node-id",
+            "--label",
             "dialer-node",
             "--peers",
             &format!("{},{}", addr_a, addr_b),

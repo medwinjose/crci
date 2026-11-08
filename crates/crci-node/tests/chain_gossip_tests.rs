@@ -4,6 +4,13 @@ use crci_core::runtime::NodeRuntime;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+/// One peer that authors the test messages. A message signed with the receiver's own key would
+/// carry the receiver's ID as origin and be dropped as its own echo.
+fn author() -> &'static crci_core::identity::Identity {
+    static AUTHOR: std::sync::OnceLock<crci_core::identity::Identity> = std::sync::OnceLock::new();
+    AUTHOR.get_or_init(|| crci_core::identity::Identity::new("peer"))
+}
+
 fn create_test_inbox() -> crci_core::transport::SharedInbox {
     Arc::new(Mutex::new(HashMap::new()))
 }
@@ -66,7 +73,7 @@ fn test_matching_head_no_divergence() {
     };
 
     // Simulate receiving it
-    let wire = crci_core::runtime::WireMessage::from_message(&msg, &node.identity);
+    let wire = crci_core::runtime::WireMessage::from_message(&msg, author());
     let bytes = serde_json::to_vec(&wire).unwrap();
 
     {
@@ -106,7 +113,7 @@ fn test_peer_ahead_no_divergence() {
         seq: 1,
     };
 
-    let wire = crci_core::runtime::WireMessage::from_message(&msg, &node.identity);
+    let wire = crci_core::runtime::WireMessage::from_message(&msg, author());
     let bytes = serde_json::to_vec(&wire).unwrap();
 
     {
@@ -146,11 +153,9 @@ fn test_mismatched_head_divergence_alert() {
         seq: 1,
     };
 
-    // The message claims origin "peer-b" but is signed with node-a's identity. Signature
-    // verification uses the embedded public key, and no key is pinned for "peer-b" yet,
-    // so the message passes both the signature and the key-consistency checks.
+    // A validly signed head announcement from another node; its origin is the signer's ID.
 
-    let wire = crci_core::runtime::WireMessage::from_message(&msg, &node.identity);
+    let wire = crci_core::runtime::WireMessage::from_message(&msg, author());
     let bytes = serde_json::to_vec(&wire).unwrap();
 
     {
@@ -168,7 +173,7 @@ fn test_mismatched_head_divergence_alert() {
     assert_eq!(node.byzantine_events, events_before + 1);
 
     let alert = &node.divergence_log[0];
-    assert_eq!(alert.peer_id, "peer-b");
+    assert_eq!(alert.peer_id, author().id);
     assert_eq!(alert.divergence_seq, head_seq);
 }
 
@@ -208,7 +213,7 @@ fn test_divergence_increments_byzantine_events() {
         seq: 1,
     };
 
-    let wire = crci_core::runtime::WireMessage::from_message(&msg, &node.identity);
+    let wire = crci_core::runtime::WireMessage::from_message(&msg, author());
     let bytes = serde_json::to_vec(&wire).unwrap();
 
     {

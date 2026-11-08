@@ -100,11 +100,11 @@ if ($DockerRunning -and -not $AllowNative) {
 
         Start-Sleep -Seconds 4
         Write-Host "[Narration] Dispatching normal telemetry from node-beta to node-alpha..."
-        docker compose exec node-beta crci-node --send "System status check: All systems normal." --to node-alpha:7001 --severity normal --node-id node-beta
+        docker compose exec node-beta crci-node --send "System status check: All systems normal." --to node-alpha:7001 --severity normal --label node-beta
 
         Start-Sleep -Seconds 5
         Write-Host "[Narration] Dispatching second normal telemetry report..."
-        docker compose exec node-beta crci-node --send "Weather report: Clear skies, no network jitter." --to node-alpha:7001 --severity normal --node-id node-beta
+        docker compose exec node-beta crci-node --send "Weather report: Clear skies, no network jitter." --to node-alpha:7001 --severity normal --label node-beta
 
         Start-Sleep -Seconds 5
         Write-Host "[Narration] Deploying adversarial Byzantine agent (node-byzantine)..."
@@ -165,7 +165,7 @@ if ($DockerRunning -and -not $AllowNative) {
 
     try {
         Write-Host "[2/4] Starting node-alpha daemon..." -ForegroundColor Gray
-        $AlphaProc = Start-Process $ExePath -ArgumentList "--listen", "127.0.0.1:7001", "--node-id", "node-alpha" -NoNewWindow -PassThru
+        $AlphaProc = Start-Process $ExePath -ArgumentList "--listen", "127.0.0.1:7001", "--label", "node-alpha" -NoNewWindow -PassThru
 
         # Wait for API to be healthy
         Write-Host "Waiting for node-alpha API to be healthy on port 8080..."
@@ -181,7 +181,7 @@ if ($DockerRunning -and -not $AllowNative) {
         Write-Host "✓ node-alpha API is healthy!"
 
         Write-Host "Starting node-beta daemon..." -ForegroundColor Gray
-        $BetaProc = Start-Process $ExePath -ArgumentList "--listen", "127.0.0.1:7002", "--node-id", "node-beta", "--peers", "127.0.0.1:7001" -NoNewWindow -PassThru
+        $BetaProc = Start-Process $ExePath -ArgumentList "--listen", "127.0.0.1:7002", "--label", "node-beta", "--peers", "127.0.0.1:7001" -NoNewWindow -PassThru
 
         # 3. Wait for Dashboard to be ready
         Write-Host "[3/4] Starting live dashboard Vite dev server on port 5173..."
@@ -213,15 +213,15 @@ if ($DockerRunning -and -not $AllowNative) {
 
         Start-Sleep -Seconds 4
         Write-Host "[Narration] Dispatching normal telemetry from node-beta to node-alpha..."
-        Start-Process $ExePath -ArgumentList '--send "System status check: All systems normal." --to 127.0.0.1:7001 --severity normal --node-id node-beta' -NoNewWindow -Wait
+        Start-Process $ExePath -ArgumentList '--send "System status check: All systems normal." --to 127.0.0.1:7001 --severity normal --label node-beta' -NoNewWindow -Wait
 
         Start-Sleep -Seconds 5
         Write-Host "[Narration] Dispatching second normal telemetry report..."
-        Start-Process $ExePath -ArgumentList '--send "Weather report: Clear skies, no network jitter." --to 127.0.0.1:7001 --severity normal --node-id node-beta' -NoNewWindow -Wait
+        Start-Process $ExePath -ArgumentList '--send "Weather report: Clear skies, no network jitter." --to 127.0.0.1:7001 --severity normal --label node-beta' -NoNewWindow -Wait
 
         Start-Sleep -Seconds 5
         Write-Host "[Narration] Deploying adversarial Byzantine agent (node-byzantine)..."
-        $ByzProc = Start-Process $ExePath -ArgumentList '--byzantine false_allclear --to 127.0.0.1:7001 --interval 500 --node-id node-byzantine' -NoNewWindow -PassThru
+        $ByzProc = Start-Process $ExePath -ArgumentList '--byzantine false_allclear --to 127.0.0.1:7001 --interval 500 --label node-byzantine' -NoNewWindow -PassThru
 
         Write-Host "[Narration] node-byzantine has joined the mesh and is flooding conflicting reports."
         Write-Host "[Narration] Watch the dashboard screen: its reputation will decay and trigger eviction..."

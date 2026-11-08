@@ -324,7 +324,7 @@ def main():
     for i in range(n):
         count, interval, offset = plan[i]
         cmd = ["ip", "netns", "exec", f"{NS}{i}", args.bin,
-               "--listen", f"{ip_of(i)}:{PORT}", "--node-id", f"n{i:03d}",
+               "--listen", f"{ip_of(i)}:{PORT}", "--label", f"n{i:03d}",
                "--peers", ",".join(f"{ip_of(j)}:{PORT}" for j in sorted(nbrs[i])),
                "--experiment-epoch-unix-ms", str(int(t0 * 1000))]
         if count:

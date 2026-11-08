@@ -709,7 +709,7 @@ Protocol logic at a scale one host cannot emulate with real processes. **These a
 network measurements:** no sockets, no loss, and time is simulated, so nothing here is a latency result.
 
 - **Harness:** `crates/crci-node/examples/mesh_sim` runs unmodified `NodeRuntime` instances and follows
-  `crci-node`'s receive path: one frame per pass, the authenticated `node_id#key` sender identity, separate
+  `crci-node`'s receive path: one frame per pass, the authenticated (key-derived) sender identity, separate
   peer addresses, relaying and the 30 s anti-entropy rounds, with a hop taking one 10 ms tick and a simulated
   clock (`use_manual_clock`). Signatures are real. `scripts/sim/run_sim.py` writes the scenarios from seeds
   with the testbed's topology generators and traffic plan; `scripts/sim/sim_report.py` writes the tables,

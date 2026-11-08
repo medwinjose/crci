@@ -45,8 +45,7 @@ async fn main() {
         tasks.push(tokio::spawn(async move {
             let name = format!("flood-c{c}");
             let me = Identity::new(&name);
-            let Ok(mut conn) = DialedConnection::connect(&target, &name, &me.signing_key).await
-            else {
+            let Ok(mut conn) = DialedConnection::connect(&target, &me.signing_key).await else {
                 failed.fetch_add(per_connection, Ordering::Relaxed);
                 return;
             };

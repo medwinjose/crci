@@ -35,9 +35,9 @@ fn forged(identity: &Identity, id: &str, origin: &str, seq: u64) -> WireMessage 
     wire
 }
 
-fn deliver(inbox: &SharedInbox, sender: &str, wires: &[WireMessage]) {
+fn deliver(to: &str, inbox: &SharedInbox, sender: &str, wires: &[WireMessage]) {
     let mut guard = inbox.lock().unwrap();
-    let queue = guard.entry(RECEIVER.to_string()).or_default();
+    let queue = guard.entry(to.to_string()).or_default();
     for wire in wires {
         queue.push((sender.to_string(), serde_json::to_vec(wire).unwrap()));
     }
@@ -58,6 +58,7 @@ fn honest_origin_sending_twenty_messages_over_time_has_all_accepted() {
 
     for seq in 1..=20u64 {
         deliver(
+            &node.id,
             &inbox,
             "alice",
             &[signed(&alice, &format!("alice-{}", seq), "alice", seq)],
@@ -82,11 +83,12 @@ fn forged_messages_claiming_an_origin_do_not_spend_its_budget() {
         let wires: Vec<WireMessage> = (1..=3u64)
             .map(|i| forged(&key, &format!("{}-{}", attacker, i), "alice", i))
             .collect();
-        deliver(&inbox, attacker, &wires);
+        deliver(&node.id, &inbox, attacker, &wires);
     }
     node.process_inbox();
 
     deliver(
+        &node.id,
         &inbox,
         "alice",
         &[signed(&alice, "alice-real", "alice", 10)],
@@ -120,7 +122,7 @@ fn invalid_signature_flood_is_bounded_by_strikes() {
             )
         })
         .collect();
-    deliver(&inbox, "flooder", &wires);
+    deliver(&node.id, &inbox, "flooder", &wires);
     node.process_inbox();
 
     // Three strikes ban the sender; no further signatures are checked.
@@ -139,19 +141,19 @@ fn invalid_signature_flood_is_bounded_by_strikes() {
 #[test]
 fn valid_signature_burst_is_bounded_by_sender_budget() {
     let (mut node, inbox) = receiver();
-    let sender = Identity::new("chatty");
 
+    // One sender relays one message from each of 100 origins.
     let wires: Vec<WireMessage> = (1..=100u64)
         .map(|i| {
             signed(
-                &sender,
+                &Identity::new(&format!("origin-{}", i)),
                 &format!("burst-{}", i),
                 &format!("origin-{}", i),
                 1,
             )
         })
         .collect();
-    deliver(&inbox, "chatty", &wires);
+    deliver(&node.id, &inbox, "chatty", &wires);
 
     let start = Instant::now();
     node.process_inbox();
@@ -186,8 +188,8 @@ fn copies_already_received_from_another_neighbour_spend_no_budget() {
         .map(|seq| signed(&alice, &format!("m-{seq}"), "alice", seq))
         .collect();
     for chunk in wires.chunks(SENDER_BURST as usize / 2) {
-        deliver(&inbox, "first-path", chunk);
-        deliver(&inbox, "second-path", chunk);
+        deliver(&node.id, &inbox, "first-path", chunk);
+        deliver(&node.id, &inbox, "second-path", chunk);
         node.process_inbox();
         node.sybil_guard.advance_time(Duration::from_secs(2));
     }
@@ -215,9 +217,9 @@ fn a_replay_over_budget_is_still_struck() {
     let wires: Vec<WireMessage> = (1..=SENDER_BURST as u64)
         .map(|seq| signed(&mallory, &format!("m-{seq}"), "mallory", seq))
         .collect();
-    deliver(&inbox, "mallory", &wires); // spends the whole burst
+    deliver(&node.id, &inbox, "mallory", &wires); // spends the whole burst
     node.process_inbox();
-    deliver(&inbox, "mallory", &wires[..3]); // replays with no budget left
+    deliver(&node.id, &inbox, "mallory", &wires[..3]); // replays with no budget left
     node.process_inbox();
     assert_eq!(node.byzantine_events, 3);
     assert!(node.sybil_guard.is_banned(&"mallory".to_string()));
@@ -242,7 +244,7 @@ fn one_origin_cannot_take_more_than_its_share_through_many_neighbours() {
                 signed(&mallory, &format!("m-{seq}"), "mallory", seq)
             })
             .collect();
-        deliver(&inbox, relay, &wires);
+        deliver(&node.id, &inbox, relay, &wires);
     }
     let delivered = node.process_inbox_delivered();
     assert_eq!(delivered.len(), ORIGIN_BURST as usize);
@@ -264,37 +266,42 @@ fn a_message_dropped_for_its_origins_budget_is_accepted_later() {
     let wires: Vec<WireMessage> = (1..=n)
         .map(|seq| signed(&alice, &format!("a-{seq}"), "alice", seq))
         .collect();
-    deliver(&inbox, "r1", &wires[..ORIGIN_BURST as usize]);
-    deliver(&inbox, "r2", &wires[ORIGIN_BURST as usize..]);
+    deliver(&node.id, &inbox, "r1", &wires[..ORIGIN_BURST as usize]);
+    deliver(&node.id, &inbox, "r2", &wires[ORIGIN_BURST as usize..]);
     assert_eq!(node.process_inbox_delivered().len(), ORIGIN_BURST as usize);
 
     node.sybil_guard
         .advance_time(Duration::from_secs_f32(1.0 / ORIGIN_REFILL_PER_SEC));
-    deliver(&inbox, "r3", &wires[ORIGIN_BURST as usize..]);
+    deliver(&node.id, &inbox, "r3", &wires[ORIGIN_BURST as usize..]);
     let later = node.process_inbox_delivered();
     assert_eq!(later.len(), 1);
     assert_eq!(later[0].id, format!("a-{n}"));
     assert_eq!(node.byzantine_events, 0);
 }
 
-/// The origin budget is charged only after the signature and the pinned key are checked,
-/// so messages that merely claim an honest origin cannot spend its budget.
+/// The origin budget is charged only after the message is authenticated (signature, and origin
+/// derived from the key), so messages that merely claim an honest origin cannot spend its budget.
 #[test]
 fn messages_claiming_an_origin_do_not_spend_its_budget() {
     let (mut node, inbox) = receiver();
     node.sybil_guard.use_manual_clock();
     let alice = Identity::new("alice");
     let eve = Identity::new("eve");
-    deliver(&inbox, "r1", &[signed(&alice, "a-1", "alice", 1)]); // pins alice's key
+    deliver(&node.id, &inbox, "r1", &[signed(&alice, "a-1", "alice", 1)]);
     let squatted: Vec<WireMessage> = (2..=SENDER_BURST as u64)
-        .map(|seq| signed(&eve, &format!("e-{seq}"), "alice", seq))
+        .map(|seq| {
+            let mut claim = signed(&eve, &format!("e-{seq}"), "", seq);
+            claim.origin = alice.id.clone();
+            claim.sign_with(&eve);
+            claim
+        })
         .collect();
-    deliver(&inbox, "r2", &squatted);
+    deliver(&node.id, &inbox, "r2", &squatted);
     assert_eq!(node.process_inbox_delivered().len(), 1);
 
     let honest: Vec<WireMessage> = (2..ORIGIN_BURST as u64 + 1)
         .map(|seq| signed(&alice, &format!("a-{seq}"), "alice", seq))
         .collect();
-    deliver(&inbox, "r3", &honest);
+    deliver(&node.id, &inbox, "r3", &honest);
     assert_eq!(node.process_inbox_delivered().len(), honest.len());
 }

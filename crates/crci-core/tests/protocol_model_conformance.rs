@@ -3,7 +3,8 @@
 //! through real `NodeRuntime` instances, one per honest node. Each model step becomes the same
 //! call on the code, with real signatures and real serialized frames, and after every step every
 //! node must hold what the model says: accepted messages, reputation and bans, the seen cache and
-//! the replay window. Requests, answers and relays are compared too.
+//! the replay window. Requests, answers and relays are compared too. The model names nodes; the
+//! code knows them by their key-derived IDs, translated at every call.
 
 use crci_core::identity::Identity;
 use crci_core::message::{Message, Signal, Visibility};
@@ -102,14 +103,13 @@ impl Replay {
                 } else {
                     continue;
                 };
-                node.peers.push(peer.clone());
                 want.rep.insert(peer.clone(), (50, false));
             }
             nodes.insert(id.to_string(), node);
             expected.insert(id.to_string(), want);
             actual_delivered.insert(id.to_string(), BTreeSet::new());
         }
-        Replay {
+        let mut replay = Replay {
             inbox,
             nodes,
             expected,
@@ -120,7 +120,46 @@ impl Replay {
             seen_keys: HashMap::new(),
             trace: label,
             step: 0,
+        };
+        // Peers are addressed by node ID, so they are linked once every node exists.
+        for (a, b) in &edges {
+            let (ia, ib) = (replay.id(a), replay.id(b));
+            if let Some(node) = replay.nodes.get_mut(a) {
+                node.peers.push(ib);
+            }
+            if let Some(node) = replay.nodes.get_mut(b) {
+                node.peers.push(ia);
+            }
         }
+        replay
+    }
+
+    /// The code's ID for model name `name`: an honest node's, or the key-derived ID of the
+    /// adversary's identity for that name.
+    fn id(&mut self, name: &str) -> String {
+        if let Some(node) = self.nodes.get(name) {
+            return node.id.clone();
+        }
+        self.identities
+            .entry(name.to_string())
+            .or_insert_with(|| Identity::new(name))
+            .id
+            .clone()
+    }
+
+    /// The model name of the code's ID `id`.
+    fn name(&self, id: &str) -> String {
+        self.nodes
+            .iter()
+            .find(|(_, n)| n.id == id)
+            .map(|(name, _)| name.clone())
+            .or_else(|| {
+                self.identities
+                    .iter()
+                    .find(|(_, i)| i.id == id)
+                    .map(|(name, _)| name.clone())
+            })
+            .unwrap_or_else(|| id.to_string())
     }
 
     fn at(&self) -> String {
@@ -163,19 +202,24 @@ impl Replay {
 
     fn deliver(&mut self, receiver: &str, sender: &str, wire: &WireMessage) {
         let bytes = serde_json::to_vec(wire).unwrap();
+        let (to, from) = (self.id(receiver), self.id(sender));
         self.inbox
             .lock()
             .unwrap()
-            .entry(receiver.to_string())
+            .entry(to)
             .or_default()
-            .push((sender.to_string(), bytes));
+            .push((from, bytes));
         let delivered = self
             .nodes
             .get_mut(receiver)
             .unwrap()
             .process_inbox_delivered();
+        let delivered: Vec<(String, u64)> = delivered
+            .into_iter()
+            .map(|w| (self.name(&w.origin), w.seq))
+            .collect();
         let held = self.actual_delivered.get_mut(receiver).unwrap();
-        held.extend(delivered.into_iter().map(|w| (w.origin, w.seq)));
+        held.extend(delivered);
     }
 
     /// Everything the code sent since the last call, without chain-head announcements (the
@@ -187,7 +231,7 @@ impl Replay {
             for (_, bytes) in queued {
                 let wire: WireMessage = serde_json::from_slice(&bytes).unwrap();
                 if !wire.message_type.contains("ChainHeadAnnouncement") {
-                    out.push((dest.clone(), wire));
+                    out.push((self.name(&dest), wire));
                 }
             }
         }
@@ -266,22 +310,38 @@ impl Replay {
                 .iter()
                 .map(|(origin, seq, id, sender)| (self.seen_key(origin, *seq, id), sender.clone()))
                 .collect();
+            let ids: BTreeMap<String, String> = want
+                .rep
+                .keys()
+                .chain(want.seen.iter().map(|(_, _, _, sender)| sender))
+                .map(|n| (n.clone(), self.id(n)))
+                .collect();
+            let window_names: BTreeMap<String, String> = self
+                .nodes
+                .iter()
+                .map(|(n, node)| (node.id.clone(), n.clone()))
+                .chain(
+                    self.identities
+                        .iter()
+                        .map(|(n, i)| (i.id.clone(), n.clone())),
+                )
+                .collect();
             let node = self.nodes.get_mut(&name).unwrap();
             for (peer, (score, banned)) in &want.rep {
-                let got = node.sybil_guard.reputation(peer);
+                let got = node.sybil_guard.reputation(&ids[peer]);
                 assert!(
                     (got - *score as f32 / 100.0).abs() < SCORE_TOLERANCE,
                     "{at}: {name}'s score of {peer}: code {got}, model {score}"
                 );
                 assert_eq!(
-                    node.sybil_guard.is_banned(peer),
+                    node.sybil_guard.is_banned(&ids[peer]),
                     *banned,
                     "{at}: {name}'s ban of {peer} at {got}"
                 );
             }
             let want_seen: BTreeSet<(String, u64)> = want_seen
                 .into_iter()
-                .map(|(key, sender)| (key, node.sender_tag(&sender)))
+                .map(|(key, sender)| (key, node.sender_tag(&ids[&sender])))
                 .collect();
             let got_seen: BTreeSet<(String, u64)> = node
                 .seen_messages
@@ -294,7 +354,10 @@ impl Replay {
                 .replay_filter
                 .digest(SYNC_MAX_ORIGINS)
                 .into_iter()
-                .map(|(origin, max, held)| (origin, (max, held)))
+                .map(|(origin, max, held)| {
+                    let origin = window_names.get(&origin).cloned().unwrap_or(origin);
+                    (origin, (max, held))
+                })
                 .collect();
             assert_eq!(got_window, want.window, "{at}: {name}'s replay window");
         }
@@ -336,14 +399,18 @@ impl Replay {
     fn request(&mut self, event: &Value) {
         let (r, s) = (text(event, "r"), text(event, "s"));
         let rid = event["rid"].as_u64().unwrap();
+        let peer = self.id(&s);
         let node = self.nodes.get_mut(&r).unwrap();
         let request = node.build_sync_request(None);
-        node.open_sync_session(&s, &request);
+        node.open_sync_session(&peer, &request);
         let digest = request.sync.as_ref().unwrap();
         let got: BTreeSet<(String, u64)> = digest
             .origins
             .iter()
-            .flat_map(|o| o.held.iter().map(move |k| (o.origin.clone(), *k)))
+            .flat_map(|o| {
+                let origin = self.name(&o.origin);
+                o.held.iter().map(move |k| (origin.clone(), *k))
+            })
             .collect();
         let want: BTreeSet<(String, u64)> =
             event["held"].as_array().unwrap().iter().map(pair).collect();
@@ -351,7 +418,7 @@ impl Replay {
         let got: BTreeMap<String, u64> = digest
             .origins
             .iter()
-            .map(|o| (o.origin.clone(), o.seq_max))
+            .map(|o| (self.name(&o.origin), o.seq_max))
             .collect();
         let want: BTreeMap<String, u64> = event["max"]
             .as_object()
@@ -383,7 +450,7 @@ impl Replay {
                 "{}: answer tag",
                 self.at()
             );
-            got.push((wire.origin.clone(), wire.seq));
+            got.push((self.name(&wire.origin), wire.seq));
         }
         got.sort();
         let want: Vec<(String, u64)> = event["batch"]
@@ -419,6 +486,7 @@ impl Replay {
         let mut wire = self.frame(&id, &origin, seq, signature_valid);
         wire.answers_sync = answers;
 
+        let (origin_id, sender_id) = (self.id(&origin), self.id(&s));
         let node = &self.nodes[&r];
         let before = (
             node.byzantine_events,
@@ -432,12 +500,12 @@ impl Replay {
         if origin == r {
             coverage.own_echoes += 1;
         }
-        if node.replay_filter.is_out_of_window(&origin, seq) {
+        if node.replay_filter.is_out_of_window(&origin_id, seq) {
             coverage.stale += 1;
             if node
                 .seen_messages
                 .get(&message_key(&wire))
-                .is_some_and(|senders| senders.contains(&node.sender_tag(&s)))
+                .is_some_and(|senders| senders.contains(&node.sender_tag(&sender_id)))
             {
                 coverage.stale_repeats += 1;
             }

@@ -145,8 +145,8 @@ def cost_table(rows, timing):
     lines = [
         "| Topology | N | Mean degree | Runtime alone, s, mean (max) | Peak memory, MiB (max) | "
         "Memory per node, MiB | Seen IDs per node, mean | Sender records per node, mean | "
-        "Kept messages per node, mean | Known keys per node, mean |",
-        "|" + "---|" * 10,
+        "Kept messages per node, mean |",
+        "|" + "---|" * 9,
     ]
     groups = group_by(rows, "kind", "N")
     for (kind, n), g in sorted(groups.items(), key=lambda kv: (kv[0][0] != "rgg", int(kv[0][1]))):
@@ -157,8 +157,7 @@ def cost_table(rows, timing):
             f"| {mean(alone):.1f} ({max(alone):.1f}) | {rss:,.0f} | {rss / int(n):.2f} "
             f"| {mean([num(r, 'state_seen_ids_mean') for r in g]):.0f} "
             f"| {mean([num(r, 'state_seen_senders_mean') for r in g]):.0f} "
-            f"| {mean([num(r, 'state_recent_msgs_mean') for r in g]):.0f} "
-            f"| {mean([num(r, 'state_known_keys_mean') for r in g]):.0f} |")
+            f"| {mean([num(r, 'state_recent_msgs_mean') for r in g]):.0f} |")
     return lines
 
 
@@ -167,8 +166,8 @@ def long_table(rows):
         "| Topology | Attackers | Seed | Messages | False evictions | Strikes on honest | Bans / "
         "honest neighbours | Readmissions | Delivery after bans, mean (min) | Rate drops | "
         "Origin drops | Seen-ID cache clears | Seen IDs per node, mean (max) | Kept messages per "
-        "node, mean (max) | Known keys, mean (max) | Runtime, s | Peak memory, MiB |",
-        "|" + "---|" * 17,
+        "node, mean (max) | Runtime, s | Peak memory, MiB |",
+        "|" + "---|" * 16,
     ]
     for r in sorted(rows, key=lambda r: (r["kind"] != "rgg", int(r["attackers_spec"]), r["seed"])):
         lines.append(
@@ -179,7 +178,6 @@ def long_table(rows):
             f"| {r['rate_drops']} | {r['origin_drops']} | {r['seen_cache_clears']} "
             f"| {num(r, 'state_seen_ids_mean'):.0f} ({r['state_seen_ids_max']}) "
             f"| {num(r, 'state_recent_msgs_mean'):.0f} ({r['state_recent_msgs_max']}) "
-            f"| {num(r, 'state_known_keys_mean'):.0f} ({r['state_known_keys_max']}) "
             f"| {num(r, 'runtime_s'):.0f} | {num(r, 'peak_rss_kib') / 1024:,.0f} |")
     return lines
 

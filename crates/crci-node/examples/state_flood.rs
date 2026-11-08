@@ -94,7 +94,7 @@ fn main() {
     let base = LIVE.load(Ordering::Relaxed) - harness_bytes;
 
     eprintln!(
-        "messages,live_bytes,peak_bytes,known_keys,origin_budgets,replay_origins,seen,persistent,\
+        "messages,live_bytes,peak_bytes,origin_budgets,replay_origins,seen,persistent,\
          observations,recent_origins,forgotten,rss_kib"
     );
     let mut done = 0usize;
@@ -122,7 +122,7 @@ fn main() {
             if let Ok(bytes) = serde_json::to_vec(&wire) {
                 if let Ok(mut guard) = inbox.lock() {
                     guard
-                        .entry("receiver".to_string())
+                        .entry(node.id.clone())
                         .or_default()
                         .push((format!("s{}", i % senders), bytes));
                 }
@@ -159,12 +159,11 @@ fn main() {
             .load(Ordering::Relaxed)
             .saturating_sub(base + harness_bytes);
         eprintln!(
-            "{},{},{},{},{},{},{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{},{},{},{},{}",
             done,
             live,
             PEAK.load(Ordering::Relaxed)
                 .saturating_sub(base + harness_bytes),
-            node.known_keys.len(),
             node.origin_budgets.len(),
             node.replay_filter.tracked_origins(),
             node.seen_messages.len(),

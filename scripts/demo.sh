@@ -101,11 +101,11 @@ if [ "$DOCKER_RUNNING" = true ] && [ "$ALLOW_NATIVE" = false ]; then
 
   sleep 4
   echo "[Narration] Dispatching normal telemetry from node-beta to node-alpha..."
-  docker compose exec node-beta crci-node --send "System status check: All systems normal." --to node-alpha:7001 --severity normal --node-id node-beta
+  docker compose exec node-beta crci-node --send "System status check: All systems normal." --to node-alpha:7001 --severity normal --label node-beta
 
   sleep 5
   echo "[Narration] Dispatching second normal telemetry report..."
-  docker compose exec node-beta crci-node --send "Weather report: Clear skies, no network jitter." --to node-alpha:7001 --severity normal --node-id node-beta
+  docker compose exec node-beta crci-node --send "Weather report: Clear skies, no network jitter." --to node-alpha:7001 --severity normal --label node-beta
 
   sleep 5
   echo "[Narration] Deploying adversarial Byzantine agent (node-byzantine)..."
@@ -160,7 +160,7 @@ else
   trap cleanup_local EXIT
 
   echo "[2/4] Starting node-alpha daemon..."
-  $EXE_PATH --listen 127.0.0.1:7001 --node-id node-alpha >/dev/null 2>&1 &
+  $EXE_PATH --listen 127.0.0.1:7001 --label node-alpha >/dev/null 2>&1 &
   ALPHA_PID=$!
 
   # Wait for API to be healthy
@@ -171,7 +171,7 @@ else
   echo "✓ node-alpha API is healthy!"
 
   echo "Starting node-beta daemon..."
-  $EXE_PATH --listen 127.0.0.1:7002 --node-id node-beta --peers 127.0.0.1:7001 >/dev/null 2>&1 &
+  $EXE_PATH --listen 127.0.0.1:7002 --label node-beta --peers 127.0.0.1:7001 >/dev/null 2>&1 &
   BETA_PID=$!
 
   # 3. Wait for Dashboard to be ready
@@ -207,15 +207,15 @@ else
 
   sleep 4
   echo "[Narration] Dispatching normal telemetry from node-beta to node-alpha..."
-  $EXE_PATH --send "System status check: All systems normal." --to 127.0.0.1:7001 --severity normal --node-id node-beta
+  $EXE_PATH --send "System status check: All systems normal." --to 127.0.0.1:7001 --severity normal --label node-beta
 
   sleep 5
   echo "[Narration] Dispatching second normal telemetry report..."
-  $EXE_PATH --send "Weather report: Clear skies, no network jitter." --to 127.0.0.1:7001 --severity normal --node-id node-beta
+  $EXE_PATH --send "Weather report: Clear skies, no network jitter." --to 127.0.0.1:7001 --severity normal --label node-beta
 
   sleep 5
   echo "[Narration] Deploying adversarial Byzantine agent (node-byzantine)..."
-  $EXE_PATH --byzantine false_allclear --to 127.0.0.1:7001 --interval 500 --node-id node-byzantine >/dev/null 2>&1 &
+  $EXE_PATH --byzantine false_allclear --to 127.0.0.1:7001 --interval 500 --label node-byzantine >/dev/null 2>&1 &
   BYZ_PID=$!
 
   echo "[Narration] node-byzantine has joined the mesh and is flooding conflicting reports."

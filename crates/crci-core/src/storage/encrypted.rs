@@ -98,6 +98,9 @@ impl EncryptedStore {
         let mut f = OpenOptions::new().append(true).open(&self.path)?;
         f.write_all(&len.to_le_bytes())?;
         f.write_all(&serialized)?;
+        // On disk before the caller acts on it (a reserved sequence-number floor must survive a
+        // power loss, or the next start would reuse numbers already sent).
+        f.sync_all()?;
         Ok(())
     }
 }

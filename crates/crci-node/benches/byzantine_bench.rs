@@ -30,7 +30,7 @@ fn run_trials(
         inbox_a
             .lock()
             .unwrap()
-            .entry("node-a".to_string())
+            .entry(node_a.id.clone())
             .or_insert_with(Vec::new)
             .push(("node-h".to_string(), raw_h));
         node_a.process_inbox();
@@ -45,7 +45,7 @@ fn run_trials(
         inbox_a
             .lock()
             .unwrap()
-            .entry("node-a".to_string())
+            .entry(node_a.id.clone())
             .or_insert_with(Vec::new)
             .push(("node-b".to_string(), raw_b_initial));
         node_a.process_inbox();
@@ -60,7 +60,7 @@ fn run_trials(
             inbox_a
                 .lock()
                 .unwrap()
-                .entry("node-a".to_string())
+                .entry(node_a.id.clone())
                 .or_insert_with(Vec::new)
                 .push(("node-b".to_string(), raw_b));
             node_a.process_inbox();
@@ -140,7 +140,7 @@ fn compare_naive_vs_sliding() {
     inbox
         .lock()
         .unwrap()
-        .entry("node-a".to_string())
+        .entry(node_a.id.clone())
         .or_insert_with(Vec::new)
         .push(("node-h".to_string(), raw_5));
     node_a.process_inbox(); // max_seq is now 5
@@ -153,7 +153,7 @@ fn compare_naive_vs_sliding() {
     inbox
         .lock()
         .unwrap()
-        .entry("node-a".to_string())
+        .entry(node_a.id.clone())
         .or_insert_with(Vec::new)
         .push(("node-h".to_string(), raw_4));
     node_a.process_inbox(); // Out of order packet arrives

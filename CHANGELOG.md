@@ -6,7 +6,22 @@ git history; `git log` is the complete record.
 
 ## [Unreleased]
 
+### Security
+- Node IDs are derived from public keys: the first 16 bytes of SHA-256 over a domain tag and the Ed25519
+  key, as 32 hex characters. A message is authentic only if its origin is the ID derived from the key that
+  signed it, and the TCP handshake refuses a peer whose declared ID is not derived from the key it proved.
+  Before, an origin ID was a free string pinned to the first key seen, so an adversary that announced an
+  honest node's ID first made receivers drop that node's messages. Such a claim is now a forgery: dropped,
+  and its sender struck like the sender of a bad signature. Key pinning is removed.
+
 ### Added
+- `crci-node --key-file FILE --key-passphrase-file FILE` keeps the node key in an encrypted file
+  (AES-256-GCM, Argon2id), created on first start, so a restarted node keeps its ID. A wrong passphrase stops
+  the node instead of creating a new key. Each start reserves the next 2^32 sequence numbers in that file,
+  so a restarted node never reuses a sequence number its neighbours already hold from it. The encrypted
+  store now syncs each appended record to disk, so a reserved floor survives a power loss.
+- `crci-node` (`--listen`, `--send`, `--byzantine`) prints `Node <label> id <id>` once at start; log lines
+  name peers and origins by node ID, and `scripts/testbed/analyze.py` maps them back to labels.
 - Analytical bounds on the reputation rule and the strike rule, with proofs, in
   `docs/formal-verification.md`: a strike budget (three strikes within 100 s ban; an identity that is never
   banned takes at most 14 strikes per hour), the exact threshold and banning strike of a paced replayer, a
@@ -34,6 +49,9 @@ git history; `git log` is the complete record.
   tried to allocate without limit on the first message. Values above 1 024 are now refused at start-up.
 
 ### Changed
+- `crci-node --node-id` is now `--label`: a name for log lines only, never sent or authenticated. The unused
+  `--identity-seed` option is removed. `TcpTransport::bind` and `DialedConnection::connect` take no node ID
+  (it is derived from the key), and `peer_identity` returns the declared ID only if it matches the key.
 - Per-node state is bounded: origins (896, the least active forgotten first), the seen cache (1 792 entries, was
   5 000), recent messages (1 024), rescue messages (256), transport peers (1 024, banned peers kept longest,
   where the old pruning deleted exactly those), sync sessions, the Merkle chain (the newest blocks), relay queues

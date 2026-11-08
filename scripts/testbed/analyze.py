@@ -29,15 +29,15 @@ import sys
 from collections import defaultdict, deque
 
 ORIGINATED = re.compile(r"Node (n\d+) originated '([^']+)' at_ms=(\d+)")
-ACCEPTED = re.compile(r"Node (n\d+) accepted '([^']+)' \(origin (\S+), via ([^#]+)#\S*\) at_ms=(\d+)"
+ACCEPTED = re.compile(r"Node (n\d+) accepted '([^']+)' \(origin (\S+), via ([^#\s)]+)(?:#\S*)?\) at_ms=(\d+)"
                       r"(?: path=(\w+))?(?: proc_us=(\d+))?(?: \(\+(\d+) not printed\))?")
-RECEIVED = re.compile(r"Node (n\d+) received message from ([^#]+)#.*?"
+RECEIVED = re.compile(r"Node (n\d+) received message from ([^#:\s]+)(?:#\S*)?:.*?"
                       r"(?: \(\+(\d+) not printed\))?$")
 RELAY_DROPS = re.compile(r"Node (n\d+) relay drops: failed=(\d+) queue_full=(\d+)")
-BANNED = re.compile(r"Node (n\d+) banned ([^#]+)#\S+ at_ms=(\d+)")
-READMITTED = re.compile(r"Node (n\d+) readmitted ([^#]+)#\S+ at_ms=(\d+)")
+BANNED = re.compile(r"Node (n\d+) banned ([^#\s]+)(?:#\S*)? at_ms=(\d+)")
+READMITTED = re.compile(r"Node (n\d+) readmitted ([^#\s]+)(?:#\S*)? at_ms=(\d+)")
 FAULT = re.compile(r"Node (n\d+) fault: .* at_ms=(\d+)")
-RATE = re.compile(r"\[(n\d+)\] SYBIL GUARD DROP: peer ([^#]+)#\S+ exceeded rate limit"
+RATE = re.compile(r"\[(n\d+)\] SYBIL GUARD DROP: peer ([^#\s]+)(?:#\S*)? exceeded rate limit"
                   r"(?: \(\+(\d+) not printed\))?")
 ORIGIN_DROP = re.compile(r"\[(n\d+)\] ORIGIN BUDGET DROP: '[^']+' from origin '([^']+)'.*?"
                          r"(?: \(\+(\d+) not printed\))?$")
@@ -47,6 +47,28 @@ BANNED_DROPPED = re.compile(r"Node (n\d+) banned-peer frames dropped: total=(\d+
 LINES_HELD = re.compile(r"Node (n\d+) log lines not printed: received=(\d+) accepted=(\d+)")
 SYNC_REQUESTED = re.compile(r"Node (n\d+) requested sync from ")
 WARMUP_MS = 5000
+# Each node prints its label and its key-derived node ID once at start; every other line names
+# peers and origins by node ID. (Logs from builds before key-derived IDs name peers `label#key`;
+# the patterns accept both.)
+NODE_ID = re.compile(r"^Node (\S+) id ([0-9a-f]{32})$")
+HEX_ID = re.compile(r"\b[0-9a-f]{32}\b")
+
+
+def node_labels(paths):
+    """Node ID -> label, from the start-up line of each log."""
+    labels = {}
+    for path in paths:
+        with open(path, errors="replace") as f:
+            for line in f:
+                if m := NODE_ID.match(line.strip()):
+                    labels[m[2]] = m[1]
+                    break
+    return labels
+
+
+def labelled(line, labels):
+    """`line` with every node ID replaced by its node's label."""
+    return HEX_ID.sub(lambda m: labels.get(m[0], m[0]), line) if labels else line
 
 
 def pct(values, p):
@@ -134,9 +156,11 @@ def main():
     # shutdown, or, for the accepted lines, the counts at the end of later lines if larger.
     held_total = {}
     accepted_suffix = defaultdict(int)
+    labels = node_labels([f"{out}/logs/n{i}.log" for i in range(n)])
     for i in range(n):
         with open(f"{out}/logs/n{i}.log", errors="replace") as f:
             for line in f:
+                line = labelled(line, labels)
                 if m := ORIGINATED.search(line):
                     originated[m[2]] = (m[1], int(m[3]))
                 elif m := ACCEPTED.search(line):
@@ -174,7 +198,7 @@ def main():
                     if "id=head-" in line:
                         counters["chain_head_frames"] += 1
                 for key in ("MALICIOUS REPLAY", "REPLAY dropped", "INVALID SIGNATURE",
-                            "STALE", "PUBKEY MISMATCH", "is banned"):
+                            "ORIGIN NOT DERIVED FROM KEY", "STALE", "is banned"):
                     if key in line:
                         counters[key] += 1
 

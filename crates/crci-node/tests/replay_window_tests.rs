@@ -43,7 +43,7 @@ fn deliver(node: &mut NodeRuntime, inbox: &SharedInbox, relay: &str, wire: &Wire
     inbox
         .lock()
         .unwrap()
-        .entry(NODE.to_string())
+        .entry(node.id.clone())
         .or_default()
         .push((relay.to_string(), bytes));
     node.process_inbox();

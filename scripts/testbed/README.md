@@ -90,7 +90,9 @@ Each run uses a 60 s measurement window starting at T0, after every node is list
   evicted, S's messages must reach D over longer alternate paths.
 
 Node log lines used by the analysis carry a Unix-millisecond timestamp (`at_ms=`): `originated`,
-`accepted`, `banned`, `readmitted` and the fault start. All namespaces share the host clock.
+`accepted`, `banned`, `readmitted` and the fault start. All namespaces share the host clock. A node names
+itself by its label (`n007`) and its peers and origins by their key-derived node IDs; it prints
+`Node <label> id <id>` once at start, and `analyze.py` maps the IDs back to labels.
 
 ## Fidelity criteria
 

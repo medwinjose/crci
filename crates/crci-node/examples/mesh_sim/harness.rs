@@ -3,7 +3,7 @@
 //! The loop follows `crci-node`'s receive path: each frame goes through
 //! `process_inbox_delivered` on its own, what the node queued is relayed (twice by an attacker
 //! once its fault is active), and every peer answers to its authenticated identity
-//! (`node_id#key`) and is addressed by a separate name, as on TCP. A hop takes one tick, every
+//! (its key-derived node ID) and is addressed by a separate name, as on TCP. A hop takes one tick, every
 //! link delivers in order and nothing is lost. Time is simulated (`use_manual_clock`), so a tick
 //! says nothing about real latency; the result depends only on the scenario.
 
@@ -127,8 +127,6 @@ pub struct Outcome {
     pub state_recent_msgs_mean: f64,
     pub state_recent_msgs_max: usize,
     pub state_window_seqs_mean: f64,
-    pub state_known_keys_mean: f64,
-    pub state_known_keys_max: usize,
     /// Origins forgotten because of the per-node limits, over all nodes.
     pub origins_forgotten: u64,
     /// Frames from attackers delivered to honest nodes that had not banned them yet.
@@ -175,22 +173,6 @@ fn address(i: usize) -> String {
     format!("a{i}")
 }
 
-fn identity_of(node: &NodeRuntime) -> String {
-    let key: String = node
-        .identity
-        .verifying_key
-        .as_bytes()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect();
-    format!("{}#{}", node.id, key)
-}
-
-/// Node index of an authenticated identity (`n012#...`).
-fn index_of(identity: &str) -> Option<usize> {
-    identity.get(1..)?.split('#').next()?.parse().ok()
-}
-
 fn take_all(inbox: &SharedInbox) -> HashMap<String, Vec<(String, Vec<u8>)>> {
     std::mem::take(&mut *inbox.lock().unwrap_or_else(|e| e.into_inner()))
 }
@@ -229,7 +211,9 @@ fn components(adj: &[Vec<usize>], removed: &[bool]) -> (Vec<usize>, Vec<usize>) 
 struct Sim<'a> {
     scenario: &'a Scenario,
     nodes: Vec<NodeRuntime>,
+    /// Node ID (the authenticated transport identity) of each node, and the reverse map.
     identities: Vec<String>,
+    index: HashMap<String, usize>,
     adj: Vec<Vec<usize>>,
     attacker: Vec<bool>,
     /// Frames the node queued, for an attacker: relayed from here so they can be repeated.
@@ -326,10 +310,15 @@ impl Sim<'_> {
         link.banned = banned;
     }
 
+    /// Node index of an authenticated identity.
+    fn index_of(&self, identity: &str) -> Option<usize> {
+        self.index.get(identity).copied()
+    }
+
     fn deliver_frame(&mut self, i: usize, sender_identity: String, bytes: Vec<u8>, now_ms: u64) {
         self.out.frames += 1;
         self.advance(i, now_ms);
-        let sender = index_of(&sender_identity);
+        let sender = self.index_of(&sender_identity);
         if let Some(s) = sender {
             if self.attacker[s] && !self.attacker[i] {
                 if let Ok(pos) = self.adj[i].binary_search(&s) {
@@ -581,15 +570,12 @@ impl Sim<'_> {
                 .map(|(_, _, held)| held.len())
                 .sum()
         });
-        let (keys_mean, keys_max) = per_node(&|x| x.known_keys.len());
         self.out.state_seen_ids_mean = seen_mean;
         self.out.state_seen_ids_max = seen_max;
         self.out.state_seen_senders_mean = senders_mean;
         self.out.state_recent_msgs_mean = recent_mean;
         self.out.state_recent_msgs_max = recent_max;
         self.out.state_window_seqs_mean = window_mean;
-        self.out.state_known_keys_mean = keys_mean;
-        self.out.state_known_keys_max = keys_max;
         // Honest links and what the observers did with them.
         for &i in &honest {
             for (pos, &peer) in self.adj[i].iter().enumerate() {
@@ -702,7 +688,7 @@ pub fn run(scenario: &Scenario) -> Outcome {
         if let Some(w) = scenario.config.replay_window {
             node.replay_filter.window_size = w;
         }
-        let identity = identity_of(&node);
+        let identity = node.id.clone();
         let outbox = attacker[i].then(|| -> SharedInbox { Arc::new(Mutex::new(HashMap::new())) });
         let link = outbox.clone().unwrap_or_else(|| outgoing.clone());
         node.transport = SimTransport::new(&identity, link);
@@ -759,6 +745,7 @@ pub fn run(scenario: &Scenario) -> Outcome {
     let mut sim = Sim {
         scenario,
         nodes,
+        index: identities.iter().cloned().zip(0..).collect(),
         identities,
         adj,
         attacker,
@@ -830,11 +817,11 @@ pub fn run(scenario: &Scenario) -> Outcome {
                 continue;
             };
             for frame in frames {
-                if index_of(&frame.0).is_some_and(|s| !sim.link_up(s, i)) {
+                if sim.index_of(&frame.0).is_some_and(|s| !sim.link_up(s, i)) {
                     continue;
                 }
                 let duplicate = dup_prob > 0.0
-                    && index_of(&frame.0).is_some_and(|s| !sim.attacker[s])
+                    && sim.index_of(&frame.0).is_some_and(|s| !sim.attacker[s])
                     && dup_rng.next_f64() < dup_prob;
                 if duplicate {
                     in_flight[i].push(frame.clone());

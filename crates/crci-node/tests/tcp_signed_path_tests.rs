@@ -2,7 +2,8 @@
 //!
 //! A receiver runs `crci-node --listen`; a second process sends to it over loopback TCP
 //! (`--send` for honest traffic, `--byzantine <mode>` for an adversary). The receiver's
-//! stdout shows what its `NodeRuntime` did with each message.
+//! stdout shows what its `NodeRuntime` did with each message. Every process prints its
+//! key-derived node ID at start (`Node <label> id <id>`); logs name peers and origins by it.
 
 use std::io::{BufRead, BufReader, Read};
 use std::process::{Child, ChildStdout, Command, Stdio};
@@ -36,6 +37,18 @@ struct Receiver {
     child: Child,
     reader: BufReader<ChildStdout>,
     addr: String,
+    id: String,
+}
+
+/// The node ID a process printed at start.
+fn id_in(stdout: &str) -> String {
+    stdout
+        .lines()
+        .find(|l| l.starts_with("Node ") && l.contains(" id "))
+        .and_then(|l| l.split(" id ").nth(1))
+        .unwrap_or_else(|| panic!("no ID line in:\n{stdout}"))
+        .trim()
+        .to_string()
 }
 
 fn start_receiver(node_id: &str) -> Receiver {
@@ -46,7 +59,7 @@ fn start_node(node_id: &str, extra_args: &[&str]) -> Receiver {
     // Port 0: the node binds a free port itself and prints it, so no other test can take it
     // between choosing and binding.
     let mut child = Command::new(bin_path())
-        .args(["--listen", "127.0.0.1:0", "--node-id", node_id])
+        .args(["--listen", "127.0.0.1:0", "--label", node_id])
         .args(extra_args)
         .stdout(Stdio::piped())
         .spawn()
@@ -55,10 +68,12 @@ fn start_node(node_id: &str, extra_args: &[&str]) -> Receiver {
 
     let start = Instant::now();
     let mut line = String::new();
+    let mut id = String::new();
     while start.elapsed() < Duration::from_secs(10) {
         line.clear();
         match reader.read_line(&mut line) {
             Ok(0) => break,
+            Ok(_) if line.starts_with("Node ") && line.contains(" id ") => id = id_in(&line),
             Ok(_) if line.starts_with("Node ") && line.contains(" listening on ") => {
                 let addr = line
                     .split_whitespace()
@@ -69,6 +84,7 @@ fn start_node(node_id: &str, extra_args: &[&str]) -> Receiver {
                     child,
                     reader,
                     addr,
+                    id,
                 };
             }
             _ => {}
@@ -106,7 +122,7 @@ fn run_adversary(target: &str, node_id: &str, mode: &str) -> String {
             mode,
             "--to",
             target,
-            "--node-id",
+            "--label",
             node_id,
             "--duration",
             "1",
@@ -124,8 +140,9 @@ fn count(haystack: &str, needle: &str) -> usize {
     haystack.lines().filter(|l| l.contains(needle)).count()
 }
 
-/// Originate one signed rescue message from `node_id` and send it to `target`.
-fn send_signed(target: &str, node_id: &str) {
+/// Originate one signed rescue message from a new node labelled `label` and send it to
+/// `target`. Returns the sender's node ID (the message's origin).
+fn send_signed(target: &str, label: &str) -> String {
     let out = Command::new(bin_path())
         .args([
             "--send",
@@ -134,12 +151,13 @@ fn send_signed(target: &str, node_id: &str) {
             target,
             "--severity",
             "rescue",
-            "--node-id",
-            node_id,
+            "--label",
+            label,
         ])
         .output()
         .expect("failed to run sender");
     assert!(out.status.success());
+    id_in(&String::from_utf8_lossy(&out.stdout))
 }
 
 #[test]
@@ -149,8 +167,9 @@ fn accepted_messages_are_relayed_to_a_dialed_peer() {
 
     // Two different origins: a router that keyed next hops by origin would send the
     // second message to node ID "node-a", which TCP cannot address.
-    send_signed(&relay.addr, "node-a");
-    send_signed(&relay.addr, "node-x");
+    let a = send_signed(&relay.addr, "node-a");
+    let x = send_signed(&relay.addr, "node-x");
+    let relay_id = relay.id.clone();
     let relay_log = relay.finish();
     let log = downstream.finish();
 
@@ -162,12 +181,12 @@ fn accepted_messages_are_relayed_to_a_dialed_peer() {
     );
     assert_eq!(count(&log, "accepted '"), 2, "downstream log:\n{}", log);
     assert!(
-        log.contains("origin node-a, via tcp-b#"),
+        log.contains(&format!("origin {a}, via {relay_id})")),
         "downstream log:\n{}",
         log
     );
     assert!(
-        log.contains("origin node-x, via tcp-b#"),
+        log.contains(&format!("origin {x}, via {relay_id})")),
         "downstream log:\n{}",
         log
     );
@@ -176,12 +195,12 @@ fn accepted_messages_are_relayed_to_a_dialed_peer() {
 #[test]
 fn honest_signed_message_is_accepted_over_tcp() {
     let receiver = start_receiver("tcp-r1");
-    send_signed(&receiver.addr, "node-a");
+    let a = send_signed(&receiver.addr, "node-a");
     let log = receiver.finish();
 
     assert_eq!(count(&log, "accepted '"), 1, "receiver log:\n{}", log);
     assert!(
-        log.contains("origin node-a, via node-a#"),
+        log.contains(&format!("origin {a}, via {a})")),
         "receiver log:\n{}",
         log
     );
@@ -196,20 +215,20 @@ fn honest_signed_message_is_accepted_over_tcp() {
 #[test]
 fn signed_replay_over_tcp_bans_the_sender_after_three_strikes() {
     let receiver = start_receiver("tcp-r2");
-    run_adversary(&receiver.addr, "byz-replay", "replay");
+    let adversary = id_in(&run_adversary(&receiver.addr, "byz-replay", "replay"));
     let log = receiver.finish();
 
     // The first copy is accepted; the next three are strikes; the third strike bans.
     assert_eq!(count(&log, "accepted '"), 1, "receiver log:\n{}", log);
     assert_eq!(
-        count(&log, "MALICIOUS REPLAY from 'byz-replay#"),
+        count(&log, &format!("MALICIOUS REPLAY from '{adversary}'")),
         3,
         "receiver log:\n{}",
         log
     );
     assert!(
         log.lines()
-            .any(|l| l.contains(" banned byz-replay#") && l.contains("at_ms=")),
+            .any(|l| l.contains(&format!(" banned {adversary} at_ms="))),
         "receiver log:\n{}",
         log
     );
@@ -218,7 +237,11 @@ fn signed_replay_over_tcp_bans_the_sender_after_three_strikes() {
 #[test]
 fn bad_signature_over_tcp_is_rejected() {
     let receiver = start_receiver("tcp-r3");
-    run_adversary(&receiver.addr, "byz-badsig", "bad_signature");
+    let adversary = id_in(&run_adversary(
+        &receiver.addr,
+        "byz-badsig",
+        "bad_signature",
+    ));
     let log = receiver.finish();
 
     assert_eq!(count(&log, "accepted '"), 0, "receiver log:\n{}", log);
@@ -229,7 +252,7 @@ fn bad_signature_over_tcp_is_rejected() {
     );
     assert!(
         log.lines()
-            .any(|l| l.contains(" banned byz-badsig#") && l.contains("at_ms=")),
+            .any(|l| l.contains(&format!(" banned {adversary} at_ms="))),
         "receiver log:\n{}",
         log
     );
@@ -263,7 +286,7 @@ fn unsigned_mass_casualty_event_over_tcp_is_rejected() {
     );
 }
 
-/// Identity (`node-id#key`) the receiver attributed message `id` to, from its log.
+/// Identity (node ID) the receiver attributed message `id` to, from its log.
 fn sender_of(log: &str, id: &str) -> String {
     let line = log
         .lines()
@@ -278,15 +301,16 @@ fn sender_of(log: &str, id: &str) -> String {
     after.split(':').next().unwrap_or("").to_string()
 }
 
-/// An adversary that claims an honest node's ID and replays must not get that node
-/// penalised: strikes bind to the key the connection authenticated, not to a claimed ID.
+/// An adversary that takes an honest node's label and replays must not get that node
+/// penalised: strikes bind to the node ID the connection authenticated, which is derived from
+/// the adversary's own key.
 #[test]
-fn adversary_claiming_an_honest_id_cannot_get_it_banned() {
+fn adversary_with_an_honest_label_cannot_get_it_banned() {
     let receiver = start_receiver("tcp-r6");
     // The real node-a sends one honest message.
-    send_signed(&receiver.addr, "node-a");
-    // An adversary then declares itself "node-a" and replays until it is banned.
-    run_adversary(&receiver.addr, "node-a", "replay");
+    let honest_id = send_signed(&receiver.addr, "node-a");
+    // An adversary labelled "node-a" then replays until it is banned.
+    let adversary_id = id_in(&run_adversary(&receiver.addr, "node-a", "replay"));
     let log = receiver.finish();
 
     let honest_line = log
@@ -307,14 +331,14 @@ fn adversary_claiming_an_honest_id_cannot_get_it_banned() {
         .unwrap_or("")
         .to_string();
     let adversary = sender_of(&log, "replayed-msg-1");
-    assert!(
-        honest.starts_with("node-a#"),
+    assert_eq!(
+        honest, honest_id,
         "receiver log:
 {}",
         log
     );
-    assert!(
-        adversary.starts_with("node-a#"),
+    assert_eq!(
+        adversary, adversary_id,
         "receiver log:
 {}",
         log
@@ -362,11 +386,13 @@ fn adversary_claiming_an_honest_id_cannot_get_it_banned() {
 #[test]
 fn late_node_catches_up_through_anti_entropy() {
     let a = start_receiver("tcp-sa");
-    for origin in ["node-x1", "node-x2", "node-x3"] {
-        send_signed(&a.addr, origin);
-    }
+    let origins: Vec<String> = ["node-x1", "node-x2", "node-x3"]
+        .iter()
+        .map(|label| send_signed(&a.addr, label))
+        .collect();
     let b = start_node("tcp-sb", &["--peers", &a.addr]);
     std::thread::sleep(std::time::Duration::from_secs(2));
+    let (a_id, b_id) = (a.id.clone(), b.id.clone());
     let b_log = b.finish();
     let a_log = a.finish();
 
@@ -376,14 +402,14 @@ fn late_node_catches_up_through_anti_entropy() {
         b_log
     );
     assert!(
-        a_log.contains("answering sync request from 'tcp-sb#")
+        a_log.contains(&format!("answering sync request from '{b_id}'"))
             && a_log.contains("with 3 message(s)"),
         "first node log:\n{}",
         a_log
     );
-    for origin in ["node-x1", "node-x2", "node-x3"] {
+    for origin in &origins {
         assert!(
-            b_log.contains(&format!("(origin {origin}, via tcp-sa#")),
+            b_log.contains(&format!("(origin {origin}, via {a_id})")),
             "late node log:\n{}",
             b_log
         );
@@ -420,7 +446,7 @@ fn node_started_before_its_peer_relays_to_it_once_it_is_up() {
     std::thread::sleep(Duration::from_millis(500));
 
     let mut downstream = Command::new(bin_path())
-        .args(["--listen", &downstream_addr, "--node-id", "tcp-late"])
+        .args(["--listen", &downstream_addr, "--label", "tcp-late"])
         .stdout(Stdio::piped())
         .spawn()
         .expect("failed to start downstream node");
@@ -436,16 +462,17 @@ fn node_started_before_its_peer_relays_to_it_once_it_is_up() {
         }
     }
 
-    send_signed(&relay.addr, "node-after");
+    let after = send_signed(&relay.addr, "node-after");
     std::thread::sleep(Duration::from_millis(1000));
     let _ = downstream.kill();
     let _ = downstream.wait();
     let mut log = String::new();
     let _ = reader.read_to_string(&mut log);
+    let relay_id = relay.id.clone();
     let relay_log = relay.finish();
 
     assert!(
-        log.contains("(origin node-after, via tcp-early#"),
+        log.contains(&format!("(origin {after}, via {relay_id})")),
         "downstream log:
 {}
 relay log:
@@ -474,6 +501,7 @@ fn emitted_messages_reach_a_peer_with_timestamps() {
         ],
     );
     std::thread::sleep(Duration::from_millis(1000));
+    let emitter_id = emitter.id.clone();
     let emitter_log = emitter.finish();
     let log = downstream.finish();
 
@@ -485,7 +513,10 @@ fn emitted_messages_reach_a_peer_with_timestamps() {
     );
     let accepted: Vec<&str> = log
         .lines()
-        .filter(|l| l.contains("accepted '") && l.contains("(origin tcp-emitter, via tcp-emitter#"))
+        .filter(|l| {
+            l.contains("accepted '")
+                && l.contains(&format!("(origin {emitter_id}, via {emitter_id})"))
+        })
         .collect();
     assert_eq!(accepted.len(), 3, "downstream log:\n{}", log);
     assert!(
@@ -516,6 +547,7 @@ fn a_replaying_node_is_banned_by_its_peer() {
         ],
     );
     std::thread::sleep(Duration::from_millis(1000));
+    let faulty_id = faulty.id.clone();
     let faulty_log = faulty.finish();
     let log = downstream.finish();
 
@@ -526,13 +558,13 @@ fn a_replaying_node_is_banned_by_its_peer() {
     );
     assert_eq!(count(&log, "accepted '"), 3, "downstream log:\n{}", log);
     assert_eq!(
-        count(&log, "MALICIOUS REPLAY from 'tcp-faulty#"),
+        count(&log, &format!("MALICIOUS REPLAY from '{faulty_id}'")),
         3,
         "downstream log:\n{}",
         log
     );
     assert_eq!(
-        count(&log, "Node tcp-fault-sink banned tcp-faulty#"),
+        count(&log, &format!("Node tcp-fault-sink banned {faulty_id} ")),
         1,
         "downstream log:\n{}",
         log
@@ -564,6 +596,7 @@ fn a_banned_forger_is_disconnected_and_costs_nothing() {
         ],
     );
     std::thread::sleep(Duration::from_millis(3500));
+    let forger_id = forger.id.clone();
     drop(forger);
     let log = sink.finish();
 
@@ -582,7 +615,7 @@ fn a_banned_forger_is_disconnected_and_costs_nothing() {
         log
     );
     assert_eq!(
-        count(&log, "Node tcp-forge-sink banned tcp-forger#"),
+        count(&log, &format!("Node tcp-forge-sink banned {forger_id} ")),
         1,
         "sink log:
 {}",
@@ -597,7 +630,7 @@ fn a_banned_forger_is_disconnected_and_costs_nothing() {
     );
     // Frames that were already in flight when the ban took effect may still arrive; the
     // other ~290 must never be read.
-    let received = count(&log, "received message from tcp-forger#");
+    let received = count(&log, &format!("received message from {forger_id}:"));
     assert!(
         received <= 60,
         "{} frames reached the node after three strikes:
@@ -612,34 +645,45 @@ fn a_banned_forger_is_disconnected_and_costs_nothing() {
 #[test]
 fn defence_flags_change_what_a_receiver_does_with_a_replayer() {
     let full = start_node("tcp-def-full", &[]);
-    run_adversary(&full.addr, "byz-full", "replay");
+    let adversary = id_in(&run_adversary(&full.addr, "byz-full", "replay"));
     let full_log = full.finish();
-    assert_eq!(count(&full_log, " banned byz-full#"), 1, "{full_log}");
+    assert_eq!(
+        count(&full_log, &format!(" banned {adversary} ")),
+        1,
+        "{full_log}"
+    );
 
     let vanilla = start_node("tcp-def-vanilla", &["--defence", "vanilla"]);
-    run_adversary(&vanilla.addr, "byz-vanilla", "replay");
+    let adversary = id_in(&run_adversary(&vanilla.addr, "byz-vanilla", "replay"));
     let vanilla_log = vanilla.finish();
     assert!(
-        count(&vanilla_log, "MALICIOUS REPLAY from 'byz-vanilla#") > 3,
+        count(
+            &vanilla_log,
+            &format!("MALICIOUS REPLAY from '{adversary}'")
+        ) > 3,
         "the strikes are still counted:
 {vanilla_log}"
     );
     assert_eq!(
-        count(&vanilla_log, " banned byz-vanilla#"),
+        count(&vanilla_log, &format!(" banned {adversary} ")),
         0,
         "{vanilla_log}"
     );
 
     let strict = start_node("tcp-def-k1", &["--strikes-to-ban", "1"]);
-    run_adversary(&strict.addr, "byz-k1", "replay");
+    let adversary = id_in(&run_adversary(&strict.addr, "byz-k1", "replay"));
     let strict_log = strict.finish();
     assert_eq!(
-        count(&strict_log, "MALICIOUS REPLAY from 'byz-k1#"),
+        count(&strict_log, &format!("MALICIOUS REPLAY from '{adversary}'")),
         1,
         "k = 1 bans at the first strike:
 {strict_log}"
     );
-    assert_eq!(count(&strict_log, " banned byz-k1#"), 1, "{strict_log}");
+    assert_eq!(
+        count(&strict_log, &format!(" banned {adversary} ")),
+        1,
+        "{strict_log}"
+    );
 }
 
 /// A TCP proxy in front of one listener. While `discard` is set it swallows what the dialer
@@ -731,28 +775,27 @@ fn lose_a_frame_then_cut(traffic_after: bool) {
     // Let both start-up syncs finish, then open A's relay connection to B, and let any sync
     // that connection's opening scheduled pass (one cooldown), so it cannot mask the loss.
     std::thread::sleep(Duration::from_millis(1500));
-    send_signed(&a.addr, "node-before-loss");
+    let mut expected = vec![send_signed(&a.addr, "node-before-loss")];
     std::thread::sleep(Duration::from_secs(8));
 
     proxy
         .discard
         .store(true, std::sync::atomic::Ordering::SeqCst);
-    send_signed(&a.addr, "node-lost");
+    expected.push(send_signed(&a.addr, "node-lost"));
     std::thread::sleep(Duration::from_millis(500));
     proxy.cut();
-    let mut expected = vec!["node-before-loss", "node-lost"];
     if traffic_after {
         // The next relay finds the connection closed and dials a new one.
-        send_signed(&a.addr, "node-after-loss");
-        expected.push("node-after-loss");
+        expected.push(send_signed(&a.addr, "node-after-loss"));
     }
     std::thread::sleep(Duration::from_secs(10));
+    let a_id = a.id.clone();
     let b_log = b.finish();
     let a_log = a.finish();
 
     for origin in expected {
         assert!(
-            b_log.contains(&format!("(origin {origin}, via tcp-loss-a#")),
+            b_log.contains(&format!("(origin {origin}, via {a_id})")),
             "{origin} missing at B\nB log:\n{b_log}\nA log:\n{a_log}"
         );
     }
@@ -769,7 +812,7 @@ fn an_unreachable_peer_does_not_delay_start_up() {
         .args([
             "--listen",
             "127.0.0.1:0",
-            "--node-id",
+            "--label",
             "tcp-startup",
             "--peers",
             "192.0.2.1:7000,192.0.2.2:7000",
@@ -799,4 +842,155 @@ fn an_unreachable_peer_does_not_delay_start_up() {
         "node took {:?} to start listening",
         listening
     );
+}
+
+/// With `--key-file` a node keeps its ID across restarts; a wrong passphrase stops it at start
+/// instead of making a new key.
+#[test]
+fn a_node_with_a_key_file_keeps_its_id_across_restarts() {
+    let dir = tempfile::tempdir().unwrap();
+    let key = dir.path().join("node.key");
+    let pass = dir.path().join("pass.txt");
+    std::fs::write(&pass, "correct horse\n").unwrap();
+    let args = [
+        "--key-file",
+        key.to_str().unwrap(),
+        "--key-passphrase-file",
+        pass.to_str().unwrap(),
+    ];
+    let first = start_node("tcp-keep", &args);
+    let first_id = first.id.clone();
+    drop(first);
+    let second = start_node("tcp-keep-again", &args);
+    assert_eq!(second.id, first_id, "a restart must keep the node ID");
+    drop(second);
+    let fresh = start_node("tcp-keep", &[]);
+    assert_ne!(
+        fresh.id, first_id,
+        "without a key file every start has a new ID"
+    );
+    drop(fresh);
+
+    std::fs::write(&pass, "wrong\n").unwrap();
+    let out = Command::new(bin_path())
+        .args(["--listen", "127.0.0.1:0", "--label", "tcp-keep"])
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("Cannot load the node key"),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+/// An impostor that announces an honest node's ID first, over TCP, does not silence it: the
+/// claim is not authentic (its origin is not derived from the impostor's key), so the receiver
+/// strikes the impostor, and the honest node's message, which arrives later, is accepted.
+#[test]
+fn an_impostor_announcing_an_honest_id_over_tcp_does_not_silence_it() {
+    use crci_core::identity::Identity;
+    use crci_core::message::{Message, Signal, Visibility};
+    use crci_core::runtime::WireMessage;
+
+    let receiver = start_receiver("tcp-squat-sink");
+    let honest = start_node(
+        "tcp-squat-honest",
+        &[
+            "--peers",
+            &receiver.addr,
+            "--emit-count",
+            "1",
+            "--emit-delay-ms",
+            "1500",
+        ],
+    );
+    let honest_id = honest.id.clone();
+
+    let impostor = Identity::new("tcp-squat-honest");
+    let mut msg = Message::new(
+        "claim-1",
+        &honest_id,
+        Signal::new(5, true, false, true, 3, Visibility::Direct),
+        None,
+    );
+    msg.seq = 1;
+    let mut claim = WireMessage::from_message(&msg, &impostor);
+    claim.origin = honest_id.clone();
+    claim.sign_with(&impostor);
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(crci_core::transport::tcp::send_authenticated(
+            &receiver.addr,
+            &impostor.signing_key,
+            &[claim],
+        ))
+        .unwrap();
+
+    std::thread::sleep(Duration::from_millis(2500));
+    drop(honest);
+    let log = receiver.finish();
+
+    assert_eq!(count(&log, "ORIGIN NOT DERIVED FROM KEY"), 1, "{log}");
+    assert_eq!(
+        count(&log, &format!("(origin {honest_id}, via {honest_id})")),
+        1,
+        "the honest node's message must be accepted:\n{log}"
+    );
+    assert_eq!(count(&log, "PUBKEY MISMATCH"), 0, "{log}");
+}
+
+/// A node restarted from its key file sends under the same ID to a peer that kept its messages
+/// from the first run. Its new messages (and its sync requests) are numbered above the first
+/// run's, so the peer accepts them and strikes nothing; without the stored floor they would
+/// reuse sequence numbers the peer holds and be struck as replays.
+#[test]
+fn a_node_restarted_from_its_key_file_is_not_struck_by_its_peer() {
+    let dir = tempfile::tempdir().unwrap();
+    let key = dir.path().join("node.key");
+    let pass = dir.path().join("pass.txt");
+    std::fs::write(&pass, "pw\n").unwrap();
+    let peer = start_receiver("tcp-restart-peer");
+    let args = |emit: &'static str| {
+        vec![
+            "--key-file".to_string(),
+            key.to_str().unwrap().to_string(),
+            "--key-passphrase-file".to_string(),
+            pass.to_str().unwrap().to_string(),
+            "--peers".to_string(),
+            peer.addr.clone(),
+            "--emit-count".to_string(),
+            emit.to_string(),
+            "--emit-interval-ms".to_string(),
+            "100".to_string(),
+            "--emit-delay-ms".to_string(),
+            "300".to_string(),
+        ]
+    };
+    let first_args = args("2");
+    let first = start_node(
+        "tcp-restarted",
+        &first_args.iter().map(String::as_str).collect::<Vec<_>>(),
+    );
+    std::thread::sleep(Duration::from_millis(1200));
+    let id = first.id.clone();
+    drop(first);
+    let second_args = args("2");
+    let second = start_node(
+        "tcp-restarted",
+        &second_args.iter().map(String::as_str).collect::<Vec<_>>(),
+    );
+    assert_eq!(second.id, id);
+    std::thread::sleep(Duration::from_millis(1200));
+    drop(second);
+    let log = peer.finish();
+
+    assert_eq!(
+        count(&log, &format!("(origin {id}, via {id})")),
+        4,
+        "every message of both runs is accepted:\n{log}"
+    );
+    assert_eq!(count(&log, "MALICIOUS REPLAY"), 0, "{log}");
+    assert_eq!(count(&log, " banned "), 0, "{log}");
 }

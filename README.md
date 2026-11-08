@@ -22,12 +22,13 @@ low-bandwidth links (LoRa runs at a few kbit/s), where nodes join, leave and par
 
 CRCI moves misbehaviour isolation **into the gossip layer itself** and makes it **purely local**:
 
-- **Every message is signed.** Each node has an Ed25519 identity; messages carry the author's public key,
-  a signature and a sequence number.
+- **Every message is signed.** Each node has an Ed25519 key pair, and its node ID is derived from the
+  public key; messages carry the author's public key, a signature and a sequence number. A message whose
+  origin is not the ID of the key that signed it is rejected like a forgery.
 - **Each node keeps its own reputation score for each neighbour.** Only violations a receiver can verify
   by itself count against a neighbour: replaying a message it already sent or forwarding an invalid
-  signature. On TCP a neighbour is identified by the key it proves in a challenge-response handshake, so
-  one peer cannot get another struck by claiming its ID.
+  signature. On TCP a neighbour is identified by the node ID of the key it proves in a challenge-response
+  handshake, so one peer cannot get another struck by claiming its ID.
 - **Three strikes isolate.** A neighbour starts at 0.5 and loses 0.15 per strike; below 0.1 it is banned
   locally. The same message arriving through a *different* neighbour is ordinary gossip redundancy and is
   never penalised.
@@ -56,7 +57,7 @@ Every incoming message, in-process or over TCP, passes through the same local pi
 
 ```
 ban list → duplicate check per neighbour → token bucket → Ed25519 verification
-  → author-key pinning → per-origin budget → replay filter → accept
+  (origin must be the signing key's ID) → per-origin budget → replay filter → accept
                  └──── each verifiable violation: −0.15 reputation for the sending neighbour ────┘
 ```
 
@@ -128,8 +129,8 @@ cargo test --workspace
 Run a node (HTTP API on port 8080), then send it a message from a second terminal:
 
 ```bash
-cargo run -p crci-node --bin crci-node -- --listen 127.0.0.1:7001 --node-id node-a
-cargo run -p crci-node --bin crci-node -- --send "hello" --to 127.0.0.1:7001 --node-id node-b
+cargo run -p crci-node --bin crci-node -- --listen 127.0.0.1:7001 --label node-a
+cargo run -p crci-node --bin crci-node -- --send "hello" --to 127.0.0.1:7001 --label node-b
 ```
 
 Reproduce the benchmarks:
@@ -155,9 +156,9 @@ CRCI is an active research project. The isolation pipeline runs in the node runt
 networked TCP node and the test suite. Done: a network-emulation testbed of real processes (20–500
 nodes, loss, delay, jitter, reordering, attacker variants, invalid-signature floods, link flapping, defence baselines and ablations, and a sweep of the share of replaying nodes up to 45 %) and an in-process simulation of up to 5 000
 nodes, cross-checked against the testbed ([results](docs/benchmarks.md#in-process-simulation-up-to-5-000-nodes)).
-Current work, in order:
-
-1. Origin IDs derived from public keys, so an ID cannot be claimed before its owner.
+Node IDs are derived from public keys, so no node can claim another's ID, and a node started with
+`--key-file` keeps its ID across restarts. Current work: regenerating every measurement on the final
+build.
 
 Out of scope: large-scale Sybil attacks, colluding adversaries, and physical LoRa/BLE radios (the BLE and
 LoRa transports are interface stubs). Known gaps are tracked in [docs/threat-model.md](docs/threat-model.md).

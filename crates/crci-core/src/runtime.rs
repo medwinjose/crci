@@ -76,7 +76,7 @@ const SYNC_ANSWERED_MAX: usize = 1024;
 // Per-node limits. Memory must not grow with the number of identities an adversary can mint, so
 // every table keyed by something a peer chooses has a limit.
 //
-// An origin costs state in several tables (`known_keys`, `origin_budgets`, both replay windows,
+// An origin costs state in several tables (`origin_budgets`, both replay windows,
 // the recent store). Above `MAX_TRACKED_ORIGINS` or `MAX_PEER_RECORDS` the node forgets a batch of
 // origins whole, those with the fewest accepted messages first, the longest idle among equals.
 // A flood of new identities therefore pushes out its own identities first: to displace an origin
@@ -84,7 +84,7 @@ const SYNC_ANSWERED_MAX: usize = 1024;
 // `MAX_TRACKED_ORIGINS` identities, at the rate its neighbours' budgets allow.
 //
 // Forgetting has a price, and bounded memory cannot avoid it while identities are free: the
-// origin's key pin and window are gone, so one of its old messages can be accepted again, and
+// origin's window is gone, so one of its old messages can be accepted again, and
 // relaying that copy gets this node struck by a neighbour that still remembers the origin.
 
 /// Origins a node keeps state for. A hash table holds 7/8 of its buckets before it doubles, so
@@ -296,18 +296,10 @@ pub fn message_key(wire: &WireMessage) -> String {
     key
 }
 
-/// True if `sender` is the request's author: the same node ID in-process, or the
-/// authenticated TCP identity (`node_id#key`) of the signing key.
+/// True if `sender` (the transport identity: a node ID, authenticated on TCP) is the request's
+/// author.
 fn sender_is_author(sender: &str, wire: &WireMessage) -> bool {
-    if sender == wire.origin {
-        return true;
-    }
-    let key_hex: String = wire
-        .origin_pubkey
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect();
-    sender == format!("{}#{}", wire.origin, key_hex)
+    sender == wire.origin
 }
 
 fn round_to_3_dec(val: f64) -> f64 {
@@ -453,7 +445,8 @@ impl WireMessage {
     pub fn from_message(msg: &Message, identity: &Identity) -> WireMessage {
         let mut wire = WireMessage {
             id: msg.id.clone(),
-            origin: msg.origin.clone(),
+            // The origin of a signed message is its signer: `msg.origin` is not used.
+            origin: identity.id.clone(),
             origin_pubkey: identity.verifying_key.to_bytes().to_vec(),
             severity: msg.signal.severity,
             confidence: msg.signal.confidence,
@@ -485,7 +478,13 @@ impl WireMessage {
         wire
     }
 
+    /// Whether the message is authentic: its origin is the node ID derived from `origin_pubkey`
+    /// and the signature over `signing_bytes()` verifies under that key. A message that claims
+    /// another node's ID is no more authentic than one with a broken signature.
     pub fn verify_signature(&self) -> bool {
+        if !self.origin_matches_key() {
+            return false;
+        }
         let key_bytes: [u8; 32] = match self.origin_pubkey.as_slice().try_into() {
             Ok(b) => b,
             Err(_) => return false,
@@ -504,6 +503,11 @@ impl WireMessage {
         verifying_key
             .verify_strict(&self.signing_bytes(), &signature)
             .is_ok()
+    }
+
+    /// Whether the origin is the node ID derived from `origin_pubkey`.
+    pub fn origin_matches_key(&self) -> bool {
+        self.origin == crate::identity::derive_node_id(&self.origin_pubkey)
     }
 
     #[allow(dead_code)]
@@ -545,7 +549,10 @@ impl WireMessage {
 }
 
 pub struct NodeRuntime {
+    /// Node ID, derived from `identity`'s key; also this node's in-process transport address.
     pub id: String,
+    /// Human-readable name used in log lines; not authenticated.
+    pub label: String,
     pub identity: Identity,
     pub reputation: f64,
     pub zone: String,
@@ -563,7 +570,6 @@ pub struct NodeRuntime {
     pub storage: crate::storage::legacy::NodeStorage,
     pub storage_backend: Option<std::sync::Arc<dyn crate::storage::StorageBackend>>,
     pub observations: Vec<(String, u8, u8, bool)>,
-    pub known_keys: HashMap<String, Vec<u8>>,
     pub replay_filter: crate::replay::ReplayFilter,
     /// Replay window of received control messages (sync requests, chain-head announcements).
     pub control_replay_filter: crate::replay::ReplayFilter,
@@ -654,13 +660,20 @@ impl NodeRuntime {
         self.origin_budget_enabled = mode == DefenceMode::Full;
     }
 
-    pub fn new(id: &str, zone: &str, inbox: SharedInbox) -> NodeRuntime {
-        let transport = SimTransport::new(id, inbox.clone());
-        let identity = Identity::new(id);
+    /// A node with a fresh key pair, labelled `label`. Its ID is derived from the key.
+    pub fn new(label: &str, zone: &str, inbox: SharedInbox) -> NodeRuntime {
+        NodeRuntime::with_identity(Identity::new(label), zone, inbox)
+    }
+
+    /// A node with an existing identity (for example a key loaded from the encrypted store).
+    pub fn with_identity(identity: Identity, zone: &str, inbox: SharedInbox) -> NodeRuntime {
+        let id = identity.id.clone();
+        let transport = SimTransport::new(&id, inbox.clone());
         let key_bytes = identity.signing_key.to_bytes();
-        let storage = crate::storage::legacy::NodeStorage::new(id, &key_bytes);
+        let storage = crate::storage::legacy::NodeStorage::new(&id, &key_bytes);
         NodeRuntime {
-            id: id.to_string(),
+            label: identity.label.clone(),
+            id,
             identity,
             reputation: round_to_3_dec(1.0),
             zone: zone.to_string(),
@@ -675,7 +688,6 @@ impl NodeRuntime {
             observations: Vec::new(),
             storage,
             storage_backend: None,
-            known_keys: HashMap::new(),
             replay_filter: crate::replay::ReplayFilter::new(),
             control_replay_filter: crate::replay::ReplayFilter::new(),
             seq_counter: 0,
@@ -810,7 +822,6 @@ impl NodeRuntime {
             .collect();
         for origin in &victims {
             self.origin_activity.remove(origin);
-            self.known_keys.remove(origin);
             self.origin_budgets.remove(origin);
             self.replay_filter.forget(origin);
             self.control_replay_filter.forget(origin);
@@ -977,7 +988,7 @@ impl NodeRuntime {
         if !sender_is_author(sender, request) {
             println!(
                 "  [{}] sync request by '{}' relayed by '{}' — ignored",
-                self.id, request.origin, sender
+                self.label, request.origin, sender
             );
             return;
         }
@@ -990,7 +1001,7 @@ impl NodeRuntime {
         {
             println!(
                 "  [{}] oversized sync digest from '{}' — ignored",
-                self.id, sender
+                self.label, sender
             );
             return;
         }
@@ -1003,7 +1014,7 @@ impl NodeRuntime {
         if !self.sync_answer_budget.try_consume_at(now) {
             println!(
                 "  [{}] sync answer budget exhausted — request from '{}' not answered",
-                self.id, sender
+                self.label, sender
             );
             return;
         }
@@ -1053,7 +1064,7 @@ impl NodeRuntime {
             .unwrap_or_else(|| sender.to_string());
         println!(
             "  🔄 [{}] answering sync request from '{}' with {} message(s)",
-            self.id,
+            self.label,
             sender,
             batch.len()
         );
@@ -1098,7 +1109,7 @@ impl NodeRuntime {
             mce_zones: vec![],
         };
         if let Err(e) = self.storage.save(&state) {
-            println!("  ⚠ [{}] save failed: {}", self.id, e);
+            println!("  ⚠ [{}] save failed: {}", self.label, e);
         }
     }
 
@@ -1110,14 +1121,14 @@ impl NodeRuntime {
                 self.peers = state.peers;
                 println!(
                     "  ✅ [{}] restored: rep={:.2}, {} peers, {} rescues",
-                    self.id,
+                    self.label,
                     self.reputation,
                     self.peers.len(),
                     state.rescue_messages.len()
                 );
             }
             Err(e) => {
-                println!("  ℹ [{}] no prior state ({})", self.id, e);
+                println!("  ℹ [{}] no prior state ({})", self.label, e);
             }
         }
     }
@@ -1141,7 +1152,7 @@ impl NodeRuntime {
 
     pub fn go_offline(&mut self) {
         self.is_online = false;
-        println!("  ⚡ [{}] went OFFLINE", self.id);
+        println!("  ⚡ [{}] went OFFLINE", self.label);
     }
 
     pub fn originate(&mut self, mut msg: Message) {
@@ -1153,7 +1164,7 @@ impl NodeRuntime {
             msg.seq = self.seq_counter;
         }
         if !self.is_online {
-            println!("  [{}] OFFLINE — cannot originate", self.id);
+            println!("  [{}] OFFLINE — cannot originate", self.label);
             return;
         }
         let wire = WireMessage::from_message(&msg, &self.identity);
@@ -1172,7 +1183,7 @@ impl NodeRuntime {
             Err(e) => {
                 println!(
                     "  ⚠ [{}] failed to serialize origination message: {}",
-                    self.id, e
+                    self.label, e
                 );
                 return;
             }
@@ -1185,7 +1196,7 @@ impl NodeRuntime {
             .collect::<String>();
         println!(
             "  ✍  [{}] originating '{}' → sig: {}...",
-            self.id, wire.id, sig_preview
+            self.label, wire.id, sig_preview
         );
 
         let now_ms = crate::message::now_ts();
@@ -1236,7 +1247,7 @@ impl NodeRuntime {
             let mut wire: WireMessage = match serde_json::from_slice(&raw) {
                 Ok(w) => w,
                 Err(_) => {
-                    println!("  [{}] received malformed bytes — dropped", self.id);
+                    println!("  [{}] received malformed bytes — dropped", self.label);
                     continue;
                 }
             };
@@ -1280,7 +1291,7 @@ impl NodeRuntime {
                         if window.is_out_of_window(&wire.origin, wire.seq) {
                             println!(
                                 "  ⏰ [{}] STALE resend of '{}' from '{}' — out of window, dropped",
-                                self.id, wire.id, sender_id
+                                self.label, wire.id, sender_id
                             );
                             continue;
                         }
@@ -1294,14 +1305,14 @@ impl NodeRuntime {
                         ) {
                             println!(
                                 "  🔄 [{}] repeat of '{}' from '{}' answers a sync request — dropped, no strike",
-                                self.id, wire.id, sender_id
+                                self.label, wire.id, sender_id
                             );
                             continue;
                         }
                         // Inside the window this is a direct replay, not gossip redundancy.
                         println!(
                             "  ⚠ [{}] MALICIOUS REPLAY from '{}' — same message '{}' sent repeatedly!",
-                            self.id, sender_id, wire.id
+                            self.label, sender_id, wire.id
                         );
                         self.byzantine_events += 1;
                         self.sybil_guard.report_violation(&sender_id);
@@ -1333,7 +1344,7 @@ impl NodeRuntime {
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     println!(
                         "  ⚠ [{}] SYBIL GUARD DROP: peer {} is banned",
-                        self.id, peer
+                        self.label, peer
                     );
                     continue;
                 }
@@ -1346,7 +1357,7 @@ impl NodeRuntime {
                     if let Some(more) = self.drop_lines.pass(&peer, now) {
                         println!(
                             "  ⚠ [{}] SYBIL GUARD DROP: peer {} exceeded rate limit{}",
-                            self.id, peer, more
+                            self.label, peer, more
                         );
                     }
                     continue;
@@ -1358,7 +1369,7 @@ impl NodeRuntime {
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     println!(
                         "  ⚠ [{}] SYBIL GUARD DROP: peer {} PoW failed",
-                        self.id, peer
+                        self.label, peer
                     );
                     continue;
                 }
@@ -1372,13 +1383,22 @@ impl NodeRuntime {
                 .sig_verifications_performed
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-            // Step 1: verify cryptographic signature. Every message type is checked,
-            // mass-casualty events included.
+            // Step 1: authenticate the message: its origin must be the ID derived from its key
+            // and the signature must verify. Every message type is checked, mass-casualty
+            // events included. An origin that is not the signer's ID is a forgery like a broken
+            // signature: an honest neighbour relays only messages that passed this check.
             if !wire.verify_signature() {
-                println!(
-                    "  ⚠ [{}] INVALID SIGNATURE on '{}' — dropped!",
-                    self.id, wire.id
-                );
+                if wire.origin_matches_key() {
+                    println!(
+                        "  ⚠ [{}] INVALID SIGNATURE on '{}' — dropped!",
+                        self.label, wire.id
+                    );
+                } else {
+                    println!(
+                        "  ⚠ [{}] ORIGIN NOT DERIVED FROM KEY on '{}' — dropped!",
+                        self.label, wire.id
+                    );
+                }
                 self.byzantine_events += 1;
                 self.metrics
                     .byzantine_detected
@@ -1394,9 +1414,9 @@ impl NodeRuntime {
 
             // First time seeing this message. Record the sender.
             self.seen_messages.insert(key.clone(), vec![sender_tag]);
-            // A tagged answer counts as answered whatever happens to it below (a key pinned to
-            // another origin, the origin's budget, a copy in the window): the asked peer's own gossip
-            // copy, which the answer may have overtaken, can still follow.
+            // A tagged answer counts as answered whatever happens to it below (the origin's
+            // budget, a copy in the window): the asked peer's own gossip copy, which the answer
+            // may have overtaken, can still follow.
             self.note_answered(&sender_id, answers.as_deref(), &wire.origin, wire.seq);
 
             // This node's own message, echoed by a neighbour after the seen-ID limit above cleared
@@ -1405,34 +1425,9 @@ impl NodeRuntime {
                 continue;
             }
 
-            // Step 2: pubkey consistency check. The first key seen for an origin ID is pinned;
-            // a validly signed message claiming that origin with another key is dropped.
-            // It is not a strike: the receiver cannot tell which key is the genuine one, so
-            // the relay is not at fault. Striking it would let an adversary that announces an
-            // honest node's ID first get every honest relay of that node's messages banned.
-            if let Some(known) = self.known_keys.get(&wire.origin) {
-                if *known != wire.origin_pubkey {
-                    println!(
-                        "  ⚠ [{}] PUBKEY MISMATCH on '{}' (origin '{}' is pinned to another key) — dropped, no strike",
-                        self.id, wire.id, wire.origin
-                    );
-                    self.byzantine_events += 1;
-                    self.metrics
-                        .byzantine_detected
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    self.metrics
-                        .messages_rejected
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    continue;
-                }
-            } else {
-                self.known_keys
-                    .insert(wire.origin.clone(), wire.origin_pubkey.clone());
-            }
-
-            // Per-origin budget, charged only now that signature and pinned key authenticate
-            // the origin. Over budget: dropped and forgotten, no strike (the relay is not at
-            // fault), so a later copy or sync answer is accepted once the budget refills.
+            // Per-origin budget, charged only now that the signature authenticates the origin.
+            // Over budget: dropped and forgotten, no strike (the relay is not at fault), so a
+            // later copy or sync answer is accepted once the budget refills.
             let now = self.sybil_guard.now();
             let origin_budget = self
                 .origin_budgets
@@ -1449,7 +1444,7 @@ impl NodeRuntime {
                 if let Some(more) = self.drop_lines.pass(&wire.origin, now) {
                     println!(
                         "  ⚠ [{}] ORIGIN BUDGET DROP: '{}' from origin '{}' via '{}'{}",
-                        self.id, wire.id, wire.origin, sender_id, more
+                        self.label, wire.id, wire.origin, sender_id, more
                     );
                 }
                 continue;
@@ -1476,12 +1471,12 @@ impl NodeRuntime {
                         ) {
                             println!(
                                 "  🔄 [{}] seq {} of '{}' again from '{}' answers a sync request — dropped, no strike",
-                                self.id, received_seq, wire.origin, sender_id
+                                self.label, received_seq, wire.origin, sender_id
                             );
                         } else {
                             println!(
                                 "  ⛔ [{}] REPLAY dropped from '{}' (claimed '{}') — seq {} already delivered by this peer",
-                                self.id, sender_id, wire.origin, received_seq
+                                self.label, sender_id, wire.origin, received_seq
                             );
                             self.byzantine_events += 1;
                             self.sybil_guard.report_violation(&sender_id);
@@ -1490,7 +1485,7 @@ impl NodeRuntime {
                     crate::replay::ReplayVerdict::Redundant { received_seq } => {
                         println!(
                             "  [{}] duplicate seq {} from '{}' via '{}' — dropped",
-                            self.id, received_seq, wire.origin, sender_id
+                            self.label, received_seq, wire.origin, sender_id
                         );
                     }
                     // Honest peers can deliver old messages after a partition: no strike.
@@ -1499,7 +1494,7 @@ impl NodeRuntime {
                         window_floor,
                     } => println!(
                         "  ⏰ [{}] STALE seq {} from '{}' (window floor {}) — dropped",
-                        self.id, received_seq, wire.origin, window_floor
+                        self.label, received_seq, wire.origin, window_floor
                     ),
                     crate::replay::ReplayVerdict::Accept => {}
                 }
@@ -1531,7 +1526,7 @@ impl NodeRuntime {
             if self.delivery_lines {
                 println!(
                     "  [{}][{}] {} | sev:{} conf:{} vis:{} | note: {}",
-                    self.id,
+                    self.label,
                     self.zone,
                     type_label,
                     wire.severity,
@@ -1553,7 +1548,7 @@ impl NodeRuntime {
                     {
                         println!(
                             "  ⚠ [{}] DIVERGENCE detected with peer {} at seq {}",
-                            self.id, wire.origin, alert.divergence_seq
+                            self.label, wire.origin, alert.divergence_seq
                         );
                         self.divergence_log.push(alert.clone());
                         if self.divergence_log.len() > DIVERGENCE_LOG_MAX {
@@ -1574,7 +1569,7 @@ impl NodeRuntime {
             self.remember_recent(&wire);
 
             if !self.is_trusted() {
-                println!("  [{}] ISOLATED — not forwarding", self.id);
+                println!("  [{}] ISOLATED — not forwarding", self.label);
                 continue;
             }
 
@@ -1715,7 +1710,7 @@ impl NodeRuntime {
             .collect();
         println!(
             "ID: {:10} | Zone: {:6} | Rep: {:.2} | {} | {} | Rescue: {} | PubKey: {}...",
-            self.id, self.zone, self.reputation, trust, online, rescue, key_hex
+            self.label, self.zone, self.reputation, trust, online, rescue, key_hex
         );
     }
 

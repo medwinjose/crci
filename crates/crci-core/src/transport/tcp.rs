@@ -25,10 +25,10 @@ use tokio_util::sync::CancellationToken;
 //   dialer   → listener TcpFrame    { counter, message, sig_d(session, counter, message) } …
 //
 // The transcript holds both node IDs, both keys and both fresh nonces, so a signature
-// from one connection is useless on another. The listener attributes every frame to the
-// dialer's authenticated identity, `peer_identity(node_id, key)`; a claimed node ID with
-// a different key is a different identity, so a peer cannot get another node struck by
-// claiming its ID. Frame signatures bind each frame to the session and to its position,
+// from one connection is useless on another. A node ID is derived from its key
+// (`identity::derive_node_id`), and each side refuses a peer whose declared ID is not
+// derived from the key it proved. The listener attributes every frame to the dialer's
+// authenticated node ID, so a peer cannot get another node struck by claiming its ID. Frame signatures bind each frame to the session and to its position,
 // so a party on the path can drop frames but cannot inject, alter or reorder them.
 // Nothing is encrypted.
 
@@ -38,8 +38,6 @@ pub const HANDSHAKE_DOMAIN: &[u8] = b"CRCI-TCP-HANDSHAKE-v1\0";
 pub const FRAME_DOMAIN: &[u8] = b"CRCI-TCP-FRAME-v2\0";
 /// Length of each side's handshake nonce, in bytes.
 pub const NONCE_LEN: usize = 32;
-/// Longest node ID accepted in a handshake (same limit as message origins).
-pub const MAX_NODE_ID_LEN: usize = 64;
 
 const MAX_HANDSHAKE_BYTES: u32 = 4 * 1024;
 const MAX_FRAME_BYTES: u32 = 1024 * 1024;
@@ -177,14 +175,15 @@ fn put_bytes(out: &mut Vec<u8>, bytes: &[u8]) {
     out.extend_from_slice(bytes);
 }
 
-fn to_hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{:02x}", b)).collect()
+/// The identity a connection's frames are attributed to: the declared node ID, if it is the
+/// one derived from the public key the peer proved it holds.
+pub fn peer_identity(node_id: &str, public_key: &VerifyingKey) -> Option<NodeId> {
+    (node_id == crate::identity::derive_node_id(public_key.as_bytes())).then(|| node_id.to_string())
 }
 
-/// The identity a listener attributes a connection's frames to: the node ID the dialer
-/// declared, joined to the full public key it proved it holds.
-pub fn peer_identity(node_id: &str, public_key: &VerifyingKey) -> NodeId {
-    format!("{}#{}", node_id, to_hex(public_key.as_bytes()))
+/// The node ID of `key`.
+fn node_id_of(key: &SigningKey) -> NodeId {
+    crate::identity::derive_node_id(key.verifying_key().as_bytes())
 }
 
 /// Handshake transcript: the domain tag, then the listener's and the dialer's node ID,
@@ -286,10 +285,6 @@ fn fresh_nonce() -> Vec<u8> {
     nonce
 }
 
-fn valid_node_id(id: &str) -> bool {
-    !id.is_empty() && id.len() <= MAX_NODE_ID_LEN
-}
-
 fn auth_error(reason: &str) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::PermissionDenied, reason.to_string())
 }
@@ -385,14 +380,14 @@ async fn accept_handshake(
     write_json(stream, &hello).await?;
 
     let dialer: ClientAuth = read_json(stream, MAX_HANDSHAKE_BYTES).await?;
-    if !valid_node_id(&dialer.node_id) {
-        return Err(auth_error("invalid dialer node ID"));
-    }
     if dialer.nonce.len() != NONCE_LEN {
         return Err(auth_error("invalid dialer nonce"));
     }
     let Some(dialer_key) = parse_key(&dialer.public_key) else {
         return Err(auth_error("invalid dialer public key"));
+    };
+    let Some(identity) = peer_identity(&dialer.node_id, &dialer_key) else {
+        return Err(auth_error("dialer node ID is not derived from its key"));
     };
     if dialer_key == own_key {
         return Err(auth_error("connection from this node's own key"));
@@ -413,7 +408,7 @@ async fn accept_handshake(
     write_json(stream, &reply).await?;
 
     Ok(AuthenticatedPeer {
-        identity: peer_identity(&dialer.node_id, &dialer_key),
+        identity,
         key: dialer_key,
         session: session_id(&transcript),
     })
@@ -425,17 +420,15 @@ pub struct DialedConnection {
     key: SigningKey,
     session: [u8; 32],
     next_counter: u64,
-    /// The listener's authenticated identity (`node_id#key`), as its frames to this node
-    /// will be attributed.
+    /// The listener's authenticated node ID, as its frames to this node will be attributed.
     pub peer: NodeId,
 }
 
 impl DialedConnection {
-    /// Dial `target` and authenticate as `node_id` with `key`; the listener must prove its
-    /// own key before this returns.
+    /// Dial `target` and authenticate with `key` (as the node ID derived from it); the
+    /// listener must prove its own key before this returns.
     pub async fn connect(
         target: &str,
-        node_id: &str,
         key: &SigningKey,
     ) -> Result<DialedConnection, TransportError> {
         let mut stream = match tokio::time::timeout(IO_TIMEOUT, TcpStream::connect(target)).await {
@@ -449,7 +442,7 @@ impl DialedConnection {
                 e
             )));
         }
-        match dialer_handshake(&mut stream, node_id, key).await {
+        match dialer_handshake(&mut stream, key).await {
             Ok((peer, session)) => Ok(DialedConnection {
                 stream,
                 key: key.clone(),
@@ -491,16 +484,15 @@ impl DialedConnection {
     }
 }
 
-/// Dial `target`, authenticate as `node_id` with `key`, check the listener's proof of its
-/// own key, and send `messages` as signed frames on that one connection. Returns the
-/// listener's authenticated identity.
+/// Dial `target`, authenticate with `key`, check the listener's proof of its own key, and send
+/// `messages` as signed frames on that one connection. Returns the listener's authenticated
+/// identity.
 pub async fn send_authenticated(
     target: &str,
-    node_id: &str,
     key: &SigningKey,
     messages: &[NetworkMessage],
 ) -> Result<NodeId, TransportError> {
-    let mut conn = DialedConnection::connect(target, node_id, key).await?;
+    let mut conn = DialedConnection::connect(target, key).await?;
     let mut result = Ok(());
     for message in messages {
         result = conn.send(message).await;
@@ -516,7 +508,6 @@ pub async fn send_authenticated(
 /// Dialer side of the handshake; returns the listener's identity and the session ID.
 async fn dialer_handshake(
     stream: &mut TcpStream,
-    node_id: &str,
     key: &SigningKey,
 ) -> Result<(NodeId, [u8; 32]), TransportError> {
     let own_key = key.verifying_key();
@@ -528,11 +519,16 @@ async fn dialer_handshake(
             "invalid listener public key".into(),
         ));
     };
-    if hello.nonce.len() != NONCE_LEN || !valid_node_id(&hello.node_id) {
+    if hello.nonce.len() != NONCE_LEN {
         return Err(TransportError::Authentication(
             "malformed listener hello".into(),
         ));
     }
+    let Some(listener_id) = peer_identity(&hello.node_id, &listener_key) else {
+        return Err(TransportError::Authentication(
+            "listener node ID is not derived from its key".into(),
+        ));
+    };
     if listener_key == own_key {
         return Err(TransportError::Authentication(
             "dialed this node's own listener".into(),
@@ -540,7 +536,7 @@ async fn dialer_handshake(
     }
 
     let mut auth = ClientAuth {
-        node_id: node_id.to_string(),
+        node_id: node_id_of(key),
         public_key: own_key.to_bytes().to_vec(),
         nonce: fresh_nonce(),
         signature: Vec::new(),
@@ -562,10 +558,7 @@ async fn dialer_handshake(
             "listener handshake signature invalid".into(),
         ));
     }
-    Ok((
-        peer_identity(&hello.node_id, &listener_key),
-        session_id(&transcript),
-    ))
+    Ok((listener_id, session_id(&transcript)))
 }
 
 /// Message type of the frame a dialer sends first on every connection that replaces an
@@ -615,7 +608,7 @@ struct Link {
 impl Link {
     async fn connect(&mut self, outbound: &Outbound, addr: &str) -> Result<(), TransportError> {
         outbound.handshakes.fetch_add(1, Ordering::SeqCst);
-        let mut conn = DialedConnection::connect(addr, &outbound.node_id, &outbound.key).await?;
+        let mut conn = DialedConnection::connect(addr, &outbound.key).await?;
         if self.dialed {
             conn.send(&link_resumed(&outbound.node_id)).await?;
         }
@@ -725,31 +718,21 @@ pub struct TcpTransport {
 }
 
 impl TcpTransport {
-    /// Listen on `addr` as `node_id`, proving `signing_key` to every dialer and signing
-    /// every outgoing connection with it. A node uses the same key here as for its messages.
-    pub async fn bind(
-        node_id: String,
-        addr: SocketAddr,
-        signing_key: SigningKey,
-    ) -> std::io::Result<Self> {
-        Self::bind_with_pacing(
-            node_id,
-            addr,
-            signing_key,
-            FRAME_PACING_RATE,
-            FRAME_PACING_BURST,
-        )
-        .await
+    /// Listen on `addr` as the node ID derived from `signing_key`, proving the key to every
+    /// dialer and signing every outgoing connection with it. A node uses the same key here as
+    /// for its messages.
+    pub async fn bind(addr: SocketAddr, signing_key: SigningKey) -> std::io::Result<Self> {
+        Self::bind_with_pacing(addr, signing_key, FRAME_PACING_RATE, FRAME_PACING_BURST).await
     }
 
     /// `bind` with an explicit frame rate (per second) and burst for each connection's reader.
     pub async fn bind_with_pacing(
-        node_id: String,
         addr: SocketAddr,
         signing_key: SigningKey,
         pacing_rate: f64,
         pacing_burst: u32,
     ) -> std::io::Result<Self> {
+        let node_id = node_id_of(&signing_key);
         let pacing = (pacing_rate, pacing_burst);
         let listener = TcpListener::bind(addr).await?;
         let (tx, rx) = mpsc::channel(1024);
@@ -991,7 +974,7 @@ impl TcpTransport {
 
     /// Open an authenticated connection to `addr` as this node.
     pub async fn dial(&self, addr: &str) -> Result<DialedConnection, TransportError> {
-        DialedConnection::connect(addr, &self.node_id, &self.signing_key).await
+        DialedConnection::connect(addr, &self.signing_key).await
     }
 }
 
@@ -1292,7 +1275,6 @@ mod tests {
     #[tokio::test]
     async fn dialed_connection_gives_up_on_unacknowledged_data() {
         let listener = TcpTransport::bind(
-            "listener".to_string(),
             "127.0.0.1:0".parse().unwrap(),
             SigningKey::from_bytes(&[7; 32]),
         )
@@ -1300,7 +1282,6 @@ mod tests {
         .unwrap();
         let conn = DialedConnection::connect(
             &listener.listen_addr.to_string(),
-            "dialer",
             &SigningKey::from_bytes(&[9; 32]),
         )
         .await

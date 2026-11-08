@@ -11,9 +11,10 @@ pub struct Cli {
     #[arg(long)]
     pub listen: Option<String>,
 
-    /// Human-readable node identifier.
+    /// Human-readable name for log lines. Not authenticated: the node ID is derived from the
+    /// node's public key.
     #[arg(long)]
-    pub node_id: Option<String>,
+    pub label: Option<String>,
 
     /// Optional peer address to dial immediately after startup.
     #[arg(long)]
@@ -23,9 +24,15 @@ pub struct Cli {
     #[arg(short, long)]
     pub verbose: bool,
 
-    /// Node identity seed (hex, 32 bytes) — omit to generate fresh keypair
-    #[arg(long)]
-    pub identity_seed: Option<String>,
+    /// Keep the node key in this encrypted file (AES-256-GCM, Argon2id), created on first use,
+    /// so the node keeps its ID across restarts. Needs --key-passphrase-file. Without it the
+    /// node generates a new key, and so a new ID, at every start.
+    #[arg(long, requires = "key_passphrase_file")]
+    pub key_file: Option<std::path::PathBuf>,
+
+    /// File whose first line is the passphrase for --key-file.
+    #[arg(long, requires = "key_file")]
+    pub key_passphrase_file: Option<std::path::PathBuf>,
 
     /// Message body to originate after startup/dial
     #[arg(long)]

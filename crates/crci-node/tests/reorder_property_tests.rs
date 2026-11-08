@@ -154,7 +154,7 @@ fn run_signed(origins: usize, deliveries: &[Delivery]) -> (NodeRuntime, usize) {
     let mut node = NodeRuntime::new("receiver", "zone-a", inbox.clone());
     {
         let mut guard = inbox.lock().unwrap();
-        let queue = guard.entry("receiver".to_string()).or_default();
+        let queue = guard.entry(node.id.clone()).or_default();
         for &(origin, seq, relay) in deliveries {
             let wire = wires.entry((origin, seq)).or_insert_with(|| {
                 let name = origin_name(origin);

@@ -37,7 +37,6 @@ async fn two_node_handshake_peer_count_reaches_one() -> Result<(), Box<dyn std::
     // Bind real TcpTransports on loopback with port 0 (OS assigned)
     let addr_a_req: SocketAddr = "127.0.0.1:0".parse()?;
     let tcp_a = TcpTransport::bind(
-        "node-a".to_string(),
         addr_a_req,
         crci_core::identity::Identity::new("transport").signing_key,
     )
@@ -46,7 +45,6 @@ async fn two_node_handshake_peer_count_reaches_one() -> Result<(), Box<dyn std::
 
     let addr_b_req: SocketAddr = "127.0.0.1:0".parse()?;
     let tcp_b = TcpTransport::bind(
-        "node-b".to_string(),
         addr_b_req,
         crci_core::identity::Identity::new("transport").signing_key,
     )

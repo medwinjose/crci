@@ -30,39 +30,34 @@ impl MeshSimulator {
         self.nodes.insert(id.to_string(), node);
     }
 
+    /// Node ID of the node named `name` (nodes are addressed by ID, named by label).
+    fn id_of(&self, name: &str) -> Option<String> {
+        self.nodes.get(name).map(|n| n.id.clone())
+    }
+
     // Wire two nodes as peers — bidirectional
     pub fn connect(&mut self, a: &str, b: &str) {
-        let key_a = self
-            .nodes
-            .get(a)
-            .map(|n| (n.id.clone(), n.identity.verifying_key.to_bytes().to_vec()));
-        let key_b = self
-            .nodes
-            .get(b)
-            .map(|n| (n.id.clone(), n.identity.verifying_key.to_bytes().to_vec()));
-
+        let (Some(id_a), Some(id_b)) = (self.id_of(a), self.id_of(b)) else {
+            return;
+        };
         if let Some(node) = self.nodes.get_mut(a) {
-            node.add_peer(b);
-            if let Some((id_b, kb)) = &key_b {
-                node.known_keys.insert(id_b.clone(), kb.clone());
-            }
+            node.add_peer(&id_b);
         }
-
         if let Some(node) = self.nodes.get_mut(b) {
-            node.add_peer(a);
-            if let Some((id_a, ka)) = &key_a {
-                node.known_keys.insert(id_a.clone(), ka.clone());
-            }
+            node.add_peer(&id_a);
         }
     }
 
     /// Cut the link between `a` and `b` (a partition, if it was the only path).
     pub fn disconnect(&mut self, a: &str, b: &str) {
+        let (Some(id_a), Some(id_b)) = (self.id_of(a), self.id_of(b)) else {
+            return;
+        };
         if let Some(node) = self.nodes.get_mut(a) {
-            node.peers.retain(|p| p != b);
+            node.peers.retain(|p| *p != id_b);
         }
         if let Some(node) = self.nodes.get_mut(b) {
-            node.peers.retain(|p| p != a);
+            node.peers.retain(|p| *p != id_a);
         }
     }
 
@@ -70,11 +65,14 @@ impl MeshSimulator {
     /// messages it missed (anti-entropy). Call `drain` afterwards to deliver them.
     pub fn heal(&mut self, a: &str, b: &str) {
         self.connect(a, b);
+        let (Some(id_a), Some(id_b)) = (self.id_of(a), self.id_of(b)) else {
+            return;
+        };
         if let Some(node) = self.nodes.get_mut(a) {
-            node.request_sync(b);
+            node.request_sync(&id_b);
         }
         if let Some(node) = self.nodes.get_mut(b) {
-            node.request_sync(a);
+            node.request_sync(&id_a);
         }
     }
 

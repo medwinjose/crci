@@ -4,21 +4,15 @@ use crate::runtime::WireMessage;
 use std::time::Duration;
 use tokio::time::sleep;
 
-/// Send one message to `target` over an authenticated connection, as `sender` with `key`.
+/// Send one message to `target` over a connection authenticated with `key`.
 async fn send_msg(
     target: &str,
-    sender: &str,
     key: &Identity,
     msg: &WireMessage,
 ) -> Result<(), crate::transport::TransportError> {
-    crate::transport::tcp::send_authenticated(
-        target,
-        sender,
-        &key.signing_key,
-        std::slice::from_ref(msg),
-    )
-    .await
-    .map(|_| ())
+    crate::transport::tcp::send_authenticated(target, &key.signing_key, std::slice::from_ref(msg))
+        .await
+        .map(|_| ())
 }
 
 /// A message from `origin`, signed with `key`.
@@ -69,6 +63,7 @@ pub async fn run_byzantine_behavior(
     println!("[byzantine-agent] Starting in mode: {}", mode);
 
     let key = Identity::new(my_node_id);
+    println!("Node {} id {}", my_node_id, key.id);
     // Replay mode resends this exact signed message every time.
     let replayed = signed(
         &key,
@@ -169,7 +164,7 @@ pub async fn run_byzantine_behavior(
 
         let mut sent = 0;
         for msg in &batch {
-            if send_msg(target, my_node_id, &key, msg).await.is_ok() {
+            if send_msg(target, &key, msg).await.is_ok() {
                 sent += 1;
             } else {
                 failures += 1;

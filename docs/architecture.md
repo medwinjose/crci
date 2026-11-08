@@ -52,15 +52,15 @@ applies, in order:
    passed the sender's token bucket in step 3, so verifications are bounded per transport sender, and every
    invalid signature is a strike, so a sender of bad signatures is banned after three checks. The claimed
    origin is not used for budgeting, because it is not authenticated.
-5. **Ed25519 signature check**: an invalid signature costs the *sender* (relaying neighbour) one strike.
-   Every message type is checked, mass-casualty events (`mce`) included.
-6. **Key consistency**: the first public key seen for an origin ID is pinned; a message claiming that origin
-   with another key is dropped. It is not a strike: the receiver cannot tell which key is genuine, so the
-   relay that delivered it is not at fault (a strike here would let an adversary that announces an honest
-   node's ID first get that node's honest relays banned).
+5. **Authenticity check**: the message's origin must be the node ID derived from the public key it carries
+   (see Node identity below), and its Ed25519 signature must verify under that key. Either failure costs
+   the *sender* (relaying neighbour) one strike: an honest node relays only messages that passed this check,
+   so a message claiming another node's ID is a forgery like a broken signature. Every message type is
+   checked, mass-casualty events (`mce`) included.
+6. **Own echo**: a copy of this node's own message, echoed by a neighbour after the seen cache was cleared,
+   is dropped without a strike.
 7. **Origin budget**: token bucket of 20 new messages per origin, refilled at 5 per second, charged only
-   now that the signature and the pinned key authenticate the origin (a message merely claiming an origin
-   cannot spend its budget). Every honest node relays what it accepts, so without this one origin
+   now that the origin is authenticated (a message merely claiming an origin cannot spend its budget). Every honest node relays what it accepts, so without this one origin
    flooding fresh, validly signed messages takes the whole network's capacity through its neighbours'
    budgets. A message over the budget is dropped without a strike (its relay is not at fault) and is not
    recorded, so a later copy or sync answer is accepted once the budget has refilled.
@@ -92,6 +92,24 @@ a domain tag (`CRCI-WIRE-MESSAGE-v1`), then each field in declaration order, var
 same bytes, so a relay cannot change any field, including the message type, note, flags or sequence
 number, without the signature failing. Signer and verifier use the same function.
 
+### Node identity
+
+A node's ID is derived from its Ed25519 public key (`identity::derive_node_id`): the first 16 bytes of
+SHA-256 over a domain tag (`CRCI-NODE-ID-v1`) and the key, as 32 hex characters. The same ID is the origin
+of every message the node signs and its identity on every TCP connection. Claiming an existing ID needs a
+key whose hash matches it (a second preimage, about 2^128 key generations), so no one can speak, or be
+struck, under another node's ID. A human-readable label (`--label`) names the node in its own log lines
+and is never sent or authenticated; each node prints `Node <label> id <id>` once at start so logs can be
+read by label.
+
+`crci-node --key-file FILE --key-passphrase-file FILE` keeps the key in an encrypted file (AES-256-GCM,
+key from the passphrase with Argon2id), created on first start, so a restarted node keeps its ID (and the
+reputation its neighbours hold for it). A wrong passphrase or a damaged file stops the node at start; it
+never makes a new key in their place. The file also stores a sequence-number floor: each start reserves the
+next 2^32 sequence numbers before sending anything, so a restarted node never reuses a number its
+neighbours already hold from it (they would drop the new message, or strike it as a replay). Without
+`--key-file` the node generates a new key, and so a new ID, at every start.
+
 ### Over TCP: the `crci-node` binary
 
 `crates/crci-core/src/transport/tcp.rs`. Every message travels as a 4-byte big-endian length prefix
@@ -108,16 +126,16 @@ dialer   -> listener  TcpFrame    { counter, message, sig_D(session, counter, me
 
 The transcript is a domain tag followed by both node IDs, both public keys and both fresh 32-byte nonces,
 length-prefixed; each side also signs its role, so one side's signature cannot be presented as the
-other's. The listener drops the connection, before reading any frame, if the dialer's signature is invalid,
-if its key is the listener's own, or if a field is malformed; the dialer likewise refuses a listener whose
+other's. The listener drops the connection, before reading any frame, if the dialer's declared node ID is
+not the one derived from its key, if its signature is invalid, if its key is the listener's own, or if a
+field is malformed; the dialer likewise refuses a listener whose ID is not derived from its key or whose
 signature does not verify. A signature from one connection is useless on another, because the listener's
 nonce is fresh.
 
-After the handshake the listener attributes every frame to the dialer's **authenticated identity**:
-`peer_identity(node_id, key)` = the declared node ID, `#`, and the hex of the key the dialer proved it
-holds. This identity, not a claimed ID and never the message's origin, is what `NodeRuntime` admits,
-strikes and bans. A peer that declares an honest node's ID has a different key and so a different identity:
-its strikes never reach the honest node. Each frame is signed by the dialer over a domain tag, the session
+After the handshake the listener attributes every frame to the dialer's **authenticated identity**: its
+node ID, checked against the key the dialer proved it holds (`peer_identity`). This identity, never the
+message's origin, is what `NodeRuntime` admits, strikes and bans. A peer cannot declare an honest node's
+ID without that node's private key, so its strikes never reach the honest node. Each frame is signed by the dialer over a domain tag, the session
 ID (SHA-256 of the transcript), the frame counter (0, 1, ... within the connection) and the whole message
 (every signed field and the origin's signature). A party on the path can drop frames but cannot inject,
 alter, reorder or replay them, so it cannot make the dialer appear to have sent an invalid or repeated
@@ -197,7 +215,7 @@ holds one bit per sequence number per peer.
 
 | State | Limit | What goes first |
 |---|---|---|
-| Origins (pinned key, budget, both replay windows, recent messages) | 896 origins, 7 168 (origin, peer) records | Fewest accepted messages, then longest idle; forgotten whole, 1/8 at a time |
+| Origins (budget, both replay windows, recent messages) | 896 origins, 7 168 (origin, peer) records | Fewest accepted messages, then longest idle; forgotten whole, 1/8 at a time |
 | Peers per origin in the window | 128; later peers count as holding the message and are never struck | |
 | Seen cache | 1 792 message keys, 128 peers per key | Cleared whole |
 | Recent messages (sync answers) | 1 024 | Oldest |
@@ -248,8 +266,8 @@ also be the other way round: an answer goes to the address named in the request 
 configured for the peer, and if those differ they take different connections, so an answer can overtake the
 gossip copy of the same message. One untagged copy of a message that arrived as an answer to a request made
 to that neighbour is therefore excused too, under the same limits (one excuse per message per request),
-whether the answer was accepted or was dropped (a copy of what another neighbour delivered first, a key pinned
-to another origin, the origin's budget). Any
+whether the answer was accepted or was dropped (a copy of what another neighbour delivered first, the
+origin's budget). Any
 other untagged repeat, a repeat of a message the digest listed as held, a second repeat, any repeat beyond
 the first 16, and repeats from any other peer follow the normal rules and strike. An open session therefore
 excuses only answers and the one copy that goes with each, never ordinary gossip.

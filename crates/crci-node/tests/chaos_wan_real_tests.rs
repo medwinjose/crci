@@ -169,7 +169,7 @@ fn test_real_wan_chaos_netns() {
         let child = Command::new("sudo")
             .args(["ip", "netns", "exec", &format!("node{}", i)])
             .arg(crci_bin.clone())
-            .arg("--node-id")
+            .arg("--label")
             .arg(format!("node-{}", i))
             .arg("--listen")
             .arg(listen)

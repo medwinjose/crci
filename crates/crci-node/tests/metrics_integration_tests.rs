@@ -11,8 +11,15 @@ use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
-/// Helper: create a signed WireMessage from a NodeRuntime identity.
-fn make_wire(node: &NodeRuntime, msg_id: &str, seq: u64) -> Vec<u8> {
+/// One peer that authors the test messages. A message signed with the receiver's own key would
+/// carry the receiver's ID as origin and be dropped as its own echo.
+fn author() -> &'static crci_core::identity::Identity {
+    static AUTHOR: std::sync::OnceLock<crci_core::identity::Identity> = std::sync::OnceLock::new();
+    AUTHOR.get_or_init(|| crci_core::identity::Identity::new("peer"))
+}
+
+/// Helper: a signed WireMessage from the test peer.
+fn make_wire(msg_id: &str, seq: u64) -> Vec<u8> {
     let msg = Message {
         id: msg_id.to_string(),
         origin: "test-peer".to_string(),
@@ -27,7 +34,7 @@ fn make_wire(node: &NodeRuntime, msg_id: &str, seq: u64) -> Vec<u8> {
         origin_active: true,
         signature: None,
     };
-    let wire = WireMessage::from_message(&msg, &node.identity);
+    let wire = WireMessage::from_message(&msg, author());
     serde_json::to_vec(&wire).unwrap()
 }
 
@@ -46,13 +53,13 @@ fn test_metrics_messages_accepted_increments() {
     // Send 3 valid messages
     let mut payloads = Vec::new();
     for i in 1..=3u64 {
-        payloads.push(make_wire(&node, &format!("metrics-msg-{}", i), i));
+        payloads.push(make_wire(&format!("metrics-msg-{}", i), i));
     }
 
     {
         let mut guard = inbox.lock().unwrap();
         guard.insert(
-            "metrics-test-node".to_string(),
+            node.id.clone(),
             payloads
                 .into_iter()
                 .map(|p| ("test-sender".to_string(), p))
@@ -93,7 +100,7 @@ fn test_metrics_byzantine_detected_on_invalid_signature() {
             origin_active: true,
             signature: None,
         };
-        let mut wire = WireMessage::from_message(&msg, &node.identity);
+        let mut wire = WireMessage::from_message(&msg, author());
         wire.signature_bytes[0] ^= 0xFF;
         payloads.push(serde_json::to_vec(&wire).unwrap());
     }
@@ -101,7 +108,7 @@ fn test_metrics_byzantine_detected_on_invalid_signature() {
     {
         let mut guard = inbox.lock().unwrap();
         guard.insert(
-            "bft008-metrics-node".to_string(),
+            node.id.clone(),
             payloads
                 .into_iter()
                 .map(|p| ("test-sender".to_string(), p))
@@ -148,13 +155,10 @@ fn test_metrics_seen_messages_evictions_on_bft046() {
     }
 
     // Send one more message to trigger eviction
-    let payload = make_wire(&node, "trigger-eviction", 1);
+    let payload = make_wire("trigger-eviction", 1);
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert(
-            "bft046-metrics-node".to_string(),
-            vec![("test-sender".to_string(), payload)],
-        );
+        guard.insert(node.id.clone(), vec![("test-sender".to_string(), payload)]);
     }
 
     node.process_inbox();
@@ -175,12 +179,12 @@ fn test_metrics_to_prometheus_output_well_formed() {
     // Process some messages to get real counter values
     let mut payloads = Vec::new();
     for i in 1..=2u64 {
-        payloads.push(make_wire(&node, &format!("prom-msg-{}", i), i));
+        payloads.push(make_wire(&format!("prom-msg-{}", i), i));
     }
     {
         let mut guard = inbox.lock().unwrap();
         guard.insert(
-            "prom-test-node".to_string(),
+            node.id.clone(),
             payloads
                 .into_iter()
                 .map(|p| ("test-sender".to_string(), p))

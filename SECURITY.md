@@ -21,8 +21,10 @@ The full list, with the code location of each defence and gap, is in
 [docs/threat-model.md](docs/threat-model.md). The most important ones:
 
 - TCP connections are authenticated (Ed25519 challenge-response, signed frames) but not encrypted.
-- Origin IDs are pinned to the first key seen, not derived from keys: an adversary that announces an
-  honest node's ID first can make a receiver drop that node's messages (no strike is applied).
-- Sybil resistance is minimal: new key pairs are free.
+- Node IDs are derived from public keys, so no one can claim an existing node's ID, but new key pairs
+  are free and nothing ties a key to a person or device; labels are not authenticated.
+- With `--key-file` the node key is stored encrypted (AES-256-GCM, Argon2id); it is only as safe as the
+  passphrase file and the device. Without it a node has a new key, and a new ID, at every start.
+- Sybil resistance is minimal.
 - Keys are held in process memory; there is no hardware-backed key storage.
 - BLE and LoRa transports are stubs.

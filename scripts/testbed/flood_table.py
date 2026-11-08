@@ -15,6 +15,8 @@ import re
 import sys
 from collections import defaultdict
 
+from analyze import labelled, node_labels
+
 VERIFY_US = 37.0  # Ed25519 verify on the i5-12450HX (see docs/benchmarks.md, Ed25519 cost)
 
 
@@ -27,10 +29,13 @@ def readmission(out):
     s = json.load(open(f"{path}/summary.json"))
     byz = s["roles"]["byzantine"]
     readmit_ms, accepted = [], []
-    accept = re.compile(rf"accepted '[^']+' \(origin {byz}, via {byz}#\S*\) at_ms=(\d+)")
-    for log in glob.glob(f"{path}/logs/*.log"):
+    accept = re.compile(rf"accepted '[^']+' \(origin {byz}, via {byz}(?:#\S*)?\) at_ms=(\d+)")
+    logs = glob.glob(f"{path}/logs/*.log")
+    labels = node_labels(logs)
+    for log in logs:
         for line in open(log, errors="replace"):
-            m = re.search(rf"readmitted {byz}#\S+ at_ms=(\d+)", line)
+            line = labelled(line, labels)
+            m = re.search(rf"readmitted {byz}(?:#\S+)? at_ms=(\d+)", line)
             if m:
                 readmit_ms.append(int(m[1]))
             elif m := accept.search(line):

@@ -1,5 +1,7 @@
 #[derive(uniffi::Record, Clone)]
 pub struct FfiNodeConfig {
+    /// Human-readable label of the node. Not its ID: the node ID is derived from the key the
+    /// node generates at start.
     pub node_id: String,
     pub listen_addr: String,
     pub max_peers: u32,

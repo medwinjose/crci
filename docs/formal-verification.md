@@ -34,7 +34,8 @@ Raw TLC output of the recorded run: [`evidence/tla-2026-11-07/`](evidence/tla-20
 
 ## The adversary and the network
 
-The adversary holds no honest key and cannot pose as another sender (connections are authenticated). It
+The adversary holds no honest key, cannot pose as another sender (connections are authenticated) and cannot
+claim another node's ID (IDs are derived from keys, so such a claim is a forgery like a bad signature). It
 replays anything it has received, with any sync tag; forges frames whose signature does not verify; signs
 its own messages under any message ID it has seen; and otherwise stays silent, omitting whatever it likes.
 There is one adversary and no collusion. Links are queues that can lose frames, FIFO as one TCP connection per
@@ -202,13 +203,14 @@ lemma assumes two neighbours' tags differ, which fails with probability below n�
 and the key is random per node, so a collision cannot be aimed at anyone.
 
 **Theorem 4 (no strike without a forgery or a repeat).** A node strikes transport peer p only if p delivered
-(a) a message whose signature does not verify, or (b) two frames with the same signed origin and sequence
+(a) a message that is not authentic (its signature does not verify, or its origin is not the node ID derived
+from its key), or (b) two frames with the same signed origin and sequence
 number (at the seen-cache check: the same signing key, by its first 16 bytes, which takes 2¹²⁸ work to match,
 the same sequence number and the same ID), the second while that sequence
 number was inside the node's window and not excused as an answer to the node's own sync request.
 *Proof.* There are three strike sites, all in `process_inbox_delivered`: the seen-cache repeat (the entry holds
 p's tag only if p delivered the same key since the cache was last cleared; out-of-window and excused repeats
-are dropped before the strike), the signature check, which is (a), and a `Replayed` verdict that is not
+are dropped before the strike), the authenticity check, which is (a), and a `Replayed` verdict that is not
 excused (Lemma 2). ∎
 
 **Corollary 5 (honest neighbours).** Let p and r be honest neighbours, and suppose (A1) the link from p to r
@@ -274,7 +276,8 @@ their adversary signed only one sequence number.
 follows its answer required the answer to have been accepted. When a third neighbour had delivered the message
 first, the answer was a copy, was not recorded, and the asked neighbour's own gossip copy was then struck. The
 same happened when the answer met a cleared seen cache (the window judged it delivered by another peer) or a key
-pinned to another origin by an adversary squatting the origin's ID. A tagged answer now counts as answered as soon
+pinned to another origin by an adversary squatting the origin's ID (pinning has since been removed: origin IDs are
+derived from keys). A tagged answer now counts as answered as soon
 as it enters the seen cache, whatever its verdict after that; the limit of one excuse per message per request and
 16 per request is unchanged, so an adversary gains no repeat it could not already get by sending the answer first.
 Tests first: the three `a_gossip_copy_after_its_answer_is_not_struck_when_…` tests (`partition_heal_tests.rs`).
@@ -319,9 +322,10 @@ The replay covers random behaviours, not all of them, and it checks the runtime,
 - **Size:** at most 4 nodes, 3 messages, 4 adversary frames (or an unbounded single replay), 2 faults. A
   defect that needs more does not show up here.
 - **One adversary, no collusion.** No Sybil identities.
-- **Key pinning.** An adversary announcing an honest node's ID first (threat model, gap 1) is not modelled:
-  keys are not separate from origins, so the adversary signs only as itself. That denial of service is known
-  and open.
+- **Node IDs.** Keys are not separate from origins in the model: a node's ID stands for its key, as in the
+  code, where the ID is derived from the key. A message claiming another node's ID is a forgery there and is
+  covered by the model's frames with an invalid signature. The derivation is assumed second-preimage resistant
+  (a 128-bit SHA-256 prefix).
 - **Transport:** the handshake and frame authentication are assumed, not modelled. So are frame pacing and the
   shun of banned peers, the limits on batch and origin counts in a digest, the 5 s answer cooldown and the answer
   budget. Token buckets are modelled as loss.

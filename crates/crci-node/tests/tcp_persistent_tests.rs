@@ -25,13 +25,9 @@ fn signed(identity: &Identity, id: &str, origin: &str, seq: u64) -> WireMessage 
 }
 
 async fn bind_at(node_id: &str, addr: SocketAddr) -> TcpTransport {
-    TcpTransport::bind(
-        node_id.to_string(),
-        addr,
-        Identity::new(node_id).signing_key,
-    )
-    .await
-    .unwrap()
+    TcpTransport::bind(addr, Identity::new(node_id).signing_key)
+        .await
+        .unwrap()
 }
 
 async fn listener(node_id: &str) -> TcpTransport {
@@ -286,5 +282,5 @@ async fn a_link_that_dies_late_after_a_write_reconnects_and_reports_itself() {
         .await
         .expect("the sender did not reconnect by itself")
         .expect("channel closed");
-    assert!(reported.starts_with("sender#"), "{reported}");
+    assert_eq!(reported, sender.node_id);
 }

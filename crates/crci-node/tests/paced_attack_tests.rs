@@ -39,7 +39,7 @@ impl Sim {
         self.inbox
             .lock()
             .unwrap()
-            .entry("rx".to_string())
+            .entry(self.node.id.clone())
             .or_default()
             .push((peer.to_string(), serde_json::to_vec(wire).unwrap()));
         self.node.process_inbox();

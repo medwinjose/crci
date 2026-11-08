@@ -25,7 +25,6 @@ fn signed(identity: &Identity, id: &str, seq: u64) -> WireMessage {
 
 async fn listener(node_id: &str) -> TcpTransport {
     TcpTransport::bind(
-        node_id.to_string(),
         "127.0.0.1:0".parse().unwrap(),
         Identity::new(node_id).signing_key,
     )

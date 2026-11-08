@@ -45,7 +45,7 @@ fn deliver(node: &mut NodeRuntime, inbox: &SharedInbox, sender: &str, wire: &Wir
     inbox
         .lock()
         .unwrap()
-        .entry("receiver".to_string())
+        .entry(node.id.clone())
         .or_default()
         .push((sender.to_string(), serde_json::to_vec(wire).unwrap()));
     node.process_inbox();
@@ -67,7 +67,6 @@ fn a_flood_of_new_origins_leaves_every_origin_table_at_its_limit() {
     assert!(node.origins_forgotten > 0);
     for (name, size) in [
         ("activity", node.origin_activity.len()),
-        ("keys", node.known_keys.len()),
         ("budgets", node.origin_budgets.len()),
         ("windows", node.replay_filter.tracked_origins()),
         ("recent", node.recent_messages.len()),
@@ -75,7 +74,6 @@ fn a_flood_of_new_origins_leaves_every_origin_table_at_its_limit() {
         assert!(size <= LIMIT + 1, "{name}: {size} entries");
     }
     // the tables forget an origin together
-    assert_eq!(node.known_keys.len(), node.origin_activity.len());
     assert_eq!(
         node.replay_filter.tracked_origins(),
         node.origin_activity.len()
@@ -95,7 +93,7 @@ fn a_flood_of_one_message_origins_does_not_displace_a_busy_origin() {
 
     flood_new_origins(&mut node, &inbox, "a", 8 * LIMIT);
     assert!(node.origins_forgotten > 0);
-    assert!(node.known_keys.contains_key("busy"));
+    assert!(node.origin_activity.contains_key(&busy.id));
 
     // Its window survived: an old message is still recognised once the seen cache has gone.
     node.seen_messages.clear();
@@ -116,7 +114,7 @@ fn a_forgotten_origin_is_accepted_again_and_this_is_the_documented_limit() {
     deliver(&mut node, &inbox, "honest", &old);
 
     flood_new_origins(&mut node, &inbox, "a", 8 * LIMIT);
-    assert!(!node.known_keys.contains_key("quiet"));
+    assert!(!node.origin_activity.contains_key(&quiet.id));
 
     node.seen_messages.clear();
     let accepted = node.messages_handled;
@@ -140,7 +138,7 @@ fn a_replay_after_forgetting_gets_an_honest_relay_struck_by_a_neighbour_that_rem
     deliver(&mut neighbour, &neighbour_inbox, "relay", &old);
 
     flood_new_origins(&mut relay, &relay_inbox, "a", 8 * LIMIT);
-    assert!(!relay.known_keys.contains_key("quiet"));
+    assert!(!relay.origin_activity.contains_key(&quiet.id));
 
     relay.seen_messages.clear();
     let accepted = relay.messages_handled;
@@ -170,7 +168,6 @@ fn invalid_signatures_create_no_origin_state() {
         deliver(&mut node, &inbox, &format!("relay-{i}"), &wire);
     }
     assert_eq!(node.origin_activity.len(), 0);
-    assert_eq!(node.known_keys.len(), 0);
     assert_eq!(node.origin_budgets.len(), 0);
     assert_eq!(node.replay_filter.tracked_origins(), 0);
     assert_eq!(node.seen_messages.len(), 0);
@@ -194,16 +191,16 @@ fn stores_of_messages_keep_the_newest_up_to_their_limits() {
     assert!(node.persistent_messages.contains_key(&message_key(&last)));
 
     // One message each from many origins: the recent store is limited over all origins.
+    let mut newest = String::new();
     for i in 0..total {
-        let origin = format!("o{i}");
-        let wire = signed(&Identity::new(&origin), &origin, 1, MessageType::Normal);
+        let origin = Identity::new(&format!("o{i}"));
+        let wire = signed(&origin, "", 1, MessageType::Normal);
         deliver(&mut node, &inbox, "honest", &wire);
+        newest = origin.id;
     }
     let kept: usize = node.recent_messages.values().map(|m| m.len()).sum();
     assert!(kept <= RECENT_MAX_MESSAGES, "{kept} recent messages");
-    assert!(node
-        .recent_messages
-        .contains_key(&format!("o{}", total - 1)));
+    assert!(node.recent_messages.contains_key(&newest));
     assert!(node.observations.len() <= OBSERVATIONS_MAX);
 }
 
@@ -272,7 +269,6 @@ fn rescues_from_new_identities_cannot_grow_the_ttl_store() {
 #[tokio::test]
 async fn relay_targets_chosen_by_peers_are_bounded() {
     let tcp = TcpTransport::bind(
-        "n".to_string(),
         "127.0.0.1:0".parse().unwrap(),
         Identity::new("n").signing_key,
     )

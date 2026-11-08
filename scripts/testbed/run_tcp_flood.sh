@@ -26,10 +26,10 @@ trap cleanup EXIT
 
 RATE=20
 DURATION=$(( MESSAGES / (CONNECTIONS * RATE) + 60 ))
-ip netns exec $NS "$BIN" --listen 127.0.0.1:7001 --node-id receiver > "$OUT/receiver.log" 2>&1 &
+ip netns exec $NS "$BIN" --listen 127.0.0.1:7001 --label receiver > "$OUT/receiver.log" 2>&1 &
 RECEIVER=$!
 sleep 2
-ip netns exec $NS "$BIN" --listen 127.0.0.1:7002 --node-id honest --dial 127.0.0.1:7001 \
+ip netns exec $NS "$BIN" --listen 127.0.0.1:7002 --label honest --dial 127.0.0.1:7001 \
     --emit-count "$DURATION" --emit-interval-ms 1000 --emit-delay-ms 3000 > "$OUT/honest.log" 2>&1 &
 sleep 5
 
@@ -60,11 +60,13 @@ trap - EXIT
     grep "accepted '" "$OUT/receiver.log" | awk '{ n++; if (match($0, /\(\+[0-9]+ not printed\)/))
         h += substr($0, RSTART + 2, RLENGTH - 15) }
         END { printf "receiver acceptances: %d (lines printed %d, held back %d)\n", n + h, n, h }'
+    # The honest node's key-derived ID, from its start-up line; the receiver logs peers by ID.
+    honest_id=$(grep -m1 -o "^Node honest id [0-9a-f]*" "$OUT/honest.log" | awk '{print $4}')
     originated=$(grep -o "originated '[^']*'" "$OUT/honest.log" | sed "s/originated '//; s/'//" | sort -u)
     echo "honest originated: $(echo "$originated" | grep -c . || true)"
-    echo "honest acceptance lines printed by the receiver: $(grep -o "accepted '[^']*' (origin honest," "$OUT/receiver.log" | sort -u | wc -l)"
-    echo "honest rate-limited lines: $(grep -c "peer honest#[0-9a-f]* exceeded rate limit" "$OUT/receiver.log" || true)"
-    echo "honest banned: $(grep -c "banned honest#" "$OUT/receiver.log" || true)"
+    echo "honest acceptance lines printed by the receiver: $(grep -o "accepted '[^']*' (origin $honest_id," "$OUT/receiver.log" | sort -u | wc -l)"
+    echo "honest rate-limited lines: $(grep -c "peer $honest_id exceeded rate limit" "$OUT/receiver.log" || true)"
+    echo "honest banned: $(grep -c "banned $honest_id " "$OUT/receiver.log" || true)"
     echo "receiver log bytes: $(stat -c %s "$OUT/receiver.log")"
     awk -F, 'NR > 1 { n++; rss[n] = $2; cpu = $3; t = $1 } END {
         printf "samples=%d run_s=%d rss_at_tenth_kib=%d rss_end_kib=%d rss_max_kib=%d cpu_s=%s\n",

@@ -43,7 +43,7 @@ fuzz_target!(|data: &[u8]| {
     node.use_router = false;
     if let Ok(mut guard) = inbox.lock() {
         guard
-            .entry("receiver".to_string())
+            .entry(node.id.clone())
             .or_default()
             .push(("peer#00".to_string(), data.to_vec()));
     }

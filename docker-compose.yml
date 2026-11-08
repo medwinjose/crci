@@ -3,7 +3,7 @@ version: '3.8'
 services:
   node-alpha:
     build: .
-    command: ["--listen", "0.0.0.0:7001", "--node-id", "node-alpha"]
+    command: ["--listen", "0.0.0.0:7001", "--label", "node-alpha"]
     ports:
       - "7001:7001"
       - "8080:8080"
@@ -13,7 +13,7 @@ services:
 
   node-beta:
     build: .
-    command: ["--listen", "0.0.0.0:7002", "--node-id", "node-beta", "--dial", "node-alpha:7001"]
+    command: ["--listen", "0.0.0.0:7002", "--label", "node-beta", "--dial", "node-alpha:7001"]
     ports:
       - "7002:7002"
     depends_on:

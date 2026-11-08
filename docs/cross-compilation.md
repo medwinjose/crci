@@ -72,7 +72,7 @@ After=network.target
 [Service]
 Type=simple
 User=pi
-ExecStart=/home/pi/crci-node --listen 192.168.1.50:7001 --node-id pi-node
+ExecStart=/home/pi/crci-node --listen 192.168.1.50:7001 --label pi-node --key-file /home/pi/crci-node.key --key-passphrase-file /home/pi/crci-node.pass
 Restart=on-failure
 RestartSec=5
 WorkingDirectory=/home/pi/
@@ -82,6 +82,8 @@ WantedBy=multi-user.target
 ```
 
 Use the Pi's own LAN address in `--listen` (here `192.168.1.50`), not `0.0.0.0`: peers answer anti-entropy requests at the listen address, and a node listening on `0.0.0.0` turns anti-entropy off.
+
+`--key-file` keeps the node's key, and so its node ID (derived from the key), across restarts; the file is created on first start and encrypted (AES-256-GCM, key from the passphrase with Argon2id). Put the passphrase on the first line of the passphrase file and make both files readable by the service user only (`chmod 600`). Without `--key-file` the node has a new ID at every start, and its neighbours treat it as a new peer.
 
 3. Enable and start the service:
 ```bash

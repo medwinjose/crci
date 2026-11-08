@@ -51,7 +51,7 @@ fn deliver(node: &mut NodeRuntime, inbox: &SharedInbox, wire: &WireMessage) {
     };
     if let Ok(mut guard) = inbox.lock() {
         guard
-            .entry("rx".to_string())
+            .entry(node.id.clone())
             .or_default()
             .push((ATK.to_string(), bytes));
     }

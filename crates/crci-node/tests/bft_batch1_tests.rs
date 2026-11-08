@@ -9,6 +9,13 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+/// One peer that authors the test messages. A message signed with the receiver's own key would
+/// carry the receiver's ID as origin and be dropped as its own echo.
+fn author() -> &'static crci_core::identity::Identity {
+    static AUTHOR: std::sync::OnceLock<crci_core::identity::Identity> = std::sync::OnceLock::new();
+    AUTHOR.get_or_init(|| crci_core::identity::Identity::new("peer"))
+}
+
 #[test]
 fn test_bft_subnet_limit() {
     let mut table = PeerTable::new();
@@ -97,7 +104,7 @@ fn test_bft_signature_checks_do_not_cap_an_honest_origin() {
             None,
         );
         msg.seq = i; // Incremental sequence numbers to bypass replay check
-        let wire = WireMessage::from_message(&msg, &node.identity);
+        let wire = WireMessage::from_message(&msg, author());
         let payload = serde_json::to_vec(&wire).unwrap();
         raw_messages.push(payload);
     }
@@ -105,7 +112,7 @@ fn test_bft_signature_checks_do_not_cap_an_honest_origin() {
     {
         let mut guard = inbox.lock().unwrap();
         guard.insert(
-            "my-node-id".to_string(),
+            node.id.clone(),
             raw_messages
                 .into_iter()
                 .map(|p| ("test-sender".to_string(), p))
@@ -160,16 +167,13 @@ fn test_bft_signature_invalidation_spoof_defense() {
         Signal::new(3, true, false, true, 3, Visibility::Direct),
         None,
     );
-    let mut wire = WireMessage::from_message(&msg, &node.identity);
+    let mut wire = WireMessage::from_message(&msg, author());
     wire.signature_bytes = vec![0; 64]; // Invalid signature
     let payload = serde_json::to_vec(&wire).unwrap();
 
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert(
-            "my-node-id".to_string(),
-            vec![("test-sender".to_string(), payload)],
-        );
+        guard.insert(node.id.clone(), vec![("test-sender".to_string(), payload)]);
     }
 
     node.process_inbox();
@@ -547,15 +551,12 @@ fn test_bft_seen_messages_cache_ceiling() {
         Signal::new(1, false, false, false, 1, Visibility::Direct),
         None,
     );
-    let wire = WireMessage::from_message(&msg, &node.identity);
+    let wire = WireMessage::from_message(&msg, author());
     let payload = serde_json::to_vec(&wire).unwrap();
 
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert(
-            "bft-046-node".to_string(),
-            vec![("test-sender".to_string(), payload)],
-        );
+        guard.insert(node.id.clone(), vec![("test-sender".to_string(), payload)]);
     }
 
     node.process_inbox();
@@ -591,15 +592,12 @@ fn test_bft008_persists_across_bft046_eviction() {
         Signal::new(1, false, false, false, 1, Visibility::Direct),
         None,
     );
-    let wire = WireMessage::from_message(&msg, &node.identity);
+    let wire = WireMessage::from_message(&msg, author());
     let payload = serde_json::to_vec(&wire).unwrap();
 
     {
         let mut guard = inbox.lock().unwrap();
-        guard.insert(
-            "bft-008-046-node".to_string(),
-            vec![("test-sender".to_string(), payload)],
-        );
+        guard.insert(node.id.clone(), vec![("test-sender".to_string(), payload)]);
     }
 
     node.process_inbox();

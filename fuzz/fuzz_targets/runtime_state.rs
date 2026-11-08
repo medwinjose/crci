@@ -59,11 +59,7 @@ struct Input {
 
 fn identity(origin: u8) -> Identity {
     let signing_key = SigningKey::from_bytes(&[origin.wrapping_add(1); 32]);
-    Identity {
-        id: format!("o{origin}"),
-        verifying_key: signing_key.verifying_key(),
-        signing_key,
-    }
+    Identity::from_signing_key(&format!("o{origin}"), signing_key)
 }
 
 fn wire(origin: u8, seq: u8, kind: Kind) -> WireMessage {
@@ -139,7 +135,7 @@ fuzz_target!(|input: Input| {
         let Ok(bytes) = bytes else { continue };
         if let Ok(mut guard) = inbox.lock() {
             guard
-                .entry("receiver".to_string())
+                .entry(node.id.clone())
                 .or_default()
                 .push((format!("s{sender}"), bytes));
         }
@@ -174,10 +170,6 @@ fuzz_target!(|input: Input| {
         assert!(
             node.observations.len() <= OBSERVATIONS_MAX,
             "observations over their limit"
-        );
-        assert!(
-            node.known_keys.len() <= max_origins,
-            "known keys over the origin limit"
         );
         assert!(
             node.origin_budgets.len() <= max_origins,

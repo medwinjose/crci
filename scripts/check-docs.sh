@@ -30,6 +30,7 @@ check "no tool attribution in the repository"             '\bclaude\b|anthropic|
 check "model checking covers small instances, it is no proof" 'formally (proved|proven|verified)|provabl|verified for all'
 check "a gossip copy can follow its sync answer"          'untagged repeats are never excused|same ordered connection'
 check "any answer that entered the seen cache excuses its gossip copy" 'follows its accepted answer|copy of a message accepted as an answer'
+check "node IDs are derived from keys, not pinned"         'pinned to the first key|origin key pinning|key-derived (origin )?ids (are )?planned|--node-id'
 
 if [ "$fail" -ne 0 ]; then
   echo "Documentation guard failed."

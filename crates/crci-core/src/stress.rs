@@ -161,10 +161,17 @@ pub fn test_signature_forgery() {
 
     println!("Setup: attacker tries to impersonate node-001\n");
 
+    let id_of = |name: &str| {
+        sim.nodes
+            .get(name)
+            .map(|n| n.id.clone())
+            .unwrap_or_default()
+    };
+    let (victim_id, receiver_id) = (id_of("node-001"), id_of("node-002"));
     let attacker_identity = Identity::new("attacker");
     let mut forged = WireMessage {
         id: "msg-forged".to_string(),
-        origin: "node-001".to_string(),
+        origin: victim_id.clone(),
         origin_pubkey: attacker_identity.verifying_key.to_bytes().to_vec(),
         severity: 1,
         confidence: 5,
@@ -188,9 +195,7 @@ pub fn test_signature_forgery() {
             Ok(guard) => guard,
             Err(poisoned) => poisoned.into_inner(),
         };
-        ib.entry("node-002".to_string())
-            .or_default()
-            .push(("node-001".to_string(), raw));
+        ib.entry(receiver_id).or_default().push((victim_id, raw));
     }
 
     println!("Injecting forged message into node-002's inbox...");

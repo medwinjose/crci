@@ -36,14 +36,15 @@ fn holds(node: &NodeRuntime, id: &str) -> bool {
 }
 
 fn assert_no_strikes(sim: &mut MeshSimulator) {
-    let ids: Vec<String> = sim.nodes.keys().cloned().collect();
-    for id in &ids {
-        let node = sim.nodes.get_mut(id).unwrap();
-        assert_eq!(node.byzantine_events, 0, "{id} recorded a violation");
+    let names: Vec<String> = sim.nodes.keys().cloned().collect();
+    let ids: Vec<String> = names.iter().map(|n| sim.nodes[n].id.clone()).collect();
+    for name in &names {
+        let node = sim.nodes.get_mut(name).unwrap();
+        assert_eq!(node.byzantine_events, 0, "{name} recorded a violation");
         for peer in &ids {
-            if peer != id {
+            if *peer != node.id {
                 let rep = node.sybil_guard.reputation(peer);
-                assert!(rep >= 0.5, "{id} struck {peer} (reputation {rep})");
+                assert!(rep >= 0.5, "{name} struck {peer} (reputation {rep})");
             }
         }
     }
@@ -138,28 +139,46 @@ impl Pair {
         Pair { a, b, inbox }
     }
 
+    /// Node ID of "a" or "b"; any other name stands for a peer outside the pair.
+    fn id(&self, name: &str) -> String {
+        match name {
+            "a" => self.a.id.clone(),
+            "b" => self.b.id.clone(),
+            other => other.to_string(),
+        }
+    }
+
     /// Put raw `wire` in `to`'s inbox as sent by `from`.
     fn inject(&self, from: &str, to: &str, wire: &WireMessage) {
         self.inbox
             .lock()
             .unwrap()
-            .entry(to.to_string())
+            .entry(self.id(to))
             .or_default()
-            .push((from.to_string(), serde_json::to_vec(wire).unwrap()));
+            .push((self.id(from), serde_json::to_vec(wire).unwrap()));
     }
 
-    /// Messages waiting for `to`, removed from the inbox.
+    /// Messages waiting for `to`, removed from the inbox, with "a" and "b" as senders.
     fn take(&self, to: &str) -> Vec<(String, WireMessage)> {
+        let name = |from: String| {
+            if from == self.a.id {
+                "a".to_string()
+            } else if from == self.b.id {
+                "b".to_string()
+            } else {
+                from
+            }
+        };
         self.inbox
             .lock()
             .unwrap()
-            .remove(to)
+            .remove(&self.id(to))
             .unwrap_or_default()
             .into_iter()
             .filter_map(|(from, bytes)| {
                 serde_json::from_slice::<WireMessage>(&bytes)
                     .ok()
-                    .map(|w| (from, w))
+                    .map(|w| (name(from), w))
             })
             .collect()
     }
@@ -178,7 +197,7 @@ fn authored_by_a(pair: &mut Pair, n: u64) -> Vec<WireMessage> {
     }
     pair.a
         .recent_messages
-        .get("a")
+        .get(&pair.a.id)
         .map(|m| m.values().map(|w| (**w).clone()).collect())
         .unwrap_or_default()
 }
@@ -191,14 +210,14 @@ fn answer_crossing_with_gossip_is_not_struck() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 3);
 
-    pair.b.request_sync("a"); // digest lists nothing from a
+    pair.b.request_sync(&pair.a.id); // digest lists nothing from a
     pair.inject("a", "b", &sent[0]); // gossip crosses the request
     pair.b.process_inbox();
     pair.a.process_inbox(); // answers with messages 1..3
     let answer: Vec<_> = pair
         .take("b")
         .into_iter()
-        .filter(|(_, w)| w.message_type != SYNC_REQUEST_TYPE && w.origin == "a")
+        .filter(|(_, w)| w.message_type != SYNC_REQUEST_TYPE && w.origin == pair.a.id)
         .collect();
     assert_eq!(answer.len(), 3, "the answer carries every message b lacked");
     pair.requeue("b", &answer);
@@ -206,7 +225,7 @@ fn answer_crossing_with_gossip_is_not_struck() {
 
     assert_eq!(pair.b.byzantine_events, 0);
     assert_eq!(pair.b.sync_excused_duplicates, 1);
-    assert!(pair.b.sybil_guard.reputation(&"a".to_string()) >= 0.5);
+    assert!(pair.b.sybil_guard.reputation(&pair.a.id) >= 0.5);
     for i in 1..=3 {
         assert!(holds(&pair.b, &format!("a-{i}")));
     }
@@ -221,7 +240,7 @@ fn late_answer_to_a_stale_digest_is_not_struck() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 3);
 
-    pair.b.request_sync("a"); // digest lists nothing from a
+    pair.b.request_sync(&pair.a.id); // digest lists nothing from a
     let request = pair.take("a");
     for wire in &sent {
         pair.inject("a", "b", wire); // gossip overtakes the delayed request
@@ -238,7 +257,7 @@ fn late_answer_to_a_stale_digest_is_not_struck() {
 
     assert_eq!(pair.b.byzantine_events, 0);
     assert_eq!(pair.b.sync_excused_duplicates, 3);
-    assert!(!pair.b.sybil_guard.is_banned(&"a".to_string()));
+    assert!(!pair.b.sybil_guard.is_banned(&pair.a.id));
 }
 
 /// The answer tag belongs to one hop: a message received as an answer is relayed and
@@ -249,14 +268,14 @@ fn answer_tag_is_not_relayed() {
     let sent = authored_by_a(&mut pair, 1);
     pair.b.add_peer("c");
     pair.b.use_router = false;
-    let request = pair.b.request_sync("a");
+    let request = pair.b.request_sync(&pair.a.id);
     pair.take("a");
     pair.inject("a", "b", &answer(&sent[0], &request));
     pair.b.process_inbox();
     let relayed = pair.take("c");
     assert!(relayed.iter().any(|(_, w)| w.id == sent[0].id));
     assert!(relayed.iter().all(|(_, w)| w.answers_sync.is_none()));
-    assert!(pair.b.recent_messages["a"]
+    assert!(pair.b.recent_messages[&pair.a.id]
         .values()
         .all(|w| w.answers_sync.is_none()));
 }
@@ -267,7 +286,7 @@ fn answer_tag_is_not_relayed() {
 fn untagged_repeat_inside_a_session_strikes() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    pair.b.request_sync("a"); // digest lists nothing from a
+    pair.b.request_sync(&pair.a.id); // digest lists nothing from a
     pair.inject("a", "b", &sent[0]);
     pair.inject("a", "b", &sent[0]);
     pair.b.process_inbox();
@@ -282,7 +301,7 @@ fn untagged_repeat_inside_a_session_strikes() {
 fn a_gossip_copy_after_its_answer_is_not_struck() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    let request = pair.b.request_sync("a");
+    let request = pair.b.request_sync(&pair.a.id);
     pair.take("a");
     pair.inject("a", "b", &answer(&sent[0], &request));
     pair.inject("a", "b", &sent[0]);
@@ -298,14 +317,14 @@ fn a_gossip_copy_after_its_answer_is_not_struck() {
 fn a_gossip_copy_after_its_answer_is_not_struck_when_a_third_peer_was_first() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    let request = pair.b.request_sync("a");
+    let request = pair.b.request_sync(&pair.a.id);
     pair.take("a");
     pair.inject("c", "b", &sent[0]);
     pair.inject("a", "b", &answer(&sent[0], &request));
     pair.inject("a", "b", &sent[0]);
     pair.b.process_inbox();
     assert_eq!(pair.b.byzantine_events, 0);
-    assert!(pair.b.sybil_guard.reputation(&"a".to_string()) >= 0.5);
+    assert!(pair.b.sybil_guard.reputation(&pair.a.id) >= 0.5);
     // one excuse per message: a further copy is a replay
     pair.inject("a", "b", &sent[0]);
     pair.b.process_inbox();
@@ -318,7 +337,7 @@ fn a_gossip_copy_after_its_answer_is_not_struck_when_a_third_peer_was_first() {
 fn a_gossip_copy_after_its_answer_is_not_struck_when_the_answer_was_redundant() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    let request = pair.b.request_sync("a");
+    let request = pair.b.request_sync(&pair.a.id);
     pair.take("a");
     pair.inject("c", "b", &sent[0]);
     pair.b.process_inbox();
@@ -332,18 +351,21 @@ fn a_gossip_copy_after_its_answer_is_not_struck_when_the_answer_was_redundant() 
     assert_eq!(pair.b.byzantine_events, 1);
 }
 
-/// The same when an adversary squatted the origin's ID at the requester (pinned another key for
-/// it): the answer is then dropped at the key check, and must still count as an answer.
+/// The same when an impostor first sent the requester a message claiming the origin's ID: the
+/// claim is rejected (its origin is not the impostor's key-derived ID) and changes nothing.
 #[test]
-fn a_gossip_copy_after_its_answer_is_not_struck_when_the_origin_was_squatted() {
+fn a_gossip_copy_after_its_answer_is_not_struck_after_an_impostor_claimed_the_origin() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    let squatter = Identity::new("a");
+    let impostor = Identity::new("a");
     let mut claim = msg("squat", "a");
     claim.seq = 5;
-    pair.inject("x", "b", &WireMessage::from_message(&claim, &squatter));
+    let mut claim = WireMessage::from_message(&claim, &impostor);
+    claim.origin = pair.a.id.clone();
+    claim.sign_with(&impostor);
+    pair.inject("x", "b", &claim);
     pair.b.process_inbox();
-    pair.b.request_sync("a");
+    pair.b.request_sync(&pair.a.id);
     pair.a.process_inbox(); // a answers what b's digest lacks: its message 1
     let answers = pair.take("b");
     assert!(answers
@@ -352,8 +374,9 @@ fn a_gossip_copy_after_its_answer_is_not_struck_when_the_origin_was_squatted() {
     pair.requeue("b", &answers);
     pair.inject("a", "b", &sent[0]);
     pair.b.process_inbox();
-    // (the key mismatches count as Byzantine events, but strike nobody)
-    assert!(pair.b.sybil_guard.reputation(&"a".to_string()) >= 0.5);
+    // The claim struck its sender, x, and nobody else.
+    assert!(pair.b.sybil_guard.reputation(&"x".to_string()) < 0.5);
+    assert!(pair.b.sybil_guard.reputation(&pair.a.id) >= 0.5);
 }
 
 /// The excuse covers one copy per message: gossip after an answer does not open a licence.
@@ -361,7 +384,7 @@ fn a_gossip_copy_after_its_answer_is_not_struck_when_the_origin_was_squatted() {
 fn a_second_copy_after_an_answer_strikes() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    let request = pair.b.request_sync("a");
+    let request = pair.b.request_sync(&pair.a.id);
     pair.take("a");
     pair.inject("a", "b", &answer(&sent[0], &request));
     pair.inject("a", "b", &sent[0]);
@@ -376,7 +399,7 @@ fn a_second_copy_after_an_answer_strikes() {
 fn a_tagged_and_an_untagged_copy_share_one_excuse() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    let request = pair.b.request_sync("a");
+    let request = pair.b.request_sync(&pair.a.id);
     pair.take("a");
     let tagged = answer(&sent[0], &request);
     pair.inject("a", "b", &tagged);
@@ -406,7 +429,7 @@ fn a_tag_naming_a_request_to_someone_else_earns_no_excuse() {
 fn a_gossip_copy_after_the_session_ended_strikes() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    let request = pair.b.request_sync("a");
+    let request = pair.b.request_sync(&pair.a.id);
     pair.take("a");
     pair.inject("a", "b", &answer(&sent[0], &request));
     pair.b.process_inbox();
@@ -436,7 +459,7 @@ fn unsolicited_duplicates_during_heal_still_strike() {
 
     pair.inject("a", "b", &sent[0]);
     pair.b.process_inbox(); // b holds message 1 from a
-    let request = pair.b.request_sync("a"); // digest lists message 1
+    let request = pair.b.request_sync(&pair.a.id); // digest lists message 1
 
     // Message 1 was listed as held: repeating it is a replay, tag or not.
     pair.inject("a", "b", &answer(&sent[0], &request));
@@ -466,7 +489,7 @@ fn unsolicited_duplicates_during_heal_still_strike() {
 fn excuse_expires_with_the_session() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 1);
-    let request = pair.b.request_sync("a");
+    let request = pair.b.request_sync(&pair.a.id);
     pair.inject("a", "b", &sent[0]);
     pair.b.process_inbox();
     pair.b
@@ -483,7 +506,7 @@ fn excuse_expires_with_the_session() {
 fn a_request_excuses_at_most_one_answer_batch() {
     let mut pair = Pair::new();
     let sent = authored_by_a(&mut pair, 20);
-    let request = pair.b.request_sync("a"); // digest lists nothing from a
+    let request = pair.b.request_sync(&pair.a.id); // digest lists nothing from a
 
     // Every message arrives as gossip and again as an answer; the clock advances so the
     // token bucket never drops a frame.
@@ -499,7 +522,7 @@ fn a_request_excuses_at_most_one_answer_batch() {
         pair.b.byzantine_events, 3,
         "repeats after the batch are strikes"
     );
-    assert!(pair.b.sybil_guard.is_banned(&"a".to_string()));
+    assert!(pair.b.sybil_guard.is_banned(&pair.a.id));
 }
 
 /// The tag must name a request this node sent to the sender: a request sent to another
@@ -535,17 +558,17 @@ fn relayed_sync_request_is_not_answered() {
 fn answers_are_rate_limited_and_batched() {
     let mut pair = Pair::new();
     authored_by_a(&mut pair, 40);
-    pair.b.request_sync("a");
+    pair.b.request_sync(&pair.a.id);
     pair.a.process_inbox();
     let first = pair.take("b").len();
     assert_eq!(first, crci_core::runtime::SYNC_MAX_BATCH);
 
-    pair.b.request_sync("a"); // too soon
+    pair.b.request_sync(&pair.a.id); // too soon
     pair.a.process_inbox();
     assert!(pair.take("b").is_empty());
 
     pair.a.sybil_guard.advance_time(Duration::from_secs(6));
-    pair.b.request_sync("a");
+    pair.b.request_sync(&pair.a.id);
     pair.a.process_inbox();
     assert_eq!(pair.take("b").len(), crci_core::runtime::SYNC_MAX_BATCH);
 }
@@ -556,7 +579,7 @@ fn answers_are_rate_limited_and_batched() {
 fn a_resumed_sync_is_answered_after_a_request_that_arrived_late() {
     let mut pair = Pair::new();
     authored_by_a(&mut pair, 40);
-    pair.b.request_sync("a");
+    pair.b.request_sync(&pair.a.id);
     pair.a.process_inbox();
     assert_eq!(pair.take("b").len(), SYNC_MAX_BATCH);
 
@@ -564,7 +587,7 @@ fn a_resumed_sync_is_answered_after_a_request_that_arrived_late() {
     pair.a
         .sybil_guard
         .advance_time(crci_core::runtime::SYNC_RESUME_SPACING - Duration::from_secs(3));
-    pair.b.request_sync("a");
+    pair.b.request_sync(&pair.a.id);
     pair.a.process_inbox();
     assert_eq!(pair.take("b").len(), SYNC_MAX_BATCH);
 }
@@ -590,13 +613,12 @@ fn answers_are_limited_across_requesters() {
     authored_by_a(&mut pair, 3);
     let mut answered = 0;
     for i in 0..10 {
-        let id = format!("asker-{i}");
         let inbox = pair.inbox.clone();
-        let mut asker = NodeRuntime::new(&id, "z", inbox);
+        let mut asker = NodeRuntime::new(&format!("asker-{i}"), "z", inbox);
         let request = asker.build_sync_request(None);
-        pair.inject(&id, "a", &request);
+        pair.inject(&asker.id, "a", &request);
         pair.a.process_inbox();
-        if !pair.take(&id).is_empty() {
+        if !pair.take(&asker.id).is_empty() {
             answered += 1;
         }
     }
@@ -610,8 +632,9 @@ fn linked_pair() -> (NodeRuntime, NodeRuntime, SharedInbox) {
     let mut b = NodeRuntime::new("b", "z", inbox.clone());
     a.use_router = false;
     b.use_router = false;
-    a.add_peer("b");
-    b.add_peer("a");
+    let (an, bn) = (a.id.clone(), b.id.clone());
+    a.add_peer(&bn);
+    b.add_peer(&an);
     b.sybil_guard.use_manual_clock();
     (a, b, inbox)
 }
@@ -622,16 +645,17 @@ fn linked_pair() -> (NodeRuntime, NodeRuntime, SharedInbox) {
 #[test]
 fn sync_requests_do_not_push_messages_out_of_the_window() {
     let (mut a, mut b, _inbox) = linked_pair();
+    let bn = b.id.clone();
     a.originate(msg("m1", "a"));
     b.process_inbox();
     for _ in 0..70 {
-        a.request_sync("b");
+        a.request_sync(&bn);
         b.process_inbox();
         b.sybil_guard.advance_time(Duration::from_secs(1));
     }
     a.originate(msg("m2", "a"));
     b.process_inbox();
-    let kept: Vec<&str> = b.recent_messages["a"]
+    let kept: Vec<&str> = b.recent_messages[&a.id]
         .values()
         .map(|w| w.id.as_str())
         .collect();
@@ -642,14 +666,15 @@ fn sync_requests_do_not_push_messages_out_of_the_window() {
 #[test]
 fn a_message_delayed_behind_sync_requests_is_accepted() {
     let (mut a, mut b, inbox) = linked_pair();
+    let bn = b.id.clone();
     a.originate(msg("m1", "a"));
-    let held_back = inbox.lock().unwrap().remove("b").unwrap();
+    let held_back = inbox.lock().unwrap().remove(&bn).unwrap();
     for _ in 0..70 {
-        a.request_sync("b");
+        a.request_sync(&bn);
         b.process_inbox();
         b.sybil_guard.advance_time(Duration::from_secs(1));
     }
-    inbox.lock().unwrap().insert("b".to_string(), held_back);
+    inbox.lock().unwrap().insert(bn, held_back);
     let delivered = b.process_inbox_delivered();
     assert_eq!(delivered.len(), 1);
     assert_eq!(delivered[0].id, "m1");
@@ -659,10 +684,11 @@ fn a_message_delayed_behind_sync_requests_is_accepted() {
 #[test]
 fn a_repeated_sync_request_is_still_struck() {
     let (mut a, mut b, inbox) = linked_pair();
-    a.request_sync("b");
-    let frames = inbox.lock().unwrap().get("b").unwrap().clone();
+    let bn = b.id.clone();
+    a.request_sync(&bn);
+    let frames = inbox.lock().unwrap().get(&bn).unwrap().clone();
     b.process_inbox();
-    inbox.lock().unwrap().insert("b".to_string(), frames);
+    inbox.lock().unwrap().insert(bn, frames);
     b.process_inbox();
     assert_eq!(b.byzantine_events, 1);
 }
@@ -672,22 +698,23 @@ fn a_repeated_sync_request_is_still_struck() {
 #[test]
 fn sync_requests_use_a_window_of_their_own() {
     let (mut a, mut b, inbox) = linked_pair();
+    let (an, bn) = (a.id.clone(), b.id.clone());
     let old = a.build_sync_request(None);
     for _ in 0..70 {
-        a.request_sync("b");
+        a.request_sync(&bn);
         b.process_inbox();
         b.sybil_guard.advance_time(Duration::from_secs(1));
     }
     inbox
         .lock()
         .unwrap()
-        .entry("b".to_string())
+        .entry(bn)
         .or_default()
-        .push(("a".to_string(), serde_json::to_vec(&old).unwrap()));
+        .push((an.clone(), serde_json::to_vec(&old).unwrap()));
     b.process_inbox();
     assert_eq!(b.byzantine_events, 0);
     assert!(b.seen_messages.contains_key(&message_key(&old)));
-    assert!(!inbox.lock().unwrap().contains_key("a"));
+    assert!(!inbox.lock().unwrap().contains_key(&an));
 }
 
 /// The seen-ID cache is cleared at its limit. A neighbour's echo of this node's own message that
@@ -695,18 +722,19 @@ fn sync_requests_use_a_window_of_their_own() {
 /// strike it for the repeat.
 #[test]
 fn an_own_message_echoed_after_the_seen_cache_cleared_is_not_relayed_again() {
-    let (mut a, _b, inbox) = linked_pair();
+    let (mut a, b, inbox) = linked_pair();
+    let (an, bn) = (a.id.clone(), b.id.clone());
     a.originate(msg("m1", "a"));
-    let frame = inbox.lock().unwrap().remove("b").unwrap().remove(0);
+    let frame = inbox.lock().unwrap().remove(&bn).unwrap().remove(0);
     a.seen_messages.clear();
     inbox
         .lock()
         .unwrap()
-        .insert("a".to_string(), vec![("b".to_string(), frame.1)]);
+        .insert(an, vec![(bn.clone(), frame.1)]);
     let delivered = a.process_inbox_delivered();
     assert!(delivered.is_empty());
     assert!(
-        !inbox.lock().unwrap().contains_key("b"),
+        !inbox.lock().unwrap().contains_key(&bn),
         "a relayed its own message again"
     );
     assert_eq!(a.byzantine_events, 0);

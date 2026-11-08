@@ -26,7 +26,7 @@ async fn main() {
             eprintln!("Byzantine mode requires a target peer via --to");
             std::process::exit(1);
         };
-        let node_id = args.node_id.clone().unwrap_or_else(|| {
+        let node_id = args.label.clone().unwrap_or_else(|| {
             let mut rng = rand::thread_rng();
             use rand::Rng;
             format!("byz-cli-{:04x}", rng.gen::<u16>())
@@ -56,8 +56,8 @@ async fn main() {
     }
 
     if let (Some(send_text), Some(to_addr)) = (args.send.clone(), args.to.clone()) {
-        let node_id = args
-            .node_id
+        let label = args
+            .label
             .clone()
             .unwrap_or_else(|| "cli-sender".to_string());
 
@@ -86,12 +86,14 @@ async fn main() {
             }
         };
 
-        let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
-        let mut node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
+        let mut node = make_node(&args, &label).await;
+        if args.listen.is_none() {
+            // With --listen, `run_node` prints this line.
+            println!("Node {} id {}", label, node.id);
+        }
 
         // The transport authenticates connections with the same key that signs messages.
         let tcp = match crci_core::transport::TcpTransport::bind(
-            node_id.clone(),
             listen_socket,
             node.identity.signing_key.clone(),
         )
@@ -107,7 +109,7 @@ async fn main() {
         // Originate a message signed with this node's key.
         let mut msg = Message::new(
             &uuid::Uuid::new_v4().to_string(),
-            &node_id,
+            &node.id,
             Signal::new(
                 severity_val,
                 severity_val >= 5,
@@ -134,7 +136,7 @@ async fn main() {
 
         if args.listen.is_some() {
             run_node(
-                node_id,
+                label,
                 node,
                 Some(Arc::new(tcp)),
                 dial_targets(&args),
@@ -145,13 +147,9 @@ async fn main() {
         return;
     }
 
-    if args.node_id.is_some() || args.listen.is_some() {
-        let node_id = args
-            .node_id
-            .clone()
-            .unwrap_or_else(|| "cli-node".to_string());
-        let inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
-        let mut node = crci_core::runtime::NodeRuntime::new(&node_id, "zone-host", inbox);
+    if args.label.is_some() || args.listen.is_some() {
+        let label = args.label.clone().unwrap_or_else(|| "cli-node".to_string());
+        let mut node = make_node(&args, &label).await;
         if let Some(rate) = args.sender_refill_per_sec {
             node.sybil_guard.sender_refill_per_sec = rate;
         }
@@ -184,12 +182,8 @@ async fn main() {
                     std::process::exit(1);
                 }
             };
-            match crci_core::transport::TcpTransport::bind(
-                node_id.clone(),
-                addr,
-                node.identity.signing_key.clone(),
-            )
-            .await
+            match crci_core::transport::TcpTransport::bind(addr, node.identity.signing_key.clone())
+                .await
             {
                 Ok(t) => Some(Arc::new(t)),
                 Err(e) => {
@@ -202,7 +196,7 @@ async fn main() {
         };
 
         run_node(
-            node_id,
+            label,
             node,
             tcp,
             dial_targets(&args),
@@ -1481,6 +1475,40 @@ fn copies_to_send(
     }
 }
 
+/// The node labelled `label`. With `--key-file`, its key is the one kept in that encrypted file
+/// (created on first use), so it keeps its ID across restarts, and its sequence numbers start
+/// above any the previous run could have used. Without it, a fresh key: a new ID every start.
+async fn make_node(args: &Cli, label: &str) -> runtime::NodeRuntime {
+    let inbox: transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+    let (Some(key_file), Some(passphrase_file)) = (&args.key_file, &args.key_passphrase_file)
+    else {
+        return runtime::NodeRuntime::new(label, "zone-host", inbox);
+    };
+    let passphrase = match std::fs::read_to_string(passphrase_file) {
+        Ok(text) => text.lines().next().unwrap_or_default().to_string(),
+        Err(e) => {
+            eprintln!(
+                "Cannot read --key-passphrase-file {}: {e}",
+                passphrase_file.display()
+            );
+            std::process::exit(1);
+        }
+    };
+    match identity::load_or_create(key_file, &passphrase).await {
+        Ok((key, seq_floor)) => {
+            let identity = identity::Identity::from_signing_key(label, key);
+            let mut node = runtime::NodeRuntime::with_identity(identity, "zone-host", inbox);
+            node.seq_counter = seq_floor;
+            node.control_seq_counter = seq_floor;
+            node
+        }
+        Err(e) => {
+            eprintln!("Cannot load the node key from {}: {e}", key_file.display());
+            std::process::exit(1);
+        }
+    }
+}
+
 /// Remove and return everything `NodeRuntime` queued for other nodes (gossip relays and
 /// chain-head announcements), keyed by destination.
 fn take_outbound(node: &runtime::NodeRuntime) -> Vec<(String, Vec<u8>)> {
@@ -1505,6 +1533,9 @@ async fn run_node(
     dial: Vec<String>,
     experiment: Experiment,
 ) {
+    // Log lines name this node by its label (`node_id` here) and peers and origins by their
+    // node IDs; this line maps one to the other.
+    println!("Node {} id {}", node_id, node.id);
     let started = experiment.started;
     let fault_announced = Arc::new(std::sync::atomic::AtomicBool::new(false));
     // Frames from banned peers, dropped before they are parsed; reported with the statistics.
@@ -1528,7 +1559,7 @@ async fn run_node(
         peer_list: Arc::new(std::sync::RwLock::new(Vec::new())),
         recent_messages: Arc::new(std::sync::RwLock::new(std::collections::VecDeque::new())),
         ws_tx: ws_tx.clone(),
-        node_id: node_id.clone(),
+        node_id: node.id.clone(),
         start_time: std::time::Instant::now(),
         byzantine_events: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         divergence_alerts: Arc::new(std::sync::RwLock::new(Vec::new())),

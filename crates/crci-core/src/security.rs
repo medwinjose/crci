@@ -8,27 +8,11 @@ use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
 // ── S: Spoofing — Opaque node IDs from pubkey hash ────────────────
 
-/// Derive a canonical node ID from a public key.
-/// Format: first 16 hex characters of SHA-256(pubkey_bytes).
-/// This makes node IDs unguessable and unorderable.
-///
-/// In production this would use sha2::Sha256. Here we simulate
-/// with a deterministic hash for testability without new crates.
-pub fn derive_node_id(pubkey_bytes: &[u8]) -> String {
-    // Deterministic mix without sha2 import (sha2 already in Cargo.toml)
-    // We fold the bytes with a prime-based mix to produce a hex string.
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325; // FNV-1a offset basis
-    for &b in pubkey_bytes {
-        h ^= b as u64;
-        h = h.wrapping_mul(0x0000_0100_0000_01b3); // FNV prime
-    }
-    format!("{h:016x}")
-}
+pub use crate::identity::derive_node_id;
 
-/// Validate that a node ID looks like a derived pubkey hash
-/// (16 lowercase hex characters). Rejects sequential/guessable IDs.
+/// Whether `id` has the form of a derived node ID (32 lowercase hex characters).
 pub fn is_valid_node_id_format(id: &str) -> bool {
-    id.len() == 16
+    id.len() == 2 * crate::identity::NODE_ID_BYTES
         && id
             .chars()
             .all(|c| c.is_ascii_hexdigit() && !c.is_uppercase())
@@ -427,7 +411,7 @@ mod tests {
         let id1 = derive_node_id(pubkey);
         let id2 = derive_node_id(pubkey);
         assert_eq!(id1, id2);
-        assert_eq!(id1.len(), 16);
+        assert_eq!(id1.len(), 32);
     }
 
     #[test]
@@ -439,9 +423,9 @@ mod tests {
 
     #[test]
     fn test_valid_node_id_format_accepted() {
-        assert!(is_valid_node_id_format("a1b2c3d4e5f6a7b8"));
+        assert!(is_valid_node_id_format("a1b2c3d4e5f6a7b8a1b2c3d4e5f6a7b8"));
         assert!(!is_valid_node_id_format("zone-a-node-01")); // guessable
-        assert!(!is_valid_node_id_format("A1B2C3D4E5F6A7B8")); // uppercase
+        assert!(!is_valid_node_id_format("A1B2C3D4E5F6A7B8A1B2C3D4E5F6A7B8")); // uppercase
         assert!(!is_valid_node_id_format("short")); // too short
     }
 

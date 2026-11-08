@@ -20,7 +20,7 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 | Threat | Defence | Where |
 |---|---|---|
 | Forged or altered message content | Ed25519 signature on every `WireMessage`, every message type included, covering every field in an unambiguous, domain-separated encoding; invalid → dropped, sender struck | `runtime.rs` |
-| Impersonating a known origin | Public key pinned on first sight; a different key → dropped (no strike: the receiver cannot tell which key is genuine) | `runtime.rs` |
+| Impersonating an origin (claiming its ID) | A node ID is derived from its public key (first 16 bytes of SHA-256 over a domain tag and the key); a message is authentic only if its origin is the ID derived from the key it carries and the signature verifies. A claim of another node's ID needs a second preimage (about 2^128 key generations); without one the message is a forgery: dropped and its sender struck. Which message arrives first does not matter | `identity.rs`, `runtime.rs` |
 | Direct replay | Same message (signing key, sequence number and ID) from the same sender → strike, judged before the rate limit so a sender over budget cannot hide it; from a different sender → ignored | `runtime.rs` |
 | Suppressing a message by signing another under its ID | A message ID is chosen by its signer, so the seen cache and the rescue store key messages by signing key, sequence number and ID: a message under an honest message's ID, or a frame rejected for its key, is a different message and suppresses nothing. Found while writing the TLA+ model; TLC reproduces the loss with the old key ([formal-verification.md](formal-verification.md)) | `runtime.rs` |
 | Framing an honest relay by reusing a message ID | A signer can sign a second message under one of its IDs with a new sequence number; a relay whose seen cache has cleared forwards it as new. The sequence number is part of the seen-cache key, so a neighbour that still holds the first does not take the second for a replay. Found while proving that honest neighbours are never struck; TLC reproduces the strike with the old key | `runtime.rs` |
@@ -29,24 +29,25 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 | Paced replays | Recovery depends on elapsed time only (0.0005/s, capped at the initial 0.5, so credit cannot be banked); two strikes within 300 s cap recovery at 0.18 | `sybil.rs` |
 | Strikes for honest re-sync after a partition | Digest-based anti-entropy: a node asks for what it lacks; answers are tagged with the request (covered by the TCP frame signature) and a tagged answer that repeats gossip is excused once, however late it arrives, and so is one gossip copy that follows its answer, since the two can take different connections, whether that answer was accepted or dropped (for example as a copy of what a third neighbour delivered first); every other untagged or unsolicited duplicate strikes. Requests are signed, answered only from their author, rate-limited and batched | `runtime.rs` |
 | Message flood | Token bucket per sender (20 messages, +20/s) for messages not seen before, applied before the signature check; copies of known messages are dropped first, by signing key, sequence number and ID | `sybil.rs`, `runtime.rs` |
-| Flood of fresh, validly signed messages from one origin | Token bucket per authenticated origin (20 messages, +5/s), charged after the signature and pinned-key checks; excess dropped without a strike, so one origin cannot take the network's capacity through honest relays | `runtime.rs`, `sybil.rs` |
+| Flood of fresh, validly signed messages from one origin | Token bucket per authenticated origin (20 messages, +5/s), charged after the origin is authenticated; excess dropped without a strike, so one origin cannot take the network's capacity through honest relays | `runtime.rs`, `sybil.rs` |
 | Signature-verification flood | Verifications bounded by the sender's token bucket; each invalid signature is a strike, so three bad signatures ban the sender; a banned peer's connection is closed and refused (30 s at a time), so its frames are neither read nor verified (measured: [benchmarks.md](benchmarks.md#invalid-signature-flood)) | `runtime.rs`, `sybil.rs`, `transport/tcp.rs` |
 | Flood of frames on one connection (including a sender that is never struck) | The listener reads at most 200 frames per second from a connection (burst 400); beyond that the reader waits and TCP flow control slows the sender. No strike: an honest burst is never punished, and honest links stay far below the cap | `transport/tcp.rs` |
 | Malformed input | Origin-ID length, severity range, sequence overflow and note size checked before `NodeRuntime` on a TCP node | `validation.rs`, `crci-node` `main.rs` |
 | Framing an author by replaying its message | Strikes fall on the connection that delivered a message, never on the message's author | `runtime.rs`, `transport/tcp.rs` |
-| Framing a neighbour by claiming its ID | Mutual Ed25519 challenge-response on every TCP connection; strikes bind to the authenticated identity (declared ID + proved key), so a claimed ID with another key is another identity | `transport/tcp.rs` |
+| Framing a neighbour by claiming its ID | Mutual Ed25519 challenge-response on every TCP connection; a peer whose declared node ID is not derived from the key it proved is refused, and strikes bind to that authenticated node ID | `transport/tcp.rs` |
 | Injecting, altering or replaying frames on the path | Every frame is signed by the dialer for the session (transcript hash) and numbered; a bad signature or counter closes the connection before the frame is processed | `transport/tcp.rs` |
 | Oversized / slow TCP frames | 1 MiB frame limit, 5 s to finish a frame that has started (a silent authenticated connection is closed after 10 min), 100 concurrent connections | `transport/tcp.rs` |
-| Data at rest | AES-256-GCM, key derived with Argon2id | `storage/encrypted.rs` |
+| Data at rest | AES-256-GCM, key derived with Argon2id; with `--key-file` the node key is kept this way, and a wrong passphrase stops the node instead of creating a new key | `storage/encrypted.rs`, `identity.rs` |
+| A restarted node reusing sequence numbers | With `--key-file` a restarted node keeps its ID; each start reserves the next 2^32 sequence numbers in the key file before sending, so neighbours never see a number twice from it | `identity.rs` |
 | Panics across FFI | Rust panics surface as Kotlin exceptions (recorded run: `docs/evidence/android-bft038-2026-08-23/`) | `ffi.rs` |
 
 ## Known gaps (open, with the task that addresses each)
 
 1. **Identities are free and not bound to names.** A banned peer can return with a fresh key pair (a new
-   identity starts at 0.5), and keys are generated at start-up, so a restarted node is a new identity too.
-   Origin IDs are pinned to the first key seen: an adversary that announces an honest node's ID first makes
-   this receiver drop that node's messages (denial of service, no strike). Origin IDs derived from keys are
-   planned. TCP traffic is authenticated but not encrypted.
+   identity starts at 0.5). Node IDs are derived from keys, so no one can take an existing node's ID, but
+   nothing ties a key to a person or device, and labels are not authenticated. A node started without
+   `--key-file` has a new key, and so a new identity, at every start. The key file is only as safe as its
+   passphrase file and the device. TCP traffic is authenticated but not encrypted.
 2. **Stale floods are not penalised.** A packet older than the replay window is dropped without a strike,
    so an adversary can resend old signed messages without losing reputation. Each one still costs a
    signature verification; the cost is bounded only by the per-sender token bucket (20 messages, then 20/s).
@@ -134,7 +135,7 @@ semantically false but correctly signed reports, radio jamming, side channels, c
     collude and do not originate; N ≤ 100 on real processes
     ([benchmarks.md](benchmarks.md#share-of-replaying-nodes)).
 12. **Bounded memory forgets, and identities are free.** A node keeps state for at most 896 origins and
-    forgets the least active first. A forgotten origin loses its pinned key and its replay window, so an old
+    forgets the least active first. A forgotten origin loses its replay window, so an old
     message of that origin is accepted again as new and relayed, and a neighbour that still remembers the
     origin strikes the honest relay for the repeat. Three such replays ban it there. The adversary has to
     displace the origin first, by signing more messages than the origin has had accepted on each of 896 fresh
@@ -144,7 +145,9 @@ semantically false but correctly signed reports, radio jamming, side channels, c
     costs: a clean transport peer that is forgotten loses nothing, and a banned one goes only when 1 024 peers
     are all banned; the recent store under a flood keeps less to answer sync requests with; a rescue message
     can be pushed out of the store by 256 newer ones, as the store has no way to tell a real rescue from a forged
-    claim by a new identity. Key-derived origin IDs and identity minting cost are planned, and only raise the price.
+    claim by a new identity. Deriving origin IDs from keys does not change this, since fresh keys are free; a cost
+    to mint an identity (measured, not used: [benchmarks.md](benchmarks.md#proof-of-work-identity-minting-cost))
+    would only raise the price.
     Measured through a real node, 90 fresh identities sending 3 × 10⁶ validly signed messages inside every budget
     leave its memory at about 20 MiB and its log at 35 bytes per message, and an honest neighbour loses nothing
     ([benchmarks.md](benchmarks.md#memory-per-node)).

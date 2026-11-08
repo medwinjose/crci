@@ -20,6 +20,7 @@ fn new_node() -> (NodeRuntime, SharedInbox) {
     (node, inbox)
 }
 
+/// A rescue message signed by `signer` that claims `origin` (the signer's own ID when honest).
 fn signed(signer: &Identity, id: &str, origin: &str, seq: u64) -> WireMessage {
     let mut msg = Message::new(
         id,
@@ -29,7 +30,10 @@ fn signed(signer: &Identity, id: &str, origin: &str, seq: u64) -> WireMessage {
     );
     msg.seq = seq;
     msg.message_type = MessageType::RescueRequest;
-    WireMessage::from_message(&msg, signer)
+    let mut wire = WireMessage::from_message(&msg, signer);
+    wire.origin = origin.to_string();
+    wire.sign_with(signer);
+    wire
 }
 
 fn deliver(node: &mut NodeRuntime, inbox: &SharedInbox, relay: &str, wire: &WireMessage) {
@@ -37,7 +41,7 @@ fn deliver(node: &mut NodeRuntime, inbox: &SharedInbox, relay: &str, wire: &Wire
     inbox
         .lock()
         .unwrap()
-        .entry(NODE.to_string())
+        .entry(node.id.clone())
         .or_default()
         .push((relay.to_string(), bytes));
     node.process_inbox();
@@ -56,13 +60,17 @@ fn an_adversary_message_under_the_same_id_does_not_suppress_the_honest_one() {
     let honest = Identity::new(HONEST);
     let adversary = Identity::new(ADVERSARY);
 
-    let squat = signed(&adversary, SHARED_ID, ADVERSARY, 1);
+    let squat = signed(&adversary, SHARED_ID, &adversary.id, 1);
     deliver(&mut node, &inbox, "peer-z", &squat);
-    let genuine = signed(&honest, SHARED_ID, HONEST, 1);
+    let genuine = signed(&honest, SHARED_ID, &honest.id, 1);
     deliver(&mut node, &inbox, "peer-b", &genuine);
 
-    assert_eq!(accepted_seqs(&node, HONEST), vec![1], "honest message lost");
-    assert_eq!(accepted_seqs(&node, ADVERSARY), vec![1]);
+    assert_eq!(
+        accepted_seqs(&node, &honest.id),
+        vec![1],
+        "honest message lost"
+    );
+    assert_eq!(accepted_seqs(&node, &adversary.id), vec![1]);
     assert_eq!(node.byzantine_events, 0);
 }
 
@@ -72,22 +80,26 @@ fn a_frame_rejected_for_its_key_does_not_suppress_the_honest_message() {
     let honest = Identity::new(HONEST);
     let adversary = Identity::new(ADVERSARY);
 
-    // The honest origin's key is pinned by its first message.
     deliver(
         &mut node,
         &inbox,
         "peer-b",
-        &signed(&honest, "first", HONEST, 1),
+        &signed(&honest, "first", &honest.id, 1),
     );
-    // Validly signed, but with the adversary's key under the honest origin's name.
-    let squat = signed(&adversary, SHARED_ID, HONEST, 2);
+    // Validly signed, but with the adversary's key under the honest origin's ID: rejected,
+    // because that ID is not the one derived from the adversary's key.
+    let squat = signed(&adversary, SHARED_ID, &honest.id, 2);
     deliver(&mut node, &inbox, "peer-z", &squat);
-    assert_eq!(accepted_seqs(&node, HONEST), vec![1], "wrong key accepted");
+    assert_eq!(
+        accepted_seqs(&node, &honest.id),
+        vec![1],
+        "wrong key accepted"
+    );
 
-    let genuine = signed(&honest, SHARED_ID, HONEST, 2);
+    let genuine = signed(&honest, SHARED_ID, &honest.id, 2);
     deliver(&mut node, &inbox, "peer-b", &genuine);
     assert_eq!(
-        accepted_seqs(&node, HONEST),
+        accepted_seqs(&node, &honest.id),
         vec![1, 2],
         "honest message lost"
     );
@@ -103,19 +115,19 @@ fn an_adversary_message_under_the_same_id_does_not_replace_a_stored_rescue() {
         &mut node,
         &inbox,
         "peer-b",
-        &signed(&honest, SHARED_ID, HONEST, 1),
+        &signed(&honest, SHARED_ID, &honest.id, 1),
     );
     deliver(
         &mut node,
         &inbox,
         "peer-z",
-        &signed(&adversary, SHARED_ID, ADVERSARY, 1),
+        &signed(&adversary, SHARED_ID, &adversary.id, 1),
     );
 
     assert!(
         node.persistent_messages
             .values()
-            .any(|m| m.origin == HONEST),
+            .any(|m| m.origin == honest.id),
         "stored rescue replaced"
     );
 }
@@ -124,7 +136,7 @@ fn an_adversary_message_under_the_same_id_does_not_replace_a_stored_rescue() {
 fn a_repeat_of_the_same_signed_message_is_still_a_strike() {
     let (mut node, inbox) = new_node();
     let adversary = Identity::new(ADVERSARY);
-    let wire = signed(&adversary, SHARED_ID, ADVERSARY, 1);
+    let wire = signed(&adversary, SHARED_ID, &adversary.id, 1);
 
     deliver(&mut node, &inbox, "peer-z", &wire);
     assert_eq!(node.byzantine_events, 0);

@@ -169,7 +169,7 @@ fn relay_rewriting_message_type_is_rejected_and_struck() {
     inbox
         .lock()
         .unwrap()
-        .entry("receiver".to_string())
+        .entry(node.id.clone())
         .or_default()
         .push(("relay".to_string(), serde_json::to_vec(&tampered).unwrap()));
     node.process_inbox();
