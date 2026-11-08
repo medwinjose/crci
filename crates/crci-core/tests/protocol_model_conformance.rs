@@ -25,7 +25,7 @@ const SCORE_TOLERANCE: f32 = 0.015;
 struct Expected {
     delivered: BTreeSet<(String, u64)>,
     rep: BTreeMap<String, (i64, bool)>,
-    seen: BTreeSet<(String, String, String)>,
+    seen: BTreeSet<(String, u64, String, String)>,
     window: BTreeMap<String, (u64, Vec<u64>)>,
 }
 
@@ -45,6 +45,7 @@ struct Coverage {
     ticks: u64,
     clears: u64,
     id_reuse: u64,
+    own_id_new_seq: u64,
 }
 
 struct Replay {
@@ -55,7 +56,7 @@ struct Replay {
     identities: HashMap<String, Identity>,
     wires: HashMap<(String, String, u64), WireMessage>,
     requests: HashMap<(String, String, u64), WireMessage>,
-    seen_keys: HashMap<(String, String), String>,
+    seen_keys: HashMap<(String, String, u64), String>,
     trace: String,
     step: usize,
 }
@@ -225,8 +226,9 @@ impl Replay {
                     .map(|x| {
                         (
                             x[0].as_str().unwrap().to_string(),
-                            x[1].as_str().unwrap().to_string(),
+                            x[1].as_u64().unwrap(),
                             x[2].as_str().unwrap().to_string(),
+                            x[3].as_str().unwrap().to_string(),
                         )
                     })
                     .collect();
@@ -262,7 +264,7 @@ impl Replay {
             let want_seen: BTreeSet<(String, String)> = want
                 .seen
                 .iter()
-                .map(|(origin, id, sender)| (self.seen_key(origin, id), sender.clone()))
+                .map(|(origin, seq, id, sender)| (self.seen_key(origin, *seq, id), sender.clone()))
                 .collect();
             let node = self.nodes.get_mut(&name).unwrap();
             for (peer, (score, banned)) in &want.rep {
@@ -298,13 +300,13 @@ impl Replay {
         }
     }
 
-    /// The seen-cache key of this origin and ID (it has no sequence number).
-    fn seen_key(&mut self, origin: &str, id: &str) -> String {
-        let cached = (origin.to_string(), id.to_string());
+    /// The seen-cache key of this origin, sequence number and ID.
+    fn seen_key(&mut self, origin: &str, seq: u64, id: &str) -> String {
+        let cached = (origin.to_string(), id.to_string(), seq);
         if let Some(key) = self.seen_keys.get(&cached) {
             return key.clone();
         }
-        let key = message_key(&self.sign(id, origin, 1));
+        let key = message_key(&self.sign(id, origin, seq));
         self.seen_keys.insert(cached, key.clone());
         key
     }
@@ -442,6 +444,8 @@ impl Replay {
         }
         if id.split('/').next() != Some(origin.as_str()) {
             coverage.id_reuse += 1;
+        } else if id != format!("{origin}/{seq}") {
+            coverage.own_id_new_seq += 1;
         }
 
         self.deliver(&r, &s, &wire);
@@ -501,7 +505,7 @@ fn the_code_does_what_the_model_does_on_every_step_of_its_behaviours() {
     println!(
         "{traces} traces, {steps} steps: accepted {} strikes {} excused {} banned-drops {} \
          forged {} stale {} stale-repeats {} own-echoes {} copies {} answers {} answered-frames {} ticks {} \
-         clears {} id-reuse {}",
+         clears {} id-reuse {} own-id-new-seq {}",
         coverage.accepted,
         coverage.strikes,
         coverage.excused,
@@ -515,7 +519,8 @@ fn the_code_does_what_the_model_does_on_every_step_of_its_behaviours() {
         coverage.answered_frames,
         coverage.ticks,
         coverage.clears,
-        coverage.id_reuse
+        coverage.id_reuse,
+        coverage.own_id_new_seq
     );
     // The traces must reach every branch they are meant to compare, or this test proves nothing.
     assert!(traces >= 100, "only {traces} traces: stale export?");
@@ -534,6 +539,10 @@ fn the_code_does_what_the_model_does_on_every_step_of_its_behaviours() {
         ("ticks", coverage.ticks),
         ("seen-cache clears", coverage.clears),
         ("reused IDs", coverage.id_reuse),
+        (
+            "own IDs with a new sequence number",
+            coverage.own_id_new_seq,
+        ),
     ] {
         assert!(count > 0, "no {what} in the traces");
     }

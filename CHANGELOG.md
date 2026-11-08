@@ -13,6 +13,14 @@ git history; `git log` is the complete record.
   links that had a contact after the fault (`coverage_*_in_contact`).
 
 ### Fixed
+- A signer that reused one of its message IDs with a new sequence number could get an honest relay struck:
+  a relay whose seen cache had cleared forwarded the second message as new, and a neighbour that still held
+  the ID took it for a replay. The seen cache and the rescue store now key messages by signing key, sequence
+  number and ID.
+- The excuse for a gossip copy that follows its own sync answer applied only when that answer had been
+  accepted. If a third neighbour delivered the message first, the seen cache had cleared, or the origin's ID
+  was squatted, the asked neighbour's gossip copy was struck. A tagged answer now counts once it enters the
+  seen cache; the per-request limits are unchanged.
 - `crci-node --replay-window` accepted any value; one above what a peer record can hold overflowed or
   tried to allocate without limit on the first message. Values above 1 024 are now refused at start-up.
 

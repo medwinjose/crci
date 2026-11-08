@@ -291,6 +291,71 @@ fn a_gossip_copy_after_its_answer_is_not_struck() {
     assert_eq!(pair.b.sync_excused_duplicates, 1);
 }
 
+/// The same race when a third neighbour delivered the message first: the answer is then a copy,
+/// not an accepted answer, and the late gossip copy from the asked neighbour must still not be
+/// struck, since that neighbour sent the message once as gossip and once as asked.
+#[test]
+fn a_gossip_copy_after_its_answer_is_not_struck_when_a_third_peer_was_first() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    let request = pair.b.request_sync("a");
+    pair.take("a");
+    pair.inject("c", "b", &sent[0]);
+    pair.inject("a", "b", &answer(&sent[0], &request));
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.byzantine_events, 0);
+    assert!(pair.b.sybil_guard.reputation(&"a".to_string()) >= 0.5);
+    // one excuse per message: a further copy is a replay
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.byzantine_events, 1);
+}
+
+/// The same when the seen cache was cleared in between: the answer is then judged by the window
+/// as delivered by another peer, and still counts as an answer.
+#[test]
+fn a_gossip_copy_after_its_answer_is_not_struck_when_the_answer_was_redundant() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    let request = pair.b.request_sync("a");
+    pair.take("a");
+    pair.inject("c", "b", &sent[0]);
+    pair.b.process_inbox();
+    pair.b.seen_messages.clear();
+    pair.inject("a", "b", &answer(&sent[0], &request));
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.byzantine_events, 0);
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    assert_eq!(pair.b.byzantine_events, 1);
+}
+
+/// The same when an adversary squatted the origin's ID at the requester (pinned another key for
+/// it): the answer is then dropped at the key check, and must still count as an answer.
+#[test]
+fn a_gossip_copy_after_its_answer_is_not_struck_when_the_origin_was_squatted() {
+    let mut pair = Pair::new();
+    let sent = authored_by_a(&mut pair, 1);
+    let squatter = Identity::new("a");
+    let mut claim = msg("squat", "a");
+    claim.seq = 5;
+    pair.inject("x", "b", &WireMessage::from_message(&claim, &squatter));
+    pair.b.process_inbox();
+    pair.b.request_sync("a");
+    pair.a.process_inbox(); // a answers what b's digest lacks: its message 1
+    let answers = pair.take("b");
+    assert!(answers
+        .iter()
+        .any(|(_, w)| w.id == sent[0].id && w.answers_sync.is_some()));
+    pair.requeue("b", &answers);
+    pair.inject("a", "b", &sent[0]);
+    pair.b.process_inbox();
+    // (the key mismatches count as Byzantine events, but strike nobody)
+    assert!(pair.b.sybil_guard.reputation(&"a".to_string()) >= 0.5);
+}
+
 /// The excuse covers one copy per message: gossip after an answer does not open a licence.
 #[test]
 fn a_second_copy_after_an_answer_strikes() {

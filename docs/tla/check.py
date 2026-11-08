@@ -42,7 +42,8 @@ PROTOCOL = {
     "OriginsMayBeForgotten": False,
     "FifoLinks": True, "LinksDuplicate": False, "SessionsMayExpire": False,
     "ExcuseAnswers": True, "WindowEnabled": True, "VerifySignatures": True,
-    "SeenKeyedBySigner": True, "TickFair": False,
+    "SeenKeyedBySigner": True, "SeenKeyedBySeq": True, "CopiedAnswersCount": True,
+    "TickFair": False,
 }
 HONEST_LINE = {"Nodes": {"s", "h", "r"}, "Byzantine": set(), "Edges": "mc_Honest"}
 SAFETY = ["HonestNeverStruck", "OnlyAdversariesBanned", "NoDoubleDelivery",
@@ -82,6 +83,14 @@ CHECKS = {
     "reordering-links": ("MC", PROTOCOL,
                          {**HONEST_LINE, "FifoLinks": False, "MaxSeq": 2, "MaxFaults": 1},
                          SAFETY + ["DeliveredWhenQuiescent"], [], "pass", None),
+    "reused-id": ("MC", PROTOCOL,
+                  {"Sources": set(), "MaxSeq": 2, "ByzSeqs": 2, "ByzFrames": 3,
+                   "SeenMayClear": True, "MaxRequests": 0, "MaxFaults": 0},
+                  SAFETY, [], "pass", None),
+    "triangle-reordering": ("MC", PROTOCOL,
+                            {**HONEST_LINE, "Edges": "mc_Triangle", "FifoLinks": False,
+                             "MaxSeq": 1, "MaxFaults": 1, "MaxRequests": 2, "SeenMayClear": True},
+                            SAFETY + ["DeliveredWhenQuiescent"], [], "pass", None),
     "window-slides": ("MC", PROTOCOL, {**HONEST_LINE, "MaxSeq": 3, "W": 1, "MaxFaults": 0,
                                        "MaxRequests": 1},
                       SAFETY, [], "pass", None),
@@ -108,6 +117,16 @@ CHECKS = {
     "seen-by-id": ("MC", PROTOCOL,
                    {"SeenKeyedBySigner": False, "ByzFrames": 1, "MaxFaults": 0, "MaxRequests": 1},
                    ["DeliveredWhenQuiescent"], [], "DeliveredWhenQuiescent", None),
+    "seen-without-seq": ("MC", PROTOCOL,
+                         {"SeenKeyedBySeq": False, "Sources": set(), "MaxSeq": 2, "ByzSeqs": 2,
+                          "ByzFrames": 2, "SeenMayClear": True, "MaxRequests": 0,
+                          "MaxFaults": 0},
+                         ["HonestNeverStruck"], [], "HonestNeverStruck", None),
+    "copied-answers-ignored": ("MC", PROTOCOL,
+                               {**HONEST_LINE, "Edges": "mc_Triangle", "FifoLinks": False,
+                                "CopiedAnswersCount": False, "MaxSeq": 1, "MaxFaults": 0,
+                                "MaxRequests": 1, "SeenMayClear": True},
+                               ["HonestNeverStruck"], [], "HonestNeverStruck", None),
     "window-too-small": ("MC", PROTOCOL,
                          {**HONEST_LINE, "MaxSeq": 3, "W": 1, "MaxFaults": 1},
                          ["DeliveredWhenQuiescent"], [], "DeliveredWhenQuiescent", None),
@@ -127,7 +146,7 @@ CHECKS = {
 
 
 SLOW = {"honest-loss-sync", "adversary", "adversary-sync", "adversary-loss", "adversary-time",
-        "reordering-links"}
+        "reordering-links", "triangle-reordering"}
 
 # Random behaviours replayed through the real code (name, constants, seed, traces). Time moves in
 # one set only, with no requests: sessions last 120 s, which the model leaves as an assumption.
@@ -140,6 +159,10 @@ TRACE_SETS = [
     ("honest", {**HONEST_LINE, "MaxSeq": 3, "W": 2, "MaxFaults": 2, "SeenMayClear": True}, 4, 20),
     ("stale", {"MaxSeq": 3, "W": 1, "MaxFaults": 0, "MaxRequests": 0, "ByzFrames": 10}, 5, 30),
     ("reorder", {"FifoLinks": False, "MaxSeq": 2, "W": 2, "MaxFaults": 1, "ByzFrames": 2}, 6, 30),
+    ("reused-id", {"MaxSeq": 2, "ByzSeqs": 2, "ByzFrames": 6, "SeenMayClear": True,
+                   "MaxFaults": 0}, 7, 30),
+    ("triangle", {**HONEST_LINE, "Edges": "mc_Triangle", "FifoLinks": False, "MaxSeq": 2,
+                  "MaxFaults": 1, "SeenMayClear": True}, 8, 30),
 ]
 
 
@@ -343,7 +366,8 @@ def node_view(state, n):
     return {
         "d": sorted(list(x) for x in state["delivered"][n]),
         "rep": {p: [r["score"], r["banned"]] for p, r in state["rep"][n].items()},
-        "seen": sorted([x[0][0], f"{x[0][1][0]}/{x[0][1][1]}", x[1]] for x in state["seen"][n]),
+        "seen": sorted([x[0][0], x[0][1], f"{x[0][2][0]}/{x[0][2][1]}", x[1]]
+                       for x in state["seen"][n]),
         "win": window,
     }
 

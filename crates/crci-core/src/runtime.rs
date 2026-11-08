@@ -29,7 +29,8 @@ pub const MIN_TRUSTED_REP: f64 = 0.41;
 // per request (an answer cannot carry more). The order can also be the other way round: an
 // answer goes to the address in the request, gossip to the address configured for the peer,
 // and if those differ they take different connections. So one untagged copy of a message is
-// excused too, if the message was accepted as an answer to a request made to that sender. Any
+// excused too, if the message arrived as an answer to a request made to that sender, whether that
+// answer was accepted or was a copy of what another neighbour had delivered first. Any
 // other repeat without the tag strikes, so an open session is no licence to replay gossip, and
 // a message gets one excuse per request whichever way it arrived. Sessions last
 // `SYNC_SESSION_TTL`.
@@ -279,11 +280,17 @@ impl SyncSession {
 /// signer, so it is unique only per signing key: by ID alone, a validly signed message from anyone
 /// under an honest message's ID would make that message look like a copy, and neither gossip nor
 /// sync answers could ever deliver it. Matching the first 16 bytes of a key takes 2^128 work.
+/// The signed sequence number is part of the key for the same reason: a signer can reuse one of
+/// its IDs with a new sequence number, and a relay that has cleared its seen cache since the first
+/// forwards the second as new; by key and ID alone a neighbour would strike that honest relay for
+/// a replay. The sequence number has no `:`, so the key stays unambiguous.
 pub fn message_key(wire: &WireMessage) -> String {
-    let mut key = String::with_capacity(33 + wire.id.len());
+    let mut key = String::with_capacity(54 + wire.id.len());
     for byte in wire.origin_pubkey.iter().take(16) {
         key.push_str(&format!("{byte:02x}"));
     }
+    key.push(':');
+    key.push_str(&wire.seq.to_string());
     key.push(':');
     key.push_str(&wire.id);
     key
@@ -913,8 +920,8 @@ impl NodeRuntime {
     }
 
     /// Whether a same-sender duplicate of (`origin`, `seq`) from `sender` is excused: tagged as
-    /// an answer to request `answers`, or untagged after the message was accepted as an answer
-    /// from that sender (at most once per message, and at most `SYNC_MAX_BATCH` messages, per
+    /// an answer to request `answers`, or untagged after the message arrived as an answer from
+    /// that sender (at most once per message, and at most `SYNC_MAX_BATCH` messages, per
     /// request).
     fn excused_as_sync_answer(
         &mut self,
@@ -949,7 +956,8 @@ impl NodeRuntime {
         excused
     }
 
-    /// Record that (`origin`, `seq`) was accepted as an answer to request `answers` from `sender`.
+    /// Record that (`origin`, `seq`) arrived from `sender` as an answer to request `answers`,
+    /// accepted or as a copy of what another neighbour delivered first.
     fn note_answered(&mut self, sender: &str, answers: Option<&str>, origin: &str, seq: u64) {
         let key = self.message_tag(origin, seq);
         let Some(session) = answers.and_then(|id| self.sync_sessions.get_mut(id)) else {
@@ -1306,6 +1314,9 @@ impl NodeRuntime {
                                 senders.push(sender_tag);
                             }
                         }
+                        // An answer that arrives after another neighbour's copy is still an answer:
+                        // the asked peer's own gossip copy, which it overtook, may follow.
+                        self.note_answered(&sender_id, answers.as_deref(), &wire.origin, wire.seq);
                         continue;
                     }
                     None => {}
@@ -1383,6 +1394,10 @@ impl NodeRuntime {
 
             // First time seeing this message. Record the sender.
             self.seen_messages.insert(key.clone(), vec![sender_tag]);
+            // A tagged answer counts as answered whatever happens to it below (a key pinned to
+            // another origin, the origin's budget, a copy in the window): the asked peer's own gossip
+            // copy, which the answer may have overtaken, can still follow.
+            self.note_answered(&sender_id, answers.as_deref(), &wire.origin, wire.seq);
 
             // This node's own message, echoed by a neighbour after the seen-ID limit above cleared
             // the cache. Accepting it would relay it again and get this node struck for the repeat.
@@ -1472,10 +1487,12 @@ impl NodeRuntime {
                             self.sybil_guard.report_violation(&sender_id);
                         }
                     }
-                    crate::replay::ReplayVerdict::Redundant { received_seq } => println!(
-                        "  [{}] duplicate seq {} from '{}' via '{}' — dropped",
-                        self.id, received_seq, wire.origin, sender_id
-                    ),
+                    crate::replay::ReplayVerdict::Redundant { received_seq } => {
+                        println!(
+                            "  [{}] duplicate seq {} from '{}' via '{}' — dropped",
+                            self.id, received_seq, wire.origin, sender_id
+                        );
+                    }
                     // Honest peers can deliver old messages after a partition: no strike.
                     crate::replay::ReplayVerdict::OutOfWindow {
                         received_seq,
@@ -1554,7 +1571,6 @@ impl NodeRuntime {
             if wire.message_type == "rescue" || wire.message_type == "mce" {
                 self.keep_persistent(key, wire.clone());
             }
-            self.note_answered(&sender_id, answers.as_deref(), &wire.origin, wire.seq);
             self.remember_recent(&wire);
 
             if !self.is_trusted() {

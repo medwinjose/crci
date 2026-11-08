@@ -10,4 +10,7 @@ mc_Line == { {"s", "h"}, {"h", "r"}, {"a", "r"} }
 
 \* s - h - r without an adversary.
 mc_Honest == { {"s", "h"}, {"h", "r"} }
+
+\* s, h and r all linked: r hears s directly and through h.
+mc_Triangle == { {"s", "h"}, {"h", "r"}, {"s", "r"} }
 =================================================================

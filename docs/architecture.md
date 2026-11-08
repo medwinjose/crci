@@ -33,8 +33,10 @@ whether messages arrive in-process (simulator, tests, benchmarks, Android FFI) o
 applies, in order:
 
 1. **Ban list** (`sybil.rs`, `SybilGuard`): frames from a banned sender are dropped.
-2. **Duplicate check**, by signing key and message ID (`message_key`: the signer chooses the ID, so by ID
-   alone anyone's validly signed message could suppress an honest one), before the sender's budget and
+2. **Duplicate check**, by signing key, sequence number and message ID (`message_key`: the signer chooses
+   the ID, so by ID alone anyone's validly signed message could suppress an honest one; and a signer can reuse
+   one of its IDs with a new sequence number, which by key and ID alone would get an honest relay whose cache
+   had cleared struck for a replay), before the sender's budget and
    before any signature check: a copy of a message already received from a *different* sender is dropped
    as gossip redundancy, spending no budget and no signature check; the same message again from the *same*
    sender is a strike, unless it is older than the replay window (dropped) or excused under this node's
@@ -244,8 +246,10 @@ is tagged with that request, the request's digest did **not** list the message a
 first such repeat of that message under the request, for at most 16 messages per request. The order can
 also be the other way round: an answer goes to the address named in the request and gossip to the address
 configured for the peer, and if those differ they take different connections, so an answer can overtake the
-gossip copy of the same message. One untagged copy of a message accepted as an answer to a request made to
-that neighbour is therefore excused too, under the same limits (one excuse per message per request). Any
+gossip copy of the same message. One untagged copy of a message that arrived as an answer to a request made
+to that neighbour is therefore excused too, under the same limits (one excuse per message per request),
+whether the answer was accepted or was dropped (a copy of what another neighbour delivered first, a key pinned
+to another origin, the origin's budget). Any
 other untagged repeat, a repeat of a message the digest listed as held, a second repeat, any repeat beyond
 the first 16, and repeats from any other peer follow the normal rules and strike. An open session therefore
 excuses only answers and the one copy that goes with each, never ordinary gossip.

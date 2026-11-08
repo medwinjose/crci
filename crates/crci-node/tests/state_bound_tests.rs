@@ -356,3 +356,40 @@ fn per_message_lines_are_bounded_per_node_and_a_light_sender_keeps_every_line() 
         "{line}"
     );
 }
+
+/// A signer chooses its message IDs, so an adversary origin can sign a second message under the
+/// ID of its first with a new sequence number. A relay whose seen cache has been cleared since
+/// the first accepts the second as new and forwards it; a neighbour whose cache still holds the
+/// ID must not take that for a replay by the relay: the relay never sent the same message twice.
+#[test]
+fn a_reused_message_id_with_a_new_sequence_number_does_not_strike_the_relay() {
+    let (mut relay, relay_inbox) = receiver();
+    let (mut neighbour, neighbour_inbox) = receiver();
+    let byz = Identity::new("byz");
+    let reused = |seq: u64| {
+        let mut msg = Message::new(
+            "x",
+            "byz",
+            Signal::new(3, true, false, true, 3, Visibility::Direct),
+            None,
+        );
+        msg.seq = seq;
+        WireMessage::from_message(&msg, &byz)
+    };
+    let (first, second) = (reused(1), reused(2));
+
+    deliver(&mut relay, &relay_inbox, "byz", &first);
+    deliver(&mut neighbour, &neighbour_inbox, "relay", &first);
+
+    relay.seen_messages.clear();
+    let accepted = relay.messages_handled;
+    deliver(&mut relay, &relay_inbox, "byz", &second);
+    assert_eq!(relay.messages_handled, accepted + 1, "new to the relay");
+
+    let strikes = neighbour.byzantine_events;
+    deliver(&mut neighbour, &neighbour_inbox, "relay", &second);
+    assert_eq!(
+        neighbour.byzantine_events, strikes,
+        "the relay is not struck"
+    );
+}

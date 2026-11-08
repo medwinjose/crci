@@ -41,6 +41,8 @@ CONSTANTS
     WindowEnabled,       \* FALSE: no replay window behind the seen cache
     VerifySignatures,    \* FALSE: invalid signatures are accepted
     SeenKeyedBySigner,   \* FALSE: the seen cache is keyed by message ID alone
+    SeenKeyedBySeq,      \* FALSE: the seen cache is keyed by signer and ID, without the sequence number
+    CopiedAnswersCount,  \* FALSE: only an accepted answer excuses the gossip copy that follows it
     TickFair             \* TRUE: time keeps passing, whatever the adversary does
 
 Honest == Nodes \ Byzantine
@@ -103,7 +105,9 @@ Init ==
 (* Helpers *)
 
 \* message_key: the signing key is the origin here (keys are not modelled apart from origins).
-Key(m) == IF SeenKeyedBySigner THEN <<m.origin, m.id>> ELSE m.id
+Key(m) == IF ~SeenKeyedBySigner THEN m.id
+          ELSE IF SeenKeyedBySeq THEN <<m.origin, m.seq, m.id>>
+          ELSE <<m.origin, m.id>>
 
 \* A batch of frames, each origin's messages oldest first.
 RECURSIVE ToSeq(_)
@@ -150,11 +154,13 @@ Exempt(r, s, f) ==
      THEN [ses EXCEPT !.exempted = @ \cup {key}]
      ELSE ses : ses \in sessions[r]}
 
-\* note_answered: an accepted answer earns one excuse for the gossip copy that may follow it.
-Answered(r, s, f) ==
+\* note_answered: an answer earns one excuse for the gossip copy that may follow it, if it is
+\* recorded in the seen cache (a copy of what another neighbour delivered first, or a frame whose
+\* signature verified, whatever its verdict after that). The old rule: accepted answers only.
+Answered(S, s, f) ==
     {IF ses.peer = s /\ ses.rid = f.tag
      THEN [ses EXCEPT !.answered = @ \cup {<<f.msg.origin, f.msg.seq>>}]
-     ELSE ses : ses \in sessions[r]}
+     ELSE ses : ses \in S}
 
 \* ReplayFilter::check_and_record, as a verdict.
 Filter(r, m, s) ==
@@ -209,11 +215,11 @@ Receive(s, r) ==
         /\ rep' = IF v \in {"strike", "first-strike"}
                   THEN [rep EXCEPT ![r][s] = Penalise(@)]
                   ELSE rep
-        /\ sessions' = CASE v \in {"excuse", "first-excuse"} ->
-                                 [sessions EXCEPT ![r] = Exempt(r, s, f)]
-                         [] v = "accept" /\ f.tag # 0 ->
-                                 [sessions EXCEPT ![r] = Answered(r, s, f)]
-                         [] OTHER -> sessions
+        /\ LET exempted == IF v \in {"excuse", "first-excuse"} THEN Exempt(r, s, f)
+                           ELSE sessions[r]
+               noted == f.tag # 0 /\ IF CopiedAnswersCount THEN v \in seenAdded ELSE v = "accept"
+           IN  sessions' = [sessions EXCEPT ![r] = IF noted THEN Answered(exempted, s, f)
+                                                   ELSE exempted]
         /\ seqMax' = IF v = "accept"
                      THEN [seqMax EXCEPT ![r][m.origin] = win.max]
                      ELSE seqMax
