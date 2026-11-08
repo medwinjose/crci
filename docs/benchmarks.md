@@ -57,8 +57,8 @@ sets have not been repeated on that build.
 
 ## Byzantine eviction, in-process
 
-The preprint no longer prints this table; the emulation figures above replace it. It stays here as the
-description of the in-process harness.
+The research paper in preparation no longer prints this table (Table III of the published preprint); the
+emulation figures above replace it. It stays here as the description of the in-process harness.
 
 - **Harness:** `crates/crci-node/benches/byzantine_bench.rs`
 - **Command:** `cargo bench -p crci-node --bench byzantine_bench` (writes to `crates/crci-node/benches/results/`)
