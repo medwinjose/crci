@@ -46,9 +46,11 @@ deviation over the runs behind a point.
 The emulation figures come from two node builds (`04ec7be5` for figure c, `aa619cb0` for figures a and d), as
 the sections above say; planned: regenerate all of them on one final build before submission.
 
-Two protocol fixes came after every testbed set on this page: messages are keyed by signing key and ID, and one
-gossip copy that follows its sync answer is excused ([model checking](formal-verification.md)). On the node build
-with both, one small set has been run: the netem conditions at N = 20, seed 1, rgg and mesh, 18 runs. All were
+Protocol fixes came after every testbed set on this page: messages are keyed by signing key and ID (later also by
+sequence number), and one gossip copy that follows its sync answer is excused (later also when that answer was
+dropped, for example as a copy of what a third neighbour delivered first); reputation recovery is applied in steps
+of at least one second ([model checking](formal-verification.md)). On the node build with the first two, one
+small set has been run: the netem conditions at N = 20, seed 1, rgg and mesh, 18 runs. All were
 faithful, no honest node was banned, delivery after the ban was 1.0 and all of the attacker's neighbours banned it
 ([`smoke-results.csv`](evidence/tla-2026-11-07/smoke-results.csv)). That is a check, not a re-measurement: the larger
 sets have not been repeated on that build.
@@ -131,9 +133,11 @@ are lost. The window ablation was re-measured as delivered messages, W = 0 to 12
 
 The measured threshold is the forgiveness period, *T* = penalty / recovery rate = 0.15 / 0.0005 = 300 s:
 an adversary pacing at *P* ≥ 300 s is never banned and gets at most 12 replays per hour past admission; below it the
-adversary is banned, sooner the faster it replays. Strike damping does not move this threshold; it halves
-the time a sub-threshold adversary survives (net change per period 0.001 *P* − 0.3 instead of
-0.0005 *P* − 0.15). An adversary that keeps replaying through bans (*P* = 1 s) gets about 15 replays per
+adversary is banned, sooner the faster it replays. Strike damping does not move this threshold; while the
+score is above the damped ceiling it doubles the loss per period (0.3 − 0.001 *P* instead of 0.15 − 0.0005 *P*).
+The threshold, the strike at which each pace is banned and an upper bound on it are proved in
+[formal-verification.md](formal-verification.md#analytical-bounds) (a replay every 290 s: the 35th strike, as
+measured); the code's rounding of the score to 0.001 after each strike makes 299 s sustainable as well. An adversary that keeps replaying through bans (*P* = 1 s) gets about 15 replays per
 hour past admission across ban cycles while being banned 99.6 % of the time. Every replay is dropped and costs one
 signature check.
 
@@ -838,6 +842,10 @@ origin inside its budget, so every message reaches the state measured; live heap
 | One new origin and one new sender per message | 3.30 MB | 3.30 MB | 3.46 MB | 9.4 MiB |
 
 ![Live heap of one node under four floods](evidence/state-2026-11-07/flood/heap.svg)
+
+Repeated after the seen-cache key gained the sequence number (up to 21 bytes more per entry): the same four floods
+end at 1.93, 2.74, 1.74 and 3.31 MB, with peaks of 2.07, 2.90, 1.92 and 3.47 MB
+([`evidence/theorems-2026-11-08/state/`](evidence/theorems-2026-11-08/state/)).
 
 Before the limits the heap grew by 1.5 KB per new origin (154 MB after 10⁵) and by 1.3 KB per rescue message
 (258 MB after 2 × 10⁵ over 100 origins). A first version of the limits held protocol state flat at 2.58 MB, above

@@ -75,8 +75,10 @@ measured with the in-process benchmark harness, 50 deterministic trials per cond
 - **Paced replays:** reputation recovers with elapsed time only (one strike forgiven per 300 s, never
   above the initial score) and two strikes within 300 s damp recovery. In a 6-hour simulated sweep an
   adversary replaying more often than every 300 s is banned; one pacing at 300 s or slower is never banned
-  but gets at most 12 replays per hour past admission, each detected and dropped. Before this change, an adversary replaying every 20 s was never
-  banned.
+  but gets at most 12 replays per hour past admission, each detected and dropped. Proved for any network
+  size: no identity that stays unbanned takes more than 14 strikes in any hour, three strikes within 100 s
+  always ban, and a ban lasts 300–500 s ([analytical bounds](docs/formal-verification.md#analytical-bounds)).
+  Before this change, an adversary replaying every 20 s was never banned.
 
 **Emulation testbed** (real `crci-node` processes over TCP in Linux network namespaces with `tc netem`,
 emulated on one host; three seeds per configuration, every run within the testbed's fidelity checks):
@@ -104,7 +106,8 @@ Every number above links back to a raw data file and the exact command in
 - **Interfaces:** HTTP + WebSocket API ([OpenAPI](docs/openapi.json)), Prometheus metrics, a React
   dashboard, and an Android app that calls the Rust core directly through UniFFI-generated Kotlin bindings.
 - **Verification:** unit and integration test suite, property-based tests (proptest) showing that honest
-  reordering within the replay window never costs a relay reputation or loses a message, TLA+ models of the isolation protocol, exhaustively model-checked on small instances for safety and delivery and tied to the code by replaying TLC's transitions and behaviours through the real runtime
+  reordering within the replay window never costs a relay reputation or loses a message, TLA+ models of the isolation protocol, exhaustively model-checked on small instances for safety and delivery and tied to the code by replaying TLC's transitions and behaviours through the real runtime,
+  analytical bounds on the reputation and strike rules with written proofs, each reputation bound also checked against the code
   ([docs/formal-verification.md](docs/formal-verification.md)), and a Linux network-namespace test with
   `tc netem` delay and loss in CI.
 - **CI:** formatting, Clippy with warnings denied, the full test suite on Ubuntu and Windows,
@@ -137,7 +140,7 @@ cargo bench -p crci-node --bench ablation_bench
 cargo bench -p crci-node --bench recovery_bench
 ```
 
-Re-run every model-checking configuration (needs Java 11+; about 35 min on 12 cores):
+Re-run every model-checking configuration (needs Java 11+; about 85 min on 12 cores):
 
 ```bash
 make tla

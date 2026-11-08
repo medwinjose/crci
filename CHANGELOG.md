@@ -7,6 +7,12 @@ git history; `git log` is the complete record.
 ## [Unreleased]
 
 ### Added
+- Analytical bounds on the reputation rule and the strike rule, with proofs, in
+  `docs/formal-verification.md`: a strike budget (three strikes within 100 s ban; an identity that is never
+  banned takes at most 14 strikes per hour), the exact threshold and banning strike of a paced replayer, a
+  ban length of 300–500 s, and that an honest neighbour is never struck under three stated assumptions.
+  Tests in `sybil.rs` check the first three against the code; new TLC checks `reused-id`,
+  `triangle-reordering`, `seen-without-seq` and `copied-answers-ignored`.
 - `mesh_sim` accepts a contact trace (`contacts`): frames cross a link only while it is up, and both ends
   sync when a contact starts. `scripts/sim/run_contact_trace.py` replays the SocioPatterns Hypertext 2009
   trace (`make contact-trace`); results in `docs/benchmarks.md`. Trace runs also report coverage over the

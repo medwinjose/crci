@@ -29,6 +29,7 @@ check "planning notes stay out of the repository"         '\btasks? [0-9]+\b|ses
 check "no tool attribution in the repository"             '\bclaude\b|anthropic|antigravity|gemini|chatgpt|copilot'
 check "model checking covers small instances, it is no proof" 'formally (proved|proven|verified)|provabl|verified for all'
 check "a gossip copy can follow its sync answer"          'untagged repeats are never excused|same ordered connection'
+check "any answer that entered the seen cache excuses its gossip copy" 'follows its accepted answer|copy of a message accepted as an answer'
 
 if [ "$fail" -ne 0 ]; then
   echo "Documentation guard failed."

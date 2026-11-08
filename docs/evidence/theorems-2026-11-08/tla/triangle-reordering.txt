@@ -1,0 +1,39 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 87 and seed 181053717100929227 with 12 workers on 12 cores with 3577MB heap and 64MB offheap memory [pid: 37512] (Windows 11 10.0 amd64, Eclipse Adoptium 17.0.19 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file MC.tla
+Parsing file CRCI.tla
+Parsing file CRCITypes.tla
+Parsing file FiniteSets.tla
+Parsing file TLC.tla
+Parsing file Naturals.tla
+Parsing file Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module CRCITypes
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module CRCI
+Semantic processing of module MC
+Starting... (2026-11-08 16:19:13)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-08 16:19:13.
+Progress(12) at 2026-11-08 16:19:16: 481,729 states generated (481,729 s/min), 149,872 distinct states found (149,872 ds/min), 82,324 states left on queue.
+Progress(17) at 2026-11-08 16:20:16: 18,295,990 states generated (17,814,261 s/min), 4,136,722 distinct states found (3,986,850 ds/min), 1,631,917 states left on queue.
+Progress(19) at 2026-11-08 16:21:16: 35,724,446 states generated (17,428,456 s/min), 7,564,932 distinct states found (3,428,210 ds/min), 2,554,178 states left on queue.
+Progress(20) at 2026-11-08 16:22:16: 52,793,834 states generated (17,069,388 s/min), 10,713,527 distinct states found (3,148,595 ds/min), 3,168,803 states left on queue.
+Progress(20) at 2026-11-08 16:23:16: 69,750,082 states generated (16,956,248 s/min), 13,703,185 distinct states found (2,989,658 ds/min), 3,672,721 states left on queue.
+Progress(21) at 2026-11-08 16:24:16: 85,857,210 states generated (16,107,128 s/min), 16,427,328 distinct states found (2,724,143 ds/min), 3,732,761 states left on queue.
+Progress(22) at 2026-11-08 16:25:16: 102,464,053 states generated (16,606,843 s/min), 19,162,162 distinct states found (2,734,834 ds/min), 3,643,564 states left on queue.
+Progress(23) at 2026-11-08 16:26:16: 119,189,561 states generated (16,725,508 s/min), 21,899,716 distinct states found (2,737,554 ds/min), 3,509,953 states left on queue.
+Progress(23) at 2026-11-08 16:27:16: 135,439,775 states generated (16,250,214 s/min), 24,433,009 distinct states found (2,533,293 ds/min), 3,186,839 states left on queue.
+Progress(24) at 2026-11-08 16:28:16: 151,014,737 states generated (15,574,962 s/min), 26,798,133 distinct states found (2,365,124 ds/min), 2,417,700 states left on queue.
+Progress(26) at 2026-11-08 16:29:16: 167,583,274 states generated (16,568,537 s/min), 29,188,472 distinct states found (2,390,339 ds/min), 906,978 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 2.3E-4
+  based on the actual fingerprints:  val = 1.0E-4
+171975801 states generated, 29737911 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 30.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 18 and the 95th percentile is 4).
+Finished in 10min 24s at (2026-11-08 16:29:37)

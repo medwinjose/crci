@@ -1,0 +1,416 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 1 and seed 2245353993832253745 with 12 workers on 12 cores with 3577MB heap and 64MB offheap memory [pid: 9432] (Windows 11 10.0 amd64, Eclipse Adoptium 17.0.19 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file MC.tla
+Parsing file CRCI.tla
+Parsing file CRCITypes.tla
+Parsing file FiniteSets.tla
+Parsing file TLC.tla
+Parsing file Naturals.tla
+Parsing file Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module CRCITypes
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module CRCI
+Semantic processing of module MC
+Starting... (2026-11-08 16:30:54)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-08 16:30:54.
+Error: Invariant HonestNeverStruck is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ byzSent = 0
+/\ requests = {}
+/\ link = ( <<"a", "h">> :> <<>> @@
+  <<"a", "r">> :> <<>> @@
+  <<"h", "a">> :> <<>> @@
+  <<"h", "r">> :> <<>> @@
+  <<"h", "s">> :> <<>> @@
+  <<"r", "a">> :> <<>> @@
+  <<"r", "h">> :> <<>> @@
+  <<"s", "h">> :> <<>> )
+/\ delivered = [h |-> {}, r |-> {}, s |-> {}]
+/\ recent = [h |-> {}, r |-> {}, s |-> {}]
+/\ counter = << >>
+/\ asked = ( <<"a", "h">> :> 0 @@
+  <<"a", "r">> :> 0 @@
+  <<"h", "a">> :> 0 @@
+  <<"h", "r">> :> 0 @@
+  <<"h", "s">> :> 0 @@
+  <<"r", "a">> :> 0 @@
+  <<"r", "h">> :> 0 @@
+  <<"s", "h">> :> 0 )
+/\ faults = 0
+/\ sessions = [h |-> {}, r |-> {}, s |-> {}]
+/\ rep = [ h |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        r |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        s |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  r |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  s |-> [h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>]] ]
+/\ twice = {}
+/\ seqMax = [ h |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0],
+  r |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0],
+  s |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0] ]
+/\ known = [a |-> {}]
+/\ deliveredBy = [h |-> {}, r |-> {}, s |-> {}]
+/\ seen = [h |-> {}, r |-> {}, s |-> {}]
+
+State 2: <ByzSend line 397, col 5 to line 405, col 59 of module CRCI>
+/\ byzSent = 1
+/\ requests = {}
+/\ link = ( <<"a", "h">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"a", "r">> :> <<>> @@
+  <<"h", "a">> :> <<>> @@
+  <<"h", "r">> :> <<>> @@
+  <<"h", "s">> :> <<>> @@
+  <<"r", "a">> :> <<>> @@
+  <<"r", "h">> :> <<>> @@
+  <<"s", "h">> :> <<>> )
+/\ delivered = [h |-> {}, r |-> {}, s |-> {}]
+/\ recent = [h |-> {}, r |-> {}, s |-> {}]
+/\ counter = << >>
+/\ asked = ( <<"a", "h">> :> 0 @@
+  <<"a", "r">> :> 0 @@
+  <<"h", "a">> :> 0 @@
+  <<"h", "r">> :> 0 @@
+  <<"h", "s">> :> 0 @@
+  <<"r", "a">> :> 0 @@
+  <<"r", "h">> :> 0 @@
+  <<"s", "h">> :> 0 )
+/\ faults = 0
+/\ sessions = [h |-> {}, r |-> {}, s |-> {}]
+/\ rep = [ h |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        r |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        s |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  r |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  s |-> [h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>]] ]
+/\ twice = {}
+/\ seqMax = [ h |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0],
+  r |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0],
+  s |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0] ]
+/\ known = [a |-> {}]
+/\ deliveredBy = [h |-> {}, r |-> {}, s |-> {}]
+/\ seen = [h |-> {}, r |-> {}, s |-> {}]
+
+State 3: <Receive line 201, col 5 to line 239, col 69 of module CRCI>
+/\ byzSent = 1
+/\ requests = {}
+/\ link = ( <<"a", "h">> :> <<>> @@
+  <<"a", "r">> :> <<>> @@
+  <<"h", "a">> :> <<>> @@
+  <<"h", "r">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"h", "s">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"r", "a">> :> <<>> @@
+  <<"r", "h">> :> <<>> @@
+  <<"s", "h">> :> <<>> )
+/\ delivered = [h |-> {<<"a", 1>>}, r |-> {}, s |-> {}]
+/\ recent = [h |-> {[id |-> <<"a", 1>>, origin |-> "a", seq |-> 1]}, r |-> {}, s |-> {}]
+/\ counter = << >>
+/\ asked = ( <<"a", "h">> :> 0 @@
+  <<"a", "r">> :> 0 @@
+  <<"h", "a">> :> 0 @@
+  <<"h", "r">> :> 0 @@
+  <<"h", "s">> :> 0 @@
+  <<"r", "a">> :> 0 @@
+  <<"r", "h">> :> 0 @@
+  <<"s", "h">> :> 0 )
+/\ faults = 0
+/\ sessions = [h |-> {}, r |-> {}, s |-> {}]
+/\ rep = [ h |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        r |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        s |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  r |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  s |-> [h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>]] ]
+/\ twice = {}
+/\ seqMax = [ h |-> [a |-> 1, h |-> 0, r |-> 0, s |-> 0],
+  r |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0],
+  s |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0] ]
+/\ known = [a |-> {}]
+/\ deliveredBy = [h |-> {<<"a", 1, "a">>}, r |-> {}, s |-> {}]
+/\ seen = [h |-> {<<<<"a", <<"a", 1>>>>, "a">>}, r |-> {}, s |-> {}]
+
+State 4: <Receive line 201, col 5 to line 239, col 69 of module CRCI>
+/\ byzSent = 1
+/\ requests = {}
+/\ link = ( <<"a", "h">> :> <<>> @@
+  <<"a", "r">> :> <<>> @@
+  <<"h", "a">> :> <<>> @@
+  <<"h", "r">> :> <<>> @@
+  <<"h", "s">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"r", "a">> :> <<>> @@
+  <<"r", "h">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"s", "h">> :> <<>> )
+/\ delivered = [h |-> {<<"a", 1>>}, r |-> {<<"a", 1>>}, s |-> {}]
+/\ recent = [ h |-> {[id |-> <<"a", 1>>, origin |-> "a", seq |-> 1]},
+  r |-> {[id |-> <<"a", 1>>, origin |-> "a", seq |-> 1]},
+  s |-> {} ]
+/\ counter = << >>
+/\ asked = ( <<"a", "h">> :> 0 @@
+  <<"a", "r">> :> 0 @@
+  <<"h", "a">> :> 0 @@
+  <<"h", "r">> :> 0 @@
+  <<"h", "s">> :> 0 @@
+  <<"r", "a">> :> 0 @@
+  <<"r", "h">> :> 0 @@
+  <<"s", "h">> :> 0 )
+/\ faults = 0
+/\ sessions = [h |-> {}, r |-> {}, s |-> {}]
+/\ rep = [ h |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        r |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        s |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  r |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  s |-> [h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>]] ]
+/\ twice = {}
+/\ seqMax = [ h |-> [a |-> 1, h |-> 0, r |-> 0, s |-> 0],
+  r |-> [a |-> 1, h |-> 0, r |-> 0, s |-> 0],
+  s |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0] ]
+/\ known = [a |-> {}]
+/\ deliveredBy = [h |-> {<<"a", 1, "a">>}, r |-> {<<"a", 1, "h">>}, s |-> {}]
+/\ seen = [ h |-> {<<<<"a", <<"a", 1>>>>, "a">>},
+  r |-> {<<<<"a", <<"a", 1>>>>, "h">>},
+  s |-> {} ]
+
+State 5: <ClearSeen line 305, col 5 to line 309, col 68 of module CRCI>
+/\ byzSent = 1
+/\ requests = {}
+/\ link = ( <<"a", "h">> :> <<>> @@
+  <<"a", "r">> :> <<>> @@
+  <<"h", "a">> :> <<>> @@
+  <<"h", "r">> :> <<>> @@
+  <<"h", "s">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"r", "a">> :> <<>> @@
+  <<"r", "h">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"s", "h">> :> <<>> )
+/\ delivered = [h |-> {<<"a", 1>>}, r |-> {<<"a", 1>>}, s |-> {}]
+/\ recent = [ h |-> {[id |-> <<"a", 1>>, origin |-> "a", seq |-> 1]},
+  r |-> {[id |-> <<"a", 1>>, origin |-> "a", seq |-> 1]},
+  s |-> {} ]
+/\ counter = << >>
+/\ asked = ( <<"a", "h">> :> 0 @@
+  <<"a", "r">> :> 0 @@
+  <<"h", "a">> :> 0 @@
+  <<"h", "r">> :> 0 @@
+  <<"h", "s">> :> 0 @@
+  <<"r", "a">> :> 0 @@
+  <<"r", "h">> :> 0 @@
+  <<"s", "h">> :> 0 )
+/\ faults = 0
+/\ sessions = [h |-> {}, r |-> {}, s |-> {}]
+/\ rep = [ h |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        r |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        s |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  r |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  s |-> [h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>]] ]
+/\ twice = {}
+/\ seqMax = [ h |-> [a |-> 1, h |-> 0, r |-> 0, s |-> 0],
+  r |-> [a |-> 1, h |-> 0, r |-> 0, s |-> 0],
+  s |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0] ]
+/\ known = [a |-> {}]
+/\ deliveredBy = [h |-> {<<"a", 1, "a">>}, r |-> {<<"a", 1, "h">>}, s |-> {}]
+/\ seen = [h |-> {}, r |-> {<<<<"a", <<"a", 1>>>>, "h">>}, s |-> {}]
+
+State 6: <ByzSend line 397, col 5 to line 405, col 59 of module CRCI>
+/\ byzSent = 2
+/\ requests = {}
+/\ link = ( <<"a", "h">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 2] ] >> @@
+  <<"a", "r">> :> <<>> @@
+  <<"h", "a">> :> <<>> @@
+  <<"h", "r">> :> <<>> @@
+  <<"h", "s">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"r", "a">> :> <<>> @@
+  <<"r", "h">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"s", "h">> :> <<>> )
+/\ delivered = [h |-> {<<"a", 1>>}, r |-> {<<"a", 1>>}, s |-> {}]
+/\ recent = [ h |-> {[id |-> <<"a", 1>>, origin |-> "a", seq |-> 1]},
+  r |-> {[id |-> <<"a", 1>>, origin |-> "a", seq |-> 1]},
+  s |-> {} ]
+/\ counter = << >>
+/\ asked = ( <<"a", "h">> :> 0 @@
+  <<"a", "r">> :> 0 @@
+  <<"h", "a">> :> 0 @@
+  <<"h", "r">> :> 0 @@
+  <<"h", "s">> :> 0 @@
+  <<"r", "a">> :> 0 @@
+  <<"r", "h">> :> 0 @@
+  <<"s", "h">> :> 0 )
+/\ faults = 0
+/\ sessions = [h |-> {}, r |-> {}, s |-> {}]
+/\ rep = [ h |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        r |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        s |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  r |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  s |-> [h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>]] ]
+/\ twice = {}
+/\ seqMax = [ h |-> [a |-> 1, h |-> 0, r |-> 0, s |-> 0],
+  r |-> [a |-> 1, h |-> 0, r |-> 0, s |-> 0],
+  s |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0] ]
+/\ known = [a |-> {}]
+/\ deliveredBy = [h |-> {<<"a", 1, "a">>}, r |-> {<<"a", 1, "h">>}, s |-> {}]
+/\ seen = [h |-> {}, r |-> {<<<<"a", <<"a", 1>>>>, "h">>}, s |-> {}]
+
+State 7: <Receive line 201, col 5 to line 239, col 69 of module CRCI>
+/\ byzSent = 2
+/\ requests = {}
+/\ link = ( <<"a", "h">> :> <<>> @@
+  <<"a", "r">> :> <<>> @@
+  <<"h", "a">> :> <<>> @@
+  <<"h", "r">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 2] ] >> @@
+  <<"h", "s">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ],
+         [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 2] ] >> @@
+  <<"r", "a">> :> <<>> @@
+  <<"r", "h">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"s", "h">> :> <<>> )
+/\ delivered = [h |-> {<<"a", 1>>, <<"a", 2>>}, r |-> {<<"a", 1>>}, s |-> {}]
+/\ recent = [ h |->
+      { [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1],
+        [id |-> <<"a", 1>>, origin |-> "a", seq |-> 2] },
+  r |-> {[id |-> <<"a", 1>>, origin |-> "a", seq |-> 1]},
+  s |-> {} ]
+/\ counter = << >>
+/\ asked = ( <<"a", "h">> :> 0 @@
+  <<"a", "r">> :> 0 @@
+  <<"h", "a">> :> 0 @@
+  <<"h", "r">> :> 0 @@
+  <<"h", "s">> :> 0 @@
+  <<"r", "a">> :> 0 @@
+  <<"r", "h">> :> 0 @@
+  <<"s", "h">> :> 0 )
+/\ faults = 0
+/\ sessions = [h |-> {}, r |-> {}, s |-> {}]
+/\ rep = [ h |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        r |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        s |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  r |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  s |-> [h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>]] ]
+/\ twice = {}
+/\ seqMax = [ h |-> [a |-> 2, h |-> 0, r |-> 0, s |-> 0],
+  r |-> [a |-> 1, h |-> 0, r |-> 0, s |-> 0],
+  s |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0] ]
+/\ known = [a |-> {}]
+/\ deliveredBy = [h |-> {<<"a", 1, "a">>, <<"a", 2, "a">>}, r |-> {<<"a", 1, "h">>}, s |-> {}]
+/\ seen = [ h |-> {<<<<"a", <<"a", 1>>>>, "a">>},
+  r |-> {<<<<"a", <<"a", 1>>>>, "h">>},
+  s |-> {} ]
+
+State 8: <Receive line 201, col 5 to line 239, col 69 of module CRCI>
+/\ byzSent = 2
+/\ requests = {}
+/\ link = ( <<"a", "h">> :> <<>> @@
+  <<"a", "r">> :> <<>> @@
+  <<"h", "a">> :> <<>> @@
+  <<"h", "r">> :> <<>> @@
+  <<"h", "s">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ],
+         [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 2] ] >> @@
+  <<"r", "a">> :> <<>> @@
+  <<"r", "h">> :>
+      << [ sig |-> TRUE,
+           tag |-> 0,
+           msg |-> [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1] ] >> @@
+  <<"s", "h">> :> <<>> )
+/\ delivered = [h |-> {<<"a", 1>>, <<"a", 2>>}, r |-> {<<"a", 1>>}, s |-> {}]
+/\ recent = [ h |->
+      { [id |-> <<"a", 1>>, origin |-> "a", seq |-> 1],
+        [id |-> <<"a", 1>>, origin |-> "a", seq |-> 2] },
+  r |-> {[id |-> <<"a", 1>>, origin |-> "a", seq |-> 1]},
+  s |-> {} ]
+/\ counter = << >>
+/\ asked = ( <<"a", "h">> :> 0 @@
+  <<"a", "r">> :> 0 @@
+  <<"h", "a">> :> 0 @@
+  <<"h", "r">> :> 0 @@
+  <<"h", "s">> :> 0 @@
+  <<"r", "a">> :> 0 @@
+  <<"r", "h">> :> 0 @@
+  <<"s", "h">> :> 0 )
+/\ faults = 0
+/\ sessions = [h |-> {}, r |-> {}, s |-> {}]
+/\ rep = [ h |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        r |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        s |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>] ],
+  r |->
+      [ a |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>],
+        h |-> [banned |-> FALSE, score |-> 35, ages |-> <<0>>] ],
+  s |-> [h |-> [banned |-> FALSE, score |-> 50, ages |-> <<>>]] ]
+/\ twice = {}
+/\ seqMax = [ h |-> [a |-> 2, h |-> 0, r |-> 0, s |-> 0],
+  r |-> [a |-> 1, h |-> 0, r |-> 0, s |-> 0],
+  s |-> [a |-> 0, h |-> 0, r |-> 0, s |-> 0] ]
+/\ known = [a |-> {}]
+/\ deliveredBy = [h |-> {<<"a", 1, "a">>, <<"a", 2, "a">>}, r |-> {<<"a", 1, "h">>}, s |-> {}]
+/\ seen = [ h |-> {<<<<"a", <<"a", 1>>>>, "a">>},
+  r |-> {<<<<"a", <<"a", 1>>>>, "h">>},
+  s |-> {} ]
+
+5366 states generated, 2450 distinct states found, 1386 states left on queue.
+The depth of the complete state graph search is 8.
+The average outdegree of the complete state graph is 2 (minimum is 0, the maximum 13 and the 95th percentile is 10).
+Finished in 00s at (2026-11-08 16:30:55)

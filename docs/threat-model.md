@@ -51,7 +51,9 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    so an adversary can resend old signed messages without losing reputation. Each one still costs a
    signature verification; the cost is bounded only by the per-sender token bucket (20 messages, then 20/s).
 3. **Paced replays are bounded, not eliminated.** Recovery forgives one strike per 300 s, so an adversary
-   that replays at most once every 300 s is never banned: at most 12 replays per hour per identity. Faster
+   that replays at most once every 300 s is never banned: 12 replays per hour per identity, and no identity
+   that is never banned takes more than 14 strikes in any hour (proved: [formal-verification.md](formal-verification.md#analytical-bounds);
+   the score's rounding to 0.001 after each strike makes a replay every 299 s sustainable too). Faster
    pacing is banned (a replay every 290 s after 10 150 s, every 120 s after 480 s). An adversary that keeps
    replaying through repeated bans gets about 15 replays per hour past admission while banned 99.6 % of the time. Every
    replay is dropped and costs one signature check (measured in

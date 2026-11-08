@@ -1,0 +1,33 @@
+rep-free                 ok  expected=pass                   outcome=pass                   generated=       36557 distinct=      30104 depth=  92     1.0s
+rep-forgiven             ok  expected=pass                   outcome=pass                   generated=      36,557 distinct=     30,104 depth=  91     1.4s
+rep-spaced-300           ok  expected=pass                   outcome=pass                   generated=          63 distinct=         61 depth=  61     0.8s
+rep-paced-290            ok  expected=NeverBanned            outcome=NeverBanned            generated=        1051 distinct=       1051 depth=1051     1.0s
+rep-paced-120            ok  expected=NeverBanned            outcome=NeverBanned            generated=          53 distinct=         53 depth=  53     1.0s
+honest-loss-sync         ok  expected=pass                   outcome=pass                   generated=   462676391 distinct=  104091287 depth=  36  2007.9s
+adversary                ok  expected=pass                   outcome=pass                   generated=    50474929 distinct=    9913640 depth=  25   257.9s
+adversary-sync           ok  expected=pass                   outcome=pass                   generated=    42838888 distinct=    8348878 depth=  31   214.0s
+adversary-loss           ok  expected=pass                   outcome=pass                   generated=    10803517 distinct=    2312816 depth=  28    49.7s
+adversary-time           ok  expected=pass                   outcome=pass                   generated=   272092207 distinct=   48344100 depth=  38  1464.0s
+reordering-links         ok  expected=pass                   outcome=pass                   generated=    54648052 distinct=   10205074 depth=  26   289.2s
+reused-id                ok  expected=pass                   outcome=pass                   generated=     8173033 distinct=    2014341 depth=  21    41.8s
+triangle-reordering      ok  expected=pass                   outcome=pass                   generated=   171975801 distinct=   29737911 depth=  30   624.7s
+window-slides            ok  expected=pass                   outcome=pass                   generated=        7485 distinct=       3053 depth=  21     1.4s
+delivery                 ok  expected=pass                   outcome=pass                   generated=     434,253 distinct=    133,030 depth=  26    52.8s
+eviction                 ok  expected=pass                   outcome=pass                   generated=     119,957 distinct=     26,048 depth=  29     9.8s
+link-duplicates          ok  expected=HonestNeverStruck      outcome=HonestNeverStruck      generated=         327 distinct=        213 depth=   8     0.9s
+session-expires          ok  expected=HonestNeverStruck      outcome=HonestNeverStruck      generated=        1107 distinct=        541 depth=   9     1.0s
+no-excuse                ok  expected=HonestNeverStruck      outcome=HonestNeverStruck      generated=         235 distinct=        164 depth=   9     0.9s
+no-window                ok  expected=NoDoubleDelivery       outcome=NoDoubleDelivery       generated=        3082 distinct=       1501 depth=   6     1.0s
+no-signatures            ok  expected=NoForgedDelivery       outcome=NoForgedDelivery       generated=         600 distinct=        383 depth=   6     0.9s
+seen-by-id               ok  expected=DeliveredWhenQuiescent outcome=DeliveredWhenQuiescent generated=     1771265 distinct=     503949 depth=  15     7.5s
+seen-without-seq         ok  expected=HonestNeverStruck      outcome=HonestNeverStruck      generated=        5366 distinct=       2450 depth=   8     1.3s
+copied-answers-ignored   ok  expected=HonestNeverStruck      outcome=HonestNeverStruck      generated=        2335 distinct=       1179 depth=  10     1.0s
+window-too-small         ok  expected=DeliveredWhenQuiescent outcome=DeliveredWhenQuiescent generated=       23102 distinct=       9422 depth=  12     1.3s
+origin-forgotten-delivery ok  expected=NoDoubleDelivery       outcome=NoDoubleDelivery       generated=        1773 distinct=        861 depth=   8     0.9s
+origin-forgotten-framing ok  expected=HonestNeverStruck      outcome=HonestNeverStruck      generated=        4718 distinct=       1907 depth=   9     1.2s
+paced-replayer-spared    ok  expected=EveryNeighbourBans     outcome=EveryNeighbourBans     generated=       41503 distinct=      12720 depth=   -     4.2s
+28 of 28 checks as expected; raw output in this folder
+
+real	84m2.343s
+user	0m0.046s
+sys	0m0.062s

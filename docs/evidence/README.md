@@ -403,3 +403,7 @@ What these files show, stated plainly:
 ## `contact-trace-2026-11-08/`
 
 `results.csv` and the six `mesh_sim` outcomes of `scripts/sim/run_contact_trace.py` on the SocioPatterns Hypertext 2009 trace (`ht2009_contact_list.dat.gz`, SHA-256 `43014e65bb8f6aa7d75d36a8ab61279b617bee88197e04a330c4386305ae1738`, not committed). Honest runs and runs with 6 of 113 replaying nodes, seeds 1-3. `coverage_*_in_contact` restricts the coverage pairs to those with a contact after the replay began.
+
+## `theorems-2026-11-08/`
+
+Runs made while proving the analytical bounds ([formal-verification.md](../formal-verification.md#analytical-bounds)). `tla/`: TLC output of every configuration of `docs/tla/check.py` on the model with the sequence number in the seen-cache key and answers noted whatever their verdict, `results.txt` the summary; CRLF → LF and the directory of each parsed module removed from its `Parsing file` line. `state/`: `examples/state_flood` (`scripts/sim/run_state_flood.sh`) re-run after the seen-cache key change, one CSV per run, `heap.txt`, `heap.svg`, and `binary.sha256` of the `state_flood` binary. `tla/SHA256SUMS` holds the hash of every file in `tla/`.
