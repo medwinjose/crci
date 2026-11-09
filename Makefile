@@ -11,6 +11,8 @@
 #   make ratio OUT=/tmp/x     # 0-45 % of the nodes replaying, N = 20/50/100, plus the partition probability (90 runs, about 3 h)
 #   make tla                  # model-check the TLA+ specifications (needs Java; about 85 min on 12 cores, no root)
 #   make figures              # the four evaluation figures from the committed data (docs/figures/, seconds, no root)
+#   make run-figures OUT=/tmp/x # the same figures from the runs in OUT* (written to OUT-figures/)
+#   make benches              # in-process eviction, crypto and recovery benches, message size, PoW cost (minutes, no root)
 #   make baselines OUT=/tmp/x # the three defence modes against replay and flood (63 runs, about 3 h)
 #   make ablation OUT=/tmp/x  # strike threshold and defence modes in the simulation, window ablation bench (about 1 h)
 #   make tables OUT=/tmp/x    # regenerate the tables from runs already in OUT*
@@ -25,7 +27,7 @@ BIN := target/release/crci-node
 TB := scripts/testbed
 SIM := target/release/examples/mesh_sim
 
-.PHONY: tla build testbed netem attacks flood flapping ratio figures baselines ablation tables smoke sim contact-trace state tcp-flood fuzz reproduce
+.PHONY: tla build testbed netem attacks flood flapping ratio figures run-figures benches baselines ablation tables smoke sim contact-trace state tcp-flood fuzz reproduce
 
 tla:
 	python3 docs/tla/check.py
@@ -55,6 +57,17 @@ ratio: build
 
 figures:
 	python3 scripts/figures/make_figures.py
+
+run-figures:
+	python3 scripts/figures/make_figures.py --data $(OUT) $(OUT)-figures
+
+# Writes crates/crci-node/benches/results/*.csv and target/criterion/; the envelope sizes go to stdout.
+benches:
+	cargo bench -p crci-node --bench byzantine_bench
+	cargo bench -p crci-node --bench crypto_bench
+	cargo bench -p crci-node --bench recovery_bench
+	cargo run --release -p crci-node --example envelope_size
+	cargo run --release -p crci-node --example pow_mint
 
 baselines: build
 	$(SUDO) $(TB)/run_baselines.sh $(OUT)-baselines $(BIN)
@@ -107,4 +120,6 @@ fuzz:
 		cargo +nightly fuzz run $$t -- -max_total_time=$(FUZZ_TIME) -max_len=8192 >/dev/null || exit 1; \
 	done
 
-reproduce: testbed netem attacks flood flapping ratio baselines tables sim ablation state tcp-flood figures
+# Every data set behind the paper and docs/benchmarks.md except `make tla` (needs Java, run separately)
+# and `make fuzz`. About 20 h on a 12-thread host, 30-40 GB of run logs in OUT*.
+reproduce: testbed netem attacks flood flapping ratio baselines tables sim ablation state tcp-flood contact-trace benches run-figures

@@ -32,7 +32,8 @@ Bench targets have `test = false`, so `cargo test` never runs them or rewrites t
 
 Four figures summarise the evaluation; `python3 scripts/figures/make_figures.py` (standard library only,
 `make figures`) draws them as SVG into [`docs/figures/`](figures/) from data committed in this repository,
-and fails if a run count behind a point is not the one stated. Each figure says in its subtitle whether it
+and fails if a run count behind a point is not the one stated (`make run-figures OUT=…` draws them from the
+runs of a `make reproduce OUT=…` instead, into `OUT-figures/`). Each figure says in its subtitle whether it
 is **emulation** (real processes on one host) or **simulation**; error bars are the sample standard
 deviation over the runs behind a point.
 

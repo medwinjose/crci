@@ -11,7 +11,9 @@ simulation in (b) is the deterministic in-process benchmark with a simulated clo
 (crates/crci-node/benches/recovery_bench.rs); it has no random element, so it has no error bars.
 Error bars are the sample standard deviation over the runs behind a point (n is in each subtitle).
 
-Usage: make_figures.py [--compact] [OUT_DIR]      (default docs/figures)
+Usage: make_figures.py [--compact] [--data PREFIX] [OUT_DIR]      (default docs/figures)
+--data PREFIX reads the runs a `make reproduce OUT=PREFIX` wrote (PREFIX-ratio, -netem, -baselines)
+instead of the committed evidence.
 --compact draws the same data on a small canvas without title and subtitle, for printing at column width.
 Standard library only; the plot helper is scripts/testbed/svgplot.py.
 """
@@ -135,11 +137,17 @@ COMPACT = False
 
 
 def main():
-    global COMPACT
+    global COMPACT, RATIO, NETEM, BASELINES
     args = [a for a in sys.argv[1:] if a != "--compact"]
     if len(args) != len(sys.argv) - 1:
         COMPACT = True
         svgplot.compact()
+    if args[:1] == ["--data"]:
+        # Fresh runs instead of the committed evidence: the OUT prefix the testbed targets wrote to.
+        prefix, args = os.path.abspath(args[1]), args[2:]
+        RATIO = f"{prefix}-ratio/ratio.csv"
+        NETEM = f"{prefix}-netem/results.csv"
+        BASELINES = f"{prefix}-baselines/baselines.csv"
     out = os.path.join(ROOT, args[0] if args else "docs/figures")
     os.makedirs(out, exist_ok=True)
     for fig in (fig_a, fig_b, fig_c, fig_d):

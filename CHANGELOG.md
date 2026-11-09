@@ -17,6 +17,9 @@ git history; `git log` is the complete record.
 ### Changed
 - Every data set in `docs/benchmarks.md` and the four figures are regenerated on one node binary; the
   results are in `docs/evidence/final-2026-11-09/`.
+- `make reproduce` also runs the contact-trace replay and the benches (`make benches`: in-process eviction,
+  Ed25519, recovery, message size, proof-of-work cost) and draws the figures from its own runs
+  (`make run-figures`, `make_figures.py --data`); `make tla` stays a separate step (Java).
 
 ### Corrections to the published preprint (v1.0)
 The preprint (doi.org/10.5281/zenodo.23032042) contained statements that the code or later measurements do

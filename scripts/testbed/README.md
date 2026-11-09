@@ -46,7 +46,7 @@ make baselines OUT=/tmp/crci-testbed # writes /tmp/crci-testbed-baselines
 make ablation OUT=/tmp/crci-testbed  # simulation and window bench; writes /tmp/crci-testbed-ablation
 make tables OUT=/tmp/crci-testbed    # main table and netem tables from runs already there
 make smoke OUT=/tmp/crci-testbed     # seed 1, N = 20 netem runs only, to check the scripts
-make reproduce OUT=/tmp/crci-testbed # all runs (about 12 h), then the tables
+make reproduce OUT=/tmp/crci-testbed # every run, table, bench and figure except make tla (about 20 h)
 # or: cargo build --release -p crci-node --bin crci-node
 #     sudo scripts/testbed/run_all.sh /tmp/crci-testbed target/release/crci-node
 ```

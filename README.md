@@ -141,6 +141,13 @@ cargo bench -p crci-node --bench ablation_bench
 cargo bench -p crci-node --bench recovery_bench
 ```
 
+Re-run every experiment from a clean checkout (Linux, root for the network namespaces; about 20 h and
+30-40 GB of run logs; see [scripts/testbed/README.md](scripts/testbed/README.md)):
+
+```bash
+make reproduce OUT=/tmp/crci-testbed
+```
+
 Re-run every model-checking configuration (needs Java 11+; about 85 min on 12 cores):
 
 ```bash
