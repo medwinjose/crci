@@ -83,12 +83,13 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    is over budget. A neighbour that floods new messages faster than its budget loses the excess, which also
    crowds out its own relays: persistent over-budget sending degrades it to an omission fault, which the
    mesh tolerates only through path redundancy.
-   On TCP every frame's session signature is verified before any of these checks (about 37 µs, about
+   On TCP every frame's session signature is verified before any of these checks (about 34 µs, about
    100 µs with the read, the parse and the log lines). A banned neighbour is disconnected, so this cost
    stops after the ban; a neighbour that is never struck is limited by frame pacing to 200 frames/s per
    connection, which is about 2 % of a core at the measured per-frame cost. Measured with a neighbour that
-   floods 1 000 valid fresh messages/s: 1.98 CPU seconds per neighbour over a 60 s run against 1.0 for a
-   40 messages/s reference, 68 MiB of logs per run against 31 MiB (without pacing: 6.3 s and 174 MiB).
+   floods 1 000 valid fresh messages/s: 1.94 CPU seconds per neighbour over a 60 s run against 1.25 for a
+   40 messages/s reference, 38.9 MiB of logs per run against 25.2 MiB (on an earlier build without pacing:
+   6.3 s and 174 MiB).
    What remains: each connection can still make its receiver do that much; a sender that reconnects pays a
    handshake each time, the same as any stranger.
 7. **Aggregate gossip rate is bounded by the per-neighbour budget.** Every node relays every new message
@@ -148,6 +149,6 @@ semantically false but correctly signed reports, radio jamming, side channels, c
     claim by a new identity. Deriving origin IDs from keys does not change this, since fresh keys are free; a cost
     to mint an identity (measured, not used: [benchmarks.md](benchmarks.md#proof-of-work-identity-minting-cost))
     would only raise the price.
-    Measured through a real node, 90 fresh identities sending 3 × 10⁶ validly signed messages inside every budget
-    leave its memory at about 20 MiB and its log at 35 bytes per message, and an honest neighbour loses nothing
+    Measured through a real node, 90 fresh identities sending 10⁶ validly signed messages inside every budget
+    leave its memory at about 19 MiB and its log at 32 bytes per message, and an honest neighbour loses nothing
     ([benchmarks.md](benchmarks.md#memory-per-node)).

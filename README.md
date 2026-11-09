@@ -88,10 +88,10 @@ emulated on one host; three seeds per configuration, every run within the testbe
 |---|---|
 | 20–500 nodes, random geometric and 4-regular topologies, a relay replaying every message | Banned by all its neighbours in every run (≈ 2 s at 1 msg/s); 0 honest nodes banned; every honest message delivered after the ban, also to nodes that relied on the evicted relay |
 | Packet loss 0–20 %, delay 40 ± 15 ms, reordering up to 15 % (162 runs) | 0 honest nodes banned at any loss level; median eviction 2.0–2.2 s; with 60 s to recover, every message reached every honest node at 20 % loss (final build, 18 runs at 20 % loss: slowest delivery 28.0 s; over earlier sets the worst case ranged 17.5–34.1 s and the p99 3–9 s, see [the repeat sets](docs/benchmarks.md#the-latency-tail-at-20--loss-over-repeat-sets)) |
-| A replayer that keeps its rate budget empty | Banned in ≈ 12 ms (before: never banned, honest delivery 32–49 %) |
+| A replayer that keeps its rate budget empty | Banned by all 10 neighbours, median 11–34 ms per run, slowest 137 ms (before: never banned, honest delivery 32–49 %) |
 | A node flooding fresh, validly signed messages at 40 msg/s | Honest delivery 100 % (before the per-origin budget: 82–98 %) |
 | Offered load | No honest message dropped at 16 msg/s network-wide; one node can sustain at most 5 msg/s |
-| 20 % or 50 % of the links going down and up every 5–10 s, with and without a replayer (102 runs) | 0 honest nodes banned or struck; every message delivered to every node; the replayer banned by all neighbours within 7.6 s |
+| 20 % or 50 % of the links going down and up every 5–10 s, with and without a replayer (102 runs) | 0 honest nodes banned or struck; every message delivered to every node; the replayer banned by all neighbours within 8.1 s |
 | 10–45 % of the nodes replaying, N = 20/50/100 (90 runs) | Every honest neighbour of every replayer bans it (3 958 of 3 958), median ≈ 2 s, 0 honest nodes banned; honest delivery inside the connected part 100 %. Removing up to 45 % of the nodes can cut honest nodes off: 27 of 72 runs, see the [partition probabilities](docs/benchmarks.md#share-of-replaying-nodes) |
 
 Every number above links back to a raw data file and the exact command in
@@ -164,8 +164,8 @@ networked TCP node and the test suite. Done: a network-emulation testbed of real
 nodes, loss, delay, jitter, reordering, attacker variants, invalid-signature floods, link flapping, defence baselines and ablations, and a sweep of the share of replaying nodes up to 45 %) and an in-process simulation of up to 5 000
 nodes, cross-checked against the testbed ([results](docs/benchmarks.md#in-process-simulation-up-to-5-000-nodes)).
 Node IDs are derived from public keys, so no node can claim another's ID, and a node started with
-`--key-file` keeps its ID across restarts. Current work: regenerating every measurement on the final
-build.
+`--key-file` keeps its ID across restarts. Every measurement comes from one node build
+([final data set](docs/benchmarks.md#final-build-every-data-set-on-one-binary)).
 
 Out of scope: large-scale Sybil attacks, colluding adversaries, and physical LoRa/BLE radios (the BLE and
 LoRa transports are interface stubs). Known gaps are tracked in [docs/threat-model.md](docs/threat-model.md).
