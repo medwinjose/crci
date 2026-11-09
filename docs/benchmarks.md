@@ -74,8 +74,15 @@ the table here, the table here is the current one.
 
 Two of the outcomes deserve a sentence each. The contact-trace run with 123 of 124 links banned is not a
 criterion failure (that run's pass/fail criterion was the false-eviction count), but it is one link fewer than
-the earlier recording; the cause has not been investigated, and a contact too short for three strikes is a
-guess. The shortfall of accepted messages in the real-node flood (988 802 of 1 000 080) is inside the
+the earlier recording. Cause, found by re-running that seed with a per-link counter (a local diagnostic,
+not committed): the unbanned link (observer 34, replayer 108) has one 20 s contact after the fault. In a run
+where it is banned it carries 67 frames from the replayer in that contact and exactly three strikes; in the
+runs where it is not, it carries no strike at all. A node answers a sync request with up to 16 messages chosen
+in the order of their origin IDs (`NodeRuntime::answer_sync`), and the IDs are derived from keys that are new
+in every run, so whether the replayer's repeats arrive as excused answers or as struck gossip copies changes
+between runs. Over 14 runs of that seed the link was banned in 12. Not a defect: the excuse for answers is the
+designed one (at most 16 per request, [threat model](threat-model.md)), and the contact allows three strikes
+only just. The shortfall of accepted messages in the real-node flood (988 802 of 1 000 080) is inside the
 90 % limit of that test.
 
 The four figures are drawn from this data (`make figures`; the emulation figures all come from the final
