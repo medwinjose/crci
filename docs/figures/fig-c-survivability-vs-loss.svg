@@ -19,14 +19,13 @@
 <text x="565" y="300" text-anchor="middle">20 %</text>
 <text x="345" y="316" text-anchor="middle">packet loss per hop (rgg and mesh, N 20/50/100, 3 seeds)</text>
 <line x1="70" y1="284" x2="620" y2="284" stroke="black"/>
-<polyline fill="none" stroke="#4477aa" stroke-width="2" points="125.0,52.0 235.0,52.0 345.0,52.0 455.0,64.9 565.0,58.4"/>
-<line x1="455.0" y1="119.6" x2="455.0" y2="52.0" stroke="#4477aa" stroke-width="1.5"/><line x1="451.0" y1="119.6" x2="459.0" y2="119.6" stroke="#4477aa"/><line x1="451.0" y1="52.0" x2="459.0" y2="52.0" stroke="#4477aa"/>
-<line x1="565.0" y1="85.8" x2="565.0" y2="52.0" stroke="#4477aa" stroke-width="1.5"/><line x1="561.0" y1="85.8" x2="569.0" y2="85.8" stroke="#4477aa"/><line x1="561.0" y1="52.0" x2="569.0" y2="52.0" stroke="#4477aa"/>
+<polyline fill="none" stroke="#4477aa" stroke-width="2" points="125.0,52.0 235.0,52.0 345.0,52.0 455.0,52.0 565.0,97.1"/>
+<line x1="565.0" y1="261.8" x2="565.0" y2="52.0" stroke="#4477aa" stroke-width="1.5"/><line x1="561.0" y1="261.8" x2="569.0" y2="261.8" stroke="#4477aa"/><line x1="561.0" y1="52.0" x2="569.0" y2="52.0" stroke="#4477aa"/>
 <circle cx="125.0" cy="52.0" r="3.5" fill="#4477aa"/>
 <circle cx="235.0" cy="52.0" r="3.5" fill="#4477aa"/>
 <circle cx="345.0" cy="52.0" r="3.5" fill="#4477aa"/>
-<circle cx="455.0" cy="64.9" r="3.5" fill="#4477aa"/>
-<circle cx="565.0" cy="58.4" r="3.5" fill="#4477aa"/>
+<circle cx="455.0" cy="52.0" r="3.5" fill="#4477aa"/>
+<circle cx="565.0" cy="97.1" r="3.5" fill="#4477aa"/>
 <rect x="70" y="335" width="10" height="10" fill="#4477aa"/><text x="84" y="344">delivery after the ban</text>
 <polyline fill="none" stroke="#cc6677" stroke-width="2" points="125.0,52.0 235.0,52.0 345.0,52.0 455.0,52.0 565.0,52.0"/>
 <circle cx="125.0" cy="52.0" r="3.5" fill="#cc6677"/>

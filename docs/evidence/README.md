@@ -7,6 +7,18 @@ line endings, noted per folder below. SHA-256 hashes are of the files as committ
 Benchmark CSVs that feed the paper live next to their harness in
 `crates/crci-node/benches/results/` (see [docs/benchmarks.md](../benchmarks.md)).
 
+## `final-2026-11-09/`
+
+Every data set regenerated on one source tree (commit `75cda56`) and one node binary (`binary.sha256`):
+the main table (`main/`), loss, jitter and reordering (`netem/`), attacker and eventual-delivery runs
+(`attacks/`), the invalid-signature flood (`flood/`), baselines (`baselines/`), link flapping (`flapping/`),
+the share of replaying nodes (`ratio/`), the real-node flood (`tcpflood/`), protocol state (`state/`), the
+simulation (`sim/`), the ablation (`ablation/`), the contact-trace replay (`contact/`) and the benches
+(`bench/`). Each run folder keeps `summary.json`, `bans.csv` and `meta.json`; raw node logs are not stored
+(about 30 GB). `driver.log` is the timeline of the run; `driver-invalid-first-start.log` is a first start that
+was discarded because the node binary was not found (no node ran in it). `SHA256SUMS` lists every file.
+Tables are regenerated with `scripts/testbed/main_table.py` and `netem_table.py` from these folders.
+
 ## `state-2026-11-07/`
 
 Per-node memory limits. `flood/` (and `flood-first-set/`, the version of the limits that held 2.58 MB of protocol state):

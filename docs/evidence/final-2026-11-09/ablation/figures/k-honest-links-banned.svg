@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" font-family="sans-serif" font-size="11"><rect width="640" height="380" fill="white"/>
+<text x="70" y="18" font-size="13" font-weight="bold">Honest links banned against honest duplicates, by strike threshold k</text>
+<text x="70" y="34" fill="#555">simulation (no sockets, simulated time, no CPU or bandwidth model); N = 100, mean of rgg and mesh, 3 seeds; equal values overlap</text>
+<line x1="70" y1="284" x2="620" y2="284" stroke="#ddd"/>
+<text x="64" y="288" text-anchor="end">0</text>
+<line x1="70" y1="226" x2="620" y2="226" stroke="#ddd"/>
+<text x="64" y="230" text-anchor="end">0.25</text>
+<line x1="70" y1="168" x2="620" y2="168" stroke="#ddd"/>
+<text x="64" y="172" text-anchor="end">0.5</text>
+<line x1="70" y1="110" x2="620" y2="110" stroke="#ddd"/>
+<text x="64" y="114" text-anchor="end">0.75</text>
+<line x1="70" y1="52" x2="620" y2="52" stroke="#ddd"/>
+<text x="64" y="56" text-anchor="end">1</text>
+<text x="14" y="168" transform="rotate(-90 14 168)" text-anchor="middle">share of honest links ever banned</text>
+<text x="116" y="300" text-anchor="middle">0</text>
+<text x="208" y="300" text-anchor="middle">1e-05</text>
+<text x="299" y="300" text-anchor="middle">3e-05</text>
+<text x="391" y="300" text-anchor="middle">0.0001</text>
+<text x="482" y="300" text-anchor="middle">0.0003</text>
+<text x="574" y="300" text-anchor="middle">0.001</text>
+<text x="345" y="316" text-anchor="middle">probability q that an honest node's frame reaches its peer twice (injected fault)</text>
+<line x1="70" y1="284" x2="620" y2="284" stroke="black"/>
+<polyline fill="none" stroke="#4477aa" stroke-width="2" points="115.8,284.0 207.5,271.2 299.2,250.5 390.8,190.6 482.5,120.7 574.2,77.4"/>
+<circle cx="115.8" cy="284.0" r="3.5" fill="#4477aa"/>
+<circle cx="207.5" cy="271.2" r="3.5" fill="#4477aa"/>
+<circle cx="299.2" cy="250.5" r="3.5" fill="#4477aa"/>
+<circle cx="390.8" cy="190.6" r="3.5" fill="#4477aa"/>
+<circle cx="482.5" cy="120.7" r="3.5" fill="#4477aa"/>
+<circle cx="574.2" cy="77.4" r="3.5" fill="#4477aa"/>
+<rect x="70" y="335" width="10" height="10" fill="#4477aa"/><text x="84" y="344">k = 1</text>
+<polyline fill="none" stroke="#cc6677" stroke-width="2" points="115.8,284.0 207.5,284.0 299.2,284.0 390.8,282.8 482.5,258.7 574.2,129.4"/>
+<circle cx="115.8" cy="284.0" r="3.5" fill="#cc6677"/>
+<circle cx="207.5" cy="284.0" r="3.5" fill="#cc6677"/>
+<circle cx="299.2" cy="284.0" r="3.5" fill="#cc6677"/>
+<circle cx="390.8" cy="282.8" r="3.5" fill="#cc6677"/>
+<circle cx="482.5" cy="258.7" r="3.5" fill="#cc6677"/>
+<circle cx="574.2" cy="129.4" r="3.5" fill="#cc6677"/>
+<rect x="260" y="335" width="10" height="10" fill="#cc6677"/><text x="274" y="344">k = 3</text>
+<polyline fill="none" stroke="#228833" stroke-width="2" points="115.8,284.0 207.5,284.0 299.2,284.0 390.8,283.9 482.5,281.6 574.2,188.7"/>
+<circle cx="115.8" cy="284.0" r="3.5" fill="#228833"/>
+<circle cx="207.5" cy="284.0" r="3.5" fill="#228833"/>
+<circle cx="299.2" cy="284.0" r="3.5" fill="#228833"/>
+<circle cx="390.8" cy="283.9" r="3.5" fill="#228833"/>
+<circle cx="482.5" cy="281.6" r="3.5" fill="#228833"/>
+<circle cx="574.2" cy="188.7" r="3.5" fill="#228833"/>
+<rect x="450" y="335" width="10" height="10" fill="#228833"/><text x="464" y="344">k = 5</text>
+</svg>

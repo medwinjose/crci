@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" font-family="sans-serif" font-size="11"><rect width="640" height="380" fill="white"/>
+<text x="70" y="18" font-size="13" font-weight="bold">Delivery against replay</text>
+<text x="70" y="34" fill="#555">emulation: real crci-node processes on one host, rgg N = 50, mean of 3 seeds; lines with equal values overlap</text>
+<line x1="70" y1="284" x2="620" y2="284" stroke="#ddd"/>
+<text x="64" y="288" text-anchor="end">0</text>
+<line x1="70" y1="226" x2="620" y2="226" stroke="#ddd"/>
+<text x="64" y="230" text-anchor="end">0.25</text>
+<line x1="70" y1="168" x2="620" y2="168" stroke="#ddd"/>
+<text x="64" y="172" text-anchor="end">0.5</text>
+<line x1="70" y1="110" x2="620" y2="110" stroke="#ddd"/>
+<text x="64" y="114" text-anchor="end">0.75</text>
+<line x1="70" y1="52" x2="620" y2="52" stroke="#ddd"/>
+<text x="64" y="56" text-anchor="end">1</text>
+<text x="14" y="168" transform="rotate(-90 14 168)" text-anchor="middle">message delivery ratio (honest messages)</text>
+<text x="139" y="300" text-anchor="middle">0</text>
+<text x="276" y="300" text-anchor="middle">2</text>
+<text x="414" y="300" text-anchor="middle">8</text>
+<text x="551" y="300" text-anchor="middle">32</text>
+<text x="345" y="316" text-anchor="middle">copies of every frame sent by B (0 = no attack)</text>
+<line x1="70" y1="284" x2="620" y2="284" stroke="black"/>
+<polyline fill="none" stroke="#4477aa" stroke-width="2" points="138.8,52.0 276.2,52.0 413.8,52.0 551.2,52.0"/>
+<circle cx="138.8" cy="52.0" r="3.5" fill="#4477aa"/>
+<circle cx="276.2" cy="52.0" r="3.5" fill="#4477aa"/>
+<circle cx="413.8" cy="52.0" r="3.5" fill="#4477aa"/>
+<circle cx="551.2" cy="52.0" r="3.5" fill="#4477aa"/>
+<rect x="70" y="335" width="10" height="10" fill="#4477aa"/><text x="84" y="344">full</text>
+<polyline fill="none" stroke="#cc6677" stroke-width="2" points="138.8,52.0 276.2,79.8 413.8,84.5 551.2,52.0"/>
+<circle cx="138.8" cy="52.0" r="3.5" fill="#cc6677"/>
+<circle cx="276.2" cy="79.8" r="3.5" fill="#cc6677"/>
+<circle cx="413.8" cy="84.5" r="3.5" fill="#cc6677"/>
+<circle cx="551.2" cy="52.0" r="3.5" fill="#cc6677"/>
+<rect x="260" y="335" width="10" height="10" fill="#cc6677"/><text x="274" y="344">static-bucket</text>
+<polyline fill="none" stroke="#228833" stroke-width="2" points="138.8,52.0 276.2,52.0 413.8,52.0 551.2,52.0"/>
+<circle cx="138.8" cy="52.0" r="3.5" fill="#228833"/>
+<circle cx="276.2" cy="52.0" r="3.5" fill="#228833"/>
+<circle cx="413.8" cy="52.0" r="3.5" fill="#228833"/>
+<circle cx="551.2" cy="52.0" r="3.5" fill="#228833"/>
+<rect x="450" y="335" width="10" height="10" fill="#228833"/><text x="464" y="344">vanilla</text>
+</svg>

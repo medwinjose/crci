@@ -87,7 +87,7 @@ emulated on one host; three seeds per configuration, every run within the testbe
 | Setting | Result |
 |---|---|
 | 20–500 nodes, random geometric and 4-regular topologies, a relay replaying every message | Banned by all its neighbours in every run (≈ 2 s at 1 msg/s); 0 honest nodes banned; every honest message delivered after the ban, also to nodes that relied on the evicted relay |
-| Packet loss 0–20 %, delay 40 ± 15 ms, reordering up to 15 % (162 runs) | 0 honest nodes banned at any loss level; median eviction 2.0–2.2 s; with 60 s to recover, every message reached every honest node at 20 % loss (after the ban, current build, two sets: p99 3.6 and 5.5 s, worst 20.1 s; the p99 lies between 3 and 9 s over [eight sets](docs/benchmarks.md#the-latency-tail-at-20--loss-over-repeat-sets)) |
+| Packet loss 0–20 %, delay 40 ± 15 ms, reordering up to 15 % (162 runs) | 0 honest nodes banned at any loss level; median eviction 2.0–2.2 s; with 60 s to recover, every message reached every honest node at 20 % loss (final build, 18 runs at 20 % loss: slowest delivery 28.0 s; over earlier sets the worst case ranged 17.5–34.1 s and the p99 3–9 s, see [the repeat sets](docs/benchmarks.md#the-latency-tail-at-20--loss-over-repeat-sets)) |
 | A replayer that keeps its rate budget empty | Banned in ≈ 12 ms (before: never banned, honest delivery 32–49 %) |
 | A node flooding fresh, validly signed messages at 40 msg/s | Honest delivery 100 % (before the per-origin budget: 82–98 %) |
 | Offered load | No honest message dropped at 16 msg/s network-wide; one node can sustain at most 5 msg/s |

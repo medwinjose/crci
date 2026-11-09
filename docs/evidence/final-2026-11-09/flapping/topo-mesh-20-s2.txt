@@ -1,0 +1,3 @@
+topology kind=mesh seed=2 {"degree": 4, "attempts": 22}
+metrics nodes=20 edges=40 mean_degree=4.0 min_degree=4 max_degree=4 diameter=4 avg_shortest_path=2.2632 clustering=0.175
+roles source=1 byzantine=8 byzantine_degree=4 hops_source_to_byzantine=2 downstream=2

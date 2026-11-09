@@ -38,22 +38,48 @@ deviation over the runs behind a point.
 
 | Figure | Shows | Kind | Data |
 |---|---|---|---|
-| [`fig-a-latency-vs-n.svg`](figures/fig-a-latency-vs-n.svg) | p95 delivery latency after the quarantine against N, 0 / 10 / 30 % of the nodes replaying, rgg and mesh; 3 seeds per point | emulation | [`evidence/ratio-2026-11-07/ratio.csv`](evidence/ratio-2026-11-07/ratio.csv) |
+| [`fig-a-latency-vs-n.svg`](figures/fig-a-latency-vs-n.svg) | p95 delivery latency after the quarantine against N, 0 / 10 / 30 % of the nodes replaying, rgg and mesh; 3 seeds per point | emulation | [`evidence/final-2026-11-09/ratio/ratio.csv`](evidence/final-2026-11-09/ratio/ratio.csv) |
 | [`fig-b-paced-attack.svg`](figures/fig-b-paced-attack.svg) | Reputation of a paced replayer over six hours, replay every 120, 290 and 330 s; deterministic, no error bars | simulation | `crates/crci-node/benches/results/recovery_trajectory.csv` |
-| [`fig-c-survivability-vs-loss.svg`](figures/fig-c-survivability-vs-loss.svg) | Delivery after the ban and honest nodes not banned against packet loss 0–20 %; 18 runs per point | emulation | [`evidence/testbed-fast-recovery-2026-11-04/netem/results.csv`](evidence/testbed-fast-recovery-2026-11-04/netem/results.csv) |
-| [`fig-d-goodput-vs-baselines.svg`](figures/fig-d-goodput-vs-baselines.svg) | Honest deliveries per second under replay and flood attacks for `full`, `static-bucket` and `vanilla`; rgg N = 50, 3 seeds per point (vanilla at 200 messages/s omitted: three runs exceed the host-CPU limit) | emulation | [`evidence/ablation-2026-11-06/testbed/baselines.csv`](evidence/ablation-2026-11-06/testbed/baselines.csv) |
+| [`fig-c-survivability-vs-loss.svg`](figures/fig-c-survivability-vs-loss.svg) | Delivery after the ban and honest nodes not banned against packet loss 0–20 %; 18 runs per point | emulation | [`evidence/final-2026-11-09/netem/results.csv`](evidence/final-2026-11-09/netem/results.csv) |
+| [`fig-d-goodput-vs-baselines.svg`](figures/fig-d-goodput-vs-baselines.svg) | Honest deliveries per second under replay and flood attacks for `full`, `static-bucket` and `vanilla`; rgg N = 50, 3 seeds per point (vanilla at 100 and 200 messages/s omitted: those six runs are not faithful) | emulation | [`evidence/final-2026-11-09/baselines/baselines.csv`](evidence/final-2026-11-09/baselines/baselines.csv) |
 
-The emulation figures come from two node builds (`04ec7be5` for figure c, `aa619cb0` for figures a and d), as
-the sections above say; planned: regenerate all of them on one final build before submission.
+## Final build: every data set on one binary
 
-Protocol fixes came after every testbed set on this page: messages are keyed by signing key and ID (later also by
-sequence number), and one gossip copy that follows its sync answer is excused (later also when that answer was
-dropped, for example as a copy of what a third neighbour delivered first); reputation recovery is applied in steps
-of at least one second ([model checking](formal-verification.md)). On the node build with the first two, one
-small set has been run: the netem conditions at N = 20, seed 1, rgg and mesh, 18 runs. All were
-faithful, no honest node was banned, delivery after the ban was 1.0 and all of the attacker's neighbours banned it
-([`smoke-results.csv`](evidence/tla-2026-11-07/smoke-results.csv)). That is a check, not a re-measurement: the larger
-sets have not been repeated on that build.
+Every data set below was regenerated from one source tree and one node binary: commit `75cda56`, binary
+`30b0c0a7d064…` ([`binary.sha256`](evidence/final-2026-11-09/binary.sha256)), Linux release build, WSL2 on an
+Intel i5-12450HX (12 logical CPUs, 7.8 GiB for the emulation host). Raw run folders are packed outside the
+repository; the per-run `summary.json`, `bans.csv` and `meta.json`, the tables and the run logs are in
+[`evidence/final-2026-11-09/`](evidence/final-2026-11-09/). The criteria of each set were fixed before its data
+(the sections below name them). Earlier sections of this page quote older builds; where a number differs from
+the table here, the table here is the current one.
+
+| Set | Runs | Result on the final binary |
+|---|---|---|
+| Main table (rgg and mesh, N = 20/50/100, load 4–32 msg/s, N = 200–500) | 48 | 48 faithful; B banned by every neighbour in every run; eviction 2.0 s median; 0 honest false evictions; honest frames rate-limited only in the three 32 msg/s runs (2 463–3 609 per run, delivery 0.91–0.99) |
+| Loss, jitter, reordering (9 conditions, rgg and mesh, N = 20/50/100, 3 seeds) | 162 | 162 faithful; 0 honest false evictions in every condition up to 20 % loss; B banned by all its neighbours in 162 of 162; eviction median 2.0–2.2 s (worst 12.1 s, at 20 % loss); delivery after the ban 100 % (99.6 % mean at 20 % loss within the 5 s window) ([conditions](evidence/final-2026-11-09/netem/netem/conditions.md)) |
+| Over-budget replayer, fresh-message flood, eventual delivery at 20 % loss | 30 | over-budget replayer banned by all 10 neighbours in 33–137 ms; fresh flood not struck, delivery 1.0 during it; with 60 s to recover every message reached every honest node in all 18 runs (slowest delivery 28.0 s); 0 honest bans |
+| Invalid-signature flood, 40 to 2 560 forged frames/s per link | 19 | all 15 criteria hold; B evicted by all neighbours (median 65–128 ms per setting, worst 136 ms), at most 3 verifications per neighbour, 0 honest false evictions; fresh flood at 1 000 msg/s: delivery 1.0 ([flood.md](evidence/final-2026-11-09/flood/flood.md)) |
+| Baselines (full, static bucket, vanilla) | 63 | four of five criteria hold. **"Every run faithful" fails**: the six `vanilla` flood runs at 100 and 200 msg/s are not faithful (`every_acceptance_logged` false: the fair log limit held acceptance lines back when nothing bans the flooder; the 200 msg/s runs also exceed 70 % mean host CPU). The other 57 are faithful. Kept as failed; `vanilla` is a comparison mode, not a deployed one ([baselines.md](evidence/final-2026-11-09/baselines/baselines.md)) |
+| Link flapping (20 % and 50 % of the links, symmetric and asymmetric) | 102 | all 9 criteria hold: 0 bans and 0 strikes on honest nodes, every message delivered, replayer banned by all neighbours |
+| Share of replaying nodes (0–45 %) | 90 | all 5 criteria hold; every honest neighbour of every attacker bans it; 0 honest bans; graph-only partition probabilities reproduce the simulation's 72 comparable runs with 0 differences |
+| Real-node flood, 10⁶ messages from 90 identities | 1 | receiver RSS 17 856 → 19 236 KiB (ratio 1.08), 568 of 568 honest messages accepted, 988 802 of 1 000 080 accepted, log 31.9 MB |
+| Protocol state under 10⁶ messages ([`state/`](evidence/final-2026-11-09/state/heap.txt)) | 4 | 1.95 MB at the end for 10⁶ distinct origins (protocol state only; peak 2.11 MB) |
+| Simulation, 20 to 5 000 nodes | 210 | all criteria met; the safety outcomes are identical to the first recording (only the state counters of the 12 long runs, `sync_excused` in 7, `accepted_via_attacker_post` in 6 and `frames` in 3 differ) |
+| Strike-threshold and defence-mode ablation (simulation) | 234 | all four criteria hold |
+| Human contact trace replay (simulation) | 6 | 0 honest false evictions and 0 honest strikes; with 6 replayers every observer that met them after the fault banned them in two seeds (168 of 168, 129 of 129) and 123 of 124 in the third |
+| TLA+ model checking (28 configurations, TLC) | 28 | all 28 as expected; largest `honest-loss-sync`, 104 091 287 distinct states ([log](evidence/final-2026-11-09/tla/check.log)) |
+| Ed25519 on the benchmark host | | keygen 12.0 µs, sign 12.2 µs, verify 34.1 µs (valid and invalid) |
+| Window and paced-attack benches | | CSVs identical to the committed reference data |
+
+Two of the outcomes deserve a sentence each. The contact-trace run with 123 of 124 links banned is not a
+criterion failure (that run's pass/fail criterion was the false-eviction count), but it is one link fewer than
+the earlier recording; the cause has not been investigated, and a contact too short for three strikes is a
+guess. The shortfall of accepted messages in the real-node flood (988 802 of 1 000 080) is inside the
+90 % limit of that test.
+
+The four figures are drawn from this data (`make figures`; the emulation figures all come from the final
+binary). The earlier text "planned: regenerate on one final build" is done; the paced-attack figure (b) is
+deterministic and unchanged.
 
 ## Byzantine eviction, in-process
 

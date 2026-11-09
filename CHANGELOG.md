@@ -14,6 +14,10 @@ git history; `git log` is the complete record.
   honest node's ID first made receivers drop that node's messages. Such a claim is now a forgery: dropped,
   and its sender struck like the sender of a bad signature. Key pinning is removed.
 
+### Changed
+- Every data set in `docs/benchmarks.md` and the four figures are regenerated on one node binary; the
+  results are in `docs/evidence/final-2026-11-09/`.
+
 ### Added
 - `crci-node --key-file FILE --key-passphrase-file FILE` keeps the node key in an encrypted file
   (AES-256-GCM, Argon2id), created on first start, so a restarted node keeps its ID. A wrong passphrase stops

@@ -26,10 +26,10 @@ ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "scripts", "testbed"))
 import svgplot  # noqa: E402
 
-RATIO = "docs/evidence/ratio-2026-11-07/ratio.csv"
+RATIO = "docs/evidence/final-2026-11-09/ratio/ratio.csv"
 TRAJECTORY = "crates/crci-node/benches/results/recovery_trajectory.csv"
-NETEM = "docs/evidence/testbed-fast-recovery-2026-11-04/netem/results.csv"
-BASELINES = "docs/evidence/ablation-2026-11-06/testbed/baselines.csv"
+NETEM = "docs/evidence/final-2026-11-09/netem/results.csv"
+BASELINES = "docs/evidence/final-2026-11-09/baselines/baselines.csv"
 
 
 def rows(rel):
@@ -121,7 +121,7 @@ def fig_d(out):
         series[mode] = [m for m, _ in stats]
         errors[mode] = [s for _, s in stats]
     svgplot.line_chart(f"{out}/fig-d-goodput-vs-baselines.svg", "Goodput against attack intensity, three defence modes",
-                       "emulation, rgg N = 50; mean ± sd over 3 seeds; vanilla at flood 200/s omitted (host saturated)",
+                       "emulation, rgg N = 50; mean ± sd over 3 seeds; vanilla at flood 100 and 200/s omitted (runs not faithful: held-back log lines, host CPU)",
                        labels, series, "honest deliveries per second", ymin=0.0, ymax=60.0,
                        xlabel="attack (replay: copies per message; flood: fresh messages per second)",
                        errors=errors)

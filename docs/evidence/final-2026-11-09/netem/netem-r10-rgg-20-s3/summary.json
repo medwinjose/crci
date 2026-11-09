@@ -1,0 +1,294 @@
+{
+ "run": "/root/t41/out/r-netem/netem-r10-rgg-20-s3",
+ "topology": {
+  "kind": "rgg",
+  "seed": 3,
+  "metrics": {
+   "nodes": 20,
+   "edges": 37,
+   "mean_degree": 3.7,
+   "min_degree": 1,
+   "max_degree": 6,
+   "diameter": 10,
+   "avg_shortest_path": 3.6947,
+   "clustering": 0.6017
+  }
+ },
+ "config": {
+  "delay_ms": 40,
+  "jitter_ms": 15,
+  "loss": 0.0,
+  "reorder": 10.0,
+  "window": 60,
+  "source_rate": 0.5,
+  "bg_rate": 0.5,
+  "fault_at": 20,
+  "no_fault": false,
+  "replay_copies": 2,
+  "corrupt_signatures": false,
+  "corrupt_for": null,
+  "defence": null,
+  "strikes_to_ban": null,
+  "replay_window": null,
+  "flap_fraction": 0,
+  "flap_mode": "symmetric",
+  "flap_min_s": 5,
+  "flap_max_s": 10,
+  "flap_start": 10,
+  "flap_stop": null,
+  "byz_rate": 0,
+  "attackers_pct": 0,
+  "refill": null,
+  "settle": 20,
+  "drain": 5,
+  "pings": 10,
+  "worker_threads": 2,
+  "backlog": 30000
+ },
+ "launch": {
+  "listening_at_t0": 20,
+  "alive_at_end": 20,
+  "nodes": 20
+ },
+ "roles": {
+  "source": "n012",
+  "byzantine": "n009",
+  "byzantine_degree": 6,
+  "downstream": 11
+ },
+ "messages_originated_in_window": 60,
+ "delivery_ratio": {
+  "pre": {
+   "n": 16,
+   "median": 1.0,
+   "p95": 1.0,
+   "max": 1.0,
+   "mean": 1.0
+  },
+  "post": {
+   "n": 36,
+   "median": 1.0,
+   "p95": 1.0,
+   "max": 1.0,
+   "mean": 1.0
+  },
+  "warmup": {
+   "n": 6,
+   "median": 1.0,
+   "p95": 1.0,
+   "max": 1.0,
+   "mean": 1.0
+  },
+  "during": {
+   "n": 2,
+   "median": 1.0,
+   "p95": 1.0,
+   "max": 1.0,
+   "mean": 1.0
+  }
+ },
+ "attack_window": {
+  "messages": 38,
+  "delivery": {
+   "n": 38,
+   "median": 1.0,
+   "p95": 1.0,
+   "max": 1.0,
+   "mean": 1.0
+  },
+  "honest_deliveries": 684,
+  "goodput_per_s": 17.16,
+  "seconds": 39.9
+ },
+ "messages_fully_delivered": {
+  "pre": 16,
+  "post": 36,
+  "warmup": 6,
+  "during": 2
+ },
+ "latency_ms": {
+  "pre": {
+   "n": 288,
+   "median": 171,
+   "p95": 376,
+   "max": 475,
+   "mean": 188.02
+  },
+  "post": {
+   "n": 648,
+   "median": 198,
+   "p95": 438,
+   "max": 551,
+   "mean": 213.05
+  },
+  "warmup": {
+   "n": 108,
+   "median": 275,
+   "p95": 1377,
+   "max": 2067,
+   "mean": 438.71
+  },
+  "during": {
+   "n": 36,
+   "median": 221,
+   "p95": 420,
+   "max": 446,
+   "mean": 225.14
+  }
+ },
+ "per_hop_excess_ms": {
+  "n": 1080,
+  "median": 9.3,
+  "p95": 23.25,
+  "max": 318.0,
+  "mean": 15.95
+ },
+ "protocol_compute_us_per_hop": {
+  "n": 1140,
+  "median": 107,
+  "p95": 212,
+  "max": 452,
+  "mean": 120.94
+ },
+ "downstream_delivery": {
+  "warmup": [
+   33,
+   33
+  ],
+  "pre": [
+   88,
+   88
+  ],
+  "during": [
+   11,
+   11
+  ],
+  "post": [
+   198,
+   198
+  ]
+ },
+ "downstream_latency_ms": {
+  "warmup": {
+   "n": 33,
+   "median": 351,
+   "p95": 1795,
+   "max": 2067,
+   "mean": 605.45
+  },
+  "pre": {
+   "n": 88,
+   "median": 301,
+   "p95": 430,
+   "max": 475,
+   "mean": 294.8
+  },
+  "during": {
+   "n": 11,
+   "median": 310,
+   "p95": 446,
+   "max": 446,
+   "mean": 303.64
+  },
+  "post": {
+   "n": 198,
+   "median": 349,
+   "p95": 483,
+   "max": 551,
+   "mean": 342.25
+  }
+ },
+ "accepted_via_byzantine": {
+  "warmup": 16,
+  "pre": 35,
+  "during": 4
+ },
+ "fault_ms_since_t0": 20132,
+ "byzantine_banned_by": "6/6",
+ "eviction_latency_ms": {
+  "n": 6,
+  "median": 2057,
+  "p95": 2059,
+  "max": 2059,
+  "mean": 2054.17
+ },
+ "honest_false_evictions": 0,
+ "honest_nodes_banned_by_anyone": 0,
+ "honest_nodes": 19,
+ "readmissions": 0,
+ "banned_frames_dropped": 17,
+ "frames_paced": {
+  "total": 0,
+  "nodes": []
+ },
+ "rate_limit_drops": {},
+ "origin_budget_drops": {},
+ "relay_drops": {
+  "failed": 3,
+  "queue_full": 0,
+  "nodes_with_drops": 1
+ },
+ "deliveries_by_path": {
+  "gossip": 1080
+ },
+ "late_deliveries_over_5s_by_path": {},
+ "log_counters": {
+  "sync_requests": 228,
+  "frames_received": 4660,
+  "chain_head_frames": 200,
+  "MALICIOUS REPLAY": 18,
+  "accepted_lines_not_printed": 0
+ },
+ "frames_from_non_neighbours": 0,
+ "frames_received_per_message": 77.67,
+ "host": {
+  "cpu_busy_pct": {
+   "n": 60,
+   "median": 0.3,
+   "p95": 1.3,
+   "max": 1.7,
+   "mean": 0.42
+  },
+  "mem_used_mib_max": 593,
+  "swap_used_mib_max": 0,
+  "swap_pages_in_out": 0,
+  "kernel_backlog_drops": 0
+ },
+ "rss_kib_per_node": {
+  "n": 20,
+  "median": 6800,
+  "p95": 7056,
+  "max": 7056,
+  "mean": 6834.0
+ },
+ "cpu_seconds_per_process": {
+  "byzantine": 0.4,
+  "byzantine_neighbours_mean": 0.13,
+  "byzantine_neighbours_max": 0.16,
+  "others_mean": 0.08
+ },
+ "rss_total_mib": 133.5,
+ "ping_rtt_ms": {
+  "n": 1000,
+  "median": 76.3,
+  "p95": 99.8,
+  "max": 109.0,
+  "mean": 71.92
+ },
+ "configured_rtt_ms": {
+  "median": 76.2562785810669,
+  "p95": 99.57071336101377
+ },
+ "fidelity": {
+  "all_nodes_listening_at_t0": true,
+  "cpu_mean_below_70": true,
+  "no_kernel_backlog_drops": true,
+  "no_swap_io": true,
+  "rtt_median_within_10pct": true,
+  "rtt_p95_within_25pct": true,
+  "every_acceptance_logged": true,
+  "pass": true
+ },
+ "flap": null,
+ "ratio": null
+}
