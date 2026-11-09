@@ -18,6 +18,22 @@ git history; `git log` is the complete record.
 - Every data set in `docs/benchmarks.md` and the four figures are regenerated on one node binary; the
   results are in `docs/evidence/final-2026-11-09/`.
 
+### Corrections to the published preprint (v1.0)
+The preprint (doi.org/10.5281/zenodo.23032042) contained statements that the code or later measurements do
+not support. The paper in preparation corrects them:
+- The setup was described as a UDP loopback testbed. Every benchmark ran in one process against an in-memory
+  inbox, with no sockets; the evaluation now uses real processes over TCP, with the emulation labelled as
+  such and the simulation kept separate.
+- The "strict-monotonic (W = 0)" column of the window table had no supporting run and was wrong. Measured
+  now: W = 0 loses reordered messages and bans nobody (`docs/benchmarks.md`).
+- A paced-attack reputation of 0.95 appears in no recorded output. The paced-attack behaviour is re-measured
+  and bounded analytically (`docs/formal-verification.md`).
+- "Subsequent connections are rejected" after a ban was not true of the code at the time; a banned peer's
+  connections are now closed and refused, with a periodic probe so a ban that expires is noticed.
+- The protocol changed since v1.0 (signed transport frames and authenticated connections, a sliding replay
+  window as the only replay path, key-derived node IDs, digest-based re-synchronization, time-based
+  recovery), so the preprint's numbers do not apply to the current code.
+
 ### Added
 - `crci-node --key-file FILE --key-passphrase-file FILE` keeps the node key in an encrypted file
   (AES-256-GCM, Argon2id), created on first start, so a restarted node keeps its ID. A wrong passphrase stops
