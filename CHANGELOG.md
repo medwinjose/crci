@@ -21,6 +21,12 @@ git history; `git log` is the complete record.
   Ed25519, recovery, message size, proof-of-work cost) and draws the figures from its own runs
   (`make run-figures`, `make_figures.py --data`); `make tla` stays a separate step (Java).
 
+### Fixed
+- Nine shell scripts, among them four testbed runners that `make reproduce` calls directly, were tracked
+  without their executable bit, so `make reproduce` stopped at `make netem` on a fresh checkout. Every
+  shell script and every Python script with a shebang is now executable, and `scripts/check-docs.sh`
+  (run in CI) fails if a tracked shell script is not.
+
 ### Corrections to the published preprint (v1.0)
 The preprint (doi.org/10.5281/zenodo.23032042) contained statements that the code or later measurements do
 not support. The paper in preparation corrects them:

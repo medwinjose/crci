@@ -32,6 +32,13 @@ check "a gossip copy can follow its sync answer"          'untagged repeats are 
 check "any answer that entered the seen cache excuses its gossip copy" 'follows its accepted answer|copy of a message accepted as an answer'
 check "node IDs are derived from keys, not pinned"         'pinned to the first key|origin key pinning|key-derived (origin )?ids (are )?planned|--node-id'
 
+# `make reproduce` runs the scripts directly, so a fresh checkout needs their executable bit.
+if hits=$(git ls-files -s -- '*.sh' | awk '$1 != "100755" {print $4}') && [ -n "$hits" ]; then
+  echo "✗ tracked shell scripts are executable (git update-index --chmod=+x)"
+  echo "$hits" | sed 's/^/    /'
+  fail=1
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo "Documentation guard failed."
   exit 1
