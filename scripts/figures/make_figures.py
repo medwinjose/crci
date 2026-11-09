@@ -11,7 +11,8 @@ simulation in (b) is the deterministic in-process benchmark with a simulated clo
 (crates/crci-node/benches/recovery_bench.rs); it has no random element, so it has no error bars.
 Error bars are the sample standard deviation over the runs behind a point (n is in each subtitle).
 
-Usage: make_figures.py [OUT_DIR]      (default docs/figures)
+Usage: make_figures.py [--compact] [OUT_DIR]      (default docs/figures)
+--compact draws the same data on a small canvas without title and subtitle, for printing at column width.
 Standard library only; the plot helper is scripts/testbed/svgplot.py.
 """
 
@@ -67,7 +68,7 @@ def fig_a(out):
     assert counts == {3}, counts  # three seeds behind every point
     svgplot.line_chart(f"{out}/fig-a-latency-vs-n.svg",
                        "Delivery latency after the quarantine against network size",
-                       "emulation (real processes, one host); p95, mean ± sd over 3 seeds; legend: topology, share of nodes replaying",
+                       "emulation; p95, mean ± sd over 3 seeds; legend: topology, share of nodes replaying",
                        [f"N = {n}" for n in sizes], series, "milliseconds", errors=errors)
 
 
@@ -111,6 +112,8 @@ def fig_d(out):
     order = [("none", "0"), ("replay", "2"), ("replay", "8"), ("replay", "32"),
              ("flood", "40"), ("flood", "100"), ("flood", "200")]
     labels = ["none"] + [f"replay x{i}" for i in (2, 8, 32)] + [f"flood {i}/s" for i in (40, 100, 200)]
+    if COMPACT:  # short labels; the caption explains them
+        labels = ["none"] + [f"r{i}" for i in (2, 8, 32)] + [f"f{i}" for i in (40, 100, 200)]
     by = defaultdict(list)
     for r in rows(BASELINES):
         if r["faithful"] == "True":
@@ -121,14 +124,23 @@ def fig_d(out):
         series[mode] = [m for m, _ in stats]
         errors[mode] = [s for _, s in stats]
     svgplot.line_chart(f"{out}/fig-d-goodput-vs-baselines.svg", "Goodput against attack intensity, three defence modes",
-                       "emulation, rgg N = 50; mean ± sd over 3 seeds; vanilla at flood 100 and 200/s omitted (runs not faithful: held-back log lines, host CPU)",
+                       "emulation, rgg N = 50, 3 seeds, mean ± sd; vanilla omitted at flood 100 and 200/s (not faithful)",
                        labels, series, "honest deliveries per second", ymin=0.0, ymax=60.0,
-                       xlabel="attack (replay: copies per message; flood: fresh messages per second)",
+                       xlabel=("attack (r: replay copies, f: flood msg/s)" if COMPACT else
+                               "attack (replay: copies per message; flood: fresh messages per second)"),
                        errors=errors)
 
 
+COMPACT = False
+
+
 def main():
-    out = os.path.join(ROOT, sys.argv[1] if len(sys.argv) > 1 else "docs/figures")
+    global COMPACT
+    args = [a for a in sys.argv[1:] if a != "--compact"]
+    if len(args) != len(sys.argv) - 1:
+        COMPACT = True
+        svgplot.compact()
+    out = os.path.join(ROOT, args[0] if args else "docs/figures")
     os.makedirs(out, exist_ok=True)
     for fig in (fig_a, fig_b, fig_c, fig_d):
         fig(out)

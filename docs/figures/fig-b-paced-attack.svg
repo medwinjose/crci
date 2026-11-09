@@ -16,7 +16,7 @@
 <line x1="70" y1="52" x2="620" y2="52" stroke="#ddd"/>
 <text x="64" y="56" text-anchor="end">0.5</text>
 <text x="620" y="300" text-anchor="middle">6</text>
-<text x="14" y="168" transform="rotate(-90 14 168)" text-anchor="middle">reputation score</text>
+<text x="12" y="168" transform="rotate(-90 12 168)" text-anchor="middle">reputation score</text>
 <text x="345" y="316" text-anchor="middle">hours</text>
 <line x1="70" y1="284" x2="620" y2="284" stroke="black"/>
 <line x1="70" y1="237.6" x2="620" y2="237.6" stroke="#888" stroke-dasharray="4 3"/><text x="618" y="234.6" text-anchor="end" fill="#555" stroke="white" stroke-width="3" paint-order="stroke">ban threshold 0.1</text>

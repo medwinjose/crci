@@ -11,7 +11,7 @@
 <text x="64" y="114" text-anchor="end">0.995</text>
 <line x1="70" y1="52" x2="620" y2="52" stroke="#ddd"/>
 <text x="64" y="56" text-anchor="end">1</text>
-<text x="14" y="168" transform="rotate(-90 14 168)" text-anchor="middle">share of 1 (axis starts at 0.98)</text>
+<text x="12" y="168" transform="rotate(-90 12 168)" text-anchor="middle">share of 1 (axis starts at 0.98)</text>
 <text x="125" y="300" text-anchor="middle">0 %</text>
 <text x="235" y="300" text-anchor="middle">5 %</text>
 <text x="345" y="300" text-anchor="middle">10 %</text>
