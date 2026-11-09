@@ -18,6 +18,8 @@ simulation (`sim/`), the ablation (`ablation/`), the contact-trace replay (`cont
 (about 30 GB). `driver.log` is the timeline of the run; `driver-invalid-first-start.log` is a first start that
 was discarded because the node binary was not found (no node ran in it). `SHA256SUMS` lists every file.
 Tables are regenerated with `scripts/testbed/main_table.py` and `netem_table.py` from these folders.
+`netem/post-ban-tail.txt` was computed afterwards from the packed raw runs (the 20 % loss runs of the loss set and of the
+eventual-delivery set) with `scripts/testbed/post_ban_tail.py`; the per-run `latency.csv` files are not stored here.
 
 ## `state-2026-11-07/`
 
