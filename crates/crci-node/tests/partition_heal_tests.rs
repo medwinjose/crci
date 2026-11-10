@@ -573,6 +573,47 @@ fn answers_are_rate_limited_and_batched() {
     assert_eq!(pair.take("b").len(), crci_core::runtime::SYNC_MAX_BATCH);
 }
 
+/// A full answer (`SYNC_MAX_BATCH` messages) means the peer may hold more, so the requester reports
+/// the request for the node to ask again before the next round; a newer request still waiting, or
+/// an answer that was not full, is not reported.
+#[test]
+fn a_full_answer_is_reported_so_the_requester_asks_again() {
+    let mut pair = Pair::new();
+    authored_by_a(&mut pair, 40);
+    let mut received = 0;
+    let mut reported = Vec::new();
+    for _ in 0..3 {
+        let request = pair.b.request_sync(&pair.a.id);
+        assert_eq!(
+            pair.b.full_sync_answer(&pair.a.id),
+            None,
+            "nothing answered yet"
+        );
+        pair.a.process_inbox();
+        let answers = pair.take("b");
+        received += answers.len();
+        pair.requeue("b", &answers);
+        pair.b.process_inbox();
+        if pair.b.full_sync_answer(&pair.a.id) == Some(request.clone()) {
+            reported.push(answers.len());
+        }
+        let spacing = crci_core::runtime::SYNC_RESUME_SPACING;
+        pair.a.sybil_guard.advance_time(spacing);
+        pair.b.sybil_guard.advance_time(spacing);
+    }
+    assert_eq!(received, 40);
+    assert_eq!(
+        reported,
+        vec![SYNC_MAX_BATCH, SYNC_MAX_BATCH],
+        "the 8-message answer is not full"
+    );
+    for i in 1..=40 {
+        assert!(holds(&pair.b, &format!("a-{i}")), "b lacks a-{i}");
+    }
+    assert_eq!(pair.b.byzantine_events, 0);
+    assert!(pair.b.sybil_guard.reputation(&pair.a.id) >= 0.5);
+}
+
 /// The cooldown runs from when a request arrives. A request that TCP delivered 3 s late (three
 /// retransmissions) must not get the next one, sent for a resumed link, silently refused.
 #[test]

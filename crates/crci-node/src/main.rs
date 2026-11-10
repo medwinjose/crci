@@ -1657,8 +1657,30 @@ async fn run_node(
         let mut next_due: HashMap<String, std::time::Instant> = HashMap::new();
         let mut last_sent: HashMap<String, std::time::Instant> = HashMap::new();
         let mut addr_of: HashMap<String, String> = HashMap::new();
+        // The last full answer each peer was asked again for.
+        let mut refilled: HashMap<String, String> = HashMap::new();
         loop {
             let now = std::time::Instant::now();
+            // A full answer (`SYNC_MAX_BATCH` messages) means the peer may hold more: ask it
+            // again as soon as the resume spacing allows, once per full answer, not at the next
+            // SYNC_INTERVAL. Without this a node 40 messages behind needs three rounds (60 s).
+            {
+                let n = sync_node.lock().unwrap_or_else(|e| e.into_inner());
+                for (identity, peer) in &addr_of {
+                    let Some(request) = n.full_sync_answer(identity) else {
+                        continue;
+                    };
+                    if refilled.get(peer) == Some(&request) {
+                        continue;
+                    }
+                    let earliest = last_sent
+                        .get(peer)
+                        .map_or(now, |t| *t + runtime::SYNC_RESUME_SPACING);
+                    let due = next_due.entry(peer.clone()).or_insert(earliest);
+                    *due = (*due).min(earliest);
+                    refilled.insert(peer.clone(), request);
+                }
+            }
             for peer in &dial {
                 if next_due.get(peer).is_some_and(|due| *due > now) {
                     continue;

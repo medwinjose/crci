@@ -22,6 +22,10 @@ git history; `git log` is the complete record.
   (`make run-figures`, `make_figures.py --data`); `make tla` stays a separate step (Java).
 
 ### Fixed
+- A node more than one sync answer behind a peer (16 messages) caught up only 16 messages per 30 s
+  round: at 20 % packet loss a node with a single neighbour received its last messages 55.8 s late. A
+  node now asks that peer again 8 s after an answer that filled a whole batch (once per such answer),
+  in `crci-node` and in the simulation; the excuse rules are unchanged.
 - The Ed25519 benchmark's invalid signature flipped a bit of R, which fails point decompression for
   about half of all keys and so measured a cheap early rejection in some runs (6.8 µs instead of
   about 35 µs); it now flips a bit of S, so verification always runs in full.

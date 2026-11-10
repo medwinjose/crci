@@ -275,8 +275,10 @@ excuses only answers and the one copy that goes with each, never ordinary gossip
 In-process, `MeshSimulator::heal(a, b)` restores a link and has both ends request. A TCP node requests
 from every `--peers` / `--dial` address 0.5 s after start and every 30 s, and retries an unreachable peer
 every 5 s, so a healed link is re-synchronised within about 5 s. It also requests from a peer as soon as
-that peer re-establishes its relay connection (`link_resumed`, see the message path above), at least
-8 s after its previous request. The session is opened after the
+that peer re-establishes its relay connection (`link_resumed`, see the message path above), and again
+when the peer's last answer filled a whole batch of 16 (`NodeRuntime::full_sync_answer`: it may hold
+more), each at least 8 s after its previous request. A node 40 messages behind one peer therefore
+catches up in three answers about 8 s apart instead of three 30 s rounds. The session is opened after the
 listener's identity has been authenticated and before the request frame is sent. `reply_to` is the
 node's listen address, so it must be an address the peers can reach: a node listening on `0.0.0.0` or
 `::` prints a warning and does not request sync.

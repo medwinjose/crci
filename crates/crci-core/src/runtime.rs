@@ -919,6 +919,18 @@ impl NodeRuntime {
         );
     }
 
+    /// The ID of the newest request to `peer` if its answers filled a whole batch
+    /// (`SYNC_MAX_BATCH`): the peer may hold more than one answer carries, so the caller should
+    /// ask again as soon as the resume spacing allows instead of at the next round.
+    pub fn full_sync_answer(&self, peer: &str) -> Option<String> {
+        self.sync_sessions
+            .iter()
+            .filter(|(_, s)| s.peer == peer)
+            .max_by_key(|(id, s)| (s.opened_at, id.as_str()))
+            .filter(|(_, s)| s.answered.len() >= SYNC_MAX_BATCH)
+            .map(|(id, _)| id.clone())
+    }
+
     /// Ask in-process peer `peer` for the messages this node is missing. Returns the
     /// request's ID.
     pub fn request_sync(&mut self, peer: &str) -> String {

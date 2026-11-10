@@ -229,6 +229,9 @@ struct Sim<'a> {
     /// Active contact pairs (smaller index first); unused without a trace.
     active: HashSet<(usize, usize)>,
     last_sync: HashMap<(usize, usize), u64>,
+    /// (requester, peer) -> the last full answer it asked again for, and requests due for that.
+    refilled: HashMap<(usize, usize), String>,
+    refill_due: Vec<(u64, usize, usize)>,
 }
 
 impl Sim<'_> {
@@ -342,6 +345,7 @@ impl Sim<'_> {
         }
         if let Some(s) = sender {
             self.observe(i, s, now_ms);
+            self.note_full_answer(i, s, now_ms);
         }
         if self.attacker[i] {
             let copies = self.copies(now_ms);
@@ -386,6 +390,39 @@ impl Sim<'_> {
         }
         self.last_sync.insert((i, peer), now_ms);
         self.out.sync_requests += 1;
+    }
+
+    /// As `crci-node` does: once a peer's answer filled a whole batch, ask it again when the resume
+    /// spacing allows instead of at the next round (once per full answer).
+    fn note_full_answer(&mut self, i: usize, peer: usize, now_ms: u64) {
+        let Some(request) = self.nodes[i].full_sync_answer(&self.identities[peer]) else {
+            return;
+        };
+        if self.refilled.get(&(i, peer)) == Some(&request) {
+            return;
+        }
+        let earliest = self
+            .last_sync
+            .get(&(i, peer))
+            .map_or(now_ms, |&t| t + SYNC_RESUME_SPACING_MS);
+        self.refill_due.push((earliest.max(now_ms), i, peer));
+        self.refilled.insert((i, peer), request);
+    }
+
+    /// Requests made due by `note_full_answer`, in order of time and node.
+    fn run_refills(&mut self, now_ms: u64) {
+        if self.refill_due.is_empty() {
+            return;
+        }
+        self.refill_due.sort_unstable();
+        let due = self.refill_due.partition_point(|&(at, _, _)| at <= now_ms);
+        for (_, i, peer) in self.refill_due.drain(..due).collect::<Vec<_>>() {
+            if self.link_up(i, peer) {
+                self.advance(i, now_ms);
+                self.sync_one(i, peer, now_ms);
+                self.flush_attacker(i, 1);
+            }
+        }
     }
 
     /// A contact started: each end asks the other, as a resumed link does, unless it asked
@@ -760,6 +797,8 @@ pub fn run(scenario: &Scenario) -> Outcome {
         out: Outcome::default(),
         active: HashSet::new(),
         last_sync: HashMap::new(),
+        refilled: HashMap::new(),
+        refill_due: Vec::new(),
     };
     // Contact starts and ends by time, ends first.
     let mut contact_events: Vec<(u64, bool, usize, usize)> = Vec::new();
@@ -809,6 +848,7 @@ pub fn run(scenario: &Scenario) -> Outcome {
             sim.sync_round(i, now_ms);
             next_sync += 1;
         }
+        sim.run_refills(now_ms);
         // Destinations in a fixed order, so the injected fault draws the same numbers every run.
         let mut batches: Vec<_> = take_all(&sim.outgoing).into_iter().collect();
         batches.sort_by(|a, b| a.0.cmp(&b.0));

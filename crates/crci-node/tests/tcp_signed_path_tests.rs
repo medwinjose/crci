@@ -434,6 +434,51 @@ fn late_node_catches_up_through_anti_entropy() {
     );
 }
 
+/// A node more than one answer behind (`SYNC_MAX_BATCH` = 16 messages) asks again as soon as the
+/// resume spacing allows, not at the next 30 s round: 40 missing messages arrive in three answers
+/// (16, 16, 8) about 8 s apart.
+#[test]
+fn a_node_behind_by_more_than_one_answer_asks_again_at_once() {
+    let a = start_node(
+        "tcp-full-a",
+        &[
+            "--emit-count",
+            "40",
+            "--emit-interval-ms",
+            "20",
+            "--emit-delay-ms",
+            "0",
+        ],
+    );
+    std::thread::sleep(Duration::from_secs(2));
+    let b = start_node("tcp-full-b", &["--peers", &a.addr]);
+    let a_id = a.id.clone();
+    // Without asking again the second answer comes at the 30 s round; 20 s leaves 4 s of margin
+    // over the third answer (about 16 s after the first request) on a slow runner.
+    std::thread::sleep(Duration::from_secs(20));
+    let b_log = b.finish();
+    let a_log = a.finish();
+    assert_eq!(
+        count(&b_log, &format!("(origin {a_id}, via {a_id})")),
+        40,
+        "late node log:\n{b_log}\nfirst node log:\n{a_log}"
+    );
+    assert!(
+        a_log.contains("with 16 message(s)") && a_log.contains("with 8 message(s)"),
+        "first node log:\n{a_log}"
+    );
+    assert_eq!(
+        count(&b_log, "MALICIOUS REPLAY"),
+        0,
+        "late node log:\n{b_log}"
+    );
+    assert_eq!(
+        count(&a_log, "MALICIOUS REPLAY"),
+        0,
+        "first node log:\n{a_log}"
+    );
+}
+
 /// A node started before its peer still relays to it once the peer is up: relay targets
 /// are the configured list, not the peers that answered at start-up.
 #[test]
