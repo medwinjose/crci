@@ -18,11 +18,17 @@ fn bench_crypto(c: &mut Criterion) {
     let identity = Identity::new("node-bench");
     let valid = signed_wire(&identity);
 
-    // Same message with one signature bit flipped: verification runs in full and fails.
+    // Same message with the lowest bit of S flipped (byte 32): R still decompresses and S stays
+    // canonical, so verification runs in full and fails at the final check. Flipping a bit of R
+    // (bytes 0-31) instead fails point decompression in about half of all keys, about 5x cheaper.
     let mut invalid = valid.clone();
-    if let Some(byte) = invalid.signature_bytes.first_mut() {
+    if let Some(byte) = invalid.signature_bytes.get_mut(32) {
         *byte ^= 0x01;
     }
+    assert!(
+        !invalid.verify_signature(),
+        "the altered signature must not verify"
+    );
 
     let mut group = c.benchmark_group("ed25519");
     group.throughput(Throughput::Elements(1));

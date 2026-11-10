@@ -22,6 +22,9 @@ git history; `git log` is the complete record.
   (`make run-figures`, `make_figures.py --data`); `make tla` stays a separate step (Java).
 
 ### Fixed
+- The Ed25519 benchmark's invalid signature flipped a bit of R, which fails point decompression for
+  about half of all keys and so measured a cheap early rejection in some runs (6.8 µs instead of
+  about 35 µs); it now flips a bit of S, so verification always runs in full.
 - Nine shell scripts, among them four testbed runners that `make reproduce` calls directly, were tracked
   without their executable bit, so `make reproduce` stopped at `make netem` on a fresh checkout. Every
   shell script and every Python script with a shebang is now executable, and `scripts/check-docs.sh`
