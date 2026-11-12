@@ -1,0 +1,40 @@
+# 20 % loss, 5 s drain (netem set): runs netem-l20-*
+runs 18  deliveries 33204  p50 343 ms  p95 1154 ms  p99 3739 ms  max 23935 ms
+  netem-l20-mesh-100-s1: p99 1125 ms  max 1801 ms
+  netem-l20-mesh-100-s2: p99 2005 ms  max 2604 ms
+  netem-l20-mesh-100-s3: p99 1003 ms  max 1805 ms
+  netem-l20-mesh-20-s1: p99 1069 ms  max 1473 ms
+  netem-l20-mesh-20-s2: p99 771 ms  max 1135 ms
+  netem-l20-mesh-20-s3: p99 1091 ms  max 1327 ms
+  netem-l20-mesh-50-s1: p99 2835 ms  max 3026 ms
+  netem-l20-mesh-50-s2: p99 1073 ms  max 1838 ms
+  netem-l20-mesh-50-s3: p99 1037 ms  max 1895 ms
+  netem-l20-rgg-100-s1: p99 2325 ms  max 6076 ms
+  netem-l20-rgg-100-s2: p99 1347 ms  max 23935 ms
+  netem-l20-rgg-100-s3: p99 1042 ms  max 1632 ms
+  netem-l20-rgg-20-s1: p99 13294 ms  max 14707 ms
+  netem-l20-rgg-20-s2: p99 5440 ms  max 5545 ms
+  netem-l20-rgg-20-s3: p99 5636 ms  max 6433 ms
+  netem-l20-rgg-50-s1: p99 1690 ms  max 5312 ms
+  netem-l20-rgg-50-s2: p99 4958 ms  max 5283 ms
+  netem-l20-rgg-50-s3: p99 7265 ms  max 8796 ms
+# 20 % loss, 60 s drain (eventual-delivery set): runs l20-*
+runs 18  deliveries 31796  p50 317 ms  p95 960 ms  p99 4964 ms  max 21765 ms
+  l20-mesh-100-s1: p99 1081 ms  max 1675 ms
+  l20-mesh-100-s2: p99 1013 ms  max 3553 ms
+  l20-mesh-100-s3: p99 963 ms  max 1940 ms
+  l20-mesh-20-s1: p99 790 ms  max 924 ms
+  l20-mesh-20-s2: p99 1287 ms  max 1815 ms
+  l20-mesh-20-s3: p99 964 ms  max 2452 ms
+  l20-mesh-50-s1: p99 884 ms  max 1299 ms
+  l20-mesh-50-s2: p99 1448 ms  max 2734 ms
+  l20-mesh-50-s3: p99 935 ms  max 2935 ms
+  l20-rgg-100-s1: p99 1765 ms  max 2779 ms
+  l20-rgg-100-s2: p99 1703 ms  max 21765 ms
+  l20-rgg-100-s3: p99 714 ms  max 2335 ms
+  l20-rgg-20-s1: p99 12608 ms  max 13699 ms
+  l20-rgg-20-s2: p99 7890 ms  max 8198 ms
+  l20-rgg-20-s3: p99 12125 ms  max 17575 ms
+  l20-rgg-50-s1: p99 2686 ms  max 14217 ms
+  l20-rgg-50-s2: p99 1499 ms  max 7786 ms
+  l20-rgg-50-s3: p99 14506 ms  max 14595 ms

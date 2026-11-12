@@ -1,0 +1,9 @@
+[2026-11-10 17:18:28] packing /root/t30 (af7ac19 reproduce)
+[2026-11-10 17:22:21] packed: 2419253448 bytes
+[2026-11-10 17:23:27] clone at d908d3b56c267c46111a5ccbcaed7632765d6dc0 (expected d908d3b56c267c46111a5ccbcaed7632765d6dc0)
+[2026-11-10 17:23:27] start tests (fresh netns)
+[2026-11-10 17:28:35] end tests rc=0
+[2026-11-10 17:28:35] swap emptied: 0 MiB used
+[2026-11-10 17:28:35] start reproduce
+[2026-11-11 12:51:22] end reproduce rc=0
+[2026-11-11 12:51:22] ALLDONE

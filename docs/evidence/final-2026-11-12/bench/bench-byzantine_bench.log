@@ -1,0 +1,627 @@
+cargo bench -p crci-node --bench byzantine_bench
+   Compiling crci-node v2.1.0 (/root/t30b/src/crates/crci-node)
+    Finished `bench` profile [optimized] target(s) in 0.80s
+     Running benches/byzantine_bench.rs (target/release/deps/byzantine_bench-2a1f52b306c62063)
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-6f91dde3f9f9e9a65657b71b7040576d-1' → sig: ccdae8cd...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-4db369e8f9a4f781bb3304c99a8f19d8-1' → sig: 73c80bd3...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-7e3c92d0389550730e1a06dcdcf4b396-1' → sig: e5edbf76...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-e808ae34f42bea1e5e4d8c99100eb5b2-1' → sig: 6f41fb59...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-c45b8f8a91baae9d126841d2c7283a29-1' → sig: 27097b26...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-7ea464443df125bc5f32bbc942cae545-1' → sig: 7ad4200a...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-1c961aa4343303f2e5bbe9ffb740172a-1' → sig: e0674e96...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-a34c9611b76966c26a01c16ad257925a-1' → sig: e4c1c1d4...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-77a06ca087478a2b5ca439f7ace53478-1' → sig: acc06278...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-1b16d7b1b5f1c5b124ade49ed822b855-1' → sig: 24bbcc26...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-81500e17f3d077a31536adb4e85c39e5-1' → sig: 23c8048f...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-273526420c2be1ae4e557f6ba6506f78-1' → sig: 4fd6a982...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-83b3a726e0952f5d2f4029d945d778c6-1' → sig: 46767e08...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-d788915bc79062f7e854836000c6a75e-1' → sig: a200d10b...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-1d550931c2a8128e8cc25cfe0c05c4fd-1' → sig: 86d0c6cb...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-174550f444e66e30b57836eccfb0575e-1' → sig: 3d22bae7...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-47932627e6157f118174967105050d3f-1' → sig: 5bc3dbf7...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-7bafa297b16446d8bd2a0e368ca4deae-1' → sig: 451d9083...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-5f210fad3d51863bae990bbdafc925b5-1' → sig: 95d63910...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-c60efd1b44e68cfea32f561cdead4cd5-1' → sig: f09fc7a3...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-88cbb73bb3148b0ab772a55346dd47ef-1' → sig: 685f6d9f...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-e1f86d3b3a911a191da4f59a68800e2c-1' → sig: 9dc31444...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-19ee4be1300aa2a706dd4bfb3432f0bd-1' → sig: ea8cb318...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-a3d6691ded9861a32c05c9e5f4e4788a-1' → sig: 1db22ab0...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-acf91a9a511dffb52600020ce4b99f22-1' → sig: 0c5ad880...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-36cc3544728c1c288ec8aa981868324a-1' → sig: 92edff74...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-b219691d743ddc3af9f3ea02dc43b59d-1' → sig: 7d8a9e3b...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-a26ec2a31e7809057a8c03e6e4194e4e-1' → sig: 309906b6...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-24f76c10d2f7959a7ca756335dd9ea17-1' → sig: 3f3df0bb...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-d28b3d0774b26253fe5310c3253fb4a7-1' → sig: 01c76d1a...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-80b2bdc315327698e2d1cbb68e571ec7-1' → sig: 3d2949ae...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-96368932050af24a893d8a5c85ec6f9a-1' → sig: 84b211f1...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-647cb1cf69c85cd28d5ef48fc8aad2c5-1' → sig: 5ab2b254...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-7c90b9bef0864d12311172473e9495f0-1' → sig: 4d4655a6...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-ddad44dac73b4326ea647d4af0af4e1c-1' → sig: 93569cb8...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-5c63b2c0dd45848ceb037c0225475f2a-1' → sig: b0f7f1b4...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-6be7fc06455fa001b9602949df6b7e91-1' → sig: a0ada03d...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-803e65e7ca7f8cde0821917a5168791a-1' → sig: a646f86a...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-c1254e95f74004633aa8861b81c76352-1' → sig: 295fb6ae...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-97e7383ecb3fd91406f88f65b3832bd8-1' → sig: 42a32744...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-0efcd8b30114d9d1323ae66fbf4741ce-1' → sig: cbaadbc9...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-7cd3c18349057799d39c97e6f9cbcf35-1' → sig: 17c39e65...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-3ad980d7817aaf0e7f02b13b69173dd7-1' → sig: d3784554...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-1c07d342bf9389bbce53d91d0ba0237d-1' → sig: c56d7e69...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-6be45b5522bd834943cb0885518564d6-1' → sig: 025575d5...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-4c803251129eb02416aafe274e20e33f-1' → sig: 7c29a278...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-2998416770f509dd59f7cf9025935211-1' → sig: 90f57a90...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-831294e8b684d29227b42defd572bcfa-1' → sig: 964cca2f...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-47777edc941c29770a82b8656479a33a-1' → sig: a510cd6a...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-d4814665d050cb3eea1d751ebfbbcbe6-1' → sig: e7b5d8ca...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+
+=== Byzantine Eviction Benchmark (Jitter: false) ===
+Trials: 50
+Mean eviction latency: 0.00ms
+Median (p50): 0ms
+Min latency: 0ms
+Max latency: 0ms
+Successful Isolation & Survivability: 50/50
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-a7ee0363838a30b59315d6beb9c1e813-1' → sig: 4f904638...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-e0c15992975e6ec64764b61f57033c11-1' → sig: 4afb24f0...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-6af1656b242fa26b75c37b6b44d508a0-1' → sig: 3b1b65d7...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-a710cf704fb46ea7dfdcfb863840ed43-1' → sig: 59093a21...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-450234c1337f0421206d763ddf409008-1' → sig: ace621cf...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-a5b9050e641563153305180ab016ddf3-1' → sig: 7d00f0cd...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-fe4be9502a2bdcb05cb6c8439e1558f0-1' → sig: 15e04f9c...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-23ed79da554ab56d3041090d97114920-1' → sig: fec65d08...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-477edf08b0c8c7103c3a6150183abdeb-1' → sig: 35a66a7a...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-a8504e862b30d3a7e2edbd67e0c052b0-1' → sig: 9467716b...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-f14cd6c435ccf94319f1dc589ccaee20-1' → sig: c6c4e86a...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-0bc200eb83a66ff650ffdb5cb2809ef9-1' → sig: 2d4daab7...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-9b8449fbe7d34e5a2c5eb8a8fd3df64f-1' → sig: e8ccf7ea...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-3d86f9db7972cf840f204eebfdf8052f-1' → sig: 5cf306b0...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-4de1134de19782499c8723093600e2b4-1' → sig: abb7a679...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-603af79516ca7176afb3a5c36cb6ea69-1' → sig: a54e0614...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-4a85452234587829da2a92e4491c2947-1' → sig: 750fe32a...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-f3e4646ac53677729b47b1df5ecfc0b1-1' → sig: 777dec9b...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-b1da08fb58c5d58cb284fa09b93af004-1' → sig: 662bc251...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-2f1c6c6ca00964855705566c72b2f234-1' → sig: 6e7221b7...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-12342c12c30bdbe6222846ee6ce8f22e-1' → sig: f9b32f88...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-54969ec5ff02265945937d01b18a625e-1' → sig: d356625b...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-86d391e58709237caceb116facb08cb9-1' → sig: fdd87276...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-0c409cadb2f8b34aef02f7185b51bb42-1' → sig: 22c72096...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-b5f1d2f0083d697865358934050b9ba0-1' → sig: 6d0419f4...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-85ecbeb12c156a386dcb3179c0bc32d5-1' → sig: 26e253a2...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-337db126108ebd926fc0a0c5eca73779-1' → sig: a003f63f...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-6d082001bc96a187aa2b47b450bc54f5-1' → sig: 24859a96...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-fbaebf49318a59226c265c8a502beff3-1' → sig: ebf73f53...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-3dd7d889c1bebc959062b7ac8f3001ab-1' → sig: b3ca28ad...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-06d9a522bbef0e701463a82b4a894792-1' → sig: b7c64357...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-9c1d4d74012439220795dd37bac5fd77-1' → sig: ee8256f5...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-7eeeee9210a7d91e42b37a03712be99b-1' → sig: 75df4271...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-ba04c59220aaca0bfed94a0aa9992e53-1' → sig: c63b0332...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-6da77dcbe2e422fd7a6f898bac9367aa-1' → sig: 01c54e59...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-222fcebc62061c1da0cc2c87877cda8e-1' → sig: f35a278b...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-f4a40a142d873aa619cc145bcb6409f6-1' → sig: cdd08439...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-6645348892d0c5b2a92ac5ce9bced367-1' → sig: c4201074...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-b692c201cf590be9bc49ce3f6d5579f7-1' → sig: d6f7d67b...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-6e1f4841072581e1dd51e63d37ccaf63-1' → sig: a7516561...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-2d09557dc625fd36330d5e2699342639-1' → sig: 8351883d...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-5335399da93680c9f0d6209bc051a001-1' → sig: 1776b6d4...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-2a19f034e0943805d76f09846b9a3216-1' → sig: 6b1e0c5a...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-147b020115145e3f2a5851eadda0792f-1' → sig: 9a4d2667...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-20b663b1e194e220325447107f08358b-1' → sig: 221d3889...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-00fc81cac6453e09db570dedee728e01-1' → sig: 872116f8...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-a1c594f83c041ce4540941912464fdf3-1' → sig: 0f2b84a3...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-908d36867bab5015258d472dfed41325-1' → sig: f821c780...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-2e345f1b1db4df4618c420cbae45ce7b-1' → sig: ac1ca270...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-dfb745c2611ad9721c1dd01d4c8c2d10-1' → sig: 710d5714...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+  ⚠ [node-a] MALICIOUS REPLAY from 'node-b' — same message 'msg-b' sent repeatedly!
+
+=== Byzantine Eviction Benchmark (Jitter: true) ===
+Trials: 50
+Mean eviction latency: 45.66ms
+Median (p50): 46ms
+Min latency: 45ms
+Max latency: 47ms
+Successful Isolation & Survivability: 50/50
+
+=== Comparing Naive Monotonic Rejection vs Sliding Window ===
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+  ✍  [node-a] originating 'head-9b668dfef3be7fdd6d903e873595f095-1' → sig: 21b703d4...
+  [node-a][zone-a] normal | sev:5 conf:5 vis:direct | note: —
+Sliding window result: Honest peer banned due to packet reordering? false
+A naive `seq <= last_seq` rule WOULD have penalized the peer here, potentially banning them after 3 reordered packets.

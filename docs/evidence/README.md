@@ -7,9 +7,19 @@ line endings, noted per folder below. SHA-256 hashes are of the files as committ
 Benchmark CSVs that feed the paper live next to their harness in
 `crates/crci-node/benches/results/` (see [docs/benchmarks.md](../benchmarks.md)).
 
+## `final-2026-11-12/`
+
+The current data set: one `make reproduce` from a fresh clone of the public repository at commit `d908d3b`
+(`commit.txt`, node binary in `binary.sha256`), in the same layout as `final-2026-11-09/` below, plus the figures
+the run drew from its raw runs (`figures/`, identical to `docs/figures/`), the Linux test totals of that clone
+(`linux-tests.txt`), the whole `make reproduce` output (`reproduce.log.gz`), the benches cut from it (`bench/`),
+and the TLC log (`tla/check.log`, run from Windows on the same specifications; UTF-16 and CRLF converted).
+`netem/post-ban-tail.txt` was computed from the raw runs with `scripts/testbed/post_ban_tail.py`. `SHA256SUMS`
+lists every file (text files hashed without CR, as git stores them).
+
 ## `final-2026-11-09/`
 
-Every data set regenerated on one source tree (commit `75cda56`) and one node binary (`binary.sha256`):
+The previous data set, before a node asked a peer again after a full sync answer. Every data set regenerated on one source tree (commit `75cda56`) and one node binary (`binary.sha256`):
 the main table (`main/`), loss, jitter and reordering (`netem/`), attacker and eventual-delivery runs
 (`attacks/`), the invalid-signature flood (`flood/`), baselines (`baselines/`), link flapping (`flapping/`),
 the share of replaying nodes (`ratio/`), the real-node flood (`tcpflood/`), protocol state (`state/`), the

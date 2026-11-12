@@ -29,10 +29,10 @@ ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "scripts", "testbed"))
 import svgplot  # noqa: E402
 
-RATIO = "docs/evidence/final-2026-11-09/ratio/ratio.csv"
+RATIO = "docs/evidence/final-2026-11-12/ratio/ratio.csv"
 TRAJECTORY = "crates/crci-node/benches/results/recovery_trajectory.csv"
-NETEM = "docs/evidence/final-2026-11-09/netem/results.csv"
-BASELINES = "docs/evidence/final-2026-11-09/baselines/baselines.csv"
+NETEM = "docs/evidence/final-2026-11-12/netem/results.csv"
+BASELINES = "docs/evidence/final-2026-11-12/baselines/baselines.csv"
 
 
 def rows(rel):

@@ -1,0 +1,50 @@
+cargo bench -p crci-node --bench crypto_bench
+   Compiling crci-node v2.1.0 (/root/t30b/src/crates/crci-node)
+    Finished `bench` profile [optimized] target(s) in 1.16s
+     Running benches/crypto_bench.rs (target/release/deps/crypto_bench-f3b442a84b400e9c)
+Benchmarking ed25519/keygen
+Benchmarking ed25519/keygen: Warming up for 3.0000 s
+Benchmarking ed25519/keygen: Collecting 100 samples in estimated 5.0134 s (414k iterations)
+Benchmarking ed25519/keygen: Analyzing
+ed25519/keygen          time:   [12.080 µs 12.156 µs 12.243 µs]
+                        thrpt:  [81.678 Kelem/s 82.261 Kelem/s 82.781 Kelem/s]
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) high mild
+Benchmarking ed25519/sign_wire_message
+Benchmarking ed25519/sign_wire_message: Warming up for 3.0000 s
+Benchmarking ed25519/sign_wire_message: Collecting 100 samples in estimated 5.0510 s (404k iterations)
+Benchmarking ed25519/sign_wire_message: Analyzing
+ed25519/sign_wire_message
+                        time:   [12.312 µs 12.733 µs 13.497 µs]
+                        thrpt:  [74.089 Kelem/s 78.536 Kelem/s 81.222 Kelem/s]
+Found 8 outliers among 100 measurements (8.00%)
+  4 (4.00%) high mild
+  4 (4.00%) high severe
+Benchmarking ed25519/verify_valid
+Benchmarking ed25519/verify_valid: Warming up for 3.0000 s
+Benchmarking ed25519/verify_valid: Collecting 100 samples in estimated 5.1210 s (146k iterations)
+Benchmarking ed25519/verify_valid: Analyzing
+ed25519/verify_valid    time:   [35.884 µs 36.131 µs 36.399 µs]
+                        thrpt:  [27.473 Kelem/s 27.677 Kelem/s 27.867 Kelem/s]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+Benchmarking ed25519/verify_invalid
+Benchmarking ed25519/verify_invalid: Warming up for 3.0000 s
+Benchmarking ed25519/verify_invalid: Collecting 100 samples in estimated 5.1281 s (146k iterations)
+Benchmarking ed25519/verify_invalid: Analyzing
+ed25519/verify_invalid  time:   [35.747 µs 36.045 µs 36.392 µs]
+                        thrpt:  [27.479 Kelem/s 27.743 Kelem/s 27.974 Kelem/s]
+Found 11 outliers among 100 measurements (11.00%)
+  7 (7.00%) high mild
+  4 (4.00%) high severe
+Benchmarking ed25519/signing_bytes_only
+Benchmarking ed25519/signing_bytes_only: Warming up for 3.0000 s
+Benchmarking ed25519/signing_bytes_only: Collecting 100 samples in estimated 5.0001 s (228M iterations)
+Benchmarking ed25519/signing_bytes_only: Analyzing
+ed25519/signing_bytes_only
+                        time:   [21.826 ns 21.903 ns 21.984 ns]
+                        thrpt:  [45.488 Melem/s 45.656 Melem/s 45.818 Melem/s]
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+

@@ -1,0 +1,11 @@
+cargo run --release -p crci-node --example envelope_size
+   Compiling crci-node v2.1.0 (/root/t30b/src/crates/crci-node)
+    Finished `release` profile [optimized] target(s) in 0.42s
+     Running `target/release/examples/envelope_size`
+variant,json_min,json_mean,json_max,frame_min,frame_mean,frame_max,canonical,canonical_plus_sig
+gossip_no_note,599,617.3,634,865,886.6,917,155,219
+gossip_note_20,614,635.7,653,875,905.0,925,183,247
+gossip_note_100,697,715.7,735,963,984.9,1012,263,327
+sync_request_1_origin_0_held,698,716.7,733,963,985.9,1006,222,286
+sync_request_1_origin_8_held,718,741.0,760,985,1010.2,1035,286,350
+sync_request_5_origins_16_held,1116,1136.5,1153,1382,1405.8,1427,986,1050

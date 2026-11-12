@@ -1,0 +1,13 @@
+cargo bench -p crci-node --bench recovery_bench
+   Compiling crci-node v2.1.0 (/root/t30b/src/crates/crci-node)
+    Finished `bench` profile [optimized] target(s) in 0.49s
+     Running benches/recovery_bench.rs (target/release/deps/recovery_bench-15549d5e3d152f64)
+Paced replays vs strike-damped recovery: horizon 21600 s, filler every 10 s, one strike forgiven in 300 s
+ period_s  replays  strikes  first_ban_s   banned_% strikes_per_h min_score
+  [rx][zone-a] normal | sev:3 conf:3 vis:direct | note: —
+  ✍  [rx] originating 'head-2b549079f30db399a16d943d8d63f5e6-1' → sig: 2288bc4d...
+  ⚠ [rx] MALICIOUS REPLAY from 'atk' — same message 'atk-1' sent repeatedly!
+  ⚠ [rx] MALICIOUS REPLAY from 'atk' — same message 'atk-1' sent repeatedly!
+  ⚠ [rx] MALICIOUS REPLAY from 'atk' — same message 'atk-1' sent repeatedly!
+  ⚠ [rx] SYBIL GUARD DROP: peer atk is banned
+  ⚠ [rx] SYBIL GUARD DROP: peer atk is banned
