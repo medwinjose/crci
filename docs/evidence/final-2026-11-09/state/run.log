@@ -1,0 +1,8 @@
+cargo build --release -p crci-node --example state_flood
+   Compiling crci-node v2.1.0 (/root/t41/src/crates/crci-node)
+    Finished `release` profile [optimized] target(s) in 0.73s
+scripts/sim/run_state_flood.sh /root/t41/out/r-state
+one million origins: messages=1000000 heap at a tenth 2.86 MB, end 2.84 MB, peak 3.09 MB, forgotten 999152, rss 9396 KiB
+one million origins, protocol state only: messages=1000000 heap at a tenth 1.96 MB, end 1.95 MB, peak 2.11 MB, forgotten 999152, rss 8308 KiB
+100 origins: messages=1000000 heap at a tenth 1.92 MB, end 1.87 MB, peak 2.08 MB, forgotten 0, rss 5596 KiB
+one million origins and senders: messages=1000000 heap at a tenth 3.43 MB, end 3.41 MB, peak 3.66 MB, forgotten 999152, rss 10060 KiB

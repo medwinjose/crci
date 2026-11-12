@@ -1,0 +1,519 @@
+cargo build --release -p crci-node --bin crci-node
+    Finished `release` profile [optimized] target(s) in 0.70s
+scripts/testbed/run_ratio.sh /root/t41/out/r-ratio target/release/crci-node
+=== f=0% rgg N=20 seed=1 ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f0-rgg-20-s1
+=== f=10% rgg N=20 seed=1 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f10-rgg-20-s1
+=== f=20% rgg N=20 seed=1 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f20-rgg-20-s1
+=== f=30% rgg N=20 seed=1 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f30-rgg-20-s1
+=== f=45% rgg N=20 seed=1 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f45-rgg-20-s1
+=== f=0% rgg N=50 seed=1 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f0-rgg-50-s1
+=== f=10% rgg N=50 seed=1 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f10-rgg-50-s1
+=== f=20% rgg N=50 seed=1 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f20-rgg-50-s1
+=== f=30% rgg N=50 seed=1 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f30-rgg-50-s1
+=== f=45% rgg N=50 seed=1 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f45-rgg-50-s1
+=== f=0% rgg N=100 seed=1 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f0-rgg-100-s1
+=== f=10% rgg N=100 seed=1 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f10-rgg-100-s1
+=== f=20% rgg N=100 seed=1 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f20-rgg-100-s1
+=== f=30% rgg N=100 seed=1 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f30-rgg-100-s1
+=== f=45% rgg N=100 seed=1 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f45-rgg-100-s1
+=== f=0% mesh N=20 seed=1 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f0-mesh-20-s1
+=== f=10% mesh N=20 seed=1 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f10-mesh-20-s1
+=== f=20% mesh N=20 seed=1 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f20-mesh-20-s1
+=== f=30% mesh N=20 seed=1 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f30-mesh-20-s1
+=== f=45% mesh N=20 seed=1 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f45-mesh-20-s1
+=== f=0% mesh N=50 seed=1 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f0-mesh-50-s1
+=== f=10% mesh N=50 seed=1 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f10-mesh-50-s1
+=== f=20% mesh N=50 seed=1 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f20-mesh-50-s1
+=== f=30% mesh N=50 seed=1 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f30-mesh-50-s1
+=== f=45% mesh N=50 seed=1 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f45-mesh-50-s1
+=== f=0% mesh N=100 seed=1 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f0-mesh-100-s1
+=== f=10% mesh N=100 seed=1 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f10-mesh-100-s1
+=== f=20% mesh N=100 seed=1 ===
+network: 100 namespaces up in 14.5 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f20-mesh-100-s1
+=== f=30% mesh N=100 seed=1 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f30-mesh-100-s1
+=== f=45% mesh N=100 seed=1 ===
+network: 100 namespaces up in 14.5 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f45-mesh-100-s1
+=== f=0% rgg N=20 seed=2 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f0-rgg-20-s2
+=== f=10% rgg N=20 seed=2 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f10-rgg-20-s2
+=== f=20% rgg N=20 seed=2 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f20-rgg-20-s2
+=== f=30% rgg N=20 seed=2 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f30-rgg-20-s2
+=== f=45% rgg N=20 seed=2 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f45-rgg-20-s2
+=== f=0% rgg N=50 seed=2 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f0-rgg-50-s2
+=== f=10% rgg N=50 seed=2 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f10-rgg-50-s2
+=== f=20% rgg N=50 seed=2 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f20-rgg-50-s2
+=== f=30% rgg N=50 seed=2 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f30-rgg-50-s2
+=== f=45% rgg N=50 seed=2 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f45-rgg-50-s2
+=== f=0% rgg N=100 seed=2 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f0-rgg-100-s2
+=== f=10% rgg N=100 seed=2 ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f10-rgg-100-s2
+=== f=20% rgg N=100 seed=2 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f20-rgg-100-s2
+=== f=30% rgg N=100 seed=2 ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f30-rgg-100-s2
+=== f=45% rgg N=100 seed=2 ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f45-rgg-100-s2
+=== f=0% mesh N=20 seed=2 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f0-mesh-20-s2
+=== f=10% mesh N=20 seed=2 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f10-mesh-20-s2
+=== f=20% mesh N=20 seed=2 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f20-mesh-20-s2
+=== f=30% mesh N=20 seed=2 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f30-mesh-20-s2
+=== f=45% mesh N=20 seed=2 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f45-mesh-20-s2
+=== f=0% mesh N=50 seed=2 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f0-mesh-50-s2
+=== f=10% mesh N=50 seed=2 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f10-mesh-50-s2
+=== f=20% mesh N=50 seed=2 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f20-mesh-50-s2
+=== f=30% mesh N=50 seed=2 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f30-mesh-50-s2
+=== f=45% mesh N=50 seed=2 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f45-mesh-50-s2
+=== f=0% mesh N=100 seed=2 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f0-mesh-100-s2
+=== f=10% mesh N=100 seed=2 ===
+network: 100 namespaces up in 14.7 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f10-mesh-100-s2
+=== f=20% mesh N=100 seed=2 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f20-mesh-100-s2
+=== f=30% mesh N=100 seed=2 ===
+network: 100 namespaces up in 14.8 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f30-mesh-100-s2
+=== f=45% mesh N=100 seed=2 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f45-mesh-100-s2
+=== f=0% rgg N=20 seed=3 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f0-rgg-20-s3
+=== f=10% rgg N=20 seed=3 ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f10-rgg-20-s3
+=== f=20% rgg N=20 seed=3 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f20-rgg-20-s3
+=== f=30% rgg N=20 seed=3 ===
+network: 20 namespaces up in 3.2 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f30-rgg-20-s3
+=== f=45% rgg N=20 seed=3 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f45-rgg-20-s3
+=== f=0% rgg N=50 seed=3 ===
+network: 50 namespaces up in 7.3 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f0-rgg-50-s3
+=== f=10% rgg N=50 seed=3 ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f10-rgg-50-s3
+=== f=20% rgg N=50 seed=3 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f20-rgg-50-s3
+=== f=30% rgg N=50 seed=3 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f30-rgg-50-s3
+=== f=45% rgg N=50 seed=3 ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f45-rgg-50-s3
+=== f=0% rgg N=100 seed=3 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f0-rgg-100-s3
+=== f=10% rgg N=100 seed=3 ===
+network: 100 namespaces up in 14.4 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f10-rgg-100-s3
+=== f=20% rgg N=100 seed=3 ===
+network: 100 namespaces up in 14.4 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f20-rgg-100-s3
+=== f=30% rgg N=100 seed=3 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f30-rgg-100-s3
+=== f=45% rgg N=100 seed=3 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f45-rgg-100-s3
+=== f=0% mesh N=20 seed=3 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f0-mesh-20-s3
+=== f=10% mesh N=20 seed=3 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f10-mesh-20-s3
+=== f=20% mesh N=20 seed=3 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f20-mesh-20-s3
+=== f=30% mesh N=20 seed=3 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f30-mesh-20-s3
+=== f=45% mesh N=20 seed=3 ===
+network: 20 namespaces up in 3.1 s
+launched 20 nodes in 0.0 s; T0 in 21.0 s
+T0: 20/20 nodes listening
+done: 20/20 alive at the end of the window; output in /root/t41/out/r-ratio/f45-mesh-20-s3
+=== f=0% mesh N=50 seed=3 ===
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f0-mesh-50-s3
+=== f=10% mesh N=50 seed=3 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f10-mesh-50-s3
+=== f=20% mesh N=50 seed=3 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f20-mesh-50-s3
+=== f=30% mesh N=50 seed=3 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f30-mesh-50-s3
+=== f=45% mesh N=50 seed=3 ===
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-ratio/f45-mesh-50-s3
+=== f=0% mesh N=100 seed=3 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f0-mesh-100-s3
+=== f=10% mesh N=100 seed=3 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f10-mesh-100-s3
+=== f=20% mesh N=100 seed=3 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f20-mesh-100-s3
+=== f=30% mesh N=100 seed=3 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f30-mesh-100-s3
+=== f=45% mesh N=100 seed=3 ===
+network: 100 namespaces up in 14.6 s
+launched 100 nodes in 0.0 s; T0 in 25.0 s
+T0: 100/100 nodes listening
+done: 100/100 alive at the end of the window; output in /root/t41/out/r-ratio/f45-mesh-100-s3
+| topology | N | f % | runs | partitioned runs | attackers | coverage | false_evictions | evict_median_ms | evict_max_ms | largest_component | deliv_comp_post | deliv_all_post | lat_median_pre_ms | lat_p95_pre_ms | lat_median_post_ms | lat_p95_post_ms | cpu_mean_pct |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| mesh | 20 | 0 | 3 | 0/3 | 0.0 | None | 0.0 | None | None | 1.0 | 1.0 | 1.0 | 95.6667 | 149.0 | 95.6667 | 149.0 | 0.2867 |
+| mesh | 20 | 10 | 3 | 0/3 | 2.0 | 1.0 | 0.0 | 2034.6667 | 2075.0 | 1.0 | 1.0 | 1.0 | 94.6667 | 143.0 | 97.0 | 152.6667 | 0.3733 |
+| mesh | 20 | 20 | 3 | 0/3 | 4.0 | 1.0 | 0.0 | 2030.3333 | 2075.6667 | 1.0 | 1.0 | 1.0 | 95.3333 | 151.0 | 100.0 | 184.3333 | 0.47 |
+| mesh | 20 | 30 | 3 | 0/3 | 6.0 | 1.0 | 0.0 | 2045.6667 | 2086.6667 | 1.0 | 1.0 | 1.0 | 95.0 | 149.3333 | 113.6667 | 206.3333 | 0.5467 |
+| mesh | 20 | 45 | 3 | 1/3 | 9.0 | 1.0 | 0.0 | 2063.0 | 2102.0 | 0.9697 | 1.0 | 0.95 | 94.0 | 150.3333 | 107.3333 | 216.0 | 0.7067 |
+| mesh | 50 | 0 | 3 | 0/3 | 0.0 | None | 0.0 | None | None | 1.0 | 1.0 | 1.0 | 139.3333 | 202.3333 | 139.3333 | 202.3333 | 0.6233 |
+| mesh | 50 | 10 | 3 | 0/3 | 5.0 | 1.0 | 0.0 | 2004.6667 | 2044.0 | 1.0 | 1.0 | 1.0 | 134.3333 | 193.3333 | 138.6667 | 210.0 | 0.9033 |
+| mesh | 50 | 20 | 3 | 0/3 | 10.0 | 1.0 | 0.0 | 2048.0 | 2101.3333 | 1.0 | 1.0 | 1.0 | 137.0 | 189.3333 | 155.6667 | 236.0 | 1.11 |
+| mesh | 50 | 30 | 3 | 1/3 | 15.0 | 1.0 | 0.0 | 2101.0 | 2143.6667 | 0.9905 | 1.0 | 0.98 | 137.3333 | 192.6667 | 178.3333 | 277.6667 | 1.3467 |
+| mesh | 50 | 45 | 3 | 0/3 | 22.0 | 1.0 | 0.0 | 2036.3333 | 2100.6667 | 1.0 | 1.0 | 1.0 | 133.6667 | 190.0 | 202.0 | 382.3333 | 1.6333 |
+| mesh | 100 | 0 | 3 | 0/3 | 0.0 | None | 0.0 | None | None | 1.0 | 1.0 | 1.0 | 167.3333 | 227.0 | 167.3333 | 227.0 | 1.21 |
+| mesh | 100 | 10 | 3 | 0/3 | 10.0 | 1.0 | 0.0 | 2041.6667 | 2117.6667 | 1.0 | 1.0 | 1.0 | 166.0 | 223.6667 | 174.3333 | 242.0 | 1.6633 |
+| mesh | 100 | 20 | 3 | 0/3 | 20.0 | 1.0 | 0.0 | 2022.0 | 2090.3333 | 1.0 | 1.0 | 1.0 | 166.0 | 225.0 | 194.0 | 287.6667 | 2.0933 |
+| mesh | 100 | 30 | 3 | 1/3 | 30.0 | 1.0 | 0.0 | 2054.3333 | 2122.0 | 0.9952 | 1.0 | 0.9967 | 165.3333 | 221.3333 | 197.0 | 309.3333 | 2.5 |
+| mesh | 100 | 45 | 3 | 3/3 | 45.0 | 1.0 | 0.0 | 2054.0 | 2128.0 | 0.8424 | 1.0 | 0.7667 | 162.3333 | 222.3333 | 267.0 | 435.6667 | 2.8933 |
+| rgg | 20 | 0 | 3 | 0/3 | 0.0 | None | 0.0 | None | None | 1.0 | 1.0 | 1.0 | 153.0 | 304.3333 | 153.0 | 304.3333 | 0.3233 |
+| rgg | 20 | 10 | 3 | 2/3 | 2.0 | 1.0 | 0.0 | 2049.6667 | 2088.3333 | 0.9074 | 1.0 | 0.87 | 120.6667 | 257.3333 | 107.6667 | 218.3333 | 0.38 |
+| rgg | 20 | 20 | 3 | 3/3 | 4.0 | 1.0 | 0.0 | 1993.3333 | 2076.6667 | 0.8958 | 1.0 | 0.85 | 136.3333 | 303.3333 | 126.3333 | 253.0 | 0.48 |
+| rgg | 20 | 30 | 3 | 1/3 | 6.0 | 1.0 | 0.0 | 1990.0 | 2071.3333 | 0.881 | 1.0 | 0.8433 | 123.6667 | 256.0 | 110.3333 | 245.3333 | 0.5533 |
+| rgg | 20 | 45 | 3 | 2/3 | 9.0 | 1.0 | 0.0 | 2012.6667 | 2101.3333 | 0.697 | 1.0 | 0.6167 | 120.0 | 236.0 | 83.0 | 156.6667 | 0.5833 |
+| rgg | 50 | 0 | 3 | 0/3 | 0.0 | None | 0.0 | None | None | 1.0 | 1.0 | 1.0 | 161.0 | 293.6667 | 161.0 | 293.6667 | 0.9267 |
+| rgg | 50 | 10 | 3 | 0/3 | 5.0 | 1.0 | 0.0 | 2052.6667 | 2157.6667 | 1.0 | 1.0 | 1.0 | 175.3333 | 310.3333 | 185.3333 | 319.6667 | 1.2967 |
+| rgg | 50 | 20 | 3 | 0/3 | 10.0 | 1.0 | 0.0 | 2041.6667 | 2175.6667 | 1.0 | 1.0 | 1.0 | 152.0 | 291.3333 | 162.3333 | 313.6667 | 1.6467 |
+| rgg | 50 | 30 | 3 | 2/3 | 15.0 | 1.0 | 0.0 | 2010.0 | 2128.3333 | 0.8 | 1.0 | 0.7667 | 179.0 | 305.3333 | 125.6667 | 248.6667 | 1.7833 |
+| rgg | 50 | 45 | 3 | 3/3 | 22.0 | 1.0 | 0.0 | 2043.0 | 2135.0 | 0.631 | 1.0 | 0.5 | 160.3333 | 276.3333 | 116.6667 | 265.6667 | 1.8833 |
+| rgg | 100 | 0 | 3 | 0/3 | 0.0 | None | 0.0 | None | None | 1.0 | 1.0 | 1.0 | 198.0 | 353.0 | 198.0 | 353.0 | 2.1767 |
+| rgg | 100 | 10 | 3 | 1/3 | 10.0 | 1.0 | 0.0 | 2036.6667 | 2147.6667 | 0.9963 | 1.0 | 0.9967 | 206.0 | 368.0 | 218.3333 | 376.6667 | 2.9767 |
+| rgg | 100 | 20 | 3 | 2/3 | 20.0 | 1.0 | 0.0 | 2012.0 | 2139.6667 | 0.9833 | 1.0 | 0.9767 | 189.6667 | 355.0 | 203.3333 | 399.3333 | 3.5367 |
+| rgg | 100 | 30 | 3 | 2/3 | 30.0 | 1.0 | 0.0 | 2030.3333 | 2193.6667 | 0.9762 | 1.0 | 0.96 | 168.3333 | 326.3333 | 179.6667 | 359.0 | 4.2067 |
+| rgg | 100 | 45 | 3 | 3/3 | 45.0 | 1.0 | 0.0 | 2127.3333 | 2292.0 | 0.7818 | 1.0 | 0.5233 | 204.3333 | 348.3333 | 237.6667 | 525.0 | 4.42 |
+
+| criterion | holds |
+|---|---|
+| every run faithful | yes |
+| no honest node bans another honest node, in any run | yes |
+| every attacker banned by every honest neighbour, in every run with attackers | yes |
+| slowest ban <= 30 s after the fault, in every run with attackers | yes |
+| after the quarantine, mean delivery inside the origin's honest component >= 0.99, in every run | yes |
+python3 scripts/sim/partition_prob.py /root/t41/out/r-ratio --check docs/evidence/sim-2026-11-04/results.csv
+{'topology': 'rgg', 'N': 100, 'f_pct': 10, 'instances': 200, 'partitioned': 37, 'p_partitioned': 0.185, 'ci95_low': 0.1373, 'ci95_high': 0.2446, 'mean_largest_component': 0.9906, 'mean_nodes_cut_off': 0.84}
+{'topology': 'rgg', 'N': 100, 'f_pct': 20, 'instances': 200, 'partitioned': 97, 'p_partitioned': 0.485, 'ci95_low': 0.4167, 'ci95_high': 0.5539, 'mean_largest_component': 0.9671, 'mean_nodes_cut_off': 2.63}
+{'topology': 'rgg', 'N': 100, 'f_pct': 30, 'instances': 200, 'partitioned': 154, 'p_partitioned': 0.77, 'ci95_low': 0.7069, 'ci95_high': 0.8229, 'mean_largest_component': 0.912, 'mean_nodes_cut_off': 6.16}
+{'topology': 'rgg', 'N': 100, 'f_pct': 45, 'instances': 200, 'partitioned': 191, 'p_partitioned': 0.955, 'ci95_low': 0.9167, 'ci95_high': 0.9761, 'mean_largest_component': 0.7583, 'mean_nodes_cut_off': 13.29}
+{'topology': 'rgg', 'N': 500, 'f_pct': 10, 'instances': 200, 'partitioned': 23, 'p_partitioned': 0.115, 'ci95_low': 0.0779, 'ci95_high': 0.1666, 'mean_largest_component': 0.9995, 'mean_nodes_cut_off': 0.23}
+{'topology': 'rgg', 'N': 500, 'f_pct': 20, 'instances': 200, 'partitioned': 55, 'p_partitioned': 0.275, 'ci95_low': 0.2178, 'ci95_high': 0.3407, 'mean_largest_component': 0.9979, 'mean_nodes_cut_off': 0.84}
+{'topology': 'rgg', 'N': 500, 'f_pct': 30, 'instances': 200, 'partitioned': 91, 'p_partitioned': 0.455, 'ci95_low': 0.3875, 'ci95_high': 0.5242, 'mean_largest_component': 0.995, 'mean_nodes_cut_off': 1.74}
+{'topology': 'rgg', 'N': 500, 'f_pct': 45, 'instances': 200, 'partitioned': 187, 'p_partitioned': 0.935, 'ci95_low': 0.892, 'ci95_high': 0.9616, 'mean_largest_component': 0.9664, 'mean_nodes_cut_off': 9.25}
+{'topology': 'rgg', 'N': 1000, 'f_pct': 10, 'instances': 200, 'partitioned': 12, 'p_partitioned': 0.06, 'ci95_low': 0.0347, 'ci95_high': 0.1019, 'mean_largest_component': 0.9998, 'mean_nodes_cut_off': 0.18}
+{'topology': 'rgg', 'N': 1000, 'f_pct': 20, 'instances': 200, 'partitioned': 39, 'p_partitioned': 0.195, 'ci95_low': 0.1461, 'ci95_high': 0.2554, 'mean_largest_component': 0.9995, 'mean_nodes_cut_off': 0.43}
+{'topology': 'rgg', 'N': 1000, 'f_pct': 30, 'instances': 200, 'partitioned': 96, 'p_partitioned': 0.48, 'ci95_low': 0.4118, 'ci95_high': 0.549, 'mean_largest_component': 0.9977, 'mean_nodes_cut_off': 1.62}
+{'topology': 'rgg', 'N': 1000, 'f_pct': 45, 'instances': 200, 'partitioned': 171, 'p_partitioned': 0.855, 'ci95_low': 0.7995, 'ci95_high': 0.8971, 'mean_largest_component': 0.9894, 'mean_nodes_cut_off': 5.83}
+{'topology': 'mesh', 'N': 100, 'f_pct': 10, 'instances': 200, 'partitioned': 2, 'p_partitioned': 0.01, 'ci95_low': 0.0027, 'ci95_high': 0.0357, 'mean_largest_component': 0.9999, 'mean_nodes_cut_off': 0.01}
+{'topology': 'mesh', 'N': 100, 'f_pct': 20, 'instances': 200, 'partitioned': 24, 'p_partitioned': 0.12, 'ci95_low': 0.082, 'ci95_high': 0.1723, 'mean_largest_component': 0.9984, 'mean_nodes_cut_off': 0.12}
+{'topology': 'mesh', 'N': 100, 'f_pct': 30, 'instances': 200, 'partitioned': 96, 'p_partitioned': 0.48, 'ci95_low': 0.4118, 'ci95_high': 0.549, 'mean_largest_component': 0.9891, 'mean_nodes_cut_off': 0.76}
+{'topology': 'mesh', 'N': 100, 'f_pct': 45, 'instances': 200, 'partitioned': 188, 'p_partitioned': 0.94, 'ci95_low': 0.8981, 'ci95_high': 0.9653, 'mean_largest_component': 0.9131, 'mean_nodes_cut_off': 4.78}
+{'topology': 'mesh', 'N': 500, 'f_pct': 10, 'instances': 200, 'partitioned': 6, 'p_partitioned': 0.03, 'ci95_low': 0.0138, 'ci95_high': 0.0639, 'mean_largest_component': 0.9999, 'mean_nodes_cut_off': 0.03}
+{'topology': 'mesh', 'N': 500, 'f_pct': 20, 'instances': 200, 'partitioned': 101, 'p_partitioned': 0.505, 'ci95_low': 0.4363, 'ci95_high': 0.5735, 'mean_largest_component': 0.9982, 'mean_nodes_cut_off': 0.72}
+{'topology': 'mesh', 'N': 500, 'f_pct': 30, 'instances': 200, 'partitioned': 193, 'p_partitioned': 0.965, 'ci95_low': 0.9295, 'ci95_high': 0.9829, 'mean_largest_component': 0.9899, 'mean_nodes_cut_off': 3.54}
+{'topology': 'mesh', 'N': 500, 'f_pct': 45, 'instances': 200, 'partitioned': 200, 'p_partitioned': 1.0, 'ci95_low': 0.9812, 'ci95_high': 1.0, 'mean_largest_component': 0.9158, 'mean_nodes_cut_off': 23.16}
+{'topology': 'mesh', 'N': 1000, 'f_pct': 10, 'instances': 200, 'partitioned': 21, 'p_partitioned': 0.105, 'ci95_low': 0.0697, 'ci95_high': 0.1552, 'mean_largest_component': 0.9999, 'mean_nodes_cut_off': 0.11}
+{'topology': 'mesh', 'N': 1000, 'f_pct': 20, 'instances': 200, 'partitioned': 153, 'p_partitioned': 0.765, 'ci95_low': 0.7016, 'ci95_high': 0.8184, 'mean_largest_component': 0.9981, 'mean_nodes_cut_off': 1.54}
+{'topology': 'mesh', 'N': 1000, 'f_pct': 30, 'instances': 200, 'partitioned': 200, 'p_partitioned': 1.0, 'ci95_low': 0.9812, 'ci95_high': 1.0, 'mean_largest_component': 0.9894, 'mean_nodes_cut_off': 7.42}
+{'topology': 'mesh', 'N': 1000, 'f_pct': 45, 'instances': 200, 'partitioned': 200, 'p_partitioned': 1.0, 'ci95_low': 0.9812, 'ci95_high': 1.0, 'mean_largest_component': 0.9215, 'mean_nodes_cut_off': 43.16}
+check against docs/evidence/sim-2026-11-04/results.csv: 72 simulation runs compared, 0 differ

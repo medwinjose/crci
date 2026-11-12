@@ -1,0 +1,201 @@
+cargo build --release -p crci-node --bin crci-node
+    Finished `release` profile [optimized] target(s) in 0.41s
+scripts/testbed/run_flood.sh /root/t41/out/r-flood target/release/crci-node
+=== reference (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/reference-s1
+=== valid-x1 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/valid-x1-s1
+=== fresh-1000 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/fresh-1000-s1
+=== forged-x1 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/forged-x1-s1
+=== forged-x8 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/forged-x8-s1
+=== forged-x64 (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/forged-x64-s1
+=== reference (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/reference-s2
+=== valid-x1 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/valid-x1-s2
+=== fresh-1000 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/fresh-1000-s2
+=== forged-x1 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/forged-x1-s2
+=== forged-x8 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/forged-x8-s2
+=== forged-x64 (rgg, N=50, seed 2) ===
+topology kind=rgg seed=2 {"radius": 0.2232, "attempts": 5}
+metrics nodes=50 edges=173 mean_degree=6.92 min_degree=2 max_degree=13 diameter=8 avg_shortest_path=3.662 clustering=0.6549
+roles source=19 byzantine=31 byzantine_degree=10 hops_source_to_byzantine=2 downstream=12
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/forged-x64-s2
+=== reference (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/reference-s3
+=== valid-x1 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/valid-x1-s3
+=== fresh-1000 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/fresh-1000-s3
+=== forged-x1 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/forged-x1-s3
+=== forged-x8 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/forged-x8-s3
+=== forged-x64 (rgg, N=50, seed 3) ===
+topology kind=rgg seed=3 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=150 mean_degree=6.0 min_degree=2 max_degree=10 diameter=10 avg_shortest_path=4.5265 clustering=0.709
+roles source=4 byzantine=45 byzantine_degree=10 hops_source_to_byzantine=2 downstream=20
+network: 50 namespaces up in 7.4 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/forged-x64-s3
+=== readmit (rgg, N=50, seed 1) ===
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18
+network: 50 namespaces up in 7.5 s
+launched 50 nodes in 0.0 s; T0 in 22.5 s
+T0: 50/50 nodes listening
+done: 50/50 alive at the end of the window; output in /root/t41/out/r-flood/readmit-s1
+run,kind,seed,N,delay_ms,jitter_ms,loss_pct,reorder_pct,mean_deg,max_deg,diam,aspl,clust,up,msgs,deliv_pre,deliv_post,lat_med_pre,lat_p95_pre,lat_med_post,lat_p95_post,hop_excess_med,down_pre,down_post,via_byz_post,banned_by,evict_med_ms,evict_max_ms,false_evict,honest_banned,honest_nodes,rate_drops,rate_drops_honest,origin_drops_honest,relay_failed,late_5s,cpu_mean,cpu_max,mem_mib,swap_io,kdrops,rss_mib_node,rtt_med,rtt_p95,faithful
+forged-x1-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,2060,1.0,1.0,35,74,42,74,1.0,126/126,342/342,0,10/10,136,136,0,0,49,1924,0,0,0,0,3.14,11.9,688,0,0,7.04,20.4,20.8,True
+forged-x1-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,2060,1.0,1.0,43,75,43,74,1.0,84/84,228/228,0,10/10,137,137,0,0,49,1614,1,0,0,0,3.26,14.3,690,0,0,7.08,20.4,20.8,True
+forged-x1-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,2060,1.0,1.0,54,86,63,87,0.83,140/140,380/380,0,10/10,110,136,0,0,49,1456,0,0,0,0,3.09,12.3,687,0,0,7.03,20.5,20.9,True
+forged-x64-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,2060,1.0,1.0,35,67,43,74,1.0,126/126,342/342,0,10/10,57,59,0,0,49,1583,0,0,0,0,3.04,11.3,690,0,0,7.1,20.5,20.9,True
+forged-x64-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,2060,1.0,1.0,43,75,43,75,1.0,84/84,228/228,0,10/10,58,59,0,0,49,1824,0,0,0,0,3.26,13.7,692,0,0,7.13,20.5,20.9,True
+forged-x64-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,2060,1.0,1.0,53,87,63,87,1.0,140/140,380/380,0,10/10,81,84,0,0,49,1769,0,0,0,0,2.9,12.0,690,0,0,7.08,20.5,20.9,True
+forged-x8-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,2060,1.0,1.0,42,74,42,74,1.0,126/126,342/342,0,10/10,33,36,0,0,49,1489,0,0,0,0,3.08,13.4,692,0,0,7.1,20.5,20.9,True
+forged-x8-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,2060,1.0,1.0,43,67,43,74,1.0,84/84,228/228,0,10/10,34,35,0,0,49,2063,0,0,0,0,3.07,14.4,693,0,0,7.12,20.4,20.8,True
+forged-x8-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,2060,1.0,1.0,53,87,63,87,0.86,140/140,380/380,0,10/10,135,136,0,0,49,2193,1,0,0,0,3.0,13.1,691,0,0,7.09,20.5,20.8,True
+fresh-1000-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,50059,1.0,,42,90,,,1.0,126/126,/,0,0/10,,,0,0,49,104952,2,0,0,0,6.25,17.3,712,0,0,7.25,20.2,20.7,True
+fresh-1000-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,50057,1.0,,42,76,,,0.8,84/84,/,0,0/10,,,0,0,49,106774,1,0,0,0,6.83,18.8,718,0,0,7.33,20.2,20.7,True
+fresh-1000-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,50059,1.0,,55,94,,,0.75,140/140,/,0,0/10,,,0,0,49,107740,6,0,0,0,6.11,20.2,711,0,0,7.25,20.2,20.7,True
+readmit-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,950,1.0,1.0,35,67,43,75,1.0,144/144,4104/4104,110,10/10,1011,2011,0,0,49,0,0,0,0,0,1.17,9.2,714,0,0,7.5,20.5,20.9,True
+reference-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,60,1.0,,34,66,,,1.0,486/486,/,0,0/10,,,0,0,49,0,0,0,0,0,0.88,3.3,681,0,0,6.82,20.4,20.9,True
+reference-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,60,1.0,,42,66,,,1.0,324/324,/,0,0/10,,,0,0,49,0,0,0,0,0,0.92,3.4,674,0,0,6.86,20.5,20.9,True
+reference-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,60,1.0,,44,85,,,0.83,540/540,/,0,0/10,,,0,0,49,0,0,0,0,0,0.86,3.9,673,0,0,6.82,20.5,20.9,True
+valid-x1-s1,rgg,1,50,10,0,0,0,6.04,11,10,3.6678,0.5822,50/50,2060,1.0,,34,73,,,1.0,126/126,/,0,0/10,,,0,0,49,9937,0,0,0,0,4.73,11.9,687,0,0,7.09,20.5,20.9,True
+valid-x1-s2,rgg,2,50,10,0,0,0,6.92,13,8,3.662,0.6549,50/50,2060,1.0,,44,75,,,1.0,84/84,/,0,0/10,,,0,0,49,9844,0,0,0,0,5.18,14.9,690,0,0,7.13,20.5,20.9,True
+valid-x1-s3,rgg,3,50,10,0,0,0,6.0,10,10,4.5265,0.709,50/50,2060,1.0,,54,87,,,1.0,140/140,/,0,0/10,,,0,0,49,9996,0,0,0,0,4.96,12.4,686,0,0,7.1,20.5,20.9,True
+| config | runs | forged_frames_per_s_per_link | evict_median_ms | evict_max_ms | verifications_per_neighbour | frames_dropped_banned | honest_false_evictions | deliv_pre | deliv_post | cpu_mean_pct | cpu_max_pct | mem_used_mib_max | rss_mib_per_node | logs_mib | cpu_s_byzantine | cpu_s_neighbour_mean | cpu_s_neighbour_max | cpu_s_other_mean |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| fresh-1000 | 3 | 0.0 | None | None | 0.0 | 0.0 | 0.0 | 1.0 | None | 6.4 | 18.77 | 713.67 | 7.28 | 38.92 | 9.12 | 1.94 | 2.2 | 0.43 |
+| reference | 3 | 0.0 | None | None | 0.0 | 0.0 | 0.0 | 1.0 | None | 0.89 | 3.53 | 676.0 | 6.83 | 4.09 | 0.16 | 0.12 | 0.15 | 0.11 |
+| valid-x1 | 3 | 0.0 | None | None | 0.0 | 0.0 | 0.0 | 1.0 | None | 4.96 | 13.07 | 687.67 | 7.11 | 25.15 | 2.13 | 1.25 | 1.52 | 0.47 |
+| forged-x1 | 3 | 40.0 | 127.67 | 136.33 | 3.0 | 39.0 | 0.0 | 1.0 | 1.0 | 3.16 | 12.83 | 688.33 | 7.05 | 10.74 | 3.71 | 0.68 | 0.76 | 0.21 |
+| forged-x8 | 3 | 320.0 | 67.33 | 69.0 | 1.57 | 96.67 | 0.0 | 1.0 | 1.0 | 3.05 | 13.63 | 692.0 | 7.1 | 10.79 | 3.78 | 0.67 | 0.76 | 0.21 |
+| forged-x64 | 3 | 2560.0 | 65.33 | 67.33 | 1.33 | 149.67 | 0.0 | 1.0 | 1.0 | 3.07 | 12.33 | 690.67 | 7.1 | 10.79 | 3.68 | 0.66 | 0.76 | 0.21 |
+
+| criterion | holds |
+|---|---|
+| every run faithful | yes |
+| B banned by all its neighbours in every flood run | yes |
+| eviction median <= 1 s and max <= 5 s in every flood run | yes |
+| <= 3 signature verifications per neighbour in every flood run | yes |
+| 0 honest false evictions in every run | yes |
+| mean honest delivery after the ban (whole run for the references) >= 0.99 | yes |
+| host memory within 10 % of the reference run of the same seed | yes |
+| total log size within 2x of the load-matched reference of the same seed | yes |
+| readmission run: all 10 neighbours readmit B and accept its messages again (readmitted 10, accepted after 103) | yes |
+| neighbour CPU seconds at 2 560 forged frames/s per link <= 1.5x the load-matched reference | yes |
+| no frame is paced in the reference runs | yes |
+| in every flood run only B's neighbours ever pace a connection | yes |
+| fresh flood (1 000 messages/s): neighbour CPU seconds <= 2.5x the load-matched reference | yes |
+| fresh flood: total log size <= 3x the load-matched reference | yes |
+| fresh flood: honest delivery >= 0.99 | yes |

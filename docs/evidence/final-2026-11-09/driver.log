@@ -1,0 +1,27 @@
+[2026-11-08 17:22:06] start main
+[2026-11-08 18:57:47] end main rc=0
+[2026-11-08 18:58:04] start netem
+[2026-11-08 23:30:47] end netem rc=0
+[2026-11-08 23:30:56] start attacks
+[2026-11-09 00:32:50] end attacks rc=0
+[2026-11-09 00:32:51] start flood
+[2026-11-09 01:11:29] end flood rc=0
+[2026-11-09 01:11:32] start baselines
+[2026-11-09 02:57:40] end baselines rc=0
+[2026-11-09 02:58:01] start flapping
+[2026-11-09 08:13:57] end flapping rc=0
+[2026-11-09 08:14:04] start ratio
+[2026-11-09 11:00:39] end ratio rc=0
+[2026-11-09 11:00:44] start tcpflood
+[2026-11-09 11:10:26] end tcpflood rc=0
+[2026-11-09 11:10:27] start state
+[2026-11-09 11:12:01] end state rc=0
+[2026-11-09 11:12:01] start sim
+[2026-11-09 12:01:03] end sim rc=0
+[2026-11-09 12:01:03] start ablation
+[2026-11-09 12:27:43] end ablation rc=0
+[2026-11-09 12:27:43] start contact
+[2026-11-09 12:33:18] end contact rc=0
+[2026-11-09 12:33:18] bench crypto_bench
+[2026-11-09 12:34:06] bench recovery_bench
+[2026-11-09 12:34:20] ALLDONE
