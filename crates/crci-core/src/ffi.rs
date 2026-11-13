@@ -29,10 +29,7 @@ pub fn validate_node_config(config: FfiNodeConfig) -> bool {
     }
     // Very basic check for host:port
     let parts: Vec<&str> = config.listen_addr.split(':').collect();
-    if parts.len() != 2 {
-        return false;
-    }
-    true
+    parts.len() == 2
 }
 
 #[uniffi::export]
