@@ -15,6 +15,11 @@ git history; `git log` is the complete record.
   and its sender struck like the sender of a bad signature. Key pinning is removed.
 
 ### Changed
+- The charts have a print layout (`make_figures.py --compact`): one panel per topology for the latency
+  chart, a legend above each panel, a marker per series, round axis ticks.
+- The process tests find the node binary through `CARGO_BIN_EXE_crci-node` instead of guessing the target
+  folder; a newer clippy's `needless_bool` and `irrefutable_let_patterns` findings are fixed (no behaviour
+  change).
 - Every data set in `docs/benchmarks.md` and the four figures are regenerated on one node binary; the
   results are in `docs/evidence/final-2026-11-12/`, produced by one `make reproduce` from a fresh clone
   (the earlier set, `final-2026-11-09/`, predates the sync fix below; both meet the same criteria).
