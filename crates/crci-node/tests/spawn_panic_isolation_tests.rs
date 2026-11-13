@@ -59,7 +59,7 @@ async fn test_watcher_task_observes_panic_without_crashing() {
     let panic_observed_clone = panic_observed.clone();
 
     // Inner task: panics immediately.
-    let inner_handle = tokio::spawn(async {
+    let inner_handle: tokio::task::JoinHandle<()> = tokio::spawn(async {
         panic!("inner task panic for watcher test");
     });
 
