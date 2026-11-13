@@ -26,12 +26,12 @@
 <circle cx="345.0" cy="52.0" r="3.5" fill="#4477aa"/>
 <circle cx="455.0" cy="52.0" r="3.5" fill="#4477aa"/>
 <circle cx="565.0" cy="97.1" r="3.5" fill="#4477aa"/>
-<line x1="70" y1="340.5" x2="84" y2="340.5" stroke="#4477aa" stroke-width="2.0"/><circle cx="77.0" cy="340.5" r="3.5" fill="#4477aa"/><text x="88" y="344">delivery after the ban</text>
+<line x1="70" y1="341" x2="84" y2="341" stroke="#4477aa" stroke-width="2.0"/><circle cx="77.0" cy="341.0" r="3.5" fill="#4477aa"/><text x="87" y="344">delivery after the ban</text>
 <polyline fill="none" stroke="#cc6677" stroke-width="2.0" points="125.0,52.0 235.0,52.0 345.0,52.0 455.0,52.0 565.0,52.0"/>
 <rect x="121.5" y="48.5" width="7.0" height="7.0" fill="#cc6677"/>
 <rect x="231.5" y="48.5" width="7.0" height="7.0" fill="#cc6677"/>
 <rect x="341.5" y="48.5" width="7.0" height="7.0" fill="#cc6677"/>
 <rect x="451.5" y="48.5" width="7.0" height="7.0" fill="#cc6677"/>
 <rect x="561.5" y="48.5" width="7.0" height="7.0" fill="#cc6677"/>
-<line x1="260" y1="340.5" x2="274" y2="340.5" stroke="#cc6677" stroke-width="2.0"/><rect x="263.5" y="337.0" width="7.0" height="7.0" fill="#cc6677"/><text x="278" y="344">honest nodes not banned</text>
+<line x1="260" y1="341" x2="274" y2="341" stroke="#cc6677" stroke-width="2.0"/><rect x="263.5" y="337.5" width="7.0" height="7.0" fill="#cc6677"/><text x="277" y="344">honest nodes not banned</text>
 </svg>

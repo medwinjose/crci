@@ -23,7 +23,7 @@
 <circle cx="161.7" cy="125.6" r="3.5" fill="#4477aa"/>
 <circle cx="345.0" cy="131.9" r="3.5" fill="#4477aa"/>
 <circle cx="528.3" cy="105.1" r="3.5" fill="#4477aa"/>
-<line x1="70" y1="340.5" x2="84" y2="340.5" stroke="#4477aa" stroke-width="2.0"/><circle cx="77.0" cy="340.5" r="3.5" fill="#4477aa"/><text x="88" y="344">rgg 0 %</text>
+<line x1="70" y1="341" x2="84" y2="341" stroke="#4477aa" stroke-width="2.0"/><circle cx="77.0" cy="341.0" r="3.5" fill="#4477aa"/><text x="87" y="344">rgg 0 %</text>
 <polyline fill="none" stroke="#cc6677" stroke-width="2.0" points="161.7,173.2 345.0,119.0 528.3,90.5"/>
 <line x1="161.7" y1="194.5" x2="161.7" y2="151.8" stroke="#cc6677" stroke-width="0.8"/><line x1="159.9" y1="194.5" x2="163.5" y2="194.5" stroke="#cc6677" stroke-width="0.8"/><line x1="159.9" y1="151.8" x2="163.5" y2="151.8" stroke="#cc6677" stroke-width="0.8"/>
 <line x1="345.0" y1="141.9" x2="345.0" y2="96.1" stroke="#cc6677" stroke-width="0.8"/><line x1="343.2" y1="141.9" x2="346.8" y2="141.9" stroke="#cc6677" stroke-width="0.8"/><line x1="343.2" y1="96.1" x2="346.8" y2="96.1" stroke="#cc6677" stroke-width="0.8"/>
@@ -31,7 +31,7 @@
 <rect x="158.2" y="169.7" width="7.0" height="7.0" fill="#cc6677"/>
 <rect x="341.5" y="115.5" width="7.0" height="7.0" fill="#cc6677"/>
 <rect x="524.8" y="87.0" width="7.0" height="7.0" fill="#cc6677"/>
-<line x1="260" y1="340.5" x2="274" y2="340.5" stroke="#cc6677" stroke-width="2.0"/><rect x="263.5" y="337.0" width="7.0" height="7.0" fill="#cc6677"/><text x="278" y="344">rgg 10 %</text>
+<line x1="260" y1="341" x2="274" y2="341" stroke="#cc6677" stroke-width="2.0"/><rect x="263.5" y="337.5" width="7.0" height="7.0" fill="#cc6677"/><text x="277" y="344">rgg 10 %</text>
 <polyline fill="none" stroke="#228833" stroke-width="2.0" points="161.7,160.8 345.0,157.9 528.3,97.0"/>
 <line x1="161.7" y1="170.3" x2="161.7" y2="151.2" stroke="#228833" stroke-width="0.8"/><line x1="159.9" y1="170.3" x2="163.5" y2="170.3" stroke="#228833" stroke-width="0.8"/><line x1="159.9" y1="151.2" x2="163.5" y2="151.2" stroke="#228833" stroke-width="0.8"/>
 <line x1="345.0" y1="186.5" x2="345.0" y2="129.2" stroke="#228833" stroke-width="0.8"/><line x1="343.2" y1="186.5" x2="346.8" y2="186.5" stroke="#228833" stroke-width="0.8"/><line x1="343.2" y1="129.2" x2="346.8" y2="129.2" stroke="#228833" stroke-width="0.8"/>
@@ -39,7 +39,7 @@
 <polygon points="161.7,156.4 157.6,164.3 165.7,164.3" fill="#228833"/>
 <polygon points="345.0,153.5 341.0,161.4 349.0,161.4" fill="#228833"/>
 <polygon points="528.3,92.7 524.3,100.5 532.4,100.5" fill="#228833"/>
-<line x1="450" y1="340.5" x2="464" y2="340.5" stroke="#228833" stroke-width="2.0"/><polygon points="457.0,336.1 453.0,344.0 461.0,344.0" fill="#228833"/><text x="468" y="344">rgg 30 %</text>
+<line x1="450" y1="341" x2="464" y2="341" stroke="#228833" stroke-width="2.0"/><polygon points="457.0,336.6 453.0,344.5 461.0,344.5" fill="#228833"/><text x="467" y="344">rgg 30 %</text>
 <polyline fill="none" stroke="#4477aa" stroke-width="2.0" stroke-dasharray="3 2" points="161.7,206.5 345.0,180.5 528.3,167.5"/>
 <line x1="161.7" y1="211.5" x2="161.7" y2="201.5" stroke="#4477aa" stroke-width="0.8"/><line x1="159.9" y1="211.5" x2="163.5" y2="211.5" stroke="#4477aa" stroke-width="0.8"/><line x1="159.9" y1="201.5" x2="163.5" y2="201.5" stroke="#4477aa" stroke-width="0.8"/>
 <line x1="345.0" y1="187.2" x2="345.0" y2="173.9" stroke="#4477aa" stroke-width="0.8"/><line x1="343.2" y1="187.2" x2="346.8" y2="187.2" stroke="#4477aa" stroke-width="0.8"/><line x1="343.2" y1="173.9" x2="346.8" y2="173.9" stroke="#4477aa" stroke-width="0.8"/>
@@ -47,7 +47,7 @@
 <circle cx="161.7" cy="206.5" r="3.5" fill="#4477aa"/>
 <circle cx="345.0" cy="180.5" r="3.5" fill="#4477aa"/>
 <circle cx="528.3" cy="167.5" r="3.5" fill="#4477aa"/>
-<line x1="70" y1="356.5" x2="84" y2="356.5" stroke="#4477aa" stroke-width="2.0" stroke-dasharray="3 2"/><circle cx="77.0" cy="356.5" r="3.5" fill="#4477aa"/><text x="88" y="360">mesh 0 %</text>
+<line x1="70" y1="357" x2="84" y2="357" stroke="#4477aa" stroke-width="2.0" stroke-dasharray="3 2"/><circle cx="77.0" cy="357.0" r="3.5" fill="#4477aa"/><text x="87" y="360">mesh 0 %</text>
 <polyline fill="none" stroke="#cc6677" stroke-width="2.0" stroke-dasharray="3 2" points="161.7,204.9 345.0,176.2 528.3,159.2"/>
 <line x1="161.7" y1="206.1" x2="161.7" y2="203.8" stroke="#cc6677" stroke-width="0.8"/><line x1="159.9" y1="206.1" x2="163.5" y2="206.1" stroke="#cc6677" stroke-width="0.8"/><line x1="159.9" y1="203.8" x2="163.5" y2="203.8" stroke="#cc6677" stroke-width="0.8"/>
 <line x1="345.0" y1="181.0" x2="345.0" y2="171.5" stroke="#cc6677" stroke-width="0.8"/><line x1="343.2" y1="181.0" x2="346.8" y2="181.0" stroke="#cc6677" stroke-width="0.8"/><line x1="343.2" y1="171.5" x2="346.8" y2="171.5" stroke="#cc6677" stroke-width="0.8"/>
@@ -55,7 +55,7 @@
 <rect x="158.2" y="201.4" width="7.0" height="7.0" fill="#cc6677"/>
 <rect x="341.5" y="172.7" width="7.0" height="7.0" fill="#cc6677"/>
 <rect x="524.8" y="155.7" width="7.0" height="7.0" fill="#cc6677"/>
-<line x1="260" y1="356.5" x2="274" y2="356.5" stroke="#cc6677" stroke-width="2.0" stroke-dasharray="3 2"/><rect x="263.5" y="353.0" width="7.0" height="7.0" fill="#cc6677"/><text x="278" y="360">mesh 10 %</text>
+<line x1="260" y1="357" x2="274" y2="357" stroke="#cc6677" stroke-width="2.0" stroke-dasharray="3 2"/><rect x="263.5" y="353.5" width="7.0" height="7.0" fill="#cc6677"/><text x="277" y="360">mesh 10 %</text>
 <polyline fill="none" stroke="#228833" stroke-width="2.0" stroke-dasharray="3 2" points="161.7,177.3 345.0,140.8 528.3,125.9"/>
 <line x1="161.7" y1="192.0" x2="161.7" y2="162.5" stroke="#228833" stroke-width="0.8"/><line x1="159.9" y1="192.0" x2="163.5" y2="192.0" stroke="#228833" stroke-width="0.8"/><line x1="159.9" y1="162.5" x2="163.5" y2="162.5" stroke="#228833" stroke-width="0.8"/>
 <line x1="345.0" y1="160.3" x2="345.0" y2="121.3" stroke="#228833" stroke-width="0.8"/><line x1="343.2" y1="160.3" x2="346.8" y2="160.3" stroke="#228833" stroke-width="0.8"/><line x1="343.2" y1="121.3" x2="346.8" y2="121.3" stroke="#228833" stroke-width="0.8"/>
@@ -63,5 +63,5 @@
 <polygon points="161.7,172.9 157.6,180.8 165.7,180.8" fill="#228833"/>
 <polygon points="345.0,136.5 341.0,144.3 349.0,144.3" fill="#228833"/>
 <polygon points="528.3,121.5 524.3,129.4 532.4,129.4" fill="#228833"/>
-<line x1="450" y1="356.5" x2="464" y2="356.5" stroke="#228833" stroke-width="2.0" stroke-dasharray="3 2"/><polygon points="457.0,352.1 453.0,360.0 461.0,360.0" fill="#228833"/><text x="468" y="360">mesh 30 %</text>
+<line x1="450" y1="357" x2="464" y2="357" stroke="#228833" stroke-width="2.0" stroke-dasharray="3 2"/><polygon points="457.0,352.6 453.0,360.5 461.0,360.5" fill="#228833"/><text x="467" y="360">mesh 30 %</text>
 </svg>

@@ -15,13 +15,13 @@ MARKERS = ["circle", "square", "triangle", "diamond"]
 # printed size (1 unit = 1 pt at column width) without them, for a figure explained by its caption.
 LAYOUT = {"width": 640, "height": 380, "left": 70, "right": 20, "top": 52, "bottom": 96,
           "legend_dx": 190, "legend_dy": 16, "font": 11, "marker": 3.5, "line": 2.0, "titles": True,
-          "dodge": 0.0, "tick_y": 18, "label_y": 32, "legend_y": 36, "family": "Helvetica, Arial, sans-serif", "cols": 3}
+          "dodge": 0.0, "tick_y": 18, "label_y": 32, "legend_y": 36, "family": "Helvetica, Arial, sans-serif", "cols": 3, "legend_top": False, "cursor": 0.0}
 
 
 def compact():
-    LAYOUT.update(width=165, height=172, left=30, right=5, top=17, bottom=48, legend_dx=76, legend_dy=10,
-                  font=7, marker=2.4, line=1.1, titles=False, dodge=2.4, tick_y=10, label_y=20,
-                  legend_y=20, family="Times New Roman, Times, serif", cols=2)
+    LAYOUT.update(width=168, height=160, left=33, right=6, top=32, bottom=32, legend_dx=76, legend_dy=10,
+                  font=7, marker=2.3, line=1.1, titles=False, dodge=2.2, tick_y=10, label_y=21,
+                  legend_y=0, family="Times New Roman, Times, serif", cols=2, legend_top=True, cursor=0.0)
 
 
 def _fmt(v):
@@ -50,12 +50,19 @@ def _marker(kind, x, y, r, colour):
 
 
 def _legend(out, n, name, colour, marker, dash, height, left):
-    lx = left + (n % LAYOUT["cols"]) * LAYOUT["legend_dx"]
-    ly = height - LAYOUT["legend_y"] + (n // LAYOUT["cols"]) * LAYOUT["legend_dy"]
+    if LAYOUT["legend_top"]:  # one row under the panel label; entries sized by their text
+        if n == 0:
+            LAYOUT["cursor"] = 0.0
+        lx, ly = left + LAYOUT["cursor"], 21
+        LAYOUT["cursor"] += 10 + 3 + 0.46 * LAYOUT["font"] * len(name) + 7
+    else:
+        lx = left + (n % LAYOUT["cols"]) * LAYOUT["legend_dx"]
+        ly = height - LAYOUT["legend_y"] + (n // LAYOUT["cols"]) * LAYOUT["legend_dy"]
+    span = 10 if LAYOUT["legend_top"] else 14
     dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
-    mark = _marker(marker, lx + 7, ly - 3.5, LAYOUT["marker"], colour) if marker else ""
-    out.append(f'<line x1="{lx}" y1="{ly - 3.5}" x2="{lx + 14}" y2="{ly - 3.5}" stroke="{colour}" '
-               f'stroke-width="{LAYOUT["line"]}"{dash_attr}/>' + mark + f'<text x="{lx + 18}" y="{ly}">{name}</text>')
+    mark = _marker(marker, lx + span / 2, ly - 3, LAYOUT["marker"], colour) if marker else ""
+    out.append(f'<line x1="{lx}" y1="{ly - 3}" x2="{lx + span}" y2="{ly - 3}" stroke="{colour}" '
+               f'stroke-width="{LAYOUT["line"]}"{dash_attr}/>' + mark + f'<text x="{lx + span + 3}" y="{ly}">{name}</text>')
 
 
 def _head(out_width, out_height):

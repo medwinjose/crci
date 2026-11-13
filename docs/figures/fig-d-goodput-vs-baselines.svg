@@ -28,7 +28,7 @@
 <circle cx="423.6" cy="98.4" r="3.5" fill="#4477aa"/>
 <circle cx="502.1" cy="101.5" r="3.5" fill="#4477aa"/>
 <circle cx="580.7" cy="103.0" r="3.5" fill="#4477aa"/>
-<line x1="70" y1="340.5" x2="84" y2="340.5" stroke="#4477aa" stroke-width="2.0"/><circle cx="77.0" cy="340.5" r="3.5" fill="#4477aa"/><text x="88" y="344">full</text>
+<line x1="70" y1="341" x2="84" y2="341" stroke="#4477aa" stroke-width="2.0"/><circle cx="77.0" cy="341.0" r="3.5" fill="#4477aa"/><text x="87" y="344">full</text>
 <polyline fill="none" stroke="#cc6677" stroke-width="2.0" points="109.3,98.4 187.9,119.6 266.4,117.7 345.0,98.5 423.6,119.6 502.1,147.2 580.7,133.0"/>
 <line x1="187.9" y1="144.5" x2="187.9" y2="94.7" stroke="#cc6677" stroke-width="0.8"/><line x1="186.1" y1="144.5" x2="189.7" y2="144.5" stroke="#cc6677" stroke-width="0.8"/><line x1="186.1" y1="94.7" x2="189.7" y2="94.7" stroke="#cc6677" stroke-width="0.8"/>
 <line x1="266.4" y1="136.1" x2="266.4" y2="99.2" stroke="#cc6677" stroke-width="0.8"/><line x1="264.6" y1="136.1" x2="268.2" y2="136.1" stroke="#cc6677" stroke-width="0.8"/><line x1="264.6" y1="99.2" x2="268.2" y2="99.2" stroke="#cc6677" stroke-width="0.8"/>
@@ -43,7 +43,7 @@
 <rect x="420.1" y="116.1" width="7.0" height="7.0" fill="#cc6677"/>
 <rect x="498.6" y="143.7" width="7.0" height="7.0" fill="#cc6677"/>
 <rect x="577.2" y="129.5" width="7.0" height="7.0" fill="#cc6677"/>
-<line x1="260" y1="340.5" x2="274" y2="340.5" stroke="#cc6677" stroke-width="2.0"/><rect x="263.5" y="337.0" width="7.0" height="7.0" fill="#cc6677"/><text x="278" y="344">static-bucket</text>
+<line x1="260" y1="341" x2="274" y2="341" stroke="#cc6677" stroke-width="2.0"/><rect x="263.5" y="337.5" width="7.0" height="7.0" fill="#cc6677"/><text x="277" y="344">static-bucket</text>
 <polyline fill="none" stroke="#228833" stroke-width="2.0" points="109.3,98.4 187.9,99.9 266.4,99.9 345.0,98.4 423.6,103.0"/>
 <line x1="187.9" y1="102.6" x2="187.9" y2="97.3" stroke="#228833" stroke-width="0.8"/><line x1="186.1" y1="102.6" x2="189.7" y2="102.6" stroke="#228833" stroke-width="0.8"/><line x1="186.1" y1="97.3" x2="189.7" y2="97.3" stroke="#228833" stroke-width="0.8"/>
 <line x1="266.4" y1="102.6" x2="266.4" y2="97.3" stroke="#228833" stroke-width="0.8"/><line x1="264.6" y1="102.6" x2="268.2" y2="102.6" stroke="#228833" stroke-width="0.8"/><line x1="264.6" y1="97.3" x2="268.2" y2="97.3" stroke="#228833" stroke-width="0.8"/>
@@ -53,5 +53,5 @@
 <polygon points="266.4,95.6 262.4,103.4 270.5,103.4" fill="#228833"/>
 <polygon points="345.0,94.0 341.0,101.9 349.0,101.9" fill="#228833"/>
 <polygon points="423.6,98.7 419.5,106.5 427.6,106.5" fill="#228833"/>
-<line x1="450" y1="340.5" x2="464" y2="340.5" stroke="#228833" stroke-width="2.0"/><polygon points="457.0,336.1 453.0,344.0 461.0,344.0" fill="#228833"/><text x="468" y="344">vanilla</text>
+<line x1="450" y1="341" x2="464" y2="341" stroke="#228833" stroke-width="2.0"/><polygon points="457.0,336.6 453.0,344.5 461.0,344.5" fill="#228833"/><text x="467" y="344">vanilla</text>
 </svg>
