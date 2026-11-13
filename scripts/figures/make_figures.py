@@ -68,13 +68,21 @@ def fig_a(out):
             errors[f"{kind} {f} %"] = [s for _, s in stats]
             counts |= {len([v for v in by[(kind, f, n)] if v is not None]) for n in sizes}
     assert counts == {3}, counts  # three seeds behind every point
-    xl = [str(n) for n in sizes] if COMPACT else [f"N = {n}" for n in sizes]
+    if COMPACT:  # one panel per topology: three lines each read far better than six
+        svgplot.LAYOUT.update(cols=3, legend_dx=44)
+        for kind in ("rgg", "mesh"):
+            names = [f"{kind} {f} %" for f in (0, 10, 30)]
+            svgplot.line_chart(f"{out}/fig-a-latency-{kind}.svg", "", "", [str(n) for n in sizes],
+                               {f"{f} %": series[n] for f, n in zip((0, 10, 30), names)},
+                               "p95 latency (ms)" if kind == "rgg" else "", errors={f"{f} %": errors[n]
+                               for f, n in zip((0, 10, 30), names)}, ymax=450.0, xlabel="nodes N (legend: % of nodes replaying)",
+                               panel=f"({'a' if kind == 'rgg' else 'b'}) latency, {kind} topology")
+        return
     dashes = {name: "3 2" for name in series if name.startswith("mesh")}
     svgplot.line_chart(f"{out}/fig-a-latency-vs-n.svg",
                        "Delivery latency after the quarantine against network size",
                        "emulation; p95, mean ± sd over 3 seeds; legend: topology, share of nodes replaying",
-                       xl, series, "p95 latency (ms)" if COMPACT else "milliseconds", errors=errors,
-                       ymax=450.0, xlabel="nodes N" if COMPACT else "", panel="(a) latency after quarantine",
+                       [f"N = {n}" for n in sizes], series, "milliseconds", errors=errors, ymax=450.0,
                        dashes=dashes)
 
 
@@ -129,10 +137,12 @@ def fig_d(out):
         stats = [mean_sd(by.get((mode, a, i), [])) for a, i in order]
         series[mode] = [m for m, _ in stats]
         errors[mode] = [s for _, s in stats]
+    if COMPACT:
+        svgplot.LAYOUT.update(cols=2, legend_dx=76)
     svgplot.line_chart(f"{out}/fig-d-goodput-vs-baselines.svg", "Goodput against attack intensity, three defence modes",
                        "emulation, rgg N = 50, 3 seeds, mean ± sd; vanilla omitted at flood 100 and 200/s (not faithful)",
                        labels, series, "deliveries per second" if COMPACT else "honest deliveries per second",
-                       ymin=0.0, ymax=60.0, panel="(b) goodput under attack (48/s offered)",
+                       ymin=0.0, ymax=60.0, panel="(c) goodput under attack (48/s offered)",
                        xlabel=("attack (r: replay copies, f: flood msg/s)" if COMPACT else
                                "attack (replay: copies per message; flood: fresh messages per second)"),
                        errors=errors)

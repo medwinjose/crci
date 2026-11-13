@@ -15,13 +15,13 @@ MARKERS = ["circle", "square", "triangle", "diamond"]
 # printed size (1 unit = 1 pt at column width) without them, for a figure explained by its caption.
 LAYOUT = {"width": 640, "height": 380, "left": 70, "right": 20, "top": 52, "bottom": 96,
           "legend_dx": 190, "legend_dy": 16, "font": 11, "marker": 3.5, "line": 2.0, "titles": True,
-          "dodge": 0.0, "tick_y": 18, "label_y": 32, "legend_y": 36, "family": "Helvetica, Arial, sans-serif"}
+          "dodge": 0.0, "tick_y": 18, "label_y": 32, "legend_y": 36, "family": "Helvetica, Arial, sans-serif", "cols": 3}
 
 
 def compact():
-    LAYOUT.update(width=248, height=172, left=36, right=8, top=17, bottom=48, legend_dx=70, legend_dy=10,
-                  font=7.5, marker=2.4, line=1.1, titles=False, dodge=2.4, tick_y=10, label_y=20,
-                  legend_y=20, family="Times New Roman, Times, serif")
+    LAYOUT.update(width=165, height=172, left=30, right=5, top=17, bottom=48, legend_dx=76, legend_dy=10,
+                  font=7, marker=2.4, line=1.1, titles=False, dodge=2.4, tick_y=10, label_y=20,
+                  legend_y=20, family="Times New Roman, Times, serif", cols=2)
 
 
 def _fmt(v):
@@ -50,8 +50,8 @@ def _marker(kind, x, y, r, colour):
 
 
 def _legend(out, n, name, colour, marker, dash, height, left):
-    lx = left + (n % 3) * LAYOUT["legend_dx"]
-    ly = height - LAYOUT["legend_y"] + (n // 3) * LAYOUT["legend_dy"]
+    lx = left + (n % LAYOUT["cols"]) * LAYOUT["legend_dx"]
+    ly = height - LAYOUT["legend_y"] + (n // LAYOUT["cols"]) * LAYOUT["legend_dy"]
     dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
     mark = _marker(marker, lx + 7, ly - 3.5, LAYOUT["marker"], colour) if marker else ""
     out.append(f'<line x1="{lx}" y1="{ly - 3.5}" x2="{lx + 14}" y2="{ly - 3.5}" stroke="{colour}" '
