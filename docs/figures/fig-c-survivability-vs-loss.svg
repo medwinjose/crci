@@ -1,37 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" font-family="sans-serif" font-size="11"><rect width="640" height="380" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" font-family="Helvetica, Arial, sans-serif" font-size="11"><rect width="640" height="380" fill="white"/>
 <text x="70" y="18" font-size="13" font-weight="bold">Survivability against packet loss</text>
 <text x="70" y="34" fill="#555">emulation; mean ± sd over 18 runs; replayer banned by all neighbours in every run</text>
-<line x1="70" y1="284" x2="620" y2="284" stroke="#ddd"/>
-<text x="64" y="288" text-anchor="end">0.98</text>
-<line x1="70" y1="226" x2="620" y2="226" stroke="#ddd"/>
-<text x="64" y="230" text-anchor="end">0.985</text>
-<line x1="70" y1="168" x2="620" y2="168" stroke="#ddd"/>
-<text x="64" y="172" text-anchor="end">0.99</text>
-<line x1="70" y1="110" x2="620" y2="110" stroke="#ddd"/>
-<text x="64" y="114" text-anchor="end">0.995</text>
-<line x1="70" y1="52" x2="620" y2="52" stroke="#ddd"/>
-<text x="64" y="56" text-anchor="end">1</text>
-<text x="12" y="168" transform="rotate(-90 12 168)" text-anchor="middle">share of 1 (axis starts at 0.98)</text>
-<text x="125" y="300" text-anchor="middle">0 %</text>
-<text x="235" y="300" text-anchor="middle">5 %</text>
-<text x="345" y="300" text-anchor="middle">10 %</text>
-<text x="455" y="300" text-anchor="middle">15 %</text>
-<text x="565" y="300" text-anchor="middle">20 %</text>
+<line x1="70" y1="284.0" x2="620" y2="284.0" stroke="#ddd" stroke-width="0.6"/>
+<text x="66" y="287.9" text-anchor="end">0.98</text>
+<line x1="70" y1="226.0" x2="620" y2="226.0" stroke="#ddd" stroke-width="0.6"/>
+<text x="66" y="229.8" text-anchor="end">0.985</text>
+<line x1="70" y1="168.0" x2="620" y2="168.0" stroke="#ddd" stroke-width="0.6"/>
+<text x="66" y="171.8" text-anchor="end">0.99</text>
+<line x1="70" y1="110.0" x2="620" y2="110.0" stroke="#ddd" stroke-width="0.6"/>
+<text x="66" y="113.8" text-anchor="end">0.995</text>
+<line x1="70" y1="52.0" x2="620" y2="52.0" stroke="#ddd" stroke-width="0.6"/>
+<text x="66" y="55.9" text-anchor="end">1</text>
+<text x="11" y="168" transform="rotate(-90 11 168)" text-anchor="middle">share of 1 (axis starts at 0.98)</text>
+<text x="125.0" y="302" text-anchor="middle">0 %</text>
+<text x="235.0" y="302" text-anchor="middle">5 %</text>
+<text x="345.0" y="302" text-anchor="middle">10 %</text>
+<text x="455.0" y="302" text-anchor="middle">15 %</text>
+<text x="565.0" y="302" text-anchor="middle">20 %</text>
 <text x="345" y="316" text-anchor="middle">packet loss per hop (rgg and mesh, N 20/50/100, 3 seeds)</text>
-<line x1="70" y1="284" x2="620" y2="284" stroke="black"/>
-<polyline fill="none" stroke="#4477aa" stroke-width="2" points="125.0,52.0 235.0,52.0 345.0,52.0 455.0,52.0 565.0,97.1"/>
-<line x1="565.0" y1="217.4" x2="565.0" y2="52.0" stroke="#4477aa" stroke-width="1.5"/><line x1="561.0" y1="217.4" x2="569.0" y2="217.4" stroke="#4477aa"/><line x1="561.0" y1="52.0" x2="569.0" y2="52.0" stroke="#4477aa"/>
+<line x1="70" y1="284" x2="620" y2="284" stroke="black"/><line x1="70" y1="52" x2="70" y2="284" stroke="black" stroke-width="0.6"/>
+<polyline fill="none" stroke="#4477aa" stroke-width="2.0" points="125.0,52.0 235.0,52.0 345.0,52.0 455.0,52.0 565.0,97.1"/>
+<line x1="565.0" y1="217.4" x2="565.0" y2="52.0" stroke="#4477aa" stroke-width="0.8"/><line x1="563.2" y1="217.4" x2="566.8" y2="217.4" stroke="#4477aa" stroke-width="0.8"/><line x1="563.2" y1="52.0" x2="566.8" y2="52.0" stroke="#4477aa" stroke-width="0.8"/>
 <circle cx="125.0" cy="52.0" r="3.5" fill="#4477aa"/>
 <circle cx="235.0" cy="52.0" r="3.5" fill="#4477aa"/>
 <circle cx="345.0" cy="52.0" r="3.5" fill="#4477aa"/>
 <circle cx="455.0" cy="52.0" r="3.5" fill="#4477aa"/>
 <circle cx="565.0" cy="97.1" r="3.5" fill="#4477aa"/>
-<rect x="70" y="335" width="10" height="10" fill="#4477aa"/><text x="84" y="344">delivery after the ban</text>
-<polyline fill="none" stroke="#cc6677" stroke-width="2" points="125.0,52.0 235.0,52.0 345.0,52.0 455.0,52.0 565.0,52.0"/>
-<circle cx="125.0" cy="52.0" r="3.5" fill="#cc6677"/>
-<circle cx="235.0" cy="52.0" r="3.5" fill="#cc6677"/>
-<circle cx="345.0" cy="52.0" r="3.5" fill="#cc6677"/>
-<circle cx="455.0" cy="52.0" r="3.5" fill="#cc6677"/>
-<circle cx="565.0" cy="52.0" r="3.5" fill="#cc6677"/>
-<rect x="260" y="335" width="10" height="10" fill="#cc6677"/><text x="274" y="344">honest nodes not banned</text>
+<line x1="70" y1="340.5" x2="84" y2="340.5" stroke="#4477aa" stroke-width="2.0"/><circle cx="77.0" cy="340.5" r="3.5" fill="#4477aa"/><text x="88" y="344">delivery after the ban</text>
+<polyline fill="none" stroke="#cc6677" stroke-width="2.0" points="125.0,52.0 235.0,52.0 345.0,52.0 455.0,52.0 565.0,52.0"/>
+<rect x="121.5" y="48.5" width="7.0" height="7.0" fill="#cc6677"/>
+<rect x="231.5" y="48.5" width="7.0" height="7.0" fill="#cc6677"/>
+<rect x="341.5" y="48.5" width="7.0" height="7.0" fill="#cc6677"/>
+<rect x="451.5" y="48.5" width="7.0" height="7.0" fill="#cc6677"/>
+<rect x="561.5" y="48.5" width="7.0" height="7.0" fill="#cc6677"/>
+<line x1="260" y1="340.5" x2="274" y2="340.5" stroke="#cc6677" stroke-width="2.0"/><rect x="263.5" y="337.0" width="7.0" height="7.0" fill="#cc6677"/><text x="278" y="344">honest nodes not banned</text>
 </svg>
