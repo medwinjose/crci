@@ -14,13 +14,7 @@ fn id_in(stdout: &str) -> String {
 }
 
 fn get_bin_path() -> std::path::PathBuf {
-    let mut path = std::env::current_exe().unwrap();
-    path.pop(); // remove dependency file name
-    if path.file_name().unwrap() == "deps" {
-        path.pop(); // remove deps folder
-    }
-    path.push("crci-node");
-    path
+    std::path::PathBuf::from(env!("CARGO_BIN_EXE_crci-node"))
 }
 
 #[tokio::test]

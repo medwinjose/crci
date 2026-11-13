@@ -10,13 +10,7 @@ use std::process::{Child, ChildStdout, Command, Stdio};
 use std::time::{Duration, Instant};
 
 fn bin_path() -> std::path::PathBuf {
-    let mut path = std::env::current_exe().unwrap();
-    path.pop();
-    if path.file_name().unwrap() == "deps" {
-        path.pop();
-    }
-    path.push("crci-node");
-    path
+    std::path::PathBuf::from(env!("CARGO_BIN_EXE_crci-node"))
 }
 
 /// A port that is free now, for a node that must be named before it starts. It comes from a
