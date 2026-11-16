@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" font-family="Helvetica, Arial, sans-serif" font-size="11"><rect width="640" height="380" fill="white"/>
+<text x="70" y="18" font-size="13" font-weight="bold">Goodput against a fresh-message flood</text>
+<text x="70" y="34" fill="#555">emulation: real crci-node processes on one host, rgg N = 50, mean of 3 seeds, receive link 256 kbit/s; lines with equal values overlap</text>
+<line x1="70" y1="284.0" x2="620" y2="284.0" stroke="#ddd" stroke-width="0.6"/>
+<text x="66" y="287.9" text-anchor="end">0</text>
+<line x1="70" y1="196.1" x2="620" y2="196.1" stroke="#ddd" stroke-width="0.6"/>
+<text x="66" y="200.0" text-anchor="end">20</text>
+<line x1="70" y1="108.2" x2="620" y2="108.2" stroke="#ddd" stroke-width="0.6"/>
+<text x="66" y="112.1" text-anchor="end">40</text>
+<text x="11" y="168" transform="rotate(-90 11 168)" text-anchor="middle">honest deliveries per second</text>
+<text x="138.8" y="302" text-anchor="middle">0</text>
+<text x="276.2" y="302" text-anchor="middle">40</text>
+<text x="413.8" y="302" text-anchor="middle">100</text>
+<text x="551.2" y="302" text-anchor="middle">200</text>
+<text x="345" y="316" text-anchor="middle">fresh messages per second from B (0 = no attack)</text>
+<line x1="70" y1="284" x2="620" y2="284" stroke="black"/><line x1="70" y1="52" x2="70" y2="284" stroke="black" stroke-width="0.6"/>
+<polyline fill="none" stroke="#4477aa" stroke-width="2.0" points="138.8,73.1 276.2,81.8 413.8,81.4 551.2,81.8"/>
+<circle cx="138.8" cy="73.1" r="3.5" fill="#4477aa"/>
+<circle cx="276.2" cy="81.8" r="3.5" fill="#4477aa"/>
+<circle cx="413.8" cy="81.4" r="3.5" fill="#4477aa"/>
+<circle cx="551.2" cy="81.8" r="3.5" fill="#4477aa"/>
+<line x1="70" y1="341" x2="84" y2="341" stroke="#4477aa" stroke-width="2.0"/><circle cx="77.0" cy="341.0" r="3.5" fill="#4477aa"/><text x="87" y="344">full</text>
+<polyline fill="none" stroke="#cc6677" stroke-width="2.0" points="138.8,73.1 276.2,119.6 413.8,111.0 551.2,107.0"/>
+<rect x="135.2" y="69.6" width="7.0" height="7.0" fill="#cc6677"/>
+<rect x="272.8" y="116.1" width="7.0" height="7.0" fill="#cc6677"/>
+<rect x="410.2" y="107.5" width="7.0" height="7.0" fill="#cc6677"/>
+<rect x="547.8" y="103.5" width="7.0" height="7.0" fill="#cc6677"/>
+<line x1="260" y1="341" x2="274" y2="341" stroke="#cc6677" stroke-width="2.0"/><rect x="263.5" y="337.5" width="7.0" height="7.0" fill="#cc6677"/><text x="277" y="344">static-bucket</text>
+<polyline fill="none" stroke="#228833" stroke-width="2.0" points="138.8,73.1 276.2,123.3 413.8,110.1 551.2,117.1"/>
+<polygon points="138.8,68.7 134.7,76.6 142.8,76.6" fill="#228833"/>
+<polygon points="276.2,119.0 272.2,126.8 280.3,126.8" fill="#228833"/>
+<polygon points="413.8,105.7 409.7,113.6 417.8,113.6" fill="#228833"/>
+<polygon points="551.2,112.7 547.2,120.6 555.3,120.6" fill="#228833"/>
+<line x1="450" y1="341" x2="464" y2="341" stroke="#228833" stroke-width="2.0"/><polygon points="457.0,336.6 453.0,344.5 461.0,344.5" fill="#228833"/><text x="467" y="344">vanilla</text>
+</svg>

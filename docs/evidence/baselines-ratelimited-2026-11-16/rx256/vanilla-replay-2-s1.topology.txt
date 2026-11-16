@@ -1,0 +1,3 @@
+topology kind=rgg seed=1 {"radius": 0.2232, "attempts": 1}
+metrics nodes=50 edges=151 mean_degree=6.04 min_degree=1 max_degree=11 diameter=10 avg_shortest_path=3.6678 clustering=0.5822
+roles source=47 byzantine=27 byzantine_degree=10 hops_source_to_byzantine=2 downstream=18

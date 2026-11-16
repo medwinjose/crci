@@ -746,6 +746,45 @@ Evidence: [`evidence/ratio-2026-11-07/`](evidence/ratio-2026-11-07/) (`ratio.csv
 `partition-check.txt`, the figures, the 90 runs' `summary.json`, `meta.json` and `bans.csv`, `SHA256SUMS`).
 Reproduce: `make ratio` (about 3 h for the runs, under a minute for the graph computation).
 
+### Baselines on rate-limited links
+
+The baseline runs above give every node an unlimited link. Here each node's receive capacity is limited
+(`testbed.py --rx-kbit`, `RX_KBIT=N scripts/testbed/run_baselines.sh`): a rate-limited queue of 300 packets
+on the host side of its veth, one FIFO shared by every sender, tail drop when full. The attacker's own
+sending is not limited. Same 63 runs per rate (rgg N = 50, three modes, replay x2/8/32, flood 40/100/200
+messages/s, three seeds) at 256 and 1 000 kbit/s, one binary; criteria fixed before the data. Evidence:
+`docs/evidence/baselines-ratelimited-2026-11-16/` (per-run summaries, tables, figures, `SHA256SUMS`).
+Emulation on one host: no radio, MAC contention or duty cycle.
+
+Honest delivery ratio (mean of 3 seeds):
+
+| attack | 256 kbit/s full / static-bucket / vanilla | 1 000 kbit/s full / static-bucket / vanilla |
+|---|---|---|
+| none | 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 |
+| replay x2 | 0.997 / 0.757 / 0.710 | 1.000 / 0.967 / 0.743 |
+| replay x8 | 0.987 / 0.843 / 0.763 | 1.000 / 0.997 / 0.983 |
+| replay x32 | 0.993 / 0.897 / 0.880 | 1.000 / 1.000 / 0.993 |
+| flood 40/s | 0.983 / 0.797 / 0.770 | 1.000 / 0.960 / 0.703 |
+| flood 100/s | 0.983 / 0.840 / 0.853 | 1.000 / 0.983 / 0.650 |
+| flood 200/s | 0.973 / 0.847 / 0.803 | 0.990 / 0.990 / 0.740 |
+
+What holds and what does not:
+
+- On a link that cannot carry the attack, plain gossip loses honest traffic (down to 0.65) and the full
+  defence keeps 0.97 or more at both rates, against replay and against fresh-message floods. Under replay
+  the static bucket alone also loses delivery at 256 kbit/s (0.757 at 2 copies).
+- Not monotonic in the attack: vanilla delivers 0.743 at 2 copies but 0.993 at 32 copies at 1 000 kbit/s.
+  A likely reason, not verified: with a heavier attack the attacker's own relay queue overflows
+  (`relay_drops.queue_full` in the summaries) and it sends less. Do not read the vanilla column as a trend.
+- **Criteria that fail as written:** at 1 000 kbit/s the full defence beats vanilla by only 0.007 at 32
+  copies (criterion: at least 0.05; it holds at 256 kbit/s, 0.11). At 256 kbit/s the full defence bans the
+  attacker at only 4 to 7 of 10 neighbours within the 60 s window (eviction median 40 to 47 s in the three replay x8 runs, against
+  about 2 s on an unlimited link; attacker frames queue and arrive more than W = 64 numbers late, which is
+  dropped without a strike). The cause is not verified. No honest node is banned in any run.
+- **Fidelity:** 17 of 126 runs fail a fidelity criterion: the ping RTT p95 on the 15 runs without an attack
+  (pings queue behind honest sync traffic; the allowance of one full frame per direction was too small)
+  and acceptance lines held back in two vanilla flood-200 runs at 1 000 kbit/s. They are kept.
+
 ## In-process simulation (up to 5 000 nodes)
 
 Protocol logic at a scale one host cannot emulate with real processes. **These are simulation results, not
