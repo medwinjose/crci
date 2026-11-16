@@ -77,6 +77,9 @@ def batch(cmd, lines):
                    stdout=subprocess.DEVNULL)
 
 
+RX_QUEUE_PACKETS = 300  # about 1 s of 850 B frames at 2 Mbit/s; tail drop beyond it
+
+
 def netem_args(delay_ms, jitter_ms, loss_pct, reorder_pct):
     """tc netem options for one node's egress. Jitter is uniform in +-jitter_ms around the delay;
     reordering sends that percentage of packets without delay (netem needs a delay for it)."""
@@ -90,7 +93,7 @@ def netem_args(delay_ms, jitter_ms, loss_pct, reorder_pct):
     return args + ["limit", "100000"]
 
 
-def setup_network(n, netem, nbrs):
+def setup_network(n, netem, nbrs, rx_kbit=0):
     sh("ip", "link", "add", BRIDGE, "type", "bridge")
     sh("ip", "link", "set", BRIDGE, "up")
     for i in range(n):
@@ -104,6 +107,11 @@ def setup_network(n, netem, nbrs):
         sh("ip", "-n", ns, "link", "set", "lo", "up")
         # One-way delay on the node's egress: every overlay hop crosses exactly one.
         sh("tc", "-n", ns, "qdisc", "add", "dev", "eth0", "root", "netem", *netem)
+        if rx_kbit:
+            # Receive capacity of node i: the host side of its veth drains into the namespace at
+            # rx_kbit, one FIFO shared by every sender (honest and attacker), tail drop when full.
+            sh("tc", "qdisc", "add", "dev", f"vh{i}", "root", "netem", "rate", f"{rx_kbit}kbit",
+               "limit", str(RX_QUEUE_PACKETS))
     # Static neighbour and bridge entries: no ARP broadcast or unknown-unicast flooding, which
     # at start-up (every node resolving its neighbours at once) overflows the kernel backlog.
     for i in range(n):
@@ -227,6 +235,9 @@ def main():
     ap.add_argument("--loss", type=float, default=0, help="packet loss, percent per egress")
     ap.add_argument("--reorder", type=float, default=0,
                     help="percent of packets sent without delay (reordered)")
+    ap.add_argument("--rx-kbit", type=int, default=0,
+                    help="receive capacity of every node in kbit/s (0 = unlimited): a rate-limited "
+                         "queue on the host side of its veth, shared by all senders")
     ap.add_argument("--window", type=int, default=60)
     ap.add_argument("--source-rate", type=float, default=0.5)
     ap.add_argument("--bg-rate", type=float, default=0.5)
@@ -301,7 +312,8 @@ def main():
     with open(BACKLOG, "w") as f:
         f.write(str(args.backlog))
     t_setup = time.time()
-    setup_network(n, netem_args(args.delay_ms, args.jitter_ms, args.loss, args.reorder), nbrs)
+    setup_network(n, netem_args(args.delay_ms, args.jitter_ms, args.loss, args.reorder), nbrs,
+                  args.rx_kbit)
     setup_s = time.time() - t_setup
     print(f"network: {n} namespaces up in {setup_s:.1f} s", flush=True)
 
@@ -434,7 +446,7 @@ def main():
     meta = {
         "topology": {k: topo[k] for k in ("kind", "seed", "params", "metrics", "roles")},
         "config": {k: getattr(args, k) for k in (
-            "delay_ms", "jitter_ms", "loss", "reorder", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies", "corrupt_signatures", "corrupt_for",
+            "delay_ms", "jitter_ms", "loss", "reorder", "rx_kbit", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies", "corrupt_signatures", "corrupt_for",
             "defence", "strikes_to_ban", "replay_window",
             "flap_fraction", "flap_mode", "flap_min_s", "flap_max_s", "flap_start", "flap_stop",
             "byz_rate", "attackers_pct", "refill", "settle", "drain", "pings", "worker_threads", "backlog")},

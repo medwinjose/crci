@@ -327,14 +327,24 @@ def main():
             rtts += [float(x) for x in RTT.findall(f.read())]
     rtt = stats(rtts)
     exp_med, exp_p95 = expected_rtt(delay, jitter, reorder)
+    rx_kbit = cfg.get("rx_kbit", 0)
+    # A rate-limited receive queue adds one serialisation time per direction (112 B ICMP frame).
+    # Under attack the pings queue behind the attack traffic: that is the effect measured, so the
+    # RTT criteria judge only runs without a fault.
+    rtt_judged = not (rx_kbit and (cfg.get("byz_rate") or not cfg.get("no_fault")))
+    if rx_kbit:
+        exp_med += 2 * 112 * 8 / rx_kbit
+        # p95: a ping may also wait behind one full 900 B frame per direction.
+        exp_p95 += 2 * (112 + 900) * 8 / rx_kbit
     fidelity = {
         "all_nodes_listening_at_t0": meta["listening_at_t0"] == n,
         "cpu_mean_below_70": bool(cpu) and sum(cpu) / len(cpu) < 70,
         "no_kernel_backlog_drops": kernel_drops == 0,
         "no_swap_io": swap_io == 0,
         "rtt_median_within_10pct": rtt.get("median") is not None
-        and 0.90 * exp_med <= rtt["median"] <= 1.10 * exp_med,
-        "rtt_p95_within_25pct": rtt.get("p95") is not None and rtt["p95"] <= 1.25 * exp_p95,
+        and (not rtt_judged or 0.90 * exp_med <= rtt["median"] <= 1.10 * exp_med),
+        "rtt_p95_within_25pct": rtt.get("p95") is not None
+        and (not rtt_judged or rtt["p95"] <= 1.25 * exp_p95),
         # A node above its per-second line limit holds acceptance lines back: delivery would be
         # undercounted.
         "every_acceptance_logged": counters["accepted_lines_not_printed"] == 0,

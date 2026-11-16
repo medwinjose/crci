@@ -61,6 +61,7 @@ Each run uses a 60 s measurement window starting at T0, after every node is list
 - **Fault:** a relay B behaves honestly until T0 + 20 s, then sends every gossip message twice, i.e.
   repeats each message once (`crci-node --replay-after-ms`, `--replay-copies`). Its neighbours strike it
   and ban it.
+- **Receive capacity:** `--rx-kbit N` limits every node's receive link to N kbit/s (a 300-packet rate-limited queue on the host side of its veth, shared by all senders, tail drop); `RX_KBIT=N run_baselines.sh` passes it. The RTT fidelity check adds the serialisation time and is not judged on runs with an attack.
 - **Attacker options:** `--byz-rate R` makes B originate R messages/s of its own from 10 s before the
   fault; `--replay-copies 1` turns the fault into a pure fresh-message flood; `--refill` sets the
   per-neighbour budget refill; `--drain S` keeps the nodes running S seconds after the window.

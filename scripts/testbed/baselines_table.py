@@ -36,7 +36,7 @@ def load(out):
         cpu = s.get("cpu_seconds_per_process", {})
         aw = s["attack_window"]
         rows.append({
-            "run": run, "mode": mode, "attack": attack, "intensity": intensity, "seed": seed,
+            "run": run, "rx_kbit": s["config"].get("rx_kbit", 0), "mode": mode, "attack": attack, "intensity": intensity, "seed": seed,
             "neighbours": int(nbrs), "banned_by": int(banned),
             "mdr": aw["delivery"].get("mean"), "mdr_min": aw["delivery"].get("min"),
             "goodput_per_s": aw["goodput_per_s"], "attack_messages": aw["messages"],
@@ -66,17 +66,35 @@ def criteria(rows):
     full_replay = [r for r in replay if r["mode"] == "full"]
     baseline_runs = [r for r in rows if r["mode"] != "full"]
     full = [r for r in rows if r["mode"] == "full"]
-    return [
+    limited = any(r["rx_kbit"] for r in rows)
+    none = [r for r in rows if r["attack"] == "none"]
+    full_ok = [r for r in full if r["attack"] != "flood"]
+
+    def mdr(mode, attack, intensity):
+        v = [r["mdr"] for r in rows if (r["mode"], r["attack"], r["intensity"]) == (mode, attack, intensity)]
+        return mean(v)
+
+    result = [
         ("full: B banned by every neighbour in every replay run",
          bool(full_replay) and all(r["banned_by"] == r["neighbours"] for r in full_replay)),
         ("static-bucket and vanilla: B banned by no neighbour in any run",
          bool(baseline_runs) and all(r["banned_by"] == 0 for r in baseline_runs)),
-        ("full: MDR >= 0.99 at every intensity",
-         bool(full) and all((r["mdr"] or 0) >= 0.99 for r in full)),
+        ("full: MDR >= 0.99 at every intensity" if not limited
+         else "full: MDR >= 0.99 in every run without attack and every replay run (flood: reported only)",
+         bool(full) and all((r["mdr"] or 0) >= 0.99 for r in (full if not limited else full_ok))),
         ("0 honest false evictions in every run", all(r["honest_false_evictions"] == 0 for r in rows)),
         ("every run faithful (the testbed's fidelity criteria; a failing run is reported, not dropped)",
          all(r["faithful"] for r in rows)),
     ]
+    if limited:
+        result += [
+            ("no attack: every mode MDR >= 0.99 (the link rate carries the honest load)",
+             bool(none) and all((r["mdr"] or 0) >= 0.99 for r in none)),
+            ("replay x32: full MDR exceeds vanilla MDR by at least 0.05 (isolation protects honest traffic)",
+             mdr("full", "replay", 32) is not None and mdr("vanilla", "replay", 32) is not None
+             and mdr("full", "replay", 32) - mdr("vanilla", "replay", 32) >= 0.05),
+        ]
+    return result
 
 
 def main():
@@ -125,7 +143,8 @@ def main():
             svgplot.line_chart(
                 f"{out}/figures/{metric}-{attack}.svg",
                 f"{title} against {'replay' if attack == 'replay' else 'a fresh-message flood'}",
-                "emulation: real crci-node processes on one host, rgg N = 50, mean of 3 seeds; lines with equal values overlap",
+                "emulation: real crci-node processes on one host, rgg N = 50, mean of 3 seeds"
+                + (f", receive link {rows[0]['rx_kbit']} kbit/s" if rows[0]["rx_kbit"] else "") + "; lines with equal values overlap",
                 [str(x) for x in ATTACKS[attack]], series(metric, attack), ylabel, ymin, ymax, xlab)
 
 

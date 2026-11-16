@@ -16,6 +16,8 @@ set -euo pipefail
 OUT=${1:?usage: run_baselines.sh OUT_DIR [crci-node binary] [seeds]}
 BIN=${2:-target/release/crci-node}
 SEEDS=${3:-"1 2 3"}
+# RX_KBIT=N limits every node's receive capacity to N kbit/s (testbed.py --rx-kbit); 0 = unlimited.
+RX_KBIT=${RX_KBIT:-0}
 HERE=$(cd "$(dirname "$0")" && pwd)
 mkdir -p "$OUT"
 
@@ -26,7 +28,7 @@ run() {
     if [ -f "$dir/summary.json" ]; then echo "skip $dir"; return; fi
     echo "=== $name (rgg, N=50, seed $seed) ==="
     python3 "$HERE/topology.py" rgg 50 "$seed" "$dir.topo.json" | tee "$dir.topology.txt"
-    python3 "$HERE/testbed.py" --topo "$dir.topo.json" --out "$dir" --bin "$BIN" "$@"
+    python3 "$HERE/testbed.py" --topo "$dir.topo.json" --out "$dir" --bin "$BIN" --rx-kbit "$RX_KBIT" "$@"
     python3 "$HERE/analyze.py" "$dir" > /dev/null
 }
 
