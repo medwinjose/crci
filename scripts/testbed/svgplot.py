@@ -19,7 +19,7 @@ LAYOUT = {"width": 640, "height": 380, "left": 70, "right": 20, "top": 52, "bott
 
 
 def compact():
-    LAYOUT.update(width=168, height=160, left=33, right=6, top=32, bottom=32, legend_dx=76, legend_dy=10,
+    LAYOUT.update(width=168, height=154, left=33, right=6, top=32, bottom=26, legend_dx=76, legend_dy=10,
                   font=7, marker=2.3, line=1.1, titles=False, dodge=2.2, tick_y=10, label_y=21,
                   legend_y=0, family="Times New Roman, Times, serif", cols=2, legend_top=True, cursor=0.0)
 

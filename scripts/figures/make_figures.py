@@ -132,10 +132,12 @@ def fig_d(out):
         if r["faithful"] == "True":
             by[(r["mode"], r["attack"], r["intensity"])].append(num(r["goodput_per_s"]))
     series, errors = {}, {}
+    # Compact (paper) legend uses the paper's names for the modes, short enough for one row.
+    names = {"static-bucket": "static", "vanilla": "plain gossip"} if COMPACT else {}
     for mode in ("full", "static-bucket", "vanilla"):
         stats = [mean_sd(by.get((mode, a, i), [])) for a, i in order]
-        series[mode] = [m for m, _ in stats]
-        errors[mode] = [s for _, s in stats]
+        series[names.get(mode, mode)] = [m for m, _ in stats]
+        errors[names.get(mode, mode)] = [s for _, s in stats]
     svgplot.line_chart(f"{out}/fig-d-goodput-vs-baselines.svg", "Goodput against attack intensity, three defence modes",
                        "emulation, rgg N = 50, 3 seeds, mean ± sd; vanilla omitted at flood 100 and 200/s (not faithful)",
                        labels, series, "deliveries per second" if COMPACT else "honest deliveries per second",
