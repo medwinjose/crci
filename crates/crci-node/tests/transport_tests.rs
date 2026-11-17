@@ -218,10 +218,16 @@ async fn test_tcp_transport_cancellation() {
 
 #[tokio::test]
 async fn test_tcp_transport_connection_limit() {
+    // Every connection its own host: the listener's total limit refuses the 101st (with the
+    // default per-host limits one host would instead keep only its newest connections).
     let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
-    let tcp = TcpTransport::bind(
+    let tcp = TcpTransport::bind_with_limits(
         addr,
         crci_core::identity::Identity::new("transport").signing_key,
+        crci_core::transport::ListenerLimits {
+            per_host_limits: false,
+            ..Default::default()
+        },
     )
     .await
     .unwrap();

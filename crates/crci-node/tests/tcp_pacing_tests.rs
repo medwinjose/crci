@@ -1,7 +1,8 @@
-//! A connection's frames are read at a bounded rate.
+//! A host's frames are read at a bounded rate.
 //!
-//! Before any frame is read the listener takes a token from a per-connection bucket
-//! (`FRAME_PACING_RATE` frames/s, `FRAME_PACING_BURST` burst by default) and sleeps when it is empty, so a
+//! Before any frame is read the listener takes a token from a bucket shared by every connection
+//! of the frame's source host (`FRAME_PACING_RATE` frames/s, `FRAME_PACING_BURST` burst by default)
+//! and sleeps when it is empty, so a
 //! sender cannot make the receiver parse and verify frames faster than that: TCP flow control
 //! slows the sender down. Nothing is struck or banned for it.
 

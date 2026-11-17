@@ -93,9 +93,10 @@ async fn main() {
         }
 
         // The transport authenticates connections with the same key that signs messages.
-        let tcp = match crci_core::transport::TcpTransport::bind(
+        let tcp = match crci_core::transport::TcpTransport::bind_with_limits(
             listen_socket,
             node.identity.signing_key.clone(),
+            listener_limits(&args),
         )
         .await
         {
@@ -182,8 +183,12 @@ async fn main() {
                     std::process::exit(1);
                 }
             };
-            match crci_core::transport::TcpTransport::bind(addr, node.identity.signing_key.clone())
-                .await
+            match crci_core::transport::TcpTransport::bind_with_limits(
+                addr,
+                node.identity.signing_key.clone(),
+                listener_limits(&args),
+            )
+            .await
             {
                 Ok(t) => Some(Arc::new(t)),
                 Err(e) => {
@@ -1287,6 +1292,22 @@ async fn main() {
 }
 
 /// Peer addresses from `--dial` and `--peers`.
+/// Listener limits from `--per-host-limits` (stops the node on a value other than on/off).
+fn listener_limits(args: &Cli) -> crci_core::transport::ListenerLimits {
+    let per_host_limits = match args.per_host_limits.as_str() {
+        "on" => true,
+        "off" => false,
+        other => {
+            eprintln!("--per-host-limits must be on or off, not {other}");
+            std::process::exit(1);
+        }
+    };
+    crci_core::transport::ListenerLimits {
+        per_host_limits,
+        ..Default::default()
+    }
+}
+
 fn dial_targets(args: &Cli) -> Vec<String> {
     let mut targets = Vec::new();
     if let Some(dial) = args.dial.clone() {
@@ -1818,6 +1839,10 @@ async fn run_node(
             // All isolation checks run inside NodeRuntime, as on the in-process path.
             let (delivered, outbound, head, sender_rep, new_events, sender_banned) = {
                 let mut n = recv_node.lock().unwrap_or_else(|e| e.into_inner());
+                // The sender's budget is shared with every identity of its host.
+                if let Some(host) = recv_tcp.peer_host(&sender_id) {
+                    n.sybil_guard.set_sender_host(&sender_id, &host);
+                }
                 {
                     let mut inbox = n.inbox.lock().unwrap_or_else(|e| e.into_inner());
                     inbox
@@ -1978,6 +2003,7 @@ async fn run_node(
     tokio::spawn(async move {
         let mut last_stats = (0, 0);
         let mut last_banned_dropped = 0;
+        let mut last_listener = (0, 0);
         let mut last_held = (0, 0);
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
@@ -2004,6 +2030,24 @@ async fn run_node(
                     "Node {} frames paced: total={} at_ms={}",
                     cons_node_id,
                     paced,
+                    unix_ms()
+                );
+            }
+            let listener = (
+                stats_tcp
+                    .rejected_count
+                    .load(std::sync::atomic::Ordering::Relaxed),
+                stats_tcp
+                    .evicted_connections
+                    .load(std::sync::atomic::Ordering::Relaxed),
+            );
+            if listener != last_listener {
+                last_listener = listener;
+                println!(
+                    "Node {} listener: refused={} evicted={} at_ms={}",
+                    cons_node_id,
+                    listener.0,
+                    listener.1,
                     unix_ms()
                 );
             }

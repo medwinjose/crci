@@ -116,4 +116,10 @@ pub struct Cli {
     /// the protocol's rate)
     #[arg(long)]
     pub sender_refill_per_sec: Option<f32>,
+
+    /// Experiments: charge the listener's connection, handshake and frame limits and the
+    /// message budget to each sender's host (on, the default) or to each connection and
+    /// identity alone (off, the behaviour before per-host limits)
+    #[arg(long, default_value = "on")]
+    pub per_host_limits: String,
 }

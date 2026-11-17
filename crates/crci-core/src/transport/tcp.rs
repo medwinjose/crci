@@ -120,6 +120,322 @@ impl ShunList {
     }
 }
 
+// ─── Listener admission per host ─────────────────────────────────────────────
+//
+// Keys are free, so a limit per identity limits nothing: one host can sign with as many
+// identities as it likes. A TCP connection's source address cannot be forged without the
+// three-way handshake, so the listener charges its limits to the source host (an IPv4
+// address, or an IPv6 /64) instead: connections, handshakes per second and frames per second
+// are shared by every connection and identity of one host. An honest node is one host with
+// one relay link and a short sync connection now and then, so it never reaches them.
+//
+// When every slot is taken, a connection from a host that holds fewer connections than the
+// host holding the most is admitted by closing the least recently active connection of that
+// host; otherwise it is refused. A host with no connection is therefore never refused, and an
+// adversary needs more hosts than slots it wants to keep before it can displace a host with
+// one or two connections.
+
+/// Connections the listener keeps open at once.
+pub const MAX_CONNECTIONS: usize = 100;
+/// Connections one host may hold at once (handshakes in progress included); a further one closes
+/// that host's least recently active connection, so a host cannot lock itself out with dead ones.
+pub const MAX_CONNECTIONS_PER_HOST: usize = 8;
+/// Connections one authenticated identity may hold at once; a further one closes its least
+/// recently active connection (a reconnect replaces a half-dead link).
+pub const MAX_CONNECTIONS_PER_IDENTITY: usize = 4;
+/// Connections one host may open at once before `HOST_ACCEPT_RATE` applies.
+pub const HOST_ACCEPT_BURST: f64 = 16.0;
+/// Connections per second one host may open, sustained; each costs the listener a handshake (an
+/// Ed25519 signature and a verification). An honest node opens one per reconnect and per sync
+/// request: at most one per few seconds per neighbour.
+pub const HOST_ACCEPT_RATE: f64 = 2.0;
+/// Hosts whose counters are kept; past this, hosts without a connection are forgotten.
+const MAX_TRACKED_HOSTS: usize = 4096;
+
+/// Limits of a listener. `Default` is what a node runs with.
+#[derive(Clone, Copy, Debug)]
+pub struct ListenerLimits {
+    /// Frames per second and burst read from one host (`FRAME_PACING_RATE`, `FRAME_PACING_BURST`).
+    pub pacing_rate: f64,
+    pub pacing_burst: u32,
+    pub max_connections: usize,
+    pub per_host: usize,
+    pub per_identity: usize,
+    pub accept_rate: f64,
+    pub accept_burst: f64,
+    /// False: every connection is its own host and a full listener refuses (the behaviour before
+    /// per-host admission, kept for experiments that measure what it changes).
+    pub per_host_limits: bool,
+}
+
+impl Default for ListenerLimits {
+    fn default() -> Self {
+        Self {
+            pacing_rate: FRAME_PACING_RATE,
+            pacing_burst: FRAME_PACING_BURST,
+            max_connections: MAX_CONNECTIONS,
+            per_host: MAX_CONNECTIONS_PER_HOST,
+            per_identity: MAX_CONNECTIONS_PER_IDENTITY,
+            accept_rate: HOST_ACCEPT_RATE,
+            accept_burst: HOST_ACCEPT_BURST,
+            per_host_limits: true,
+        }
+    }
+}
+
+/// The host a source address is charged to: an IPv4 address, or the /64 of an IPv6 address
+/// (one site usually holds a whole /64).
+pub fn host_of(addr: &SocketAddr) -> String {
+    match addr.ip() {
+        std::net::IpAddr::V4(v4) => v4.to_string(),
+        std::net::IpAddr::V6(v6) => match v6.to_ipv4_mapped() {
+            Some(v4) => v4.to_string(),
+            None => {
+                let s = v6.segments();
+                format!("{:x}:{:x}:{:x}:{:x}::/64", s[0], s[1], s[2], s[3])
+            }
+        },
+    }
+}
+
+struct HostState {
+    accept_tokens: f64,
+    accept_last: std::time::Instant,
+    pacer: Arc<std::sync::Mutex<FramePacer>>,
+}
+
+impl HostState {
+    fn pacer_full(&self, now: std::time::Instant) -> bool {
+        let p = self.pacer.lock().unwrap_or_else(|e| e.into_inner());
+        p.tokens + now.saturating_duration_since(p.last).as_secs_f64() * p.rate >= p.burst
+    }
+}
+
+struct ConnEntry {
+    host: String,
+    identity: Option<String>,
+    /// Admission order, to break ties towards the newest connection.
+    opened: u64,
+    /// Milliseconds since the registry started at the last frame (or the admission).
+    last_active: Arc<AtomicU64>,
+    cancel: CancellationToken,
+}
+
+/// What a connection gets on admission.
+struct Admitted {
+    id: u64,
+    cancel: CancellationToken,
+    pacer: Arc<std::sync::Mutex<FramePacer>>,
+    last_active: Arc<AtomicU64>,
+    started: std::time::Instant,
+}
+
+struct ConnRegistry {
+    limits: ListenerLimits,
+    started: std::time::Instant,
+    next: u64,
+    conns: HashMap<u64, ConnEntry>,
+    hosts: HashMap<String, HostState>,
+    /// Host of each identity's latest authenticated connection.
+    identity_host: HashMap<String, String>,
+}
+
+impl ConnRegistry {
+    fn new(limits: ListenerLimits) -> Self {
+        Self {
+            limits,
+            started: std::time::Instant::now(),
+            next: 0,
+            conns: HashMap::new(),
+            hosts: HashMap::new(),
+            identity_host: HashMap::new(),
+        }
+    }
+
+    fn elapsed_ms(&self) -> u64 {
+        self.started.elapsed().as_millis() as u64
+    }
+
+    fn count(&self, host: &str) -> usize {
+        self.conns.values().filter(|c| c.host == host).count()
+    }
+
+    /// Close and forget connection `id`.
+    fn evict(&mut self, id: u64) {
+        if let Some(entry) = self.conns.remove(&id) {
+            entry.cancel.cancel();
+        }
+    }
+
+    /// The least recently active connection among those `filter` selects.
+    fn idlest(&self, filter: impl Fn(&ConnEntry) -> bool) -> Option<u64> {
+        self.conns
+            .iter()
+            .filter(|(_, c)| filter(c))
+            .min_by_key(|(_, c)| (c.last_active.load(Ordering::Relaxed), c.opened))
+            .map(|(id, _)| *id)
+    }
+
+    /// Admit a connection from `addr`, closing another one if the rules above say so; `None`
+    /// refuses it. Returns the number of connections closed to make room as well.
+    fn admit(&mut self, addr: &SocketAddr, parent: &CancellationToken) -> (Option<Admitted>, u64) {
+        let id = self.next;
+        self.next += 1;
+        let limits = self.limits;
+        let host = if limits.per_host_limits {
+            host_of(addr)
+        } else {
+            format!("connection-{id}")
+        };
+        let mut evicted = 0;
+        if limits.per_host_limits {
+            let now = std::time::Instant::now();
+            if self.hosts.len() >= MAX_TRACKED_HOSTS {
+                // Only hosts without a connection whose budgets are full again: a forgotten host
+                // comes back with full budgets, so forgetting gains it nothing.
+                let live: std::collections::HashSet<String> =
+                    self.conns.values().map(|c| c.host.clone()).collect();
+                self.hosts.retain(|h, state| {
+                    let accept_full = state.accept_tokens
+                        + (now - state.accept_last).as_secs_f64() * limits.accept_rate
+                        >= limits.accept_burst;
+                    live.contains(h) || !accept_full || !state.pacer_full(now)
+                });
+            }
+            let state = self.hosts.entry(host.clone()).or_insert_with(|| HostState {
+                accept_tokens: limits.accept_burst,
+                accept_last: now,
+                pacer: Arc::new(std::sync::Mutex::new(FramePacer::new(
+                    limits.pacing_rate,
+                    limits.pacing_burst,
+                ))),
+            });
+            state.accept_tokens = (state.accept_tokens
+                + (now - state.accept_last).as_secs_f64() * limits.accept_rate)
+                .min(limits.accept_burst);
+            state.accept_last = now;
+            if state.accept_tokens < 1.0 {
+                return (None, 0);
+            }
+            state.accept_tokens -= 1.0;
+            if self.count(&host) >= limits.per_host {
+                if let Some(old) = self.idlest(|c| c.host == host) {
+                    self.evict(old);
+                    evicted += 1;
+                }
+            }
+        }
+        if self.conns.len() >= limits.max_connections {
+            if !limits.per_host_limits {
+                return (None, evicted);
+            }
+            let own = self.count(&host);
+            let mut sizes: HashMap<&str, (usize, u64)> = HashMap::new();
+            for c in self.conns.values() {
+                let e = sizes.entry(c.host.as_str()).or_insert((0, 0));
+                e.0 += 1;
+                e.1 = e.1.max(c.opened);
+            }
+            // The host holding the most connections; among equals, the one that connected last.
+            let largest = sizes
+                .iter()
+                .max_by_key(|(_, (n, newest))| (*n, *newest))
+                .map(|(h, (n, _))| (h.to_string(), *n));
+            match largest {
+                Some((big, n)) if n > own => {
+                    if let Some(old) = self.idlest(|c| c.host == big) {
+                        self.evict(old);
+                        evicted += 1;
+                    }
+                }
+                _ => return (None, evicted),
+            }
+        }
+        let pacer = match self.hosts.get(&host) {
+            Some(state) => state.pacer.clone(),
+            None => Arc::new(std::sync::Mutex::new(FramePacer::new(
+                limits.pacing_rate,
+                limits.pacing_burst,
+            ))),
+        };
+        let cancel = parent.child_token();
+        let last_active = Arc::new(AtomicU64::new(self.elapsed_ms()));
+        self.conns.insert(
+            id,
+            ConnEntry {
+                host,
+                identity: None,
+                opened: id,
+                last_active: last_active.clone(),
+                cancel: cancel.clone(),
+            },
+        );
+        (
+            Some(Admitted {
+                id,
+                cancel,
+                pacer,
+                last_active,
+                started: self.started,
+            }),
+            evicted,
+        )
+    }
+
+    /// Record that connection `id` authenticated as `identity`; returns the number of that
+    /// identity's older connections closed to stay within `per_identity`.
+    fn authenticated(&mut self, id: u64, identity: &str) -> u64 {
+        let Some(host) = self.conns.get(&id).map(|c| c.host.clone()) else {
+            return 0;
+        };
+        if let Some(entry) = self.conns.get_mut(&id) {
+            entry.identity = Some(identity.to_string());
+        }
+        if !self.limits.per_host_limits {
+            return 0;
+        }
+        if self.identity_host.len() >= MAX_TRACKED_HOSTS {
+            let live: std::collections::HashSet<String> = self
+                .conns
+                .values()
+                .filter_map(|c| c.identity.clone())
+                .collect();
+            self.identity_host.retain(|i, _| live.contains(i));
+        }
+        self.identity_host.insert(identity.to_string(), host);
+        let mut evicted = 0;
+        while self
+            .conns
+            .values()
+            .filter(|c| c.identity.as_deref() == Some(identity))
+            .count()
+            > self.limits.per_identity
+        {
+            match self.idlest(|c| c.identity.as_deref() == Some(identity) && c.opened != id) {
+                Some(old) => {
+                    self.evict(old);
+                    evicted += 1;
+                }
+                None => break,
+            }
+        }
+        evicted
+    }
+}
+
+/// Removes a connection from the registry when its task ends.
+struct RegistryGuard {
+    registry: Arc<std::sync::Mutex<ConnRegistry>>,
+    id: u64,
+}
+
+impl Drop for RegistryGuard {
+    fn drop(&mut self) {
+        let mut reg = self.registry.lock().unwrap_or_else(|e| e.into_inner());
+        reg.conns.remove(&self.id);
+    }
+}
+
 /// Handshake message 1, listener → dialer.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ServerHello {
@@ -431,7 +747,37 @@ impl DialedConnection {
         target: &str,
         key: &SigningKey,
     ) -> Result<DialedConnection, TransportError> {
-        let mut stream = match tokio::time::timeout(IO_TIMEOUT, TcpStream::connect(target)).await {
+        Self::connect_from(target, key, None).await
+    }
+
+    /// `connect` from the local address `source` (any port) instead of the one the system
+    /// picks; tests and experiments use it to appear as several hosts.
+    pub async fn connect_from(
+        target: &str,
+        key: &SigningKey,
+        source: Option<std::net::IpAddr>,
+    ) -> Result<DialedConnection, TransportError> {
+        let connecting = async {
+            match source {
+                None => TcpStream::connect(target).await,
+                Some(ip) => {
+                    let to: SocketAddr = target.parse().map_err(|_| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            "target is not an address",
+                        )
+                    })?;
+                    let socket = if to.is_ipv4() {
+                        tokio::net::TcpSocket::new_v4()?
+                    } else {
+                        tokio::net::TcpSocket::new_v6()?
+                    };
+                    socket.bind(SocketAddr::new(ip, 0))?;
+                    socket.connect(to).await
+                }
+            }
+        };
+        let mut stream = match tokio::time::timeout(IO_TIMEOUT, connecting).await {
             Ok(Ok(s)) => s,
             Ok(Err(e)) => return Err(map_send_error(e)),
             Err(_) => return Err(TransportError::ConnectionFailed("Connect timed out".into())),
@@ -710,6 +1056,9 @@ pub struct TcpTransport {
     pub relay_queue_full: Arc<AtomicU64>,
     /// Frames whose connection had to wait (frame pacing) before the next frame was read.
     pub paced_frames: Arc<AtomicU64>,
+    /// Connections the listener closed to admit another one (`ListenerLimits`).
+    pub evicted_connections: Arc<AtomicU64>,
+    registry: Arc<std::sync::Mutex<ConnRegistry>>,
     pub node_id: String,
     signing_key: SigningKey,
     outbound: Arc<Outbound>,
@@ -725,15 +1074,30 @@ impl TcpTransport {
         Self::bind_with_pacing(addr, signing_key, FRAME_PACING_RATE, FRAME_PACING_BURST).await
     }
 
-    /// `bind` with an explicit frame rate (per second) and burst for each connection's reader.
+    /// `bind` with an explicit frame rate (per second) and burst for each host's frames.
     pub async fn bind_with_pacing(
         addr: SocketAddr,
         signing_key: SigningKey,
         pacing_rate: f64,
         pacing_burst: u32,
     ) -> std::io::Result<Self> {
+        let limits = ListenerLimits {
+            pacing_rate,
+            pacing_burst,
+            ..ListenerLimits::default()
+        };
+        Self::bind_with_limits(addr, signing_key, limits).await
+    }
+
+    /// `bind` with explicit listener limits.
+    pub async fn bind_with_limits(
+        addr: SocketAddr,
+        signing_key: SigningKey,
+        limits: ListenerLimits,
+    ) -> std::io::Result<Self> {
         let node_id = node_id_of(&signing_key);
-        let pacing = (pacing_rate, pacing_burst);
+        let registry = Arc::new(std::sync::Mutex::new(ConnRegistry::new(limits)));
+        let evicted_connections = Arc::new(AtomicU64::new(0));
         let listener = TcpListener::bind(addr).await?;
         let (tx, rx) = mpsc::channel(1024);
         // shortcut: a full channel drops the report, the periodic sync still covers the link.
@@ -757,6 +1121,8 @@ impl TcpTransport {
         let listener_key = signing_key.clone();
         let listener_shun = shun.clone();
         let listener_paced = paced_frames.clone();
+        let listener_registry = registry.clone();
+        let listener_evicted = evicted_connections.clone();
 
         // Spawn background listener accept task
         tokio::spawn(async move {
@@ -772,18 +1138,26 @@ impl TcpTransport {
                 };
 
                 match accept_res {
-                    Ok((mut stream, _peer_addr)) => {
+                    Ok((mut stream, peer_addr)) => {
                         // Reset backoff on success
                         backoff = std::time::Duration::from_millis(10);
 
-                        // Connection limit check (ASYNC-012)
-                        let current_active = active_clone.load(std::sync::atomic::Ordering::SeqCst);
-                        if current_active >= 100 {
-                            log::warn!("TCP connection limit reached (100). Rejecting client.");
+                        // Admission per host (ListenerLimits).
+                        let (admitted, evicted) = {
+                            let mut reg =
+                                listener_registry.lock().unwrap_or_else(|e| e.into_inner());
+                            reg.admit(&peer_addr, &cancel_token_clone)
+                        };
+                        listener_evicted.fetch_add(evicted, Ordering::Relaxed);
+                        let Some(admitted) = admitted else {
+                            log::warn!(
+                                "TCP connection from {} refused (listener limits)",
+                                peer_addr
+                            );
                             rejected_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                             let _ = stream.shutdown().await;
                             continue;
-                        }
+                        };
 
                         active_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                         accepted_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -793,14 +1167,20 @@ impl TcpTransport {
                         let key_for_task = listener_key.clone();
                         let active_for_task = active_clone.clone();
                         let auth_failures_for_task = auth_failures_clone.clone();
-                        let cancel_for_task = cancel_token_clone.clone();
+                        let cancel_for_task = admitted.cancel.clone();
                         let links_for_task = links_tx.clone();
+                        let registry_for_task = listener_registry.clone();
+                        let evicted_for_task = listener_evicted.clone();
                         let shun_for_task = listener_shun.clone();
                         let paced_for_task = listener_paced.clone();
 
                         tokio::spawn(async move {
                             // RAII connection guard to decrement count on drop (preventing leaks)
                             let _guard = ConnectionGuard(active_for_task);
+                            let _entry = RegistryGuard {
+                                registry: registry_for_task.clone(),
+                                id: admitted.id,
+                            };
 
                             if let Err(e) = configure_socket(&stream) {
                                 log::warn!("Failed to configure accepted socket: {}", e);
@@ -817,8 +1197,13 @@ impl TcpTransport {
                                     auth_failures: auth_failures_for_task,
                                     new_links: links_for_task,
                                     shun: shun_for_task,
-                                    pacing,
+                                    pacer: admitted.pacer,
                                     paced: paced_for_task,
+                                    registry: registry_for_task,
+                                    conn_id: admitted.id,
+                                    last_active: admitted.last_active,
+                                    started: admitted.started,
+                                    evicted: evicted_for_task,
                                 },
                                 cancel_for_task,
                             )
@@ -869,6 +1254,8 @@ impl TcpTransport {
             relay_failures,
             relay_queue_full: Arc::new(AtomicU64::new(0)),
             paced_frames,
+            evicted_connections,
+            registry,
             node_id,
             signing_key,
             outbound,
@@ -881,6 +1268,13 @@ impl TcpTransport {
     /// new connections refused for `SHUN_PROBE_INTERVAL`, after which one frame is let
     /// through for the node to test whether the peer was readmitted. The node calls this
     /// again when the probe shows it is still banned.
+    /// The host (`host_of`) of `identity`'s latest authenticated connection, if it has one and
+    /// the listener charges limits per host. A node charges that identity's message budget to it.
+    pub fn peer_host(&self, identity: &str) -> Option<String> {
+        let reg = self.registry.lock().unwrap_or_else(|e| e.into_inner());
+        reg.identity_host.get(identity).cloned()
+    }
+
     pub fn shun_peer(&self, identity: &str) {
         self.shun_peer_for(identity, SHUN_PROBE_INTERVAL);
     }
@@ -1040,9 +1434,15 @@ struct ConnectionContext {
     auth_failures: Arc<AtomicU64>,
     new_links: mpsc::Sender<NodeId>,
     shun: Arc<ShunList>,
-    /// Frames per second and burst for this listener's connections.
-    pacing: (f64, u32),
+    /// Frame budget of this connection's host, shared with its other connections.
+    pacer: Arc<std::sync::Mutex<FramePacer>>,
     paced: Arc<AtomicU64>,
+    registry: Arc<std::sync::Mutex<ConnRegistry>>,
+    conn_id: u64,
+    last_active: Arc<AtomicU64>,
+    /// The registry's start, the zero of `last_active`.
+    started: std::time::Instant,
+    evicted: Arc<AtomicU64>,
 }
 
 /// Authenticate the dialer, then deliver its frames, attributed to its authenticated
@@ -1080,15 +1480,20 @@ async fn handle_connection(
         let _ = stream.shutdown().await;
         return;
     }
+    let evicted = {
+        let mut reg = ctx.registry.lock().unwrap_or_else(|e| e.into_inner());
+        reg.authenticated(ctx.conn_id, &peer.identity)
+    };
+    ctx.evicted.fetch_add(evicted, Ordering::Relaxed);
 
     let mut expected_counter: u64 = 0;
     let mut link_reported = false;
-    let mut pacer = FramePacer::new(ctx.pacing.0, ctx.pacing.1);
     loop {
         if ctx.shun.is_shunned(&peer.identity) {
             break;
         }
-        if let Some(wait) = pacer.take() {
+        let wait = ctx.pacer.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(wait) = wait {
             ctx.paced.fetch_add(1, Ordering::Relaxed);
             tokio::select! {
                 _ = tokio::time::sleep(wait) => {}
@@ -1141,6 +1546,8 @@ async fn handle_connection(
             break;
         }
         expected_counter += 1;
+        ctx.last_active
+            .store(ctx.started.elapsed().as_millis() as u64, Ordering::Relaxed);
 
         // At most one report per connection, so a peer gets syncs only by reconnecting.
         if frame.message.message_type == LINK_RESUMED_TYPE {
@@ -1288,5 +1695,224 @@ mod tests {
         .unwrap();
         let socket = unsafe { get_socket(&conn.stream) };
         assert_eq!(socket.tcp_user_timeout().unwrap(), Some(IO_TIMEOUT));
+    }
+}
+
+#[cfg(test)]
+mod admission_tests {
+    use super::*;
+
+    fn addr(host: &str, port: u16) -> SocketAddr {
+        format!("{host}:{port}").parse().unwrap()
+    }
+
+    fn v4(i: usize) -> String {
+        format!("10.0.{}.{}", i / 250, i % 250 + 1)
+    }
+
+    /// A registry with no handshake-rate limit, so tests can open connections back to back.
+    fn registry() -> ConnRegistry {
+        ConnRegistry::new(ListenerLimits {
+            accept_burst: 1e9,
+            ..ListenerLimits::default()
+        })
+    }
+
+    /// Admit a connection from `host`; true if it was admitted.
+    fn open(reg: &mut ConnRegistry, root: &CancellationToken, host: &str) -> bool {
+        reg.admit(&addr(host, 4000), root).0.is_some()
+    }
+
+    #[test]
+    fn hosts_are_addresses_and_ipv6_slash_64s() {
+        assert_eq!(host_of(&addr("10.1.2.3", 1)), host_of(&addr("10.1.2.3", 2)));
+        assert_ne!(host_of(&addr("10.1.2.3", 1)), host_of(&addr("10.1.2.4", 1)));
+        assert_eq!(
+            host_of(&addr("[2001:db8:1:2:aaaa::1]", 1)),
+            host_of(&addr("[2001:db8:1:2:bbbb::9]", 1))
+        );
+        assert_ne!(
+            host_of(&addr("[2001:db8:1:2::1]", 1)),
+            host_of(&addr("[2001:db8:1:3::1]", 1))
+        );
+        assert_eq!(host_of(&addr("[::ffff:10.1.2.3]", 1)), "10.1.2.3");
+    }
+
+    #[test]
+    fn one_host_keeps_at_most_its_share_and_only_its_newest_connections() {
+        let root = CancellationToken::new();
+        let mut reg = registry();
+        let mut tokens = Vec::new();
+        for _ in 0..40 {
+            let (admitted, _) = reg.admit(&addr("10.0.0.1", 5), &root);
+            tokens.push(
+                admitted
+                    .expect("a host is never refused for its own connections")
+                    .cancel,
+            );
+        }
+        assert_eq!(reg.count("10.0.0.1"), MAX_CONNECTIONS_PER_HOST);
+        assert_eq!(
+            tokens.iter().filter(|t| t.is_cancelled()).count(),
+            40 - MAX_CONNECTIONS_PER_HOST
+        );
+        assert!(
+            tokens[40 - MAX_CONNECTIONS_PER_HOST..]
+                .iter()
+                .all(|t| !t.is_cancelled()),
+            "the connections kept are the newest"
+        );
+    }
+
+    #[test]
+    fn a_host_without_a_connection_is_admitted_when_the_listener_is_full() {
+        let root = CancellationToken::new();
+        let mut reg = registry();
+        // Twelve adversary hosts hold eight connections each, a thirteenth holds four.
+        for i in 0..12 {
+            for _ in 0..8 {
+                assert!(open(&mut reg, &root, &v4(i)));
+            }
+        }
+        for _ in 0..4 {
+            assert!(open(&mut reg, &root, &v4(12)));
+        }
+        assert_eq!(reg.conns.len(), MAX_CONNECTIONS);
+        assert!(
+            open(&mut reg, &root, "192.168.0.1"),
+            "a new host must get in"
+        );
+        assert_eq!(reg.conns.len(), MAX_CONNECTIONS);
+        assert_eq!(
+            reg.count(&v4(12)),
+            4,
+            "the smaller host keeps its connections"
+        );
+        assert_eq!(
+            (0..12).map(|i| reg.count(&v4(i))).sum::<usize>(),
+            95,
+            "one connection of a largest host was closed"
+        );
+    }
+
+    #[test]
+    fn a_host_holding_as_many_as_every_other_host_is_refused_when_full() {
+        let root = CancellationToken::new();
+        let mut reg = registry();
+        for i in 0..MAX_CONNECTIONS {
+            assert!(open(&mut reg, &root, &v4(i)));
+        }
+        assert!(
+            !open(&mut reg, &root, &v4(0)),
+            "no host holds more than this one"
+        );
+        assert!(
+            open(&mut reg, &root, "192.168.0.1"),
+            "a host with none still gets in"
+        );
+    }
+
+    /// Hosts with one or two connections each (honest neighbours) are never displaced by an
+    /// adversary that controls fewer hosts than it would need to make every host as small as
+    /// theirs, however often it reconnects.
+    #[test]
+    fn honest_hosts_survive_an_adversary_with_too_few_hosts() {
+        let root = CancellationToken::new();
+        let mut reg = registry();
+        let mut honest = Vec::new();
+        for i in 0..20 {
+            for _ in 0..2 {
+                let (admitted, _) = reg.admit(&addr(&format!("172.16.0.{}", i + 1), 9), &root);
+                honest.push(admitted.unwrap().cancel);
+            }
+        }
+        // 60 slots left. To close an honest connection the adversary must hold every slot
+        // it has in hosts of at most two connections: at least 30 hosts. It has 29.
+        for round in 0..20_000 {
+            let host = v4(round % 29);
+            let _ = open(&mut reg, &root, &host);
+        }
+        assert_eq!(reg.conns.len(), MAX_CONNECTIONS);
+        assert!(
+            honest.iter().all(|t| !t.is_cancelled()),
+            "an honest connection was closed"
+        );
+    }
+
+    #[test]
+    fn a_host_opens_connections_at_a_bounded_rate() {
+        let root = CancellationToken::new();
+        let mut reg = ConnRegistry::new(ListenerLimits {
+            accept_rate: 1e-9,
+            ..ListenerLimits::default()
+        });
+        let admitted = (0..100)
+            .filter(|_| open(&mut reg, &root, "10.9.9.9"))
+            .count();
+        assert_eq!(admitted, HOST_ACCEPT_BURST as usize);
+        assert!(
+            open(&mut reg, &root, "10.9.9.10"),
+            "another host is not affected"
+        );
+    }
+
+    #[test]
+    fn a_host_gains_nothing_when_the_listener_forgets_it() {
+        let root = CancellationToken::new();
+        // No refill to speak of, so the result does not depend on how long the loop takes.
+        let mut reg = ConnRegistry::new(ListenerLimits {
+            accept_rate: 1e-9,
+            ..ListenerLimits::default()
+        });
+        let spent = (0..100)
+            .filter(|_| open(&mut reg, &root, "10.9.9.9"))
+            .count();
+        assert_eq!(spent, HOST_ACCEPT_BURST as usize);
+        reg.conns.clear();
+        // Enough other hosts, each gone again, to make the listener forget hosts.
+        for i in 0..(2 * MAX_TRACKED_HOSTS) {
+            let host = format!(
+                "10.{}.{}.{}",
+                100 + i / 62_500,
+                (i / 250) % 250,
+                i % 250 + 1
+            );
+            assert!(open(&mut reg, &root, &host));
+            reg.conns.clear();
+        }
+        assert!(reg.hosts.len() <= 2 * MAX_TRACKED_HOSTS + 1);
+        assert!(
+            !open(&mut reg, &root, "10.9.9.9"),
+            "a forgotten host must not get a fresh handshake budget"
+        );
+    }
+
+    #[test]
+    fn one_identity_keeps_at_most_its_share_of_connections() {
+        let root = CancellationToken::new();
+        let mut reg = registry();
+        let mut tokens = Vec::new();
+        for i in 0..7 {
+            let (admitted, _) = reg.admit(&addr(&v4(i), 1), &root);
+            let admitted = admitted.unwrap();
+            reg.authenticated(admitted.id, "same-identity");
+            tokens.push(admitted.cancel);
+        }
+        let live = tokens.iter().filter(|t| !t.is_cancelled()).count();
+        assert_eq!(live, MAX_CONNECTIONS_PER_IDENTITY);
+        assert!(!tokens[6].is_cancelled(), "the newest connection is kept");
+    }
+
+    #[test]
+    fn without_per_host_limits_a_full_listener_refuses() {
+        let root = CancellationToken::new();
+        let mut reg = ConnRegistry::new(ListenerLimits {
+            per_host_limits: false,
+            ..ListenerLimits::default()
+        });
+        for _ in 0..MAX_CONNECTIONS {
+            assert!(open(&mut reg, &root, "10.0.0.1"));
+        }
+        assert!(!open(&mut reg, &root, "192.168.0.1"));
     }
 }

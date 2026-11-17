@@ -6,8 +6,10 @@
 # In a fresh network namespace on loopback: a receiver (no peers), one honest node dialling it
 # and emitting 1 message/s, and `examples/tcp_flood` sending `messages` (default 10^6) over
 # `connections` (default 90) authenticated connections at 20 messages/s each, every message from
-# a new origin identity. Samples the receiver every 5 s into samples.csv (RSS, CPU seconds, log
-# bytes) and writes summary.txt. Linux, root.
+# a new origin identity, each connection from its own loopback address (a receiver charges its
+# limits to each source host; the experiment models one neighbour per host). Samples the
+# receiver every 5 s into samples.csv (RSS, CPU seconds, log bytes) and writes summary.txt.
+# Linux, root.
 set -eu
 OUT=${1:?usage: run_tcp_flood.sh OUT_DIR [crci-node] [tcp_flood] [messages] [connections]}
 BIN=${2:-target/release/crci-node}
@@ -48,7 +50,7 @@ TICKS=$(getconf CLK_TCK)
 SAMPLER=$!
 
 ip netns exec $NS "$FLOOD" --target 127.0.0.1:7001 --connections "$CONNECTIONS" --rate $RATE \
-    --messages "$MESSAGES" > "$OUT/flood.txt" 2>&1
+    --messages "$MESSAGES" --sources "$CONNECTIONS" > "$OUT/flood.txt" 2>&1
 sleep 10
 kill $SAMPLER 2>/dev/null || true
 cleanup

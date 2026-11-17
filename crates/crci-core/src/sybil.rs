@@ -276,6 +276,10 @@ fn get_subnet(id: &str) -> Option<String> {
 pub struct SybilGuard {
     reputations: HashMap<NodeId, PeerReputation>,
     buckets: HashMap<NodeId, TokenBucket>,
+    /// Host each sender's connection comes from, when the transport knows it (`set_sender_host`).
+    sender_hosts: HashMap<NodeId, String>,
+    /// Budget of each host, shared by all its identities: same burst and refill as one sender's.
+    host_buckets: HashMap<String, TokenBucket>,
     pub difficulty: u8,
     /// Messages per second added back to each sender's budget (`SENDER_REFILL_PER_SEC`
     /// unless an experiment sets another rate before the first message arrives).
@@ -311,6 +315,8 @@ impl SybilGuard {
         Self {
             reputations: HashMap::new(),
             buckets: HashMap::new(),
+            sender_hosts: HashMap::new(),
+            host_buckets: HashMap::new(),
             difficulty,
             sender_refill_per_sec: SENDER_REFILL_PER_SEC,
             strike_penalty: STRIKE_PENALTY,
@@ -360,7 +366,49 @@ impl SybilGuard {
         for id in &victims {
             self.reputations.remove(id);
             self.buckets.remove(id);
+            self.sender_hosts.remove(id);
         }
+        self.forget_idle_hosts();
+    }
+
+    /// Forget the budgets of hosts that no tracked sender comes from, but only full ones: a
+    /// forgotten budget comes back full, so a host gains nothing by getting its identities forgotten.
+    fn forget_idle_hosts(&mut self) {
+        let now = self.now();
+        let live: std::collections::HashSet<&String> = self.sender_hosts.values().collect();
+        self.host_buckets.retain(|h, b| {
+            live.contains(h)
+                || b.tokens
+                    + now.saturating_duration_since(b.last_refill).as_secs_f32() * b.refill_rate
+                    < b.capacity
+        });
+    }
+
+    /// Charge `peer`'s new messages to `host` as well as to `peer` itself. Keys are free, so a
+    /// budget per identity bounds nothing on its own; a host (a connection's source address)
+    /// is what an adversary cannot multiply for free. A host with one identity, as every honest
+    /// node is, sees no change: both budgets start full together and are spent together.
+    pub fn set_sender_host(&mut self, peer: &NodeId, host: &str) {
+        if self.sender_hosts.get(peer).map(String::as_str) != Some(host) {
+            if self.sender_hosts.len() >= MAX_TRACKED_PEERS && !self.sender_hosts.contains_key(peer)
+            {
+                // Senders that only sent copies have no record; the others go with their records.
+                let reps = &self.reputations;
+                self.sender_hosts.retain(|p, _| reps.contains_key(p));
+                if self.sender_hosts.len() >= MAX_TRACKED_PEERS {
+                    self.make_room();
+                }
+            }
+            self.sender_hosts.insert(peer.clone(), host.to_string());
+            if self.host_buckets.len() >= MAX_TRACKED_PEERS {
+                self.forget_idle_hosts();
+            }
+        }
+    }
+
+    /// Hosts with a budget.
+    pub fn tracked_hosts(&self) -> usize {
+        self.host_buckets.len()
     }
 
     pub fn check(&mut self, peer: &NodeId) -> Result<(), SybilError> {
@@ -402,6 +450,21 @@ impl SybilGuard {
             });
         if !bucket.try_consume_at(now) && self.rate_limit_enabled {
             return Err(SybilError::RateLimited(peer.clone()));
+        }
+        if let Some(host) = self.sender_hosts.get(peer) {
+            let refill = self.sender_refill_per_sec;
+            let host_bucket =
+                self.host_buckets
+                    .entry(host.clone())
+                    .or_insert_with(|| TokenBucket {
+                        tokens: SENDER_BURST,
+                        capacity: SENDER_BURST,
+                        refill_rate: refill,
+                        last_refill: now,
+                    });
+            if !host_bucket.try_consume_at(now) && self.rate_limit_enabled {
+                return Err(SybilError::RateLimited(peer.clone()));
+            }
         }
 
         Ok(())
@@ -584,6 +647,78 @@ mod tests {
         rep.recover_at(t0 + 86_400 * SEC);
         assert_eq!(rep.score, INITIAL_SCORE);
         assert!(!rep.is_banned());
+    }
+
+    #[test]
+    fn identities_of_one_host_share_one_budget() {
+        let mut guard = SybilGuard::new(0);
+        guard.use_manual_clock();
+        let ids: Vec<NodeId> = (0..50).map(|i| format!("id-{i}")).collect();
+        for id in &ids {
+            guard.set_sender_host(id, "10.0.0.66");
+        }
+        // Fresh identities do not bring fresh budgets: the host's burst is spent once.
+        let admitted = (0..200)
+            .filter(|i| guard.check(&ids[i % ids.len()]).is_ok())
+            .count();
+        assert_eq!(admitted, SENDER_BURST as usize);
+        // The host refills at one sender's rate, however many identities it uses.
+        guard.advance_time(Duration::from_secs(10));
+        let admitted = (0..2_000)
+            .filter(|i| guard.check(&ids[i % ids.len()]).is_ok())
+            .count();
+        assert_eq!(admitted, SENDER_BURST as usize);
+        // Another host is not affected.
+        guard.set_sender_host(&"honest".to_string(), "10.0.0.7");
+        assert!(guard.check(&"honest".to_string()).is_ok());
+    }
+
+    #[test]
+    fn a_host_gains_nothing_when_its_identities_are_forgotten() {
+        let mut guard = SybilGuard::new(0);
+        guard.use_manual_clock();
+        let spent = "spender".to_string();
+        guard.set_sender_host(&spent, "10.0.0.66");
+        for _ in 0..SENDER_BURST as usize {
+            assert!(guard.check(&spent).is_ok());
+        }
+        // Enough other senders to make the guard forget idle records, the spender's (the oldest)
+        // first.
+        guard.advance_time(Duration::from_millis(1));
+        for i in 0..(2 * MAX_TRACKED_PEERS) {
+            let other = format!("other-{i}");
+            guard.set_sender_host(&other, &format!("10.1.{}.{}", i / 250, i % 250));
+            let _ = guard.check(&other);
+        }
+        assert!(guard.tracked_peers() <= MAX_TRACKED_PEERS);
+        assert!(
+            !guard.sender_hosts.contains_key(&spent),
+            "the spender was forgotten"
+        );
+        // A new identity of the same host finds the host's budget as the spender left it.
+        let fresh = "fresh".to_string();
+        guard.set_sender_host(&fresh, "10.0.0.66");
+        assert!(matches!(
+            guard.check(&fresh),
+            Err(SybilError::RateLimited(_))
+        ));
+    }
+
+    #[test]
+    fn a_host_with_one_identity_sees_the_same_budget_as_before() {
+        let mut with_host = SybilGuard::new(0);
+        let mut without = SybilGuard::new(0);
+        with_host.use_manual_clock();
+        without.use_manual_clock();
+        let peer = "n".to_string();
+        with_host.set_sender_host(&peer, "10.0.0.1");
+        let mut rng = Lcg(45);
+        for _ in 0..20_000 {
+            let step = Duration::from_secs_f64(0.12 * rng.next());
+            with_host.advance_time(step);
+            without.advance_time(step);
+            assert_eq!(with_host.check(&peer).is_ok(), without.check(&peer).is_ok());
+        }
     }
 
     #[test]

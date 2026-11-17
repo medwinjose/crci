@@ -4,10 +4,12 @@
 //! and sends on each `--rate` messages per second (the per-sender budget is 20/s, so the default
 //! stays inside it), each signed by a fresh origin identity, until `--messages` messages in all
 //! have been sent. Every message is new to the receiver, so it reaches every per-origin table.
-//! Prints the totals at the end.
+//! With `--sources N` (N > 0) connection c dials from the loopback address 127.0.1.(c mod N + 1),
+//! so the receiver sees N hosts: a receiver charges its limits to each source host, and 90
+//! neighbours are 90 hosts. Prints the totals at the end.
 //!
 //!   cargo run --release -p crci-node --example tcp_flood -- \
-//!       --target 127.0.0.1:7001 --connections 90 --rate 20 --messages 1000000
+//!       --target 127.0.0.1:7001 --connections 90 --rate 20 --messages 1000000 --sources 90
 
 use crci_core::identity::Identity;
 use crci_core::message::{Message, MessageType, Signal, Visibility};
@@ -32,6 +34,7 @@ async fn main() {
     let connections: u64 = arg("--connections", 90);
     let rate: u64 = arg("--rate", 20).max(1);
     let messages: u64 = arg("--messages", 1_000_000);
+    let sources: u64 = arg("--sources", 0);
     let per_connection = messages.div_ceil(connections);
 
     let sent = Arc::new(AtomicU64::new(0));
@@ -45,7 +48,11 @@ async fn main() {
         tasks.push(tokio::spawn(async move {
             let name = format!("flood-c{c}");
             let me = Identity::new(&name);
-            let Ok(mut conn) = DialedConnection::connect(&target, &me.signing_key).await else {
+            let source = (sources > 0)
+                .then(|| std::net::IpAddr::from([127, 0, 1, (c % sources.min(250) + 1) as u8]));
+            let Ok(mut conn) =
+                DialedConnection::connect_from(&target, &me.signing_key, source).await
+            else {
                 failed.fetch_add(per_connection, Ordering::Relaxed);
                 return;
             };
