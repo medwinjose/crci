@@ -1,0 +1,11 @@
+M1 no per-host eviction -> CAUGHT ['transport::tcp::admission_tests::one_host_keeps_at_most_its_share_and_only_its_newest_connections', 'result:', 'one_host_with_many_identities_holds_only_its_share_of_connections', 'result:']
+M2 full table: >= instead of > -> CAUGHT ['transport::tcp::admission_tests::a_host_holding_as_many_as_every_other_host_is_refused_when_full', 'result:']
+M3 IPv6 grouped per address -> CAUGHT ['transport::tcp::admission_tests::hosts_are_addresses_and_ipv6_slash_64s', 'result:']
+M4 host budget not charged -> CAUGHT ['sybil::tests::identities_of_one_host_share_one_budget', 'result:', 'a_host_gets_one_message_budget_however_many_identities_it_uses', 'result:']
+M5 per-identity limit off -> CAUGHT ['transport::tcp::admission_tests::one_identity_keeps_at_most_its_share_of_connections', 'result:']
+M6 handshake rate off -> CAUGHT ['transport::tcp::admission_tests::a_host_opens_connections_at_a_bounded_rate', 'result:', 'one_host_with_many_identities_holds_only_its_share_of_connections', 'result:']
+M7 evict the busiest instead of the idlest -> CAUGHT ['transport::tcp::admission_tests::one_host_keeps_at_most_its_share_and_only_its_newest_connections', 'result:']
+M8 node does not pass the host -> CAUGHT ['a_host_gets_one_message_budget_however_many_identities_it_uses', 'result:']
+M9 largest host by fewest connections -> CAUGHT ['transport::tcp::admission_tests::a_host_without_a_connection_is_admitted_when_the_listener_is_full', 'result:']
+
+[exited with code 0]

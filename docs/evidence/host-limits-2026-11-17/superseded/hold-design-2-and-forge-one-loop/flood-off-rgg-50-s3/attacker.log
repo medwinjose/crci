@@ -1,0 +1,1 @@
+host_attack mode=flood targets=1 sources=1 connections=503 refused=0 closed_by_target=0 identities=503 frames=10040 seconds=130.2

@@ -7,6 +7,21 @@ line endings, noted per folder below. SHA-256 hashes are of the files as committ
 Benchmark CSVs that feed the paper live next to their harness in
 `crates/crci-node/benches/results/` (see [docs/benchmarks.md](../benchmarks.md)).
 
+## `host-limits-2026-11-17/`
+
+Limits charged per source host, and floors kept for forgotten origins, on one node binary (`binary.sha256`,
+`187d1dd1…`): the adversary-host set (`host-attack/`: 24 runs of `make host-attack`, per-run `summary.json`,
+`meta.json`, `bans.csv`, the adversary's `attacker.log`, `outage.csv` where an outage was applied, and
+`host_attack.csv`/`.md` with the criteria), the netem smoke set on that binary (`netem-smoke/`, 18 runs), the
+real-node flood (`tcp-flood/`), the state floods (`state/`), the simulation (`sim/results.csv`, 210 runs), the
+Linux test totals in a fresh namespace (`linux_tests.*`), the fuzz runs (`fuzz/`, last lines), the TLC run of all
+30 configurations (`tla/`, Windows) and the trace export's hashes, the Windows test totals and the planted mutants
+(`tests/`). `superseded/` keeps what came before the final binary: the runs on the build without floors, where a
+new-origin flood got honest nodes banned (`before-floors/`); the second hold design and the one-connection forger
+(`hold-design-2-and-forge-one-loop/`); the third hold design (`hold-design-3/`); and the heap of the first floor
+table (`state-heap-before-floor-table-fix.txt`). Files are as written except CRLF → LF and the scratch path
+at the end of `tla/check.log`, shortened to `tla/`; `SHA256SUMS` is of the committed files.
+
 ## `final-2026-11-12/`
 
 The current data set: one `make reproduce` from a fresh clone of the public repository at commit `d908d3b`

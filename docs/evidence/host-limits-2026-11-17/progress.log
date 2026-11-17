@@ -1,0 +1,15 @@
+06:24:47 built 187d1dd1c218ac7d
+07:39:20 host-attack exit 0
+08:07:05 netem smoke exit 0
+08:16:40 tcp flood exit 0
+08:18:12 state flood exit 0
+14:52:30 sim exit 0
+14:52:30 sim report exit 0
+14:59:34 linux tests: 43 result lines, passed=416, failed=0, ignored=1
+15:04:58 fuzz replay_filter exit 0 Done 1633238 runs
+15:08:01 fuzz runtime_state exit 0 Done 113619 runs
+15:11:03 fuzz sybil_guard exit 0 Done 18951 runs
+15:11:03 FINAL-DONE
+15:11:47 batch3: node binary 187d1dd1c218ac7d
+15:39:35 batch3 host-attack exit 0
+15:39:35 BATCH3-DONE

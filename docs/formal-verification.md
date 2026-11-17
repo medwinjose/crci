@@ -43,8 +43,11 @@ neighbour gives, and in `reordering-links` and one set of replayed traces they a
 to one neighbour can. A frame dropped by a token bucket has the same effect as a lost one, so budgets are
 modelled as loss. Honest nodes keep the seen cache, window and recent store as the code does, and the seen
 cache can be cleared whole, as its limit of 1 792 entries does. A switch lets a node forget an origin whole, as its
-limit on tracked origins does; it is off in every check that must hold, because the two checks with it on
-(`origin-forgotten-delivery`, `origin-forgotten-framing`) must break: bounded memory has a price while identities are free.
+limit on tracked origins does, keeping the origin's floor (the highest sequence number accepted; everything at or
+below it stays stale) as the code does; the two checks with it on (`origin-forgotten-delivery`,
+`origin-forgotten-framing`) pass. A second switch lets the node lose that floor too, as the floor table's own limit
+does; with it the same two checks break (`floor-forgotten-delivery`, `floor-forgotten-framing`): bounded memory
+still has a price while identities are free, now behind 3 584 floors as well as 896 origins.
 
 ## Properties
 
@@ -77,8 +80,9 @@ Safety needs none. Liveness needs the following, and no more:
 
 ## Results
 
-Run on 2026-11-08 on an Intel i5-12450HX (12 logical CPUs); 28 of 28 checks gave the expected outcome,
-84.0 min in total ([`evidence/theorems-2026-11-08/tla/`](evidence/theorems-2026-11-08/tla/)). Keying the seen
+Run on 2026-11-17 on an Intel i5-12450HX (12 logical CPUs); 30 of 30 checks gave the expected outcome,
+80.5 min in total ([`evidence/host-limits-2026-11-17/tla/`](evidence/host-limits-2026-11-17/tla/)); the counts of every
+check that was there before are unchanged. Keying the seen
 cache by sequence number too (below) roughly quadruples `honest-loss-sync`, the largest check. *Diameter* is the depth of TLC's complete state-graph search.
 
 ### Reputation (one observer, one peer)
@@ -113,6 +117,8 @@ quiet link. All invariants but `DeliveredWhenQuiescent` hold in `window-slides` 
 | `window-slides` | Line | 3, 1 | 0, 1 | none | | 7 485 | 3 053 | 21 |
 | `delivery` | Line | 2, 2 | 1, 2 | none | `EventualDelivery` | 434 253 | 133 030 | 26 |
 | `eviction` | Kite | 1, 2 | 0, 0 | Unbounded replays | `EveryNeighbourBans` | 119 957 | 26 048 | 29 |
+| `origin-forgotten-delivery` | Kite | 1, 2 | 0, 0 | 1 | Origins may be forgotten (their floors kept), seen cache may clear; `NoDoubleDelivery` | 2 494 390 | 380 811 | 22 |
+| `origin-forgotten-framing` | Kite | 1, 2 | 0, 0 | 1 | The same; `HonestNeverStruck` | 2 494 390 | 380 811 | 22 |
 
 ### Protocol: remove one thing, and TLC finds the failure
 
@@ -130,14 +136,15 @@ that the assumption is needed. These are the assumptions the results above rest 
 | `seen-without-seq` | The sequence number in the seen-cache key | `HonestNeverStruck` | 8 | A reused message ID frames an honest relay ([below](#found-while-proving-the-bounds)). |
 | `copied-answers-ignored` | Noting answers that were dropped as copies | `HonestNeverStruck` | 8 | The gossip copy an answer overtook is struck ([below](#found-while-proving-the-bounds)). |
 | `window-too-small` | W at least the loss depth (W = 1, 3 messages, 1 loss) | `DeliveredWhenQuiescent` | 11 | A message that falls out of every neighbour's window before it is recovered is lost for good. |
-| `origin-forgotten-delivery` | Remembering every origin (forgetting switched on) | `NoDoubleDelivery` | 7 | After a node forgets an origin and clears its seen cache, a replay is delivered again. |
-| `origin-forgotten-framing` | The same | `HonestNeverStruck` | 8 | The node relays that replay, and a neighbour that still remembers the origin strikes it. |
+| `floor-forgotten-delivery` | A forgotten origin's floor (it is lost too) | `NoDoubleDelivery` | 8 | After a node forgets an origin and its floor and clears its seen cache, a replay is delivered again. |
+| `floor-forgotten-framing` | The same | `HonestNeverStruck` | 9 | The node relays that replay, and a neighbour that still remembers the origin strikes it. |
 | `paced-replayer-spared` | Replays faster than recovery (a fair clock) | `EveryNeighbourBans` | 18 | The residual bound: an adversary that replays at most once per 300 s is never banned. |
 
 ## Analytical bounds
 
 TLC checks small instances. The statements below hold for any network size, because each concerns one
-observer and one neighbour (Theorems 1–3) or the checks one node applies to one frame (Theorem 4). Each proof
+observer and one neighbour (Theorems 1–3), the checks one node applies to one frame (Theorem 4) or what one
+host can make one node do (Lemma 3, Theorem 6). Each proof
 was written against the code, and each reputation theorem is also checked against the code by a test that fails
 when a constant or rule it depends on changes (`sybil.rs`: `no_strike_schedule_beats_the_strike_budget`,
 `periodic_strikes_ban_exactly_when_faster_than_the_forgiveness_period`, `a_ban_lasts_between_300_and_500_seconds`;
@@ -214,13 +221,15 @@ are dropped before the strike), the authenticity check, which is (a), and a `Rep
 excused (Lemma 2). ∎
 
 **Corollary 5 (honest neighbours).** Let p and r be honest neighbours, and suppose (A1) the link from p to r
-never duplicates a frame (TCP numbers frames and the node never re-sends one), (A2) p forgets no origin whose
-messages it relays (it tracks fewer than 896), and (A3) each sync answer p sends r, and each gossip copy that such
+never duplicates a frame (TCP numbers frames and the node never re-sends one), (A2) p loses the floor of no origin whose
+messages it relays (a forgotten origin keeps its floor, and p loses a floor only after 3 584 more origins are
+forgotten), and (A3) each sync answer p sends r, and each gossip copy that such
 an answer overtakes, arrives while r's session for that request is open (120 s, the four newest per peer). Then r
 never strikes p, and by Lemma 1 never bans it.
 *Proof.* (a) is impossible: p forwards only messages whose signature verified at p, the signature covers every
 field, and verification is deterministic. For (b): p sends r a given (origin, seq) at most once as gossip (it
-relays only what its own window accepted, which happens once by Lemma 2 and A2; A1 rules out a second copy),
+relays only what its own window accepted, which happens once by Lemma 2 while p tracks the origin and, after p
+forgets it, never again for a sequence number at or below its floor, which A2 keeps; A1 rules out a second copy),
 and at most once per request of r as an answer, tagged with that request and only if r's digest did not list it.
 Take any frame from p that repeats an earlier one. A tagged answer is excused under its own request: its session
 is open (A3), the digest did not list the message, and its batch holds at most 16 messages, the per-request
@@ -229,9 +238,68 @@ answer was recorded as answered under q whatever its verdict (it entered the see
 signature verified), so the gossip copy is excused under q, once, while q is open (A3). A frame of p that r's
 budget dropped was never recorded and repeats nothing. Every repeat is excused, so (b) never holds. ∎
 Honest strikes can therefore come only from A1–A3 failing, and a check above shows each one is needed
-(`link-duplicates`, `origin-forgotten-framing`, `session-expires`). A reused ID with a new sequence number is
+(`link-duplicates`, `floor-forgotten-framing`, `session-expires`). A reused ID with a new sequence number is
 covered: the two messages have different keys. Writing this proof found the first two defects listed under
 [found while proving the bounds](#found-while-proving-the-bounds).
+
+**What one host can make a node do.** Theorems 1–4 are about one identity, and identities are free: a banned
+peer comes back under a new key. Theorem 6 bounds what a whole machine can do with as many keys as it likes,
+by charging the TCP listener's limits and the message budget to the connection's source host (an IPv4 address,
+or an IPv6 /64; [architecture.md](architecture.md#over-tcp-the-crci-node-binary)). Notation (`tcp.rs`,
+`sybil.rs`): M = 100 connections per listener, m = 8 per host, a = 16 handshakes at once and α = 2 per second
+per host, f = 400 frames at once and φ = 200 per second per host, b = 20 new messages at once and q = 20 per
+second per sender.
+
+**Lemma 3 (who a full listener displaces).** Suppose a connection from host g arrives while all M slots are
+taken. If some host holds more connections than g, the least recently active connection of one such host is
+closed and g's is admitted; otherwise g's is refused. Hence (a) a host with no connection is never refused for
+lack of slots; (b) a connection of host h, which holds c connections, is closed to admit another host's only if
+every host holds at most c connections at that moment; (c) if honest hosts hold H connections in all and h holds
+c of them, an adversary must control at least (M − H) / c hosts before it can close any of h's connections
+this way, however often it reconnects.
+*Proof.* `ConnRegistry::admit` compares g's count with the largest count and evicts from the largest host only
+when that count exceeds g's: (a) and (b). For (c), at the moment of (b) the M slots are full and every host
+holds at most c, so the adversary's M − H connections need at least (M − H) / c hosts. A host's other limits
+close only its own connections (m per host, 4 per identity). ∎
+
+**Theorem 6 (one host's cost to one node).** Let r be a TCP node with the default limits and h a host that may
+use any number of identities and origins. Over any interval of length t:
+(a) h holds at most m of r's connections at any time, and r runs at most a + αt handshakes for h (each one
+Ed25519 signature and one verification);
+(b) r reads at most f + φt frames from h, so it verifies at most that many frame signatures for h;
+(c) at most b + qt frames charged to h pass `SybilGuard::check`, where a frame is charged to the host of its
+sender's latest authenticated connection. Every message-signature verification, every strike for an
+invalid signature or a forged origin, every acceptance and every relay of a new message comes after that
+check, so each of them is bounded by b + qt too. Strikes for a repeat come before it and cost no signature
+check; each needs a frame, so (b) bounds them;
+(d) by Theorem 1 each identity of h is banned by its third strike within 100 s, so r bans at most
+(f + φt) / 3 of h's identities.
+An identity that connects from several hosts can move its frames from one to another, so for an adversary with
+k hosts the bounds hold for the k together: k (b + qt) in (c), and so on.
+*Proof.* (a) A connection is admitted only with a handshake token of its host (capacity a, refill α), and an
+admission that brings the host above m closes its least recently active connection first. (b) Each frame read
+takes a token from a bucket shared by the host's connections (capacity f, refill φ); the reader waits when it is
+empty. (c) `crci-node` sets the sender's host (`SybilGuard::set_sender_host`) before each frame is processed, and
+`check` takes a token from the host's bucket (capacity b, refill q) as well as from the identity's; the order of
+`process_inbox_delivered` puts every signature check, strike for an invalid signature, acceptance and relay
+after `check`, and the seen-cache repeat check before it. (d) From the initial score, three strikes within 100 s
+ban (Theorem 1). In all three buckets the state of a host is forgotten only once its bucket is full again
+(`forget_idle_hosts`, the listener's host table), so a forgotten host comes back exactly as it would have been;
+the identities' own records can be forgotten (`make_room`), which gives an identity a fresh budget of its own but
+not its host. ∎
+With the shipped values a host costs a node at most 2 handshakes, 200 frame checks and 20 message checks per
+second however many keys it holds, against unlimited before; an honest node is one host with one identity and
+never reaches any of these limits (it relays at most about 32 frames per second at the measured network
+capacity). What Theorem 6 does not bound: an adversary with many addresses (the bounds are per host and add
+up); the valid, fresh messages a host may inject inside its budget, which honest relays carry on to everyone
+(threat model, item 7); and the slots of Lemma 3 (c) against an adversary that controls that many hosts.
+Tests in `sybil.rs` (`identities_of_one_host_share_one_budget`, `a_host_with_one_identity_sees_the_same_budget_as_before`,
+`a_host_gains_nothing_when_its_identities_are_forgotten`), in `tcp.rs` (`admission_tests`, nine) and over real
+sockets and processes (`crates/crci-node/tests/tcp_host_limits_tests.rs`, five) check the lemma and the theorem
+against the code; nine planted changes to the rules (no per-host eviction, `>=` for `>`, IPv6 per address,
+no host budget, no identity limit, no handshake rate, the busiest connection evicted instead of the idlest,
+the node not passing the host, the smallest host taken for the largest, and either table forgetting a host whose
+budget is not full again) are each caught: eleven in all.
 
 **What the code's arithmetic changes.** The code rounds a score to 0.001 after each strike, which can raise it
 by 0.0005, the recovery of one second. In Theorem 1 the penalty becomes π − 0.0005 (three strikes ban within
@@ -290,6 +358,34 @@ at one every 5 ms): the peer's own traffic bought it forgiveness, slightly. Reco
 least one second, except in full right before a strike; at every rate measured the result is within 0.01 % of
 the exact value.
 
+### Found while bounding what one host can do
+
+**A flood of new origins got honest relays banned.** Measured on the testbed with the two fixes below in place
+(`make host-attack`, one seed, build `25e245ec`): a host sending 100 fresh messages per second, each from a new origin and
+under an identity switched every 20, inside every budget, got 9 honest nodes banned with per-host limits on and 10
+with them off. The flood pushed quiet honest origins out of the relays' tables (896 origins, the least active
+first); a relay that forgot an origin accepted one of its old messages again when it arrived once more, relayed
+it, and a neighbour that still remembered the origin struck the relay for the repeat, three times. This was the
+documented cost of bounded memory (the model's `origin-forgotten-framing`), and the measurement showed that one
+host inside its budget can make it happen. Fixed by keeping each forgotten origin's floor
+(`ReplayFilter::forget`): its messages at or below the floor are stale, so none is accepted, delivered or relayed
+twice. Tests first (`a_forgotten_origin_keeps_a_floor_so_its_old_messages_are_stale`,
+`a_replay_after_forgetting_does_not_get_an_honest_relay_struck`, `floors_are_bounded_and_the_oldest_goes_first`
+in `state_bound_tests.rs`); the model's two forgetting checks now pass, and fail again once the floor can be lost.
+
+**Idle connections locked honest neighbours out.** The listener refused every new connection once 100 were
+open, and an authenticated connection may stay idle for 10 minutes. One machine with one key could open 100
+connections and send nothing: no strike, no ban, and every reconnect of an honest neighbour, every sync request
+(a short connection of its own) and every sync answer to that node was refused from then on. Shown first by a
+test that failed on the old listener (`without_per_host_limits_idle_connections_lock_an_honest_neighbour_out`
+keeps that behaviour under `--per-host-limits off`); fixed by admission per source host (Lemma 3).
+
+**Every new key brought a new budget.** The message budget, the frame pacing and the connection limit were
+per identity or per connection, so a host that switched keys got a fresh burst each time: 40 identities of one
+host had 800 fresh messages accepted where one identity gets 20, then 20 per second
+(`without_per_host_limits_every_identity_brings_a_fresh_budget`; with the fix 262 in 12.1 s, the bound being
+20 + 20 × 12.1 = 262). Fixed by charging all of a host's identities to one budget (Theorem 6).
+
 ## How the model is tied to the code
 
 A specification only says something about the code if the two agree, so two tests check that they do:
@@ -301,11 +397,12 @@ A specification only says something about the code if the two agree, so two test
   are replayed through real `NodeRuntime` instances, one per honest node, with real signatures and serialized
   frames. After every step every node must hold what the model says: accepted messages, each neighbour's
   score and ban, the seen cache and the replay window; digests, answer batches and relay targets are compared
-  too. The 260 committed behaviours have 9 233 steps: 2 000 messages accepted, 470 strikes, 842 excused
-  answers, 50 frames of banned peers, 487 forged frames, 40 stale frames (8 of them repeats), 36 own echoes, 543
-  gossip copies, 740 answers, 1 348 seen-cache clears, 206 clock ticks, 199 frames reusing another message's ID
-  and 200 messages reusing their author's own ID with a new sequence number; 60 of them reorder frames on a
-  link, 30 of those on a triangle. The test fails if any of these branches is never reached.
+  too. The 260 committed behaviours (exported again on 2026-11-17, when the model gained the floor of a
+  forgotten origin, which changes TLC's random choices) have 9 196 steps: 2 044 messages accepted, 466 strikes,
+  826 excused answers, 64 frames of banned peers, 473 forged frames, 51 stale frames (11 of them repeats), 40 own
+  echoes, 591 gossip copies, 692 answers, 1 311 seen-cache clears, 222 clock ticks, 191 frames reusing another
+  message's ID and 176 messages reusing their author's own ID with a new sequence number; 60 of them reorder
+  frames on a link, 30 of those on a triangle. The test fails if any of these branches is never reached.
 
 Each test was checked by breaking the code. Changing any of five reputation constants fails the first test. The
 second caught 18 of 18 logic changes: the seen-cache key, each condition of both excuses, the stale drop, each
@@ -313,7 +410,7 @@ condition of an answer, relaying to the origin, the strike for a bad signature, 
 own-echo check, the size of the recent store, sender recording, and the window's three rules
 ([`evidence/tla-2026-11-07/mutants.txt`](evidence/tla-2026-11-07/mutants.txt)); it also catches both rules
 replaced while proving the bounds (the seen-cache key without the sequence number, and noting only accepted
-answers).
+answers). Those changes were tried against the earlier export of the behaviours, not against the current one.
 
 The replay covers random behaviours, not all of them, and it checks the runtime, not the TCP node around it.
 
@@ -326,7 +423,8 @@ The replay covers random behaviours, not all of them, and it checks the runtime,
   code, where the ID is derived from the key. A message claiming another node's ID is a forgery there and is
   covered by the model's frames with an invalid signature. The derivation is assumed second-preimage resistant
   (a 128-bit SHA-256 prefix).
-- **Transport:** the handshake and frame authentication are assumed, not modelled. So are frame pacing and the
+- **Transport:** the handshake and frame authentication are assumed, not modelled. So are the per-host
+  admission limits (Lemma 3 and Theorem 6 are proved on the code instead), frame pacing and the
   shun of banned peers, the limits on batch and origin counts in a digest, the 5 s answer cooldown and the answer
   budget. Token buckets are modelled as loss.
 - **Sessions** never expire in the checks that pass: answers are assumed to arrive within 120 s, and at most

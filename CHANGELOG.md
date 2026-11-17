@@ -7,6 +7,28 @@ git history; `git log` is the complete record.
 ## [Unreleased]
 
 ### Security
+- The TCP listener and the message budget charge each source host (an IPv4 address or an IPv6 /64), not
+  each key. Keys are free, so before one machine could take a fresh budget with every new identity, and
+  one key could lock honest neighbours out of a node: the listener refused every connection once 100 were
+  open, and authenticated connections may idle for 10 minutes, so 100 idle connections blocked every
+  reconnect, sync request and sync answer to that node with no strike. Now a host holds at most 8
+  connections (an identity 4) and opens 16, then 2 per second; frame pacing is shared by a host's
+  connections; every identity of a host shares one message budget (20, then 20 per second); and a full
+  listener admits a connection from a host with fewer connections than the largest host by closing that
+  host's least recently active one, so a host with no connection is never refused. An honest node, one
+  address with one key, never reaches these limits. Proved in `docs/formal-verification.md` (Lemma 3,
+  Theorem 6) and measured on the testbed (`make host-attack`). `crci-node --per-host-limits off` keeps
+  the old behaviour for experiments; `DialedConnection::connect_from` dials from a chosen address, and
+  `examples/tcp_flood --sources N` spreads its connections over N loopback addresses.
+- A node that forgets an origin (above 896 tracked origins) keeps its floor, the highest sequence number
+  it accepted, in a table of 3 584 floors (oldest first out); every message of that origin at or below the
+  floor is stale: dropped without a strike, never accepted, delivered or relayed again. Before, a forgotten
+  origin's old message was accepted again and relayed, and a neighbour that still remembered the origin
+  struck the relay for the repeat: on the testbed one host flooding fresh messages from new origins, inside
+  its budget, got 9 honest nodes banned. Out-of-window messages are now dropped before they are charged to
+  the per-origin budget. The filter of control messages (sync requests, chain-head announcements) keeps no
+  floors: no honest node relays them. The TLA+ model keeps the floor too (new checks `floor-forgotten-delivery` and
+  `floor-forgotten-framing` show what losing it costs; `origin-forgotten-*` now pass).
 - Node IDs are derived from public keys: the first 16 bytes of SHA-256 over a domain tag and the Ed25519
   key, as 32 hex characters. A message is authentic only if its origin is the ID derived from the key that
   signed it, and the TCP handshake refuses a peer whose declared ID is not derived from the key it proved.

@@ -12,8 +12,10 @@ ordering or safety guarantee across nodes.
 **Adversary considered:** a peer that commits acts of *commission* that a receiver can check by itself:
 replaying messages it already sent or forwarding messages with invalid signatures. The adversary cannot forge Ed25519 signatures of keys it does not hold.
 
-**Not considered:** Sybil attacks at scale (many identities), collusion, majority-Byzantine networks,
-semantically false but correctly signed reports, radio jamming, side channels, compromised devices.
+**Not considered:** Sybil attacks at scale with many network addresses (many keys on one machine are
+considered: the transport and the message budget charge each source host, item 8), collusion,
+majority-Byzantine networks, semantically false but correctly signed reports, radio jamming, side channels,
+compromised devices.
 
 ## Defences that exist
 
@@ -31,12 +33,14 @@ semantically false but correctly signed reports, radio jamming, side channels, c
 | Message flood | Token bucket per sender (20 messages, +20/s) for messages not seen before, applied before the signature check; copies of known messages are dropped first, by signing key, sequence number and ID | `sybil.rs`, `runtime.rs` |
 | Flood of fresh, validly signed messages from one origin | Token bucket per authenticated origin (20 messages, +5/s), charged after the origin is authenticated; excess dropped without a strike, so one origin cannot take the network's capacity through honest relays | `runtime.rs`, `sybil.rs` |
 | Signature-verification flood | Verifications bounded by the sender's token bucket; each invalid signature is a strike, so three bad signatures ban the sender; a banned peer's connection is closed and refused (30 s at a time), so its frames are neither read nor verified (measured: [benchmarks.md](benchmarks.md#invalid-signature-flood)) | `runtime.rs`, `sybil.rs`, `transport/tcp.rs` |
-| Flood of frames on one connection (including a sender that is never struck) | The listener reads at most 200 frames per second from a connection (burst 400); beyond that the reader waits and TCP flow control slows the sender. No strike: an honest burst is never punished, and honest links stay far below the cap | `transport/tcp.rs` |
+| Flood of frames from one host (including a sender that is never struck) | The listener reads at most 200 frames per second from all the connections of one source host together (burst 400); beyond that the reader waits and TCP flow control slows the sender. No strike: an honest burst is never punished, and honest links stay far below the cap | `transport/tcp.rs` |
+| Many keys on one machine (identity rotation) | Keys are free, so the listener charges its limits to the connection's source host (an IPv4 address or an IPv6 /64), not to the identity: at most 8 connections and 16 handshakes at once, then 2 per second, per host; frame pacing shared by the host; and `crci-node` charges every identity of a host to one message budget (20, then 20/s). A host costs a node at most that much however many keys it uses (proved: [formal-verification.md](formal-verification.md#analytical-bounds), Theorem 6) | `transport/tcp.rs`, `sybil.rs`, `crci-node` `main.rs` |
+| Locking honest neighbours out with idle connections | When all 100 slots are taken, a connection from a host holding fewer connections than the largest host is admitted by closing the least recently active connection of that host; a host with no connection is never refused, and displacing an honest host with c connections takes at least (100 − honest connections) / c adversary hosts (Lemma 3) | `transport/tcp.rs` |
 | Malformed input | Origin-ID length, severity range, sequence overflow and note size checked before `NodeRuntime` on a TCP node | `validation.rs`, `crci-node` `main.rs` |
 | Framing an author by replaying its message | Strikes fall on the connection that delivered a message, never on the message's author | `runtime.rs`, `transport/tcp.rs` |
 | Framing a neighbour by claiming its ID | Mutual Ed25519 challenge-response on every TCP connection; a peer whose declared node ID is not derived from the key it proved is refused, and strikes bind to that authenticated node ID | `transport/tcp.rs` |
 | Injecting, altering or replaying frames on the path | Every frame is signed by the dialer for the session (transcript hash) and numbered; a bad signature or counter closes the connection before the frame is processed | `transport/tcp.rs` |
-| Oversized / slow TCP frames | 1 MiB frame limit, 5 s to finish a frame that has started (a silent authenticated connection is closed after 10 min), 100 concurrent connections | `transport/tcp.rs` |
+| Oversized / slow TCP frames | 1 MiB frame limit, 5 s to finish a frame that has started (a silent authenticated connection is closed after 10 min), 100 concurrent connections, admitted per source host | `transport/tcp.rs` |
 | Data at rest | AES-256-GCM, key derived with Argon2id; with `--key-file` the node key is kept this way, and a wrong passphrase stops the node instead of creating a new key | `storage/encrypted.rs`, `identity.rs` |
 | A restarted node reusing sequence numbers | With `--key-file` a restarted node keeps its ID; each start reserves the next 2^32 sequence numbers in the key file before sending, so neighbours never see a number twice from it | `identity.rs` |
 | Panics across FFI | Rust panics surface as Kotlin exceptions (recorded run: `docs/evidence/android-bft038-2026-08-23/`) | `ffi.rs` |
@@ -47,7 +51,9 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    identity starts at 0.5). Node IDs are derived from keys, so no one can take an existing node's ID, but
    nothing ties a key to a person or device, and labels are not authenticated. A node started without
    `--key-file` has a new key, and so a new identity, at every start. The key file is only as safe as its
-   passphrase file and the device. TCP traffic is authenticated but not encrypted.
+   passphrase file and the device. TCP traffic is authenticated but not encrypted. What a fresh key buys is
+   bounded by the machine it comes from, not by the key: a node charges its connection, handshake and frame
+   limits and its message budget to each source host (item 8).
 2. **Stale floods are not penalised.** A packet older than the replay window is dropped without a strike,
    so an adversary can resend old signed messages without losing reputation. Each one still costs a
    signature verification; the cost is bounded only by the per-sender token bucket (20 messages, then 20/s).
@@ -91,8 +97,8 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    floods 1 000 valid fresh messages/s: 1.92 CPU seconds per neighbour over a 60 s run against 1.18 for a
    40 messages/s reference, 38.4 MiB of logs per run against 25.2 MiB (on an earlier build without pacing:
    6.3 s and 174 MiB).
-   What remains: each connection can still make its receiver do that much; a sender that reconnects pays a
-   handshake each time, the same as any stranger.
+   What remains: each source host can still make its receiver do that much (the pacing is shared by all of a
+   host's connections), and up to 16 handshakes at once, then 2 per second, however many keys it uses.
 7. **Aggregate gossip rate is bounded by the per-neighbour budget.** Every node relays every new message
    to all its neighbours, so each link carries every message once. Copies of messages the receiver already
    has spend no budget, but a node whose first copies all arrive through one neighbour (a node of degree 1,
@@ -103,12 +109,23 @@ semantically false but correctly signed reports, radio jamming, side channels, c
    honest frame dropped at 16 messages/s; at 32 messages/s, 2 343–3 454 dropped per run and 91–99 % of
    messages delivered. Each origin is limited to 5 new messages per second at every node (burst 20), so one
    flooding identity takes at most that share, and an honest node cannot sustain more than 5 messages per
-   second either (an honest source at 8 messages/s lost 635–1 684 messages per run). A node that floods
-   with many fresh identities is not bounded this way (item 8).
-8. **Sybil resistance is minimal.** `sybil.rs` has a proof-of-work check, but only tests call it, and a
-   "start at 0.2 if the /24 subnet has a banned peer" rule, which only applies to sender IDs that parse
-   as socket addresses. Fresh key pairs are otherwise free, so the per-origin budget (5 messages per
-   second per origin) does not bound a node that signs its flood with many new identities.
+   second either (an honest source at 8 messages/s lost 635–1 684 messages per run). A node that signs
+   its flood with many fresh identities is not bounded by the per-origin budget, only by its host's budget at
+   each node it reaches directly: 20 new messages per second per receiver (item 8), more than the 16
+   messages/s the network carried without an honest loss, so such a flood still crowds out honest traffic
+   where its messages are relayed.
+8. **Sybil resistance stops at the network address.** Fresh key pairs are free, so every limit of a TCP
+   node that an adversary could multiply with keys is charged to the source host of the connection instead:
+   connections (8), handshakes (16, then 2/s), frames (400, then 200/s) and new messages (20, then 20/s) per
+   host, whatever the number of identities (Theorem 6 in
+   [formal-verification.md](formal-verification.md#analytical-bounds); tests over real sockets in
+   `tcp_host_limits_tests.rs`). This only moves the cost from keys to addresses: an adversary with k hosts
+   gets k times every budget, and on IPv6 a whole /64 counts as one host. Several honest nodes behind one
+   address (a NAT) would share one budget; the mesh setting assumes one address per node. Within its budget a
+   host can still inject fresh, validly signed messages under new origins, which the per-origin budget does
+   not stop and honest relays carry on (item 7). `sybil.rs` also has a proof-of-work check, which only tests
+   call, and a "start at 0.2 if the /24 subnet has a banned peer" rule, which only applies to sender IDs that
+   parse as socket addresses (no TCP sender's does: TCP senders are key-derived IDs).
 9. **A neighbour whose frames are duplicated is struck.** A repeat of a message ID from the same
    connection is a strike, whoever caused it, so an honest neighbour behind a transport that duplicates
    frames loses reputation. The TCP transport numbers its frames and never duplicates one, and no honest
@@ -137,13 +154,17 @@ semantically false but correctly signed reports, radio jamming, side channels, c
     collude and do not originate; N ≤ 100 on real processes
     ([benchmarks.md](benchmarks.md#share-of-replaying-nodes)).
 12. **Bounded memory forgets, and identities are free.** A node keeps state for at most 896 origins and
-    forgets the least active first. A forgotten origin loses its replay window, so an old
-    message of that origin is accepted again as new and relayed, and a neighbour that still remembers the
-    origin strikes the honest relay for the repeat. Three such replays ban it there. The adversary has to
-    displace the origin first, by signing more messages than the origin has had accepted on each of 896 fresh
-    identities, within the budgets of the neighbours it reaches; an origin with few messages is cheap to displace
-    and a busy one is not. Both effects are shown by the model checker (`origin-forgotten-delivery`,
-    `origin-forgotten-framing`) and by a test on the real code. Limits on the rest of the state have smaller
+    forgets the least active first. A forgotten origin loses its replay window but keeps its floor, the highest
+    sequence number accepted, in a table of 3 584 floors (oldest first out): an old message of that origin is
+    stale, dropped without a strike and never accepted or relayed again. Before floors such a message was
+    accepted again and relayed, and a neighbour that still remembered the origin struck the honest relay for
+    the repeat: on the testbed one host flooding new origins inside its budget got 9 honest nodes banned
+    ([formal-verification.md](formal-verification.md#found-while-bounding-what-one-host-can-do)). What is left:
+    an adversary that pushes an origin's floor out too, with 3 584 more forgotten origins at that relay while a
+    neighbour still remembers the origin, gets the old effect back; the model checker shows both sides
+    (`origin-forgotten-*` pass, `floor-forgotten-*` break), and tests on the real code check the floor and its
+    limit. Messages of a forgotten origin that the node never received are not recovered below the floor.
+    Limits on the rest of the state have smaller
     costs: a clean transport peer that is forgotten loses nothing, and a banned one goes only when 1 024 peers
     are all banned; the recent store under a flood keeps less to answer sync requests with; a rescue message
     can be pushed out of the store by 256 newer ones, as the store has no way to tell a real rescue from a forged

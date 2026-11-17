@@ -1,0 +1,895 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling libc v0.2.186
+   Compiling cfg-if v1.0.4
+   Compiling version_check v0.9.5
+   Compiling typenum v1.20.1
+   Compiling serde_core v1.0.228
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.1
+   Compiling bytes v1.11.1
+   Compiling once_cell v1.21.4
+   Compiling serde v1.0.228
+   Compiling pin-project-lite v0.2.17
+   Compiling autocfg v1.5.1
+   Compiling generic-array v0.14.7
+   Compiling subtle v2.6.1
+   Compiling futures-core v0.3.32
+   Compiling zerocopy v0.8.50
+   Compiling zmij v1.0.21
+   Compiling futures-sink v0.3.32
+   Compiling cpufeatures v0.2.17
+   Compiling log v0.4.32
+   Compiling serde_json v1.0.150
+   Compiling thiserror v1.0.69
+   Compiling futures-channel v0.3.32
+   Compiling parking_lot_core v0.9.12
+   Compiling anyhow v1.0.102
+   Compiling camino v1.2.2
+   Compiling minimal-lexical v0.2.1
+   Compiling http v1.4.1
+   Compiling smallvec v1.15.1
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling fs-err v2.11.0
+   Compiling futures-io v0.3.32
+   Compiling block-buffer v0.10.4
+   Compiling slab v0.4.12
+   Compiling rand_core v0.10.1
+   Compiling futures-task v0.3.32
+   Compiling unicase v2.9.0
+   Compiling mime v0.3.17
+   Compiling syn v2.0.117
+   Compiling getrandom v0.4.2
+   Compiling httparse v1.10.1
+   Compiling mime_guess v2.0.5
+   Compiling paste v1.0.15
+   Compiling heck v0.5.0
+   Compiling siphasher v0.3.11
+   Compiling tower-service v0.3.3
+   Compiling utf8parse v0.2.2
+   Compiling anstyle-parse v1.0.0
+   Compiling getrandom v0.2.17
+   Compiling errno v0.3.14
+   Compiling socket2 v0.6.4
+   Compiling mio v1.2.1
+   Compiling signal-hook-registry v1.4.8
+   Compiling rand_core v0.6.4
+   Compiling nom v7.1.3
+   Compiling crypto-common v0.1.7
+   Compiling parking_lot v0.12.5
+   Compiling http-body v1.0.1
+   Compiling digest v0.10.7
+   Compiling tracing-core v0.1.36
+   Compiling bitflags v2.12.1
+   Compiling anstyle-query v1.1.5
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling anstyle v1.0.14
+   Compiling smawk v0.3.2
+   Compiling tower-layer v0.3.3
+   Compiling colorchoice v1.0.5
+   Compiling textwrap v0.16.2
+   Compiling inout v0.1.4
+   Compiling askama_escape v0.10.3
+   Compiling anstream v1.0.0
+   Compiling byteorder v1.5.0
+   Compiling plain v0.2.3
+   Compiling rustversion v1.0.22
+   Compiling strsim v0.11.1
+   Compiling tracing v0.1.44
+   Compiling clap_lex v1.1.0
+   Compiling cipher v0.4.4
+   Compiling sha1 v0.10.6
+   Compiling semver v1.0.28
+   Compiling clap_builder v4.6.0
+   Compiling http-body-util v0.1.3
+   Compiling universal-hash v0.5.1
+   Compiling percent-encoding v2.3.2
+   Compiling data-encoding v2.11.0
+   Compiling opaque-debug v0.3.1
+   Compiling atomic-waker v1.1.2
+   Compiling httpdate v1.0.3
+   Compiling utf-8 v0.7.6
+   Compiling rustc_version v0.4.1
+   Compiling glob v0.3.3
+   Compiling sync_wrapper v1.0.2
+   Compiling form_urlencoded v1.2.2
+   Compiling polyval v0.6.2
+   Compiling curve25519-dalek v4.1.3
+   Compiling askama_parser v0.2.1
+   Compiling signature v2.2.0
+   Compiling static_assertions v1.1.0
+   Compiling zeroize v1.8.2
+   Compiling ryu v1.0.23
+   Compiling base64 v0.22.1
+   Compiling thiserror v2.0.18
+   Compiling base64ct v1.8.3
+   Compiling weedle2 v5.0.0
+   Compiling ed25519 v2.2.3
+   Compiling uniffi_core v0.28.3
+   Compiling password-hash v0.5.0
+   Compiling ghash v0.5.1
+   Compiling serde_path_to_error v0.1.20
+   Compiling aes v0.8.4
+   Compiling ctr v0.9.2
+   Compiling blake2 v0.10.6
+   Compiling sha2 v0.10.9
+   Compiling aead v0.5.2
+   Compiling matchit v0.7.3
+   Compiling argon2 v0.5.3
+   Compiling tower-http v0.5.2
+   Compiling aes-gcm v0.10.3
+   Compiling uuid v1.23.2
+   Compiling socket2 v0.5.10
+   Compiling rustix v1.1.4
+   Compiling linux-raw-sys v0.12.1
+   Compiling fastrand v2.4.1
+   Compiling num-traits v0.2.19
+   Compiling crc32fast v1.5.2
+   Compiling regex-syntax v0.8.11
+   Compiling crossbeam-utils v0.8.23
+   Compiling adler2 v2.0.1
+   Compiling either v1.19.0
+   Compiling ciborium-io v0.2.2
+   Compiling simd-adler32 v0.3.10
+   Compiling itertools v0.10.5
+   Compiling miniz_oxide v0.9.1
+   Compiling wait-timeout v0.2.1
+   Compiling fnv v1.0.7
+   Compiling quick-error v1.2.3
+   Compiling same-file v1.0.6
+   Compiling cpufeatures v0.3.1
+   Compiling bit-vec v0.10.1
+   Compiling serde_derive v1.0.228
+   Compiling zerocopy-derive v0.8.50
+   Compiling thiserror-impl v1.0.69
+   Compiling futures-macro v0.3.32
+   Compiling tokio-macros v2.7.0
+   Compiling uniffi_checksum_derive v0.28.3
+   Compiling scroll_derive v0.12.1
+   Compiling uniffi_meta v0.28.3
+   Compiling futures-util v0.3.32
+   Compiling tokio v1.52.3
+   Compiling scroll v0.12.0
+   Compiling clap_derive v4.6.1
+   Compiling goblin v0.8.2
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling pin-project-internal v1.1.13
+   Compiling async-trait v0.1.89
+   Compiling thiserror-impl v2.0.18
+   Compiling tempfile v3.27.0
+   Compiling regex-automata v0.4.18
+   Compiling pin-project v1.1.13
+   Compiling cast v0.3.0
+   Compiling rusty-fork v0.3.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling criterion-plot v0.5.0
+   Compiling clap v4.6.1
+   Compiling bit-set v0.11.1
+   Compiling flate2 v1.1.10
+   Compiling chacha20 v0.10.2
+   Compiling walkdir v2.5.0
+   Compiling crossbeam-channel v0.5.17
+   Compiling rand v0.10.3
+   Compiling is-terminal v0.4.17
+   Compiling rand_xorshift v0.5.0
+   Compiling nom v8.0.0
+   Compiling core_detect v1.0.0
+   Compiling unarray v0.1.4
+   Compiling anes v0.1.6
+   Compiling oorandom v11.1.5
+   Compiling proptest v1.12.0
+   Compiling axum-core v0.4.5
+   Compiling futures-executor v0.3.32
+   Compiling tower v0.4.13
+   Compiling cargo-platform v0.1.9
+   Compiling basic-toml v0.1.10
+   Compiling toml v0.5.11
+   Compiling cargo_metadata v0.15.4
+   Compiling bincode v1.3.3
+   Compiling serde_urlencoded v0.7.1
+   Compiling askama_derive v0.12.5
+   Compiling futures v0.3.32
+   Compiling uniffi_testing v0.28.3
+   Compiling ppv-lite86 v0.2.21
+   Compiling uniffi_udl v0.28.3
+   Compiling rand_chacha v0.3.1
+   Compiling half v2.7.1
+   Compiling regex v1.13.1
+   Compiling tinytemplate v1.2.1
+   Compiling rand v0.8.6
+   Compiling hyper v1.10.1
+   Compiling tower v0.5.3
+   Compiling askama v0.12.1
+   Compiling uniffi_bindgen v0.28.3
+   Compiling uniffi_macros v0.28.3
+   Compiling tokio-util v0.7.18
+   Compiling ciborium-ll v0.2.2
+   Compiling hdrhistogram v7.6.0
+   Compiling ciborium v0.2.2
+   Compiling tungstenite v0.24.0
+   Compiling hyper-util v0.1.20
+   Compiling criterion v0.5.1
+   Compiling tokio-tungstenite v0.24.0
+   Compiling axum v0.7.9
+   Compiling uniffi_build v0.28.3
+   Compiling uniffi v0.28.3
+   Compiling crci-core v2.1.0 (/root/crci-t45/src/crates/crci-core)
+   Compiling crci-node v2.1.0 (/root/crci-t45/src/crates/crci-node)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4m 04s
+     Running unittests src/lib.rs (/root/crci-t45/target/debug/deps/crci_core-83a5b89019425ef5)
+
+running 138 tests
+test aeda::tests::test_escalation_no_duplicate_in_window ... ok
+test aeda::tests::test_escalation_triggers_at_threshold ... ok
+test aeda::tests::test_misinformation_flip_detected ... ok
+test aeda::tests::test_suspicious_all_clear_detected ... ok
+test aeda::tests::test_urgency_capped_at_max ... ok
+test aeda::tests::test_urgency_score_assigned ... ok
+test battery::tests::test_drain_rate_estimated ... ok
+test battery::tests::test_network_summary ... ok
+test battery::tests::test_normal_suppressed_in_critical ... ok
+test battery::tests::test_rescue_always_forwarded_in_critical ... ok
+test battery::tests::test_estimated_rounds_remaining ... ok
+test battery::tests::test_tier_classification ... ok
+test chaos::tests::test_packet_loss_scenarios ... ok
+test discovery::tests::test_beacon_discovery ... ok
+test discovery::tests::test_duplicate_beacon_not_double_counted ... ok
+test discovery::tests::test_own_beacon_ignored ... ok
+test discovery::tests::test_beacon_interval_respected ... ok
+test api::tests::test_status_endpoint ... ok
+test discovery::tests::test_discovery_method_tracked ... ok
+test discovery::tests::test_beacon_deterministic_sig ... ok
+test discovery::tests::test_peer_exchange_discovers_indirect_peers ... ok
+test discovery::tests::test_peer_exchange_cap_respected ... ok
+test discovery::tests::test_recently_seen_filter ... ok
+test discovery::tests::test_peers_in_zone_filter ... ok
+test chaos::tests::test_reconnect_storm_scenario ... ok
+test integration::tests::test_aeda_reputation_weighting ... ok
+test identity::tests::an_identity_id_is_derived_from_its_key ... ok
+test integration::tests::test_aeda_triggered_by_pipeline ... ok
+test chaos::tests::test_crash_restart_scenario ... ok
+test integration::tests::test_duplicate_throttled ... ok
+test integration::tests::test_empty_node_id_rejected ... ok
+test identity::tests::node_id_matches_an_independent_computation ... ok
+test integration::tests::test_invalid_severity_rejected ... ok
+test discovery::tests::test_multi_node_simulation ... ok
+test integration::tests::test_normal_throttled_in_critical_battery ... ok
+test integration::tests::test_next_round_resets_rate_limiter ... ok
+test integration::tests::test_oversized_payload_rejected ... ok
+test integration::tests::test_rate_limit_triggers ... ok
+test integration::tests::test_rescue_ack_increments ... ok
+test integration::tests::test_rescue_bypasses_zone_check ... ok
+test integration::tests::test_rescue_always_accepted_in_critical_battery ... ok
+test chaos::tests::test_partition_reconciliation_no_data_loss_or_conflict ... ok
+test integration::tests::test_rescue_resolve_clears_ack ... ok
+test integration::tests::test_split_battery_counter_not_corrupted_by_rescue ... ok
+test integration::tests::test_valid_normal_message_accepted ... ok
+test integration::tests::test_unverified_node_rejected_by_pipeline ... ok
+test integration::tests::test_vouched_node_accepted ... ok
+test merkle::tests::genesis_block_is_valid ... ok
+test replay::tests::a_floor_covers_sequence_number_zero ... ok
+test merkle::tests::divergence_detection ... ok
+test metrics::tests::test_prometheus_format ... ok
+test merkle::tests::tamper_detection ... ok
+test merkle::tests::append_and_verify ... ok
+test replay::tests::a_forgotten_origin_keeps_its_floor ... ok
+test replay::tests::duplicate_from_other_peer_is_redundant ... ok
+test replay::tests::a_peer_with_nothing_left_in_the_window_is_dropped ... ok
+test replay::tests::duplicate_from_same_peer_is_replayed ... ok
+test replay::tests::first_message_from_an_origin_is_accepted ... ok
+test replay::tests::a_window_wider_than_one_word_keeps_every_seq ... ok
+test discovery::tests::test_peer_table_eviction_at_cap ... ok
+test replay::tests::slide_clears_exactly_the_seqs_that_left_the_window ... ok
+test replay::tests::reordered_packet_inside_window_is_accepted ... ok
+test replay::tests::packet_below_window_floor_is_out_of_window ... ok
+test replay::tests::window_slides_and_forgets_old_entries ... ok
+test routing::tests::high_severity_beats_fresh_low_severity ... ok
+test replay::tests::origins_are_independent ... ok
+test routing::tests::priority_decays_with_age ... ok
+test routing::tests::stale_entry_eviction ... ok
+test security::tests::test_audit_log_appends_and_caps ... ok
+test routing::tests::best_next_hop_prefers_low_hop_count ... ok
+test security::tests::test_audit_log_records_zone_spoof ... ok
+test security::tests::test_goodbye_message_priority ... ok
+test security::tests::test_high_rep_nodes_trigger_mce ... ok
+test routing::tests::upsert_does_not_regress_last_seen ... ok
+test replay::tests::window_zero_is_strict_monotonic ... ok
+test chaos::tests::test_chaos_scenarios_ordering_independence ... ok
+test security::tests::test_low_rep_nodes_dont_trigger_mce ... ok
+test security::tests::test_node_id_derivation_is_deterministic ... ok
+test security::tests::test_mixed_rep_mce_threshold ... ok
+test security::tests::test_priority_queue_rescue_before_normal ... ok
+test security::tests::test_node_id_differs_per_key ... ok
+test security::tests::test_payload_audit_missing_fields ... ok
+test security::tests::test_rescue_resolution_message_exists ... ok
+test security::tests::test_payload_audit_complete ... ok
+test security::tests::test_valid_node_id_format_accepted ... ok
+test security::tests::test_unverified_node_cannot_vouch ... ok
+test security::tests::test_vouching_grants_zone_membership ... ok
+test security::tests::test_zone_bootstrap_accepts_first_node ... ok
+test security::tests::test_zone_claim_requires_vouching ... ok
+test security::tests::test_zone_spoof_detection ... ok
+test sybil::tests::a_banned_peer_is_readmitted_after_recovering_to_the_unban_threshold ... ok
+test sybil::tests::damped_peer_below_the_ceiling_recovers_only_to_the_ceiling ... ok
+test sybil::tests::guard_clock_can_be_advanced ... ok
+test sybil::tests::damping_never_lowers_a_score ... ok
+test sybil::tests::inactivity_does_not_change_a_score ... ok
+test sybil::tests::three_strikes_ban_from_the_initial_score ... ok
+test sybil::tests::two_recent_strikes_cap_recovery_until_one_expires ... ok
+test replay::tests::peer_records_are_bounded_and_counted ... ok
+test sybil::tests::recovery_is_linear_in_time_and_capped_at_the_initial_score ... ok
+test transport::tcp::admission_tests::a_host_holding_as_many_as_every_other_host_is_refused_when_full ... ok
+test transport::tcp::admission_tests::a_host_opens_connections_at_a_bounded_rate ... ok
+test transport::tcp::admission_tests::a_host_without_a_connection_is_admitted_when_the_listener_is_full ... ok
+test transport::tcp::admission_tests::hosts_are_addresses_and_ipv6_slash_64s ... ok
+test transport::tcp::admission_tests::one_host_keeps_at_most_its_share_and_only_its_newest_connections ... ok
+test transport::tcp::admission_tests::one_identity_keeps_at_most_its_share_of_connections ... ok
+test sybil::tests::identities_of_one_host_share_one_budget ... ok
+test sybil::tests::recovery_does_not_depend_on_how_often_it_is_applied ... ok
+test transport::tcp::admission_tests::without_per_host_limits_a_full_listener_refuses ... ok
+test ttl::tests::test_duplicate_not_stored_twice ... ok
+test ttl::tests::test_normal_message_expires ... ok
+test ttl::tests::test_prune_removes_expired_normal ... ok
+test ttl::tests::test_rescue_expires_after_resolved ... ok
+test ttl::tests::test_rescue_never_expires_while_active ... ok
+test ttl::tests::test_storage_cap_evicts_normal_before_rescue ... ok
+test ttl::tests::test_tombstone_prevents_readmission ... ok
+test validation::tests::test_empty_node_id_rejected ... ok
+test validation::tests::test_panic_cooldown_enforced ... ok
+test validation::tests::test_payload_size_enforced ... ok
+test validation::tests::test_rate_limiter_blocks_at_limit ... ok
+test validation::tests::test_seq_overflow_detected ... ok
+test validation::tests::test_rate_limiter_resets_per_round ... ok
+test validation::tests::test_severity_infinity_rejected ... ok
+test validation::tests::test_severity_nan_rejected ... ok
+test validation::tests::test_severity_out_of_range_rejected ... ok
+test validation::tests::test_severity_valid_range_accepted ... ok
+test wasm::tests::test_execute_oversized_input ... ok
+test wasm::tests::test_execute_priority_scorer_valid ... ok
+test wasm::tests::test_execute_unknown_module ... ok
+test sybil::tests::periodic_strikes_ban_exactly_when_faster_than_the_forgiveness_period ... ok
+test transport::tcp::tests::dialed_connection_gives_up_on_unacknowledged_data ... ok
+test sybil::tests::a_host_with_one_identity_sees_the_same_budget_as_before ... ok
+test replay::tests::the_floor_table_never_outgrows_its_buckets_and_can_be_switched_off ... ok
+test replay::tests::floors_are_kept_oldest_first_out_up_to_their_limit ... ok
+test sybil::tests::a_ban_lasts_between_300_and_500_seconds ... ok
+test transport::tcp::admission_tests::a_host_gains_nothing_when_the_listener_forgets_it ... ok
+test sybil::tests::a_host_gains_nothing_when_its_identities_are_forgotten ... ok
+test transport::tcp::admission_tests::honest_hosts_survive_an_adversary_with_too_few_hosts ... ok
+test sybil::tests::no_strike_schedule_beats_the_strike_budget ... ok
+
+test result: ok. 138 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.36s
+
+     Running unittests src/bin/uniffi-bindgen.rs (/root/crci-t45/target/debug/deps/uniffi_bindgen-4e8925b16cf767c7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/protocol_model_conformance.rs (/root/crci-t45/target/debug/deps/protocol_model_conformance-75578fdd24bb1c83)
+
+running 1 test
+test the_code_does_what_the_model_does_on_every_step_of_its_behaviours ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 24.72s
+
+     Running tests/reputation_model_conformance.rs (/root/crci-t45/target/debug/deps/reputation_model_conformance-6961f3443895d361)
+
+running 1 test
+test every_transition_of_the_model_is_what_the_code_does ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/bin/adv_client.rs (/root/crci-t45/target/debug/deps/adv_client-86a914abdceea9f2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/byzantine_agent.rs (/root/crci-t45/target/debug/deps/byzantine_agent-48ca18fbff0a472b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/root/crci-t45/target/debug/deps/crci_node-da4c33962041dec6)
+
+running 2 tests
+test tests::sync_answers_are_not_sent_to_an_unspecified_listen_address ... ok
+test tests::corrupted_message_fails_signature_verification ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/api_tests.rs (/root/crci-t45/target/debug/deps/api_tests-4d28870b272152b6)
+
+running 14 tests
+test test_inject_invalid_priority ... ok
+test divergences_empty_returns_array ... ok
+test health_endpoint_returns_ok ... ok
+test test_inject_valid ... ok
+test oversized_body_returns_413 ... ok
+test test_inject_payload_too_large ... ok
+test test_inject_wrong_content_type ... ok
+test test_peers_returns_200 ... ok
+test chain_head_returns_valid_hex ... ok
+test response_has_request_id_header ... ok
+test unknown_route_returns_404_json ... ok
+test test_status_returns_200 ... ok
+test test_metrics_endpoint ... ok
+test rate_limit_triggers_429 ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/bft_batch1_tests.rs (/root/crci-t45/target/debug/deps/bft_batch1_tests-f882c9a6f0dbb8f8)
+
+running 22 tests
+test test_bft_recovery_after_penalty ... ok
+test test_bft_reputation_fixed_point_rounding ... ok
+test test_bft_reputation_based_eviction_hysteresis ... ok
+test test_bft_reputation_isolation_per_peer_view ... ok
+test test_bft_reputation_no_idle_decay ... ok
+test test_bft_reputation_persistence_across_reconnect ... ok
+test test_bft_reputation_recovery ... ok
+test test_bft_sybil_cluster_reputation_correlation ... ok
+test test_bft_subnet_limit ... ok
+test test_bft_trusted_node_passthrough_guard ... ok
+test test_bft_untrusted_node_escalation_guard ... ok
+test test_bft_xor_hash_collision_guard ... ok
+test test_idle_peer_is_never_banned_by_inactivity ... ok
+test test_bft_signature_invalidation_spoof_defense ... ok
+test test_bft_reputation_persistence_clamping ... ok
+test test_bft008_persists_across_bft046_eviction ... ok
+test test_bft_pruning_banned_records ... ok
+test test_bft_seen_messages_cache_ceiling ... ok
+test test_bft_reputation_bounds_clamping ... ok
+test test_bft_signature_checks_do_not_cap_an_honest_origin ... ok
+test test_bft_reputation_weighted_quorum ... ok
+test test_idle_peer_passes_sybil_guard ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.10s
+
+     Running tests/byzantine_integration.rs (/root/crci-t45/target/debug/deps/byzantine_integration-9dd03b11b52aab8d)
+
+running 1 test
+test byzantine_peer_does_not_corrupt_honest_connection ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.58s
+
+     Running tests/chain_gossip_tests.rs (/root/crci-t45/target/debug/deps/chain_gossip_tests-50230c606d6cf1ca)
+
+running 7 tests
+test test_no_peers_safe_broadcast ... ok
+test test_matching_head_no_divergence ... ok
+test test_peer_ahead_no_divergence ... ok
+test test_mismatched_head_divergence_alert ... ok
+test test_divergence_increments_byzantine_events ... ok
+test chain_head_announcements_do_not_echo ... ok
+test chain_head_is_announced_only_when_it_changes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests/chaos_wan_100_tests.rs (/root/crci-t45/target/debug/deps/chaos_wan_100_tests-32e83449283b8988)
+
+running 2 tests
+test test_wan_chaos_100_nodes_5pct_loss ... ok
+test test_wan_chaos_100_nodes_3pct_loss ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/chaos_wan_real_tests.rs (/root/crci-t45/target/debug/deps/chaos_wan_real_tests-3b88268eed691ab2)
+
+running 1 test
+test test_real_wan_chaos_netns ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cli_integration.rs (/root/crci-t45/target/debug/deps/cli_integration-6352e680e17e530b)
+
+running 5 tests
+test test_cli_peers_dial ... ok
+test an_oversized_replay_window_is_refused_at_start ... ok
+test test_cli_message_send_and_receive ... ok
+test test_cli_byzantine_mode ... ok
+test the_largest_replay_window_is_accepted ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.51s
+
+     Running tests/crypto_hardening_tests.rs (/root/crci-t45/target/debug/deps/crypto_hardening_tests-c18f4a724fbf1c03)
+
+running 14 tests
+test test_ed25519_rejects_malformed_signature ... ok
+test test_ffi_catch_unwind_panic_safety ... ok
+test test_ffi_excessive_peers_returns_false_not_panic ... ok
+test test_ffi_connect_peer_when_no_node_running_returns_false ... ok
+test test_ffi_invalid_config_returns_false_not_panic ... ok
+test test_ffi_zero_peers_returns_false_not_panic ... ok
+test test_ffi_start_stop_node_lifecycle_handles_errors_cleanly ... ok
+test test_ed25519_verifying_key_roundtrip_matches_signing ... ok
+test test_ed25519_rejects_signature_from_wrong_key ... ok
+test test_ed25519_empty_payload_signs_and_verifies ... ok
+test test_ed25519_rejects_signature_for_different_payload ... ok
+test test_ed25519_does_not_catch_replay_by_itself ... ok
+test test_ed25519_signature_verifies_repeatedly ... ok
+test test_aes_gcm_nonce_never_repeats_across_writes ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+
+     Running tests/defence_mode_tests.rs (/root/crci-t45/target/debug/deps/defence_mode_tests-a22acea8c181ba38)
+
+running 6 tests
+test k_equal_three_is_the_shipped_penalty ... ok
+test full_bans_a_replayer_after_three_strikes ... ok
+test the_baselines_count_strikes_but_never_ban ... ok
+test strikes_to_ban_bans_exactly_at_the_kth_strike ... ok
+test the_per_sender_bucket_limits_full_and_static_bucket_but_not_vanilla ... ok
+test only_full_has_a_per_origin_budget ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.97s
+
+     Running tests/ffi_consensus_loop_tests.rs (/root/crci-t45/target/debug/deps/ffi_consensus_loop_tests-3d93f19f61db501e)
+
+running 1 test
+test test_ffi_background_consensus_loop_runs ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.50s
+
+     Running tests/ffi_smoke_test.rs (/root/crci-t45/target/debug/deps/ffi_smoke_test-47291dc0ac5c1685)
+
+running 6 tests
+test test_list_peers_stub_returns_empty ... ok
+test test_validate_node_config_rejects_bad_addr ... ok
+test test_crci_version_non_empty ... ok
+test test_validate_node_config_rejects_empty_id ... ok
+test test_validate_node_config_rejects_zero_peers ... ok
+test test_validate_node_config_valid ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/handshake_integration.rs (/root/crci-t45/target/debug/deps/handshake_integration-91f1d05bdb0aed3d)
+
+running 1 test
+test two_node_handshake_peer_count_reaches_one ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/key_derived_id_tests.rs (/root/crci-t45/target/debug/deps/key_derived_id_tests-559dd5325521120f)
+
+running 5 tests
+test forwarding_a_message_that_claims_another_nodes_id_is_a_strike ... ok
+test an_impostor_that_announces_an_honest_id_first_does_not_silence_it ... ok
+test a_stored_key_is_reloaded_and_each_start_reserves_new_sequence_numbers ... ok
+test a_wrong_or_empty_passphrase_is_refused_and_no_new_key_is_made ... ok
+test a_restarted_node_keeps_its_id_and_its_new_messages_are_accepted ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.21s
+
+     Running tests/legacy_kdf_tests.rs (/root/crci-t45/target/debug/deps/legacy_kdf_tests-7b141180f703baac)
+
+running 4 tests
+test test_derived_key_differs_from_raw_signing_key_bytes ... ok
+test test_wrong_signing_key_fails_to_decrypt ... ok
+test test_node_storage_save_load_roundtrip_with_kdf ... ok
+test test_different_signing_keys_produce_different_derived_keys ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/mesh_integration.rs (/root/crci-t45/target/debug/deps/mesh_integration-0acbfb4f6a5e3e26)
+
+running 1 test
+test four_node_mesh_integration ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.89s
+
+     Running tests/mesh_sim_tests.rs (/root/crci-t45/target/debug/deps/mesh_sim_tests-da8ae1490bdee2ba)
+
+running 11 tests
+test coverage_in_contact_counts_only_links_used_after_the_fault ... ok
+test a_contact_trace_limits_delivery_to_the_time_respecting_paths_and_strikes_nobody ... ok
+test attackers_on_a_cut_split_the_honest_nodes_and_delivery_stays_inside_the_component ... ok
+test goodput_and_verifications_are_reported ... ok
+test replaying_relay_is_banned_by_every_neighbour_and_nobody_else_is ... ok
+test an_attacker_that_does_not_repeat_is_not_struck ... ok
+test no_attacker_means_no_strike_and_full_delivery ... ok
+test the_baselines_strike_a_replayer_but_never_ban_it ... ok
+test injected_duplicates_strike_honest_peers_and_the_threshold_decides_how_many_are_banned ... ok
+test a_lower_strike_threshold_bans_sooner_and_admits_fewer_attacker_frames ... ok
+test same_scenario_same_outcome ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 31.96s
+
+     Running tests/message_id_tests.rs (/root/crci-t45/target/debug/deps/message_id_tests-ce0c2d2b11dbdaa6)
+
+running 4 tests
+test a_repeat_of_the_same_signed_message_is_still_a_strike ... ok
+test an_adversary_message_under_the_same_id_does_not_suppress_the_honest_one ... ok
+test an_adversary_message_under_the_same_id_does_not_replace_a_stored_rescue ... ok
+test a_frame_rejected_for_its_key_does_not_suppress_the_honest_message ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/metrics_integration_tests.rs (/root/crci-t45/target/debug/deps/metrics_integration_tests-fdafee18aab79242)
+
+running 4 tests
+test test_metrics_seen_messages_evictions_on_bft046 ... ok
+test test_metrics_byzantine_detected_on_invalid_signature ... ok
+test test_metrics_to_prometheus_output_well_formed ... ok
+test test_metrics_messages_accepted_increments ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/paced_attack_tests.rs (/root/crci-t45/target/debug/deps/paced_attack_tests-7d7f10eaab2db30c)
+
+running 7 tests
+test three_rapid_replays_ban ... ok
+test damping_is_temporary ... ok
+test valid_traffic_does_not_speed_up_recovery ... ok
+test attacker_pacing_faster_than_forgiveness_is_banned ... ok
+test good_behaviour_cannot_be_banked ... ok
+test attacker_pacing_at_forgiveness_period_is_bounded ... ok
+test honest_peer_with_occasional_faults_recovers ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.34s
+
+     Running tests/partition_heal_tests.rs (/root/crci-t45/target/debug/deps/partition_heal_tests-706b410abfccf1ce)
+
+running 29 tests
+test a_gossip_copy_after_the_session_ended_strikes ... ok
+test a_gossip_copy_after_its_answer_is_not_struck_when_a_third_peer_was_first ... ok
+test a_second_copy_after_an_answer_strikes ... ok
+test a_tag_naming_a_request_to_someone_else_earns_no_excuse ... ok
+test a_gossip_copy_after_its_answer_is_not_struck ... ok
+test a_repeated_sync_request_is_still_struck ... ok
+test an_own_message_echoed_after_the_seen_cache_cleared_is_not_relayed_again ... ok
+test a_gossip_copy_after_its_answer_is_not_struck_after_an_impostor_claimed_the_origin ... ok
+test answer_tag_is_not_relayed ... ok
+test a_tagged_and_an_untagged_copy_share_one_excuse ... ok
+test a_gossip_copy_after_its_answer_is_not_struck_when_the_answer_was_redundant ... ok
+test answer_tag_must_name_a_request_to_the_sender ... ok
+test heal_without_anti_entropy_leaves_messages_undelivered ... ok
+test a_resumed_sync_is_answered_after_a_request_that_arrived_late ... ok
+test excuse_expires_with_the_session ... ok
+test relayed_sync_request_is_not_answered ... ok
+test sync_digest_is_signed ... ok
+test untagged_repeat_inside_a_session_strikes ... ok
+test unsolicited_duplicates_during_heal_still_strike ... ok
+test answer_crossing_with_gossip_is_not_struck ... ok
+test answers_are_rate_limited_and_batched ... ok
+test late_answer_to_a_stale_digest_is_not_struck ... ok
+test answers_are_limited_across_requesters ... ok
+test a_request_excuses_at_most_one_answer_batch ... ok
+test a_full_answer_is_reported_so_the_requester_asks_again ... ok
+test partitioned_groups_converge_after_heal_without_strikes ... ok
+test a_message_delayed_behind_sync_requests_is_accepted ... ok
+test sync_requests_use_a_window_of_their_own ... ok
+test sync_requests_do_not_push_messages_out_of_the_window ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+     Running tests/reorder_property_tests.rs (/root/crci-t45/target/debug/deps/reorder_property_tests-28e74527e4329e20)
+
+running 6 tests
+test depth_one_beyond_the_window_drops_without_a_strike ... ok
+test schedule_depth_never_exceeds_the_jitter_bound ... ok
+test filter_never_reports_a_replay_for_honest_relays_at_any_depth ... ok
+test filter_accepts_every_message_reordered_within_the_window ... ok
+test honest_relays_are_never_struck_at_any_depth ... ok
+test honest_relays_are_never_struck_and_lose_nothing_within_the_window ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.60s
+
+     Running tests/replay_window_tests.rs (/root/crci-t45/target/debug/deps/replay_window_tests-0614d38ea5f68076)
+
+running 7 tests
+test duplicate_inside_window_from_another_peer_is_not_struck ... ok
+test duplicate_inside_window_from_same_peer_is_struck_and_banned_after_three ... ok
+test relay_cannot_rewrite_the_sequence_number ... ok
+test reordered_packet_inside_window_is_accepted_without_strike ... ok
+test resending_an_out_of_window_message_is_not_a_strike ... ok
+test out_of_window_packet_is_dropped_without_strike ... ok
+test stale_packets_never_ban_the_relay ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/signature_budget_tests.rs (/root/crci-t45/target/debug/deps/signature_budget_tests-6e8ec17828165071)
+
+running 9 tests
+test invalid_signature_flood_is_bounded_by_strikes ... ok
+test forged_messages_claiming_an_origin_do_not_spend_its_budget ... ok
+test a_replay_over_budget_is_still_struck ... ok
+test messages_claiming_an_origin_do_not_spend_its_budget ... ok
+test a_message_dropped_for_its_origins_budget_is_accepted_later ... ok
+test valid_signature_burst_is_bounded_by_sender_budget ... ok
+test copies_already_received_from_another_neighbour_spend_no_budget ... ok
+test one_origin_cannot_take_more_than_its_share_through_many_neighbours ... ok
+test honest_origin_sending_twenty_messages_over_time_has_all_accepted ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.16s
+
+     Running tests/signed_fields_tests.rs (/root/crci-t45/target/debug/deps/signed_fields_tests-4a5bc190f639c082)
+
+running 19 tests
+test relay_rewriting_message_type_is_rejected_and_struck ... ok
+test field_boundaries_are_unambiguous ... ok
+test rewriting_needs_help_breaks_signature ... ok
+test absent_note_and_empty_note_are_signed_differently ... ok
+test rewriting_can_help_others_breaks_signature ... ok
+test removing_note_breaks_signature ... ok
+test rewriting_confidence_breaks_signature ... ok
+test rewriting_message_type_breaks_signature ... ok
+test rewriting_id_breaks_signature ... ok
+test rewriting_location_confirmed_breaks_signature ... ok
+test small_order_key_does_not_verify_any_message ... ok
+test rewriting_origin_pubkey_breaks_signature ... ok
+test rewriting_origin_active_breaks_signature ... ok
+test rewriting_origin_breaks_signature ... ok
+test rewriting_note_breaks_signature ... ok
+test signature_over_another_domain_does_not_verify ... ok
+test rewriting_seq_breaks_signature ... ok
+test rewriting_visibility_breaks_signature ... ok
+test rewriting_severity_breaks_signature ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/spawn_panic_isolation_tests.rs (/root/crci-t45/target/debug/deps/spawn_panic_isolation_tests-f97c5e33d5eaefe6)
+
+running 3 tests
+test test_watcher_does_not_false_positive_on_success ... ok
+test test_spawned_task_panic_does_not_kill_runtime ... ok
+test test_watcher_task_observes_panic_without_crashing ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/state_bound_tests.rs (/root/crci-t45/target/debug/deps/state_bound_tests-a37a03468eb2365a)
+
+running 14 tests
+test per_message_lines_are_bounded_per_node_and_a_light_sender_keeps_every_line ... ok
+test relay_targets_chosen_by_peers_are_bounded ... ok
+test a_flood_of_new_senders_is_bounded_and_keeps_the_bans ... ok
+test a_reused_message_id_with_a_new_sequence_number_does_not_strike_the_relay ... ok
+test a_chain_keeps_only_its_newest_blocks_and_still_verifies ... ok
+test rescues_from_new_identities_cannot_grow_the_ttl_store ... ok
+test invalid_signatures_create_no_origin_state ... ok
+test the_divergence_log_keeps_its_limit ... ok
+test a_flood_of_new_origins_leaves_every_origin_table_at_its_limit ... ok
+test a_replay_after_forgetting_does_not_get_an_honest_relay_struck ... ok
+test a_forgotten_origin_keeps_a_floor_so_its_old_messages_are_stale ... ok
+test a_flood_of_one_message_origins_does_not_displace_a_busy_origin ... ok
+test stores_of_messages_keep_the_newest_up_to_their_limits ... ok
+test floors_are_bounded_and_the_oldest_goes_first ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.28s
+
+     Running tests/storage_tests.rs (/root/crci-t45/target/debug/deps/storage_tests-b583bdaabfeea211)
+
+running 6 tests
+test encrypted_store_list_ids_excludes_deleted ... ok
+test encrypted_store_write_and_read_roundtrip ... ok
+test encrypted_store_overwrite_returns_latest_value ... ok
+test encrypted_store_delete_then_read_returns_not_found ... ok
+test encrypted_store_wrong_passphrase_returns_auth_error ... ok
+test encrypted_store_persists_across_reopen ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.76s
+
+     Running tests/sybil_tests.rs (/root/crci-t45/target/debug/deps/sybil_tests-c51671bb2053d91d)
+
+running 7 tests
+test test_sybil_new_peer_starts_at_half_reputation ... ok
+test test_sybil_rate_limit_triggers_on_burst ... ok
+test test_sybil_ban_after_repeated_violations ... ok
+test test_sybil_pow_verify_correct_nonce ... ok
+test test_sybil_pow_verify_wrong_nonce_fails ... ok
+test test_sybil_report_violation_then_check_propagates_penalty ... ok
+test test_sybil_token_bucket_refills_over_time ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+     Running tests/tcp_auth_tests.rs (/root/crci-t45/target/debug/deps/tcp_auth_tests-648cb3ff8f998fb9)
+
+running 12 tests
+test origin_claim_is_struck_and_does_not_block_the_real_node ... ok
+test dialer_rejects_a_listener_declaring_an_id_not_derived_from_its_key ... ok
+test dialer_rejects_a_listener_that_cannot_prove_its_key ... ok
+test adversary_with_an_honest_label_cannot_get_it_penalised ... ok
+test dialer_declaring_an_id_not_derived_from_its_key_is_rejected ... ok
+test frame_signed_for_another_session_is_rejected ... ok
+test handshake_from_another_connection_is_rejected ... ok
+test transport_refuses_to_dial_its_own_key ... ok
+test altered_frame_is_rejected_and_never_attributed_to_the_dialer ... ok
+test bad_signature_handshake_is_rejected_before_any_frame ... ok
+test answer_tag_is_covered_by_the_frame_signature ... ok
+test replayed_frame_counter_closes_the_connection ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s
+
+     Running tests/tcp_host_limits_tests.rs (/root/crci-t45/target/debug/deps/tcp_host_limits_tests-3363a313fedba4fb)
+
+running 5 tests
+test one_host_with_many_identities_holds_only_its_share_of_connections ... ok
+test without_per_host_limits_idle_connections_lock_an_honest_neighbour_out ... ok
+test idle_connections_from_other_hosts_cannot_lock_an_honest_neighbour_out ... ok
+test without_per_host_limits_every_identity_brings_a_fresh_budget ... ok
+test a_host_gets_one_message_budget_however_many_identities_it_uses ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.67s
+
+     Running tests/tcp_pacing_tests.rs (/root/crci-t45/target/debug/deps/tcp_pacing_tests-58b478b2548c125b)
+
+running 2 tests
+test an_honest_burst_below_the_default_burst_is_not_delayed ... ok
+test a_connection_delivers_frames_at_the_paced_rate_not_faster ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.16s
+
+     Running tests/tcp_persistent_tests.rs (/root/crci-t45/target/debug/deps/tcp_persistent_tests-e0c3d9e380e8dafb)
+
+running 9 tests
+test undeliverable_relays_are_counted ... ok
+test a_peer_that_starts_later_receives_later_frames ... ok
+test a_stalled_peer_does_not_delay_delivery_to_another_peer ... ok
+test many_messages_to_one_peer_use_one_handshake ... ok
+test frames_to_one_peer_stay_in_order_when_relayed ... ok
+test reconnects_after_the_listener_restarts ... ok
+test only_a_replaced_relay_connection_is_reported ... ok
+test an_idle_connection_outlives_the_read_timeout ... ok
+test a_link_that_dies_late_after_a_write_reconnects_and_reports_itself ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.15s
+
+     Running tests/tcp_shun_tests.rs (/root/crci-t45/target/debug/deps/tcp_shun_tests-58ee2cda184a34a3)
+
+running 2 tests
+test a_shunned_peer_delivers_nothing_and_cannot_reconnect_its_way_back ... ok
+test a_shunned_peer_gets_one_probe_frame_after_the_interval ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.89s
+
+     Running tests/tcp_signed_path_tests.rs (/root/crci-t45/target/debug/deps/tcp_signed_path_tests-fecabc1c22a54f42)
+
+running 20 tests
+test an_unreachable_peer_does_not_delay_start_up ... ok
+test a_node_with_a_key_file_keeps_its_id_across_restarts ... ok
+test accepted_messages_are_relayed_to_a_dialed_peer ... ok
+test bad_signature_over_tcp_is_rejected ... ok
+test adversary_with_an_honest_label_cannot_get_it_banned ... ok
+test honest_signed_message_is_accepted_over_tcp ... ok
+test a_replaying_node_is_banned_by_its_peer ... ok
+test emitted_messages_reach_a_peer_with_timestamps ... ok
+test an_impostor_announcing_an_honest_id_over_tcp_does_not_silence_it ... ok
+test signed_replay_over_tcp_bans_the_sender_after_three_strikes ... ok
+test unsigned_mass_casualty_event_over_tcp_is_rejected ... ok
+test unsigned_message_over_tcp_is_rejected ... ok
+test a_node_restarted_from_its_key_file_is_not_struck_by_its_peer ... ok
+test node_started_before_its_peer_relays_to_it_once_it_is_up ... ok
+test a_banned_forger_is_disconnected_and_costs_nothing ... ok
+test defence_flags_change_what_a_receiver_does_with_a_replayer ... ok
+test late_node_catches_up_through_anti_entropy ... ok
+test frame_lost_on_a_link_that_then_goes_quiet_is_recovered ... ok
+test frame_lost_with_a_relay_connection_is_recovered_after_reconnect ... ok
+test a_node_behind_by_more_than_one_answer_asks_again_at_once ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.02s
+
+     Running tests/transport_tests.rs (/root/crci-t45/target/debug/deps/transport_tests-41bd261932af01ee)
+
+running 9 tests
+test ble_transport_returns_not_available ... ok
+test lora_transport_returns_not_available ... ok
+test multiplexer_all_fail_returns_error ... ok
+test tcp_frame_sender_is_the_transport_not_the_message_origin ... ok
+test test_tcp_transport_cancellation ... ok
+test tcp_transport_send_receive_roundtrip ... ok
+test multiplexer_falls_through_to_tcp ... ok
+test test_tcp_transport_connection_limit ... ok
+test test_tcp_transport_handshake_timeout ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.60s
+
+   Doc-tests crci_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

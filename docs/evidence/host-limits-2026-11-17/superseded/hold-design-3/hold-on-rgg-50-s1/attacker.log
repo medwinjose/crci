@@ -1,0 +1,1 @@
+host_attack mode=hold targets=50 sources=13 connections=12523 refused=2836 closed_by_target=7441 identities=15359 frames=0 seconds=165.5

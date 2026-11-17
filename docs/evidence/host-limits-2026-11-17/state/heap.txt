@@ -1,0 +1,4 @@
+one million origins: messages=1000000 heap at a tenth 3.15 MB, end 3.13 MB, peak 3.38 MB, forgotten 999152, rss 9796 KiB
+one million origins, protocol state only: messages=1000000 heap at a tenth 2.25 MB, end 2.24 MB, peak 2.40 MB, forgotten 999152, rss 8596 KiB
+100 origins: messages=1000000 heap at a tenth 1.92 MB, end 1.87 MB, peak 2.08 MB, forgotten 0, rss 5580 KiB
+one million origins and senders: messages=1000000 heap at a tenth 3.67 MB, end 3.70 MB, peak 3.95 MB, forgotten 999152, rss 10308 KiB

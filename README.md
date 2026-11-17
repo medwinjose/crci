@@ -92,6 +92,7 @@ emulated on one host; three seeds per configuration, every run within the testbe
 | A node flooding fresh, validly signed messages at 40 msg/s | Honest delivery 100 % (before the per-origin budget: 82–98 %) |
 | Offered load | No honest message dropped at 16 msg/s network-wide; one node can sustain at most 5 msg/s |
 | 20 % or 50 % of the links going down and up every 5–10 s, with and without a replayer (102 runs) | 0 honest nodes banned or struck; every message delivered to every node; the replayer banned by all neighbours within 8.1 s |
+| One adversary host with any number of keys: forged signatures from 8 connections per target with a new key after each ban, a flood of fresh messages from new origins, idle connections to every node (24 runs, limits per address on and off) | 0 honest nodes banned. Per target, 820 forged signatures checked in 130 s with the limits (3 per handshake the host may open) against 3 444 without; 2 607 flood messages accepted (bound 2 620) against 10 040, honest delivery 0.997 against 0.957 ([details](docs/benchmarks.md#an-adversary-host-with-free-identities)) |
 | 10–45 % of the nodes replaying, N = 20/50/100 (90 runs) | Every honest neighbour of every replayer bans it (3 958 of 3 958), median ≈ 2 s, 0 honest nodes banned; honest delivery inside the connected part 100 %. Removing up to 45 % of the nodes can cut honest nodes off: 27 of 72 runs, see the [partition probabilities](docs/benchmarks.md#share-of-replaying-nodes) |
 
 Every number above links back to a raw data file and the exact command in
@@ -103,7 +104,7 @@ Every number above links back to a raw data file and the exact command in
 - **Rust workspace:** `crci-core` (protocol library, also built as a shared library) and `crci-node`
   (CLI node, integration tests, benchmark harnesses).
 - **Security:** Ed25519 signatures (`ed25519-dalek`), AES-256-GCM encrypted local storage with an
-  Argon2id-derived key, per-neighbour rate limiting.
+  Argon2id-derived key, rate limits and connection admission charged per network address.
 - **Interfaces:** HTTP + WebSocket API ([OpenAPI](docs/openapi.json)), Prometheus metrics, a React
   dashboard, and an Android app that calls the Rust core directly through UniFFI-generated Kotlin bindings.
 - **Verification:** unit and integration test suite, property-based tests (proptest) showing that honest
@@ -164,10 +165,15 @@ networked TCP node and the test suite. Done: a network-emulation testbed of real
 nodes, loss, delay, jitter, reordering, attacker variants, invalid-signature floods, link flapping, defence baselines and ablations, and a sweep of the share of replaying nodes up to 45 %) and an in-process simulation of up to 5 000
 nodes, cross-checked against the testbed ([results](docs/benchmarks.md#in-process-simulation-up-to-5-000-nodes)).
 Node IDs are derived from public keys, so no node can claim another's ID, and a node started with
-`--key-file` keeps its ID across restarts. Every measurement comes from one node build
-([final data set](docs/benchmarks.md#final-build-every-data-set-on-one-binary)).
+`--key-file` keeps its ID across restarts. Every measurement in the final data set comes from one node build
+([final data set](docs/benchmarks.md#final-build-every-data-set-on-one-binary)); limits per address and floors for
+forgotten origins came after it and were measured on their own build, with the smoke set and the simulation
+repeated on it ([results](docs/benchmarks.md#an-adversary-host-with-free-identities)).
 
-Out of scope: large-scale Sybil attacks, colluding adversaries, and physical LoRa/BLE radios (the BLE and
+Keys are free, so a TCP node charges its connection, handshake, frame and message limits to each sender's
+network address rather than its key: one machine gains nothing from more keys
+([proof](docs/formal-verification.md#analytical-bounds), Theorem 6).
+Out of scope: adversaries with many network addresses, colluding adversaries, and physical LoRa/BLE radios (the BLE and
 LoRa transports are interface stubs). Known gaps are tracked in [docs/threat-model.md](docs/threat-model.md).
 
 ## Repository layout

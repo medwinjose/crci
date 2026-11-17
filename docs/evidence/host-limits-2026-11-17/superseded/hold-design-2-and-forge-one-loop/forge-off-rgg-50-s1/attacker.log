@@ -1,0 +1,1 @@
+host_attack mode=forge targets=10 sources=1 connections=3315 refused=0 closed_by_target=3307 identities=3315 frames=425467 seconds=130.2

@@ -114,7 +114,8 @@ neighbours already hold from it (they would drop the new message, or strike it a
 
 `crates/crci-core/src/transport/tcp.rs`. Every message travels as a 4-byte big-endian length prefix
 followed by JSON (handshake messages at most 4 KiB, frames at most 1 MiB, 5 s to read a value once it has started,
-at most 100 concurrent connections; an authenticated connection may stay idle for 10 min). Each connection starts with a mutual Ed25519 challenge-response, using the same
+at most 100 concurrent connections, admitted per source host as described below; an authenticated connection
+may stay idle for 10 min). Each connection starts with a mutual Ed25519 challenge-response, using the same
 key the node signs its messages with:
 
 ```
@@ -152,11 +153,35 @@ below (`is_banned`, which also performs the time-based readmission) with one log
 total, not one line per frame. The shun lasts 30 s (`SHUN_PROBE_INTERVAL`); the first frame after it is
 delivered as a probe, and the node shuns the peer again if it is still banned. A ban lasts at least 300 s, so
 the probe delays readmission by at most 30 s. What a banned peer can still cost is one handshake per
-reconnect attempt (about 50 µs, bounded by the listener's 100 connections) and one frame per 30 s
+reconnect attempt (about 50 µs, at most 16 and then 2 per second per source host, below) and one frame per 30 s
 (measured: [benchmarks.md](benchmarks.md#invalid-signature-flood)).
 
-**Frame pacing.** Before it reads each frame the listener takes a token from a per-connection bucket
-(`FRAME_PACING_RATE` = 200 frames/s, burst `FRAME_PACING_BURST` = 400) and waits when it is empty, so the
+**Admission per source host.** Keys are free, so a limit per identity limits nothing: one machine can sign
+with as many identities as it likes. The source address of a TCP connection cannot be chosen without
+completing the three-way handshake, so the listener charges its limits to the connection's *host* (an IPv4
+address, or the /64 of an IPv6 address; `host_of`) instead of to the identity (`ListenerLimits`):
+
+- a host holds at most 8 connections at once (`MAX_CONNECTIONS_PER_HOST`, handshakes in progress included);
+  a further one closes that host's least recently active connection, so a host cannot lock itself out with
+  dead connections, and an identity holds at most 4 (`MAX_CONNECTIONS_PER_IDENTITY`, the same rule);
+- a host opens at most 16 connections at once, then 2 per second (`HOST_ACCEPT_BURST`, `HOST_ACCEPT_RATE`);
+  each costs the listener a handshake;
+- the frame pacing below is shared by all of a host's connections;
+- when all 100 slots are taken, a connection from a host that holds fewer connections than the host holding
+  the most is admitted by closing the least recently active connection of that host (among equals, the
+  host that connected last); otherwise it is refused. A host with no connection is therefore never refused,
+  and a host holding c connections can be displaced only when every other host holds at most c.
+
+`crci-node` also charges each sender's new messages to its host (`SybilGuard::set_sender_host`): every
+identity of one host shares one budget of 20 messages, then 20 per second. An honest node is one host with
+one relay link and a short sync connection now and then, so it never reaches any of these limits and its
+budget is the one it had before. `--per-host-limits off` (experiments only) treats every connection as its
+own host and refuses connections when the listener is full, the behaviour before these limits.
+`crci-node` prints `listener: refused=N evicted=M` when either count changes.
+
+**Frame pacing.** Before it reads each frame the listener takes a token from a bucket shared by the
+connections of the frame's host (`FRAME_PACING_RATE` = 200 frames/s, burst `FRAME_PACING_BURST` = 400) and
+waits when it is empty, so the
 kernel's buffers fill and TCP flow control slows the sender. It strikes and bans nothing: over-budget
 messages are still only throttled. Honest links carry about one frame per message (about 32 frames/s per
 link at 32 messages/s network-wide), so they never wait (`TcpTransport::paced_frames` counts the frames that
@@ -215,7 +240,8 @@ holds one bit per sequence number per peer.
 
 | State | Limit | What goes first |
 |---|---|---|
-| Origins (budget, both replay windows, recent messages) | 896 origins, 7 168 (origin, peer) records | Fewest accepted messages, then longest idle; forgotten whole, 1/8 at a time |
+| Origins (budget, both replay windows, recent messages) | 896 origins, 7 168 (origin, peer) records | Fewest accepted messages, then longest idle; forgotten whole, 1/8 at a time, except the floor |
+| Floors of forgotten origins (highest sequence number accepted) | 3 584 | Oldest |
 | Peers per origin in the window | 128; later peers count as holding the message and are never struck | |
 | Seen cache | 1 792 message keys, 128 peers per key | Cleared whole |
 | Recent messages (sync answers) | 1 024 | Oldest |
@@ -229,8 +255,9 @@ holds one bit per sequence number per peer.
 
 Forgetting the least active origin means a flood of new identities pushes out its own identities first: to displace
 an origin with k accepted messages an adversary signs more than k messages on each of 896 identities, at the rate
-its neighbours' budgets allow. What forgetting costs is in the [threat model](threat-model.md), and measurements
-are in [benchmarks](benchmarks.md#memory-per-node).
+its neighbours' budgets allow. A forgotten origin keeps its floor, so its old messages are stale: never accepted,
+delivered or relayed twice. What forgetting still costs is in the [threat model](threat-model.md), and
+measurements are in [benchmarks](benchmarks.md#memory-per-node).
 
 Log output is bounded too: each sender stays inside its own budget, so lines printed per message would grow with the
 number of identities. A frame dropped by a budget prints at most 5 lines per second per sender or origin. The

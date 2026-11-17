@@ -789,6 +789,59 @@ What holds and what does not:
   (pings queue behind honest sync traffic; the allowance of one full frame per direction was too small)
   and acceptance lines held back in two vanilla flood-200 runs at 1 000 kbit/s. They are kept.
 
+### An adversary host with free identities
+
+Keys are free, so a node charges its transport limits and its message budget to each connection's source host
+([architecture](architecture.md#over-tcp-the-crci-node-binary), proved in
+[formal-verification.md](formal-verification.md#analytical-bounds), Theorem 6). This set measures what one host that
+is no overlay node can do with as many identities as it likes, against nodes with those limits and against the same
+nodes with `--per-host-limits off` (the listener and budgets before the change). `make host-attack`
+(`scripts/testbed/run_host_attack.sh`, `examples/host_attack`): rgg N = 50, delay 40 ± 15 ms, 1 message/s,
+window 90 s, drain 60 s, three seeds, 24 runs on one binary (`187d1dd1…`, which also ran the netem smoke set:
+18 of 18 faithful, 0 honest false evictions, the replayer banned by all its neighbours in 18 of 18); criteria fixed before the data
+(`host_attack_table.py`). Evidence: [`evidence/host-limits-2026-11-17/`](evidence/host-limits-2026-11-17/).
+
+| Condition (mean of 3 seeds) | Limits | Delivery to all nodes | Pairs not delivered | Honest nodes banned | Adversary identities banned | Broken signatures checked | Messages from no node accepted at the target | CPU s of a target |
+|---|---|---|---|---|---|---|---|---|
+| No adversary | on | 1.000 | 0 | 0 | | | | |
+| No adversary; the neighbours of B silent from 20 s to 30 s | on | 1.000 | 0 | 0 | | | | |
+| The same, plus idle connections to every node from 13 addresses | on | 1.000 | 0 | 0 | 0 | | | 0.26 |
+| The same | off | 1.000 | 0 | 0 | 0 | | | 0.22 |
+| Broken signatures, 8 connections at once per target, new key after each ban (10 targets) | on | 1.000 | 0 | 0 | 2 735 | 8 204 | | 0.48 |
+| The same | off | 1.000 | 0 | 0 | 11 479 | 34 438 | | 1.03 |
+| 100 fresh messages/s to one node, each from a new origin, key switched every 20 | on | 0.997 | 17.7 | 0 | | | 2 607 | 4.46 |
+| The same | off | 0.957 | 134.7 | 0 | | | 10 040 | 9.70 |
+
+What holds:
+
+- With the limits, a host costs each target at most what Theorem 6 allows: 820 broken signatures checked per target
+  in 130 s, 3 per handshake for the 16 + 2 × 130 = 276 handshakes a host may open, against 3 444 without the limits;
+  and 2 607 accepted flood messages at the target, against the bound 20 + 20 × 130 = 2 620 (10 040 without).
+- The flood, inside every budget and from one host, still costs honest traffic a little (0.997, 18 node pairs not
+  reached by the end of the drain): 20 new messages per second per receiver are more than the 16 messages/s the
+  network carried without loss, and honest relays carry them on (threat model, item 7). Without the limits it costs
+  eight times as much.
+- No honest node was banned in any run. On the build before floors were kept for forgotten origins, the flood got 9
+  honest nodes banned with the limits and 10 without, in one seed each
+  ([`superseded/before-floors/`](evidence/host-limits-2026-11-17/superseded/before-floors/)): it pushed quiet origins
+  out of the relays' tables, a relay accepted an old message of a forgotten origin again and relayed it, and a
+  neighbour that still remembered the origin struck the relay ([threat model](threat-model.md), item 12).
+
+**Idle connections (the eclipse attempt).** The adversary held authenticated, idle connections to every node from 13
+addresses (8 per address and node, reopened as soon as one closed) from 15 s before T0, and the neighbours of B
+dropped every packet they sent from 20 s to 30 s, so every connection into them aborted and had to be opened again.
+With the limits every message reached every node (D1 holds: 0 pairs not delivered, as in the outage without an
+adversary); the listeners closed 7 610 adversary connections per run to admit honest ones and refused 2 140.
+**Criterion V2 fails as written:** without the limits every message also reached every node, in all three seeds,
+although the listeners refused 16 566 connections per run. So this testbed did not show the lockout harm: an aborted
+connection frees its slot when its reset arrives, the honest reconnect then races the adversary's retries (one per
+200 ms per address), and a node needs only one inbound link of its several to receive everything. The hold
+condition went through four designs (the adversary after the start with 20 % of the links flapping; before the
+start; with an outage of every node; with an outage of B's neighbours), each changed after its first seed failed V2
+and before any data of the next; all are kept in `superseded/`. The lockout itself is shown over real sockets, where
+the slots stay full: a listener without the limits that holds 100 idle connections from 13 hosts refuses a 14th host,
+one with the limits admits it (`tcp_host_limits_tests.rs`).
+
 ## In-process simulation (up to 5 000 nodes)
 
 Protocol logic at a scale one host cannot emulate with real processes. **These are simulation results, not
@@ -933,6 +986,15 @@ Repeated after the seen-cache key gained the sequence number (up to 21 bytes mor
 end at 1.93, 2.74, 1.74 and 3.31 MB, with peaks of 2.07, 2.90, 1.92 and 3.47 MB
 ([`evidence/theorems-2026-11-08/state/`](evidence/theorems-2026-11-08/state/)).
 
+With floors kept for forgotten origins (3 584 of them, about 0.27 MB with their order) the same four floods end at
+2.24, 3.13, 1.87 and 3.70 MB, peaks 2.40, 3.38, 2.08 and 3.95 MB: protocol state is 0.29 MB above the earlier set and
+about 0.24 MB above the 2 MB aimed for, the price of never accepting a forgotten origin's old message again
+([`evidence/host-limits-2026-11-17/state/`](evidence/host-limits-2026-11-17/state/)). A first version of the floor
+table, 7 168 floors in each of both replay windows, ended at 2.92 MB
+([`superseded/state-heap-before-floor-table-fix.txt`](evidence/host-limits-2026-11-17/superseded/state-heap-before-floor-table-fix.txt)):
+a hash table under churn settles at twice its limit, and the control-message window needs no floors (its messages are
+never relayed).
+
 Before the limits the heap grew by 1.5 KB per new origin (154 MB after 10⁵) and by 1.3 KB per rescue message
 (258 MB after 2 × 10⁵ over 100 origins). A first version of the limits held protocol state flat at 2.58 MB, above
 the 2 MB aimed for; most of the difference was hash tables doubling one entry past their limits, and the limits
@@ -963,6 +1025,7 @@ origin, over 90 authenticated connections with fresh identities at 20 messages/s
 | With the limit, 1 s window | 10⁶ | ≥ 993 877 | 568 of 568, 2 not logged (held back) | 18.0 → 21.8 MiB | 167 s | 36 MB |
 | With the limit, 10 s window | 3 × 10⁶ | ≥ 2 988 002 | 1 679 of 1 679 | 18.1 → 20.3 MiB | 487 s | 106 MB |
 | Final | 10⁶ | 1 000 650 | 568 of 568 | 16.0 → 17.9 MiB | 171 s | 35 MB |
+| Per-host limits and floors, 90 connections from 90 loopback hosts | 10⁶ | 987 260 | 569 of 569 | 18.0 → 20.1 MiB | 168 s | 32 MB |
 
 The flood found that a node's log grew by about 0.8 MB/s (3 GB an hour): every accepted message printed four lines,
 and each identity stays inside its own budget. The TCP node now shares its per-message lines fairly between
