@@ -44,6 +44,8 @@ ORIGIN_DROP = re.compile(r"\[(n\d+)\] ORIGIN BUDGET DROP: '[^']+' from origin '(
 RTT = re.compile(r"time=([\d.]+) ms")
 PACED = re.compile(r"Node (n\d+) frames paced: total=(\d+)")
 BANNED_DROPPED = re.compile(r"Node (n\d+) banned-peer frames dropped: total=(\d+)")
+NODE_LABEL = re.compile(r"n\d+")
+LISTENER = re.compile(r"Node (n\d+) listener: refused=(\d+) evicted=(\d+)")
 LINES_HELD = re.compile(r"Node (n\d+) log lines not printed: received=(\d+) accepted=(\d+)")
 SYNC_REQUESTED = re.compile(r"Node (n\d+) requested sync from ")
 WARMUP_MS = 5000
@@ -149,6 +151,9 @@ def main():
     relay_drops = {}
     banned_dropped = {}
     paced_frames = {}
+    listener = {}
+    # Messages accepted from origins that are no overlay node (an adversary host's), per node.
+    foreign_accepted = defaultdict(int)
     proc_us = []
     fault_ms = None
     counters = defaultdict(int)
@@ -165,6 +170,8 @@ def main():
                     originated[m[2]] = (m[1], int(m[3]))
                 elif m := ACCEPTED.search(line):
                     accepted[m[2]].setdefault(m[1], (int(m[5]), m[4], m[3], m[6] or "gossip"))
+                    if not NODE_LABEL.fullmatch(m[3]):
+                        foreign_accepted[m[1]] += 1 + int(m[8] or 0)
                     via.append((m[1], m[2], m[4], int(m[5])))
                     if m[7]:
                         proc_us.append(int(m[7]))
@@ -177,6 +184,8 @@ def main():
                     fault_ms = int(m[2])
                 elif m := RELAY_DROPS.search(line):
                     relay_drops[m[1]] = (int(m[2]), int(m[3]))  # cumulative: keep the last
+                elif m := LISTENER.search(line):
+                    listener[m[1]] = (int(m[2]), int(m[3]))  # cumulative: keep the last
                 elif m := PACED.search(line):
                     paced_frames[m[1]] = int(m[2])  # cumulative: keep the last
                 elif m := LINES_HELD.search(line):
@@ -212,7 +221,10 @@ def main():
     byz_bans = {obs: t for obs, banned, t in bans if banned == byz}
     # With several attackers (--attackers-pct) only the first is `byz`; a ban of any attacker is not false.
     attacker_names = {name(a) for a in roles.get("attackers", [roles["byzantine"]])} | {byz}
-    false_evictions = [(o, b, t) for o, b, t in bans if b not in attacker_names]
+    # Only overlay nodes can be falsely evicted; a ban of an identity that is no node (an adversary
+    # host's, testbed.py --host-attack) is not false either.
+    node_names = {name(i) for i in range(n)}
+    false_evictions = [(o, b, t) for o, b, t in bans if b in node_names and b not in attacker_names]
     all_banned = len(byz_bans) == len(byz_neighbours) and byz_bans
     post_from = max(byz_bans.values()) if all_banned else None
 
@@ -458,6 +470,60 @@ def main():
             "latency_ms": {p: stats(v) for p, v in lat_by_period.items()},
         }
 
+    # An adversary host with free identities (testbed.py --host-attack): it is no overlay node and
+    # B relays honestly, so every node is honest and every ban of a node is false.
+    host_attack = None
+    if cfg.get("host_attack"):
+        targets = {name(i) for i in meta.get("host_attack_targets", [])}
+        attack_start = t0 + int(cfg.get("host_attack_start", 0) * 1000)
+        everyone = [name(i) for i in range(n)]
+        ratios, target_ratios, missing = [], [], 0
+        lat_attack = []
+        for mid, (origin, t_emit) in originated.items():
+            if not (attack_start <= t_emit <= end):
+                continue
+            got = accepted.get(mid, {})
+            receivers = [x for x in everyone if x != origin]
+            delivered = sum(1 for x in receivers if x in got)
+            ratios.append(delivered / len(receivers))
+            missing += len(receivers) - delivered
+            in_targets = [x for x in receivers if x in targets]
+            if in_targets:
+                target_ratios.append(sum(1 for x in in_targets if x in got) / len(in_targets))
+            lat_attack += [got[x][0] - t_emit for x in receivers if x in got]
+        adversary_bans = [(o, b, t) for o, b, t in bans if b not in node_names]
+        attempts = None
+        try:
+            with open(f"{out}/attacker.log", errors="replace") as f:
+                if m := re.search(r"host_attack .*", f.read()):
+                    attempts = dict(kv.split("=", 1) for kv in m[0].split()[1:])
+        except FileNotFoundError:
+            pass
+        host_attack = {
+            "mode": cfg["host_attack"],
+            "per_host_limits": cfg.get("per_host_limits") or "on",
+            "targets": len(targets),
+            "attacker": attempts,
+            "messages": len(ratios),
+            "delivery_all_nodes": stats(ratios),
+            "delivery_to_targets": stats(target_ratios),
+            "messages_fully_delivered": sum(1 for r in ratios if r == 1.0),
+            "undelivered_pairs": missing,
+            "latency_ms": stats(lat_attack),
+            "honest_bans": len([1 for _, b, _ in bans if b in node_names]),
+            "adversary_identities_banned": len({b for _, b, _ in adversary_bans}),
+            "adversary_bans": len(adversary_bans),
+            "invalid_signatures_checked": counters["INVALID SIGNATURE"]
+            + counters["ORIGIN NOT DERIVED FROM KEY"],
+            "foreign_messages_accepted_per_target": stats(
+                [foreign_accepted.get(x, 0) for x in targets]),
+            "foreign_messages_accepted_total": sum(foreign_accepted.values()),
+            "listener_refused": sum(r for r, _ in listener.values()),
+            "listener_evicted": sum(e for _, e in listener.values()),
+            "cpu_s_targets": stats([v for k, v in cpu_by_node.items() if k in targets]),
+            "cpu_s_others": stats([v for k, v in cpu_by_node.items() if k not in targets]),
+        }
+
     if fidelity_extra:
         fidelity.update(fidelity_extra)
         fidelity["pass"] = all(v for k, v in fidelity.items() if k != "pass")
@@ -518,6 +584,7 @@ def main():
         "fidelity": fidelity,
         "flap": flap,
         "ratio": ratio,
+        "host_attack": host_attack,
     }
     with open(f"{out}/summary.json", "w") as f:
         json.dump(summary, f, indent=1)

@@ -20,6 +20,7 @@
 #   make contact-trace OUT=/tmp/x # replay a human contact trace (downloads 67 KB, checksum-checked; 6 runs, about 6 min)
 #   make state OUT=/tmp/x     # one node's memory under floods of a million signed messages (no root; about 8 min)
 #   make tcp-flood OUT=/tmp/x # the same through a real node over TCP, 90 identities (about 10 min)
+#   make host-attack OUT=/tmp/x # an adversary host with free identities: idle connections, forged signatures, floods (24 runs, about 80 min)
 
 OUT ?= /tmp/crci-testbed
 SUDO ?= sudo
@@ -27,7 +28,7 @@ BIN := target/release/crci-node
 TB := scripts/testbed
 SIM := target/release/examples/mesh_sim
 
-.PHONY: tla build testbed netem attacks flood flapping ratio figures run-figures benches baselines ablation tables smoke sim contact-trace state tcp-flood fuzz reproduce
+.PHONY: tla build testbed netem attacks flood flapping ratio figures run-figures benches baselines ablation tables smoke sim contact-trace state tcp-flood host-attack fuzz reproduce
 
 tla:
 	python3 docs/tla/check.py
@@ -91,6 +92,11 @@ tcp-flood: build
 	cargo build --release -p crci-node --example tcp_flood
 	$(SUDO) $(TB)/run_tcp_flood.sh $(OUT)-tcp-flood $(BIN) target/release/examples/tcp_flood
 
+# An adversary host that is no overlay node, with per-host limits on and off (root; about 80 minutes).
+host-attack: build
+	cargo build --release -p crci-node --example host_attack
+	$(SUDO) $(TB)/run_host_attack.sh $(OUT)-host-attack $(BIN) target/release/examples/host_attack
+
 # Markdown for docs/benchmarks.md: the main table (testbed) and per-condition tables (netem).
 tables:
 	python3 $(TB)/main_table.py $(OUT) | tee $(OUT)/main-table.md
@@ -121,5 +127,5 @@ fuzz:
 	done
 
 # Every data set behind the paper and docs/benchmarks.md except `make tla` (needs Java, run separately)
-# and `make fuzz`. About 20 h on a 12-thread host, 30-40 GB of run logs in OUT*.
-reproduce: testbed netem attacks flood flapping ratio baselines tables sim ablation state tcp-flood contact-trace benches run-figures
+# and `make fuzz`. About 21 h on a 12-thread host, 30-40 GB of run logs in OUT*.
+reproduce: testbed netem attacks flood flapping ratio baselines tables sim ablation state tcp-flood host-attack contact-trace benches run-figures

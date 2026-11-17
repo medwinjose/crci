@@ -19,6 +19,16 @@ Traffic during the measurement window (WINDOW seconds from T0):
     sender's veth discards its frames to one neighbour (silent loss, as a dead radio link;
     the kernel's TCP retransmits and gives up). Mode "symmetric" drops both directions,
     "asymmetric" one direction chosen per link. Every toggle is written to flaps.csv.
+  - with --outage-at S --outage-for D, the egress of the overlay nodes chosen by --outage-nodes
+    drops every packet from S to S + D seconds after T0 (netem loss 100 %, then the configured netem
+    again): their neighbours' frames to them go unacknowledged, so every connection into them
+    aborts and must be opened again; the adversary host is not affected;
+  - with --host-attack MODE, an adversary host that is not an overlay node (namespace cbx, with
+    --host-attack-addresses local addresses) runs examples/host_attack against the overlay
+    neighbours of B (B itself, or every node: --host-attack-targets) from --host-attack-start seconds
+    after T0 (negative: before it): "hold" keeps idle authenticated connections,
+    "forge" sends broken signatures under a fresh identity after every ban, "flood" sends fresh
+    signed messages from new origins under identities it rotates. B then relays honestly.
 
 Recorded in OUT: logs/n<i>.log (node stdout), host.csv (CPU, memory, swap
 every second), ping/<a>-<b>.txt (ICMP RTT on sampled overlay links during
@@ -57,18 +67,25 @@ def mac_of(i):
     return f"02:00:0a:14:{i // 250:02x}:{i % 250 + 1:02x}"
 
 
+ATTACKER_NS = f"{NS}x"
+
+
+def attacker_ip(k):
+    return f"10.20.200.{k + 1}"
+
+
 def cleanup():
     out = subprocess.run(["ip", "netns", "list"], capture_output=True, text=True).stdout
     for line in out.splitlines():
         name = line.split()[0] if line.split() else ""
-        if name.startswith(NS) and name[len(NS):].isdigit():
+        if name == ATTACKER_NS or (name.startswith(NS) and name[len(NS):].isdigit()):
             sh("ip", "netns", "del", name, check=False)
     sh("ip", "link", "del", BRIDGE, check=False)
     # A veth whose namespace is already gone can survive; it would block the next run.
     links = subprocess.run(["ip", "-o", "link"], capture_output=True, text=True).stdout
     for line in links.splitlines():
         name = line.split(":")[1].strip().split("@")[0] if ":" in line else ""
-        if name.startswith("vh") and name[2:].isdigit():
+        if name.startswith("vh") and (name[2:].isdigit() or name == "vhx"):
             sh("ip", "link", "del", name, check=False)
 
 
@@ -119,6 +136,40 @@ def setup_network(n, netem, nbrs, rx_kbit=0):
               [f"neigh replace {ip_of(j)} lladdr {mac_of(j)} dev eth0 nud permanent\n"
                for j in nbrs[i]])
     batch(["bridge"], [f"fdb replace {mac_of(i)} dev vh{i} master static\n" for i in range(n)])
+
+
+def setup_attacker_host(addresses, netem):
+    """An adversary host on the bridge: namespace cbx with `addresses` local addresses."""
+    sh("ip", "netns", "add", ATTACKER_NS)
+    sh("ip", "link", "add", "vhx", "type", "veth", "peer", "name", "eth0",
+       "address", "02:00:0a:14:c8:00", "netns", ATTACKER_NS)
+    sh("ip", "link", "set", "vhx", "master", BRIDGE, "up")
+    for k in range(addresses):
+        sh("ip", "-n", ATTACKER_NS, "addr", "add", f"{attacker_ip(k)}/16", "dev", "eth0")
+    sh("ip", "-n", ATTACKER_NS, "link", "set", "eth0", "up")
+    sh("ip", "-n", ATTACKER_NS, "link", "set", "lo", "up")
+    sh("tc", "-n", ATTACKER_NS, "qdisc", "add", "dev", "eth0", "root", "netem", *netem)
+
+
+def outage(nodes, t0, at, length, netem, out_path, stop):
+    """Drop every packet on the egress of `nodes` from T0 + at for `length` seconds."""
+    down = netem[:]
+    if "loss" in down:
+        down[down.index("loss") + 1] = "100%"
+    else:
+        down = down[:-2] + ["loss", "100%"] + down[-2:]
+    events = []
+    for when, args in ((at, down), (at + length, netem)):
+        while time.time() < t0 + when:
+            if stop.is_set():
+                return
+            time.sleep(0.05)
+        for i in nodes:
+            sh("tc", "-n", f"{NS}{i}", "qdisc", "change", "dev", "eth0", "root", "netem", *args)
+        events.append((int(time.time() * 1000), "down" if args is down else "up"))
+    with open(out_path, "w") as f:
+        f.write("at_ms,state\n")
+        f.writelines(f"{t},{state}\n" for t, state in events)
 
 
 def plan_flaps(edges, fraction, mode, seed, start, stop, lo, hi):
@@ -270,6 +321,23 @@ def main():
     ap.add_argument("--flap-start", type=float, default=10, help="seconds after T0")
     ap.add_argument("--flap-stop", type=float, default=None,
                     help="seconds after T0 when every link is up again (default: window - 20)")
+    ap.add_argument("--outage-at", type=float, default=None, help="seconds after T0")
+    ap.add_argument("--outage-for", type=float, default=10)
+    ap.add_argument("--outage-nodes", choices=["all", "byzantine-neighbours"], default="all")
+    ap.add_argument("--host-attack", choices=["hold", "forge", "flood"], default=None)
+    ap.add_argument("--host-attack-bin", default=None,
+                    help="examples/host_attack (default: next to --bin)")
+    ap.add_argument("--host-attack-targets", choices=["byzantine-neighbours", "byzantine", "all"],
+                    default="byzantine-neighbours")
+    ap.add_argument("--host-attack-addresses", type=int, default=1)
+    ap.add_argument("--host-attack-per-source", type=int, default=8)
+    ap.add_argument("--host-attack-rate", type=float, default=400,
+                    help="frames per second per (address, target) for forge and flood")
+    ap.add_argument("--host-attack-rotate-every", type=int, default=20)
+    ap.add_argument("--host-attack-start", type=float, default=20,
+                    help="seconds after T0 (negative: before T0, after the nodes are listening)")
+    ap.add_argument("--per-host-limits", choices=["on", "off"], default=None,
+                    help="crci-node --per-host-limits (default: the node's, on)")
     ap.add_argument("--settle", type=int, default=20)
     ap.add_argument("--drain", type=int, default=5)
     ap.add_argument("--pings", type=int, default=10)
@@ -314,6 +382,9 @@ def main():
     t_setup = time.time()
     setup_network(n, netem_args(args.delay_ms, args.jitter_ms, args.loss, args.reorder), nbrs,
                   args.rx_kbit)
+    if args.host_attack:
+        setup_attacker_host(args.host_attack_addresses,
+                            netem_args(args.delay_ms, args.jitter_ms, args.loss, args.reorder))
     setup_s = time.time() - t_setup
     print(f"network: {n} namespaces up in {setup_s:.1f} s", flush=True)
 
@@ -330,6 +401,24 @@ def main():
     t0 = time.time() + 0.05 * n + args.settle
     env = dict(os.environ, TOKIO_WORKER_THREADS=str(args.worker_threads))
     procs = []
+    attack_proc, attack_targets = None, []
+    if args.host_attack:
+        attack_targets = {"all": list(range(n)), "byzantine": [roles["byzantine"]],
+                          "byzantine-neighbours": sorted(nbrs[roles["byzantine"]])}[args.host_attack_targets]
+        attack_bin = args.host_attack_bin or os.path.join(os.path.dirname(args.bin), "examples",
+                                                          "host_attack")
+        delay_ms = max(0, int((t0 + args.host_attack_start - time.time()) * 1000))
+        duration = int(args.window + args.drain - args.host_attack_start)
+        attack_cmd = ["ip", "netns", "exec", ATTACKER_NS, attack_bin, "--mode", args.host_attack,
+                      "--targets", ",".join(f"{ip_of(i)}:{PORT}" for i in attack_targets),
+                      "--sources", ",".join(attacker_ip(k) for k in range(args.host_attack_addresses)),
+                      "--per-source", str(args.host_attack_per_source),
+                      "--rate", str(args.host_attack_rate),
+                      "--rotate-every", str(args.host_attack_rotate_every),
+                      "--start-delay-ms", str(delay_ms), "--duration-s", str(duration)]
+        alog = open(f"{args.out}/attacker.log", "w")
+        attack_proc = subprocess.Popen(attack_cmd, stdout=alog, stderr=subprocess.STDOUT, env=env)
+        alog.close()
     t_launch = time.time()
     # Every schedule counts from T0 (namespaces share the host clock), not from each process's
     # start, which `ip netns exec` delays by seconds when hundreds start at once.
@@ -342,7 +431,7 @@ def main():
         if count:
             cmd += ["--emit-count", str(count), "--emit-interval-ms", str(interval),
                     "--emit-delay-ms", str(offset)]
-        if i in attacker_set and not args.no_fault:
+        if i in attacker_set and not args.no_fault and not args.host_attack:
             cmd += ["--replay-after-ms", str(args.fault_at * 1000),
                     "--replay-copies", str(args.replay_copies)]
             if args.corrupt_signatures:
@@ -357,6 +446,8 @@ def main():
             cmd += ["--strikes-to-ban", str(args.strikes_to_ban)]
         if args.replay_window is not None:
             cmd += ["--replay-window", str(args.replay_window)]
+        if args.per_host_limits is not None:
+            cmd += ["--per-host-limits", args.per_host_limits]
         log = open(f"{args.out}/logs/n{i}.log", "w")
         procs.append(subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, env=env))
         log.close()
@@ -374,6 +465,17 @@ def main():
                                  args.flap_start, flap_stop, args.flap_min_s, args.flap_max_s)
         flap_thread = threading.Thread(target=flapper, args=(flap_events, t0, f"{args.out}/flaps.csv", stop))
         flap_thread.start()
+
+    outage_thread = None
+    outage_nodes = []
+    if args.outage_at is not None:
+        outage_nodes = list(range(n)) if args.outage_nodes == "all" \
+            else sorted(nbrs[roles["byzantine"]])
+        outage_thread = threading.Thread(target=outage, args=(
+            outage_nodes, t0, args.outage_at, args.outage_for,
+            netem_args(args.delay_ms, args.jitter_ms, args.loss, args.reorder),
+            f"{args.out}/outage.csv", stop))
+        outage_thread.start()
 
     # Every node must be listening before T0.
     while time.time() < t0:
@@ -403,6 +505,12 @@ def main():
         time.sleep(0.5)
     for p in pingers:
         p.wait()
+    if attack_proc:
+        try:
+            attack_proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            attack_proc.kill()
+            attack_proc.wait()
 
     with open(f"{args.out}/rss.csv", "w") as out:
         out.write("node,pid,rss_kib,threads,cpu_s\n")
@@ -439,6 +547,8 @@ def main():
     host_thread.join()
     if flap_thread:
         flap_thread.join()
+    if outage_thread:
+        outage_thread.join()
     cleanup()
     with open(BACKLOG, "w") as f:
         f.write(old_backlog)
@@ -449,7 +559,12 @@ def main():
             "delay_ms", "jitter_ms", "loss", "reorder", "rx_kbit", "window", "source_rate", "bg_rate", "fault_at", "no_fault", "replay_copies", "corrupt_signatures", "corrupt_for",
             "defence", "strikes_to_ban", "replay_window",
             "flap_fraction", "flap_mode", "flap_min_s", "flap_max_s", "flap_start", "flap_stop",
-            "byz_rate", "attackers_pct", "refill", "settle", "drain", "pings", "worker_threads", "backlog")},
+            "byz_rate", "attackers_pct", "refill", "settle", "drain", "pings", "worker_threads", "backlog",
+            "host_attack", "host_attack_targets", "host_attack_addresses", "host_attack_per_source",
+            "host_attack_rate", "host_attack_rotate_every", "host_attack_start", "per_host_limits",
+            "outage_at", "outage_for", "outage_nodes")},
+        "outage_node_list": outage_nodes,
+        "host_attack_targets": attack_targets,
         "t0_ms": int(t0 * 1000),
         "fault_ms": None if args.no_fault else int((t0 + args.fault_at) * 1000),
         "end_ms": int((t0 + args.window) * 1000),
