@@ -1,5 +1,6 @@
 //! `ReplayFilter` against an independent reference model: every verdict, the number of
-//! tracked origins and the number of peer records must agree.
+//! tracked origins, the number of peer records and the floors kept for forgotten origins must
+//! agree. At most 256 origins, so no floor is ever pushed out here.
 #![no_main]
 
 use arbitrary::Arbitrary;
@@ -32,6 +33,8 @@ struct Input {
 struct Model {
     max: u64,
     peers: Vec<(Option<u8>, BTreeSet<u64>)>,
+    /// One above the floor kept when the origin was last forgotten (0: never).
+    below: u64,
 }
 
 #[derive(Debug)]
@@ -70,12 +73,18 @@ fuzz_target!(|input: Input| {
     let mut filter = ReplayFilter::new();
     filter.window_size = w;
     let mut model: HashMap<u8, Model> = HashMap::new();
+    // One above the highest seq accepted, for each forgotten origin.
+    let mut floors: HashMap<u8, u64> = HashMap::new();
 
     for op in input.ops.iter().take(4096) {
         match *op {
             Op::Forget { origin } => {
                 filter.forget(&origin.to_string());
-                model.remove(&origin);
+                if let Some(m) = model.remove(&origin) {
+                    let below = m.max.saturating_add(1).max(m.below);
+                    let kept = floors.entry(origin).or_insert(0);
+                    *kept = (*kept).max(below);
+                }
             }
             Op::Check {
                 origin,
@@ -86,10 +95,12 @@ fuzz_target!(|input: Input| {
                 let seq = seq_of(seq, mode);
                 let got = filter.check_and_record(&origin.to_string(), seq, &format!("s{sender}"));
                 let want = match model.get_mut(&origin) {
+                    None if seq < floors.get(&origin).copied().unwrap_or(0) => Want::OutOfWindow,
                     None => {
                         let mut m = Model {
                             max: seq,
                             peers: Vec::new(),
+                            below: floors.remove(&origin).unwrap_or(0),
                         };
                         record(&mut m, seq, sender);
                         model.insert(origin, m);
@@ -105,7 +116,9 @@ fuzz_target!(|input: Input| {
                         record(m, seq, sender);
                         Want::Accept
                     }
-                    Some(m) if (seq as u128) + (w as u128) < m.max as u128 => Want::OutOfWindow,
+                    Some(m) if (seq as u128) + (w as u128) < m.max as u128 || seq < m.below => {
+                        Want::OutOfWindow
+                    }
                     Some(m) => {
                         let replay = m
                             .peers
@@ -138,5 +151,6 @@ fuzz_target!(|input: Input| {
         assert_eq!(filter.tracked_origins(), model.len());
         let records: usize = model.values().map(|m| m.peers.len()).sum();
         assert_eq!(filter.peer_records(), records, "peer records");
+        assert_eq!(filter.forgotten_floors(), floors.len(), "floors");
     }
 });

@@ -5,6 +5,7 @@ use crci_core::identity::Identity;
 use crci_core::integration::{GossipPipeline, MessageKind, PipelineMessage, PipelineVerdict};
 use crci_core::merkle::{MerkleChain, StateSnapshot, MERKLE_KEEP_BLOCKS};
 use crci_core::message::{Message, MessageType, Signal, Visibility};
+use crci_core::replay::MAX_FORGOTTEN_FLOORS;
 use crci_core::runtime::{
     message_key, NodeRuntime, WireMessage, DIVERGENCE_LOG_MAX, OBSERVATIONS_MAX, PERSISTENT_MAX,
     RECENT_MAX_MESSAGES,
@@ -107,7 +108,7 @@ fn a_flood_of_one_message_origins_does_not_displace_a_busy_origin() {
 }
 
 #[test]
-fn a_forgotten_origin_is_accepted_again_and_this_is_the_documented_limit() {
+fn a_forgotten_origin_keeps_a_floor_so_its_old_messages_are_stale() {
     let (mut node, inbox) = receiver();
     let quiet = Identity::new("quiet");
     let old = signed(&quiet, "quiet", 1, MessageType::Normal);
@@ -117,26 +118,33 @@ fn a_forgotten_origin_is_accepted_again_and_this_is_the_documented_limit() {
     assert!(!node.origin_activity.contains_key(&quiet.id));
 
     node.seen_messages.clear();
-    let accepted = node.messages_handled;
+    let (accepted, strikes) = (node.messages_handled, node.byzantine_events);
     deliver(&mut node, &inbox, "honest", &old);
+    assert_eq!(
+        node.messages_handled, accepted,
+        "an old message is not accepted again"
+    );
+    assert_eq!(
+        node.byzantine_events, strikes,
+        "and nobody is struck for it"
+    );
+
+    // A new message of the origin is accepted as usual.
+    let new = signed(&quiet, "quiet", 2, MessageType::Normal);
+    deliver(&mut node, &inbox, "honest", &new);
     assert_eq!(node.messages_handled, accepted + 1);
 }
 
-/// The price of forgetting, in the real code: an adversary floods `relay` until it forgets a quiet
-/// origin, then replays an old message of that origin to it. `relay` accepts and forwards it, and
-/// a neighbour that still remembers the origin strikes the honest relay. The model checker finds
-/// the same behaviour (`origin-forgotten-framing`). A busy origin is not exposed this way.
+/// An adversary floods `relay` until it forgets a quiet origin, then replays an old message of
+/// that origin to it. Without the floor `relay` accepted and forwarded it, and a neighbour that
+/// still remembered the origin struck the honest relay (`origin-forgotten-framing` in the model).
 #[test]
-fn a_replay_after_forgetting_gets_an_honest_relay_struck_by_a_neighbour_that_remembers() {
+fn a_replay_after_forgetting_does_not_get_an_honest_relay_struck() {
     let (mut relay, relay_inbox) = receiver();
-    let (mut neighbour, neighbour_inbox) = receiver();
-    neighbour.max_tracked_origins = usize::MAX;
     let quiet = Identity::new("quiet");
     let old = signed(&quiet, "quiet", 1, MessageType::Normal);
 
     deliver(&mut relay, &relay_inbox, "someone", &old);
-    deliver(&mut neighbour, &neighbour_inbox, "relay", &old);
-
     flood_new_origins(&mut relay, &relay_inbox, "a", 8 * LIMIT);
     assert!(!relay.origin_activity.contains_key(&quiet.id));
 
@@ -144,18 +152,33 @@ fn a_replay_after_forgetting_gets_an_honest_relay_struck_by_a_neighbour_that_rem
     let accepted = relay.messages_handled;
     deliver(&mut relay, &relay_inbox, "adversary", &old);
     assert_eq!(
-        relay.messages_handled,
-        accepted + 1,
-        "accepted and forwarded"
+        relay.messages_handled, accepted,
+        "not accepted, so not forwarded"
     );
-
-    let strikes = neighbour.byzantine_events;
-    deliver(&mut neighbour, &neighbour_inbox, "relay", &old);
     assert_eq!(
-        neighbour.byzantine_events,
-        strikes + 1,
-        "the relay is struck"
+        relay.byzantine_events, 0,
+        "and the adversary is not struck either"
     );
+}
+
+/// The floors are bounded too. Past `MAX_FORGOTTEN_FLOORS` forgotten origins the oldest floor goes,
+/// and an old message of that origin is accepted again: the residual limit.
+#[test]
+fn floors_are_bounded_and_the_oldest_goes_first() {
+    let (mut node, inbox) = receiver();
+    let quiet = Identity::new("quiet");
+    let old = signed(&quiet, "quiet", 1, MessageType::Normal);
+    deliver(&mut node, &inbox, "honest", &old);
+    flood_new_origins(&mut node, &inbox, "a", 8 * LIMIT);
+    let floors = node.replay_filter.forgotten_floors();
+    assert!(floors > 0 && floors <= MAX_FORGOTTEN_FLOORS);
+
+    flood_new_origins(&mut node, &inbox, "b", MAX_FORGOTTEN_FLOORS + 4 * LIMIT);
+    assert!(node.replay_filter.forgotten_floors() <= MAX_FORGOTTEN_FLOORS);
+    node.seen_messages.clear();
+    let accepted = node.messages_handled;
+    deliver(&mut node, &inbox, "honest", &old);
+    assert_eq!(node.messages_handled, accepted + 1);
 }
 
 #[test]

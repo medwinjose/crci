@@ -83,9 +83,11 @@ const SYNC_ANSWERED_MAX: usize = 1024;
 // with k accepted messages an adversary signs more than k messages on each of
 // `MAX_TRACKED_ORIGINS` identities, at the rate its neighbours' budgets allow.
 //
-// Forgetting has a price, and bounded memory cannot avoid it while identities are free: the
-// origin's window is gone, so one of its old messages can be accepted again, and
-// relaying that copy gets this node struck by a neighbour that still remembers the origin.
+// The forgotten origin's floor stays (`ReplayFilter::forget`): its old messages are stale, so
+// none is accepted twice, and relaying one again can never get this node struck by a neighbour
+// that still remembers the origin. The floors are bounded too (`MAX_FORGOTTEN_FLOORS`, oldest
+// first out): an adversary that also pushes a floor out, with that many more forgotten origins,
+// gets the old price back.
 
 /// Origins a node keeps state for. A hash table holds 7/8 of its buckets before it doubles, so
 /// this is the most that fits 1 024 buckets: one origin more would double five tables.
@@ -689,7 +691,7 @@ impl NodeRuntime {
             storage,
             storage_backend: None,
             replay_filter: crate::replay::ReplayFilter::new(),
-            control_replay_filter: crate::replay::ReplayFilter::new(),
+            control_replay_filter: crate::replay::ReplayFilter::without_floors(),
             seq_counter: 0,
             control_seq_counter: 0,
             messages_handled: 0,
@@ -1434,6 +1436,25 @@ impl NodeRuntime {
             // This node's own message, echoed by a neighbour after the seen-ID limit above cleared
             // the cache. Accepting it would relay it again and get this node struck for the repeat.
             if wire.origin == self.id {
+                continue;
+            }
+
+            // Older than the window, or at or below a forgotten origin's floor: dropped before it
+            // can create any per-origin state (the window would drop it below anyway).
+            let stale = if is_control(&wire) {
+                self.control_replay_filter
+                    .is_out_of_window(&wire.origin, wire.seq)
+            } else {
+                self.replay_filter.is_out_of_window(&wire.origin, wire.seq)
+            };
+            if stale {
+                self.metrics
+                    .messages_rejected
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                println!(
+                    "  ⏰ [{}] STALE seq {} from '{}' — out of window, dropped",
+                    self.label, wire.seq, wire.origin
+                );
                 continue;
             }
 

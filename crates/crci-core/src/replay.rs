@@ -19,9 +19,18 @@
 //
 // The sequence number must be covered by the origin's signature; otherwise a
 // relay could move seq_max and push an origin's later messages out of window.
+//
+// A node forgets origins whole when it tracks too many (`NodeRuntime::forget_origins`). Its
+// floor stays: the highest sequence number accepted, kept per origin in a table of
+// `MAX_FORGOTTEN_FLOORS` (oldest first out). Every message of that origin at or below the floor
+// is then out of window, dropped without a strike, not accepted and so not relayed: a node never
+// accepts the same message twice, so an honest relay never repeats one, while it keeps the
+// floor. Without it, an adversary that flooded a relay with new origins until it forgot a quiet
+// one could resend one of that origin's old messages: the relay accepted it again and forwarded
+// it, and a neighbour that still remembered the origin struck the relay for the repeat.
 
 use std::collections::hash_map::RandomState;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::hash::BuildHasher;
 
 pub const DEFAULT_WINDOW_SIZE: u64 = 64;
@@ -33,6 +42,10 @@ pub const MAX_WINDOW_SIZE: u64 = 1024;
 pub const MAX_PEERS_PER_ORIGIN: usize = 128;
 /// Stands for every peer past `MAX_PEERS_PER_ORIGIN`.
 const UNATTRIBUTED: u64 = 0;
+/// Floors of forgotten origins kept (`ReplayFilter::forget`): four times the tracked origins, 7/8
+/// of 4 096 buckets. Under churn a hash table settles at twice that (removed entries leave markers
+/// until the next resize), about 0.27 MB for the table and its order together.
+pub const MAX_FORGOTTEN_FLOORS: usize = 3_584;
 
 // Which seqs of the window one transport peer delivered: one bit per seq, at `seq % (W + 1)`,
 // unique inside a window of W + 1 values. The peer is kept as a keyed 64-bit hash: its identity
@@ -46,6 +59,9 @@ struct PeerBits {
 struct OriginWindow {
     seq_max: u64,
     peers: Vec<PeerBits>,
+    /// One above the floor this origin had when it was last forgotten (0: never forgotten):
+    /// everything below it is out of window.
+    forgotten_below: u64,
 }
 
 impl OriginWindow {
@@ -61,10 +77,20 @@ fn slot(seq: u64, window_size: u64) -> (usize, u64) {
 
 pub struct ReplayFilter {
     windows: HashMap<String, OriginWindow>,
+    /// Floor of each forgotten origin, by keyed tag, with the stamp of its entry in `floor_order`.
+    floors: HashMap<u64, (u64, u64)>,
+    /// Floors in the order they were kept, to drop the oldest; entries whose stamp no longer
+    /// matches `floors` are stale.
+    floor_order: VecDeque<(u64, u64)>,
+    floor_stamp: u64,
     tag_key: RandomState,
     /// Sum of `peers.len()` over all windows: what the filter's memory grows with.
     peer_records: usize,
     pub window_size: u64,
+    /// Whether `forget` keeps a floor. A node's control messages (sync requests, chain-head
+    /// announcements) are never relayed, so no honest neighbour can repeat one and their filter
+    /// forgets whole.
+    pub keep_floors: bool,
 }
 
 impl Default for ReplayFilter {
@@ -77,17 +103,68 @@ impl ReplayFilter {
     pub fn new() -> ReplayFilter {
         ReplayFilter {
             windows: HashMap::new(),
+            floors: HashMap::new(),
+            floor_order: VecDeque::new(),
+            floor_stamp: 0,
             tag_key: RandomState::new(),
             peer_records: 0,
             window_size: DEFAULT_WINDOW_SIZE,
+            keep_floors: true,
         }
     }
 
-    /// True if `seq` is older than the window for `origin`. Does not record anything.
+    /// A filter whose `forget` keeps no floor (for messages no honest node relays).
+    pub fn without_floors() -> ReplayFilter {
+        ReplayFilter {
+            keep_floors: false,
+            ..ReplayFilter::new()
+        }
+    }
+
+    /// True if `seq` is older than the window for `origin`, or at or below the floor of a
+    /// forgotten origin. Does not record anything.
     pub fn is_out_of_window(&self, origin: &str, seq: u64) -> bool {
-        self.windows
-            .get(origin)
-            .is_some_and(|w| seq < w.floor(self.window_size))
+        match self.windows.get(origin) {
+            Some(w) => seq < w.floor(self.window_size) || seq < w.forgotten_below,
+            None => self.kept_floor(origin).is_some_and(|below| seq < below),
+        }
+    }
+
+    fn origin_tag(&self, origin: &str) -> u64 {
+        self.tag_key.hash_one(("origin", origin))
+    }
+
+    /// One above the floor kept for a forgotten `origin`.
+    fn kept_floor(&self, origin: &str) -> Option<u64> {
+        self.floors
+            .get(&self.origin_tag(origin))
+            .map(|(floor, _)| *floor)
+    }
+
+    /// Keep `floor`, one above the highest sequence number accepted, for a forgotten `origin`.
+    fn keep_floor(&mut self, origin: &str, floor: u64) {
+        let tag = self.origin_tag(origin);
+        self.floor_stamp += 1;
+        let stamp = self.floor_stamp;
+        let previous = self.floors.get(&tag).map_or(0, |(f, _)| *f);
+        // Make room first, so the table never holds more than the limit.
+        while previous == 0 && self.floors.len() >= MAX_FORGOTTEN_FLOORS {
+            match self.floor_order.pop_front() {
+                Some((old, old_stamp)) => {
+                    if self.floors.get(&old).is_some_and(|(_, s)| *s == old_stamp) {
+                        self.floors.remove(&old);
+                    }
+                }
+                None => break,
+            }
+        }
+        self.floors.insert(tag, (floor.max(previous), stamp));
+        self.floor_order.push_back((tag, stamp));
+        if self.floor_order.len() > MAX_FORGOTTEN_FLOORS + MAX_FORGOTTEN_FLOORS / 8 {
+            let floors = &self.floors;
+            self.floor_order
+                .retain(|(t, st)| floors.get(t).is_some_and(|(_, s)| s == st));
+        }
     }
 
     /// Classifies (`origin`, `seq`) delivered by transport peer `sender` and records it
@@ -96,15 +173,29 @@ impl ReplayFilter {
         let window_size = self.window_size;
         // Never UNATTRIBUTED, which would match the overflow record.
         let tag = self.tag_key.hash_one(sender) | 1;
-        let Some(window) = self.windows.get_mut(origin) else {
+        if !self.windows.contains_key(origin) {
+            let below = self.kept_floor(origin).unwrap_or(0);
+            if seq < below {
+                return ReplayVerdict::OutOfWindow {
+                    received_seq: seq,
+                    window_floor: below,
+                };
+            }
+            // The floor moves into the window; the table entry goes.
+            let origin_tag = self.origin_tag(origin);
+            self.floors.remove(&origin_tag);
             self.windows.insert(
                 origin.to_string(),
                 OriginWindow {
                     seq_max: seq,
                     peers: Vec::new(),
+                    forgotten_below: below,
                 },
             );
             self.record(origin, seq, tag);
+            return ReplayVerdict::Accept;
+        }
+        let Some(window) = self.windows.get_mut(origin) else {
             return ReplayVerdict::Accept;
         };
 
@@ -130,10 +221,10 @@ impl ReplayFilter {
         }
 
         let floor = window.floor(window_size);
-        if seq < floor {
+        if seq < floor || seq < window.forgotten_below {
             return ReplayVerdict::OutOfWindow {
                 received_seq: seq,
-                window_floor: floor,
+                window_floor: floor.max(window.forgotten_below),
             };
         }
 
@@ -196,7 +287,7 @@ impl ReplayFilter {
                 let held = (w.floor(self.window_size)..=w.seq_max)
                     .filter(|seq| {
                         let (word, bit) = slot(*seq, self.window_size);
-                        w.peers.iter().any(|p| p.bits[word] & bit != 0)
+                        *seq < w.forgotten_below || w.peers.iter().any(|p| p.bits[word] & bit != 0)
                     })
                     .collect();
                 (origin.clone(), w.seq_max, held)
@@ -204,10 +295,17 @@ impl ReplayFilter {
             .collect()
     }
 
-    /// Forget everything about `origin`.
+    /// Forget everything about `origin` except its floor (the highest sequence number accepted).
     pub fn forget(&mut self, origin: &str) {
         if let Some(window) = self.windows.remove(origin) {
             self.peer_records -= window.peers.len();
+            if !self.keep_floors {
+                return;
+            }
+            self.keep_floor(
+                origin,
+                window.seq_max.saturating_add(1).max(window.forgotten_below),
+            );
         }
     }
 
@@ -219,6 +317,11 @@ impl ReplayFilter {
     /// Peer records over all origins; with `tracked_origins`, what the memory grows with.
     pub fn peer_records(&self) -> usize {
         self.peer_records
+    }
+
+    /// Floors kept for forgotten origins.
+    pub fn forgotten_floors(&self) -> usize {
+        self.floors.len()
     }
 }
 
@@ -309,6 +412,103 @@ mod tests {
             f.check_and_record("a", 10, "q"),
             ReplayVerdict::Replayed { received_seq: 10 }
         );
+    }
+
+    #[test]
+    fn a_forgotten_origin_keeps_its_floor() {
+        let mut f = ReplayFilter::new();
+        for seq in 1..=5 {
+            assert!(f.check_and_record("o", seq, "p").is_accept());
+        }
+        f.forget("o");
+        assert_eq!(f.tracked_origins(), 0);
+        assert_eq!(f.forgotten_floors(), 1);
+        for seq in [1, 3, 5] {
+            assert!(f.is_out_of_window("o", seq));
+            assert!(matches!(
+                f.check_and_record("o", seq, "q"),
+                ReplayVerdict::OutOfWindow { .. }
+            ));
+        }
+        assert_eq!(
+            f.tracked_origins(),
+            0,
+            "an old message tracks nothing again"
+        );
+        // A new message is accepted; the floor moves into the origin's window.
+        assert!(f.check_and_record("o", 7, "q").is_accept());
+        assert_eq!(f.forgotten_floors(), 0);
+        assert!(
+            f.check_and_record("o", 6, "q").is_accept(),
+            "above the floor"
+        );
+        assert!(matches!(
+            f.check_and_record("o", 5, "q"),
+            ReplayVerdict::OutOfWindow { .. }
+        ));
+        // The digest lists everything up to the floor as held, so no one answers with it.
+        let (_, max, held) = f.digest(1).remove(0);
+        assert_eq!(max, 7);
+        assert_eq!(held, (0..=7).collect::<Vec<_>>());
+        // Forgotten again, the floor is the new highest number.
+        f.forget("o");
+        assert!(f.is_out_of_window("o", 7));
+        assert!(!f.is_out_of_window("o", 8));
+    }
+
+    #[test]
+    fn the_floor_table_never_outgrows_its_buckets_and_can_be_switched_off() {
+        let mut f = ReplayFilter::new();
+        for i in 0..(3 * MAX_FORGOTTEN_FLOORS) {
+            let origin = format!("o{i}");
+            assert!(f.check_and_record(&origin, 1, "p").is_accept());
+            f.forget(&origin);
+        }
+        // At most one doubling under churn, however many origins are forgotten.
+        assert_eq!(f.forgotten_floors(), MAX_FORGOTTEN_FLOORS);
+        assert!(
+            f.floors.capacity() <= 2 * MAX_FORGOTTEN_FLOORS,
+            "{}",
+            f.floors.capacity()
+        );
+        assert!(
+            f.floor_order.capacity() <= 4096,
+            "{}",
+            f.floor_order.capacity()
+        );
+
+        let mut g = ReplayFilter::without_floors();
+        assert!(g.check_and_record("o", 3, "p").is_accept());
+        g.forget("o");
+        assert_eq!(g.forgotten_floors(), 0);
+        assert!(g.check_and_record("o", 3, "p").is_accept());
+    }
+
+    #[test]
+    fn a_floor_covers_sequence_number_zero() {
+        let mut f = ReplayFilter::new();
+        assert!(f.check_and_record("o", 0, "p").is_accept());
+        f.forget("o");
+        assert!(!f.check_and_record("o", 0, "p").is_accept());
+    }
+
+    #[test]
+    fn floors_are_kept_oldest_first_out_up_to_their_limit() {
+        let mut f = ReplayFilter::new();
+        for i in 0..(MAX_FORGOTTEN_FLOORS + 10) {
+            let origin = format!("o{i}");
+            assert!(f.check_and_record(&origin, 1, "p").is_accept());
+            f.forget(&origin);
+        }
+        assert_eq!(f.forgotten_floors(), MAX_FORGOTTEN_FLOORS);
+        assert!(!f.is_out_of_window("o0", 1), "the oldest floor went first");
+        assert!(f.is_out_of_window(&format!("o{}", MAX_FORGOTTEN_FLOORS + 9), 1));
+        // Forgetting the same origin again and again does not grow the order without bound.
+        for seq in 1..=(3 * MAX_FORGOTTEN_FLOORS as u64) {
+            assert!(f.check_and_record("again", seq, "p").is_accept());
+            f.forget("again");
+        }
+        assert!(f.floor_order.len() <= 2 * MAX_FORGOTTEN_FLOORS + 1);
     }
 
     #[test]

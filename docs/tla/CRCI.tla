@@ -36,6 +36,7 @@ CONSTANTS
     TicksEnabled,
     SeenMayClear,        \* the seen cache can be cleared (its limit of 1 792 entries)
     OriginsMayBeForgotten, \* a node can forget an origin whole (its limit on tracked origins)
+    FloorsMayBeForgotten,  \* a node can also lose a forgotten origin's floor (that table's limit)
     FifoLinks,           \* FALSE: a frame can overtake another on a link
     LinksDuplicate,      \* TRUE: the network can duplicate a frame
     SessionsMayExpire,   \* TRUE: a sync session can end before its answers arrive
@@ -73,6 +74,7 @@ VARIABLES
     seen,       \* honest node -> set of <<key, sender>>
     seqMax,     \* honest node -> origin -> highest accepted sequence number (0: none)
     deliveredBy,\* honest node -> set of <<origin, seq, sender>> inside the window
+    kept,       \* honest node -> origin -> one above the floor kept when it was forgotten (0: none)
     rep,        \* honest node -> neighbour -> reputation record
     sessions,   \* honest node -> sync sessions opened
     recent,     \* honest node -> messages kept for answering sync requests
@@ -83,7 +85,7 @@ VARIABLES
     faults,     \* faults used so far
     byzSent     \* adversary frames sent so far
 
-vars == <<counter, link, requests, seen, seqMax, deliveredBy, rep, sessions, recent,
+vars == <<counter, link, requests, seen, seqMax, deliveredBy, kept, rep, sessions, recent,
           delivered, twice, known, asked, faults, byzSent>>
 
 Init ==
@@ -93,6 +95,7 @@ Init ==
     /\ seen        = [n \in Honest |-> {}]
     /\ seqMax      = [n \in Honest |-> [o \in Nodes |-> 0]]
     /\ deliveredBy = [n \in Honest |-> {}]
+    /\ kept        = [n \in Honest |-> [o \in Nodes |-> 0]]
     /\ rep         = [n \in Honest |-> [p \in Nbrs(n) |-> NewPeer]]
     /\ sessions    = [n \in Honest |-> {}]
     /\ recent      = [n \in Honest |-> {}]
@@ -122,7 +125,7 @@ ToSeq(S) ==
 RemoveAt(s, i) == SubSeq(s, 1, i - 1) \o SubSeq(s, i + 1, Len(s))
 
 Floor(n, o) == IF seqMax[n][o] > W THEN seqMax[n][o] - W ELSE 0
-OutOfWindow(n, o, k) == WindowEnabled /\ k < Floor(n, o)
+OutOfWindow(n, o, k) == WindowEnabled /\ (k < Floor(n, o) \/ k < kept[n][o])
 
 Held(n) == {<<x[1], x[2]>> : x \in deliveredBy[n]}
 
@@ -167,6 +170,7 @@ Answered(S, s, f) ==
 \* ReplayFilter::check_and_record, as a verdict.
 Filter(r, m, s) ==
     IF ~WindowEnabled THEN "accept"
+    ELSE IF m.seq < kept[r][m.origin] THEN "stale"
     ELSE IF m.seq > seqMax[r][m.origin] THEN "accept"
     ELSE IF m.seq < Floor(r, m.origin) THEN "stale"
     ELSE LET by == {x[3] : x \in {y \in deliveredBy[r] : y[1] = m.origin /\ y[2] = m.seq}}
@@ -238,7 +242,7 @@ Receive(s, r) ==
                 /\ link' = RelayTo(popped, r, m)
            ELSE /\ link' = popped
                 /\ UNCHANGED <<delivered, twice, recent>>
-    /\ UNCHANGED <<counter, requests, known, asked, faults, byzSent>>
+    /\ UNCHANGED <<counter, requests, kept, known, asked, faults, byzSent>>
 
 ----------------------------------------------------------------------------
 (* Honest nodes *)
@@ -251,7 +255,7 @@ Originate(o) ==
         /\ seen' = [seen EXCEPT ![o] = @ \cup {<<Key(m), o>>}]
         /\ recent' = [recent EXCEPT ![o] = Trim(@ \cup {m})]
         /\ delivered' = [delivered EXCEPT ![o] = @ \cup {<<o, m.seq>>}]
-    /\ UNCHANGED <<requests, seqMax, deliveredBy, rep, sessions, twice, known, asked,
+    /\ UNCHANGED <<requests, seqMax, deliveredBy, kept, rep, sessions, twice, known, asked,
                    faults, byzSent>>
 
 \* A neighbour holds a message this node has not accepted. The node asks periodically in
@@ -283,7 +287,7 @@ RequestSync(r, s) ==
              {[from |-> r, to |-> s, rid |-> rid, held |-> Held(r), max |-> seqMax[r]]}
         /\ sessions' = [sessions EXCEPT ![r] = @ \cup
              {[peer |-> s, rid |-> rid, held |-> Held(r), exempted |-> {}, answered |-> {}]}]
-    /\ UNCHANGED <<counter, link, seen, seqMax, deliveredBy, rep, recent, delivered,
+    /\ UNCHANGED <<counter, link, seen, seqMax, deliveredBy, kept, rep, recent, delivered,
                    twice, known, faults, byzSent>>
 
 \* answer_sync: every kept message the digest lacks, tagged, oldest first as one batch.
@@ -299,7 +303,7 @@ Answer(q) ==
            batch == ToSeq({Frame(m, TRUE, q.rid) : m \in wanted})
            pair == <<q.to, q.from>>
        IN  link' = [link EXCEPT ![pair] = @ \o batch]
-    /\ UNCHANGED <<counter, seen, seqMax, deliveredBy, rep, sessions, recent, delivered,
+    /\ UNCHANGED <<counter, seen, seqMax, deliveredBy, kept, rep, sessions, recent, delivered,
                    twice, known, asked, faults, byzSent>>
 
 \* The seen cache is cleared whole at its limit of 1 792 entries.
@@ -307,26 +311,37 @@ ClearSeen(n) ==
     /\ SeenMayClear
     /\ seen[n] # {}
     /\ seen' = [seen EXCEPT ![n] = {}]
-    /\ UNCHANGED <<counter, link, requests, seqMax, deliveredBy, rep, sessions, recent,
+    /\ UNCHANGED <<counter, link, requests, seqMax, deliveredBy, kept, rep, sessions, recent,
                    delivered, twice, known, asked, faults, byzSent>>
 
-\* Above its limit on tracked origins a node forgets an origin's window and recent messages. Not
-\* part of the checks that must hold: the two checks with this switch on must break, which shows
-\* what bounded memory costs while identities are free.
+\* Above its limit on tracked origins a node forgets an origin's window and recent messages, and
+\* keeps its floor: everything at or below the highest sequence number accepted stays stale
+\* (ReplayFilter::forget). With the floor the checks hold; without it (FloorsMayBeForgotten, the
+\* floor table's own limit) the two checks with forgetting on break, which shows what bounded memory
+\* still costs while identities are free.
 ForgetOrigin(n, o) ==
     /\ OriginsMayBeForgotten
     /\ seqMax[n][o] # 0
+    /\ kept' = [kept EXCEPT ![n][o] = Max(@, seqMax[n][o] + 1)]
     /\ seqMax' = [seqMax EXCEPT ![n][o] = 0]
     /\ deliveredBy' = [deliveredBy EXCEPT ![n] = {x \in @ : x[1] # o}]
     /\ recent' = [recent EXCEPT ![n] = {m \in @ : m.origin # o}]
     /\ UNCHANGED <<counter, link, requests, seen, rep, sessions, delivered, twice, known, asked,
                    faults, byzSent>>
 
+ForgetFloor(n, o) ==
+    /\ FloorsMayBeForgotten
+    /\ seqMax[n][o] = 0
+    /\ kept[n][o] # 0
+    /\ kept' = [kept EXCEPT ![n][o] = 0]
+    /\ UNCHANGED <<counter, link, requests, seen, seqMax, deliveredBy, rep, sessions, recent,
+                   delivered, twice, known, asked, faults, byzSent>>
+
 Tick ==
     /\ TicksEnabled
     /\ \E n \in Honest, p \in Nodes : p \in Nbrs(n) /\ ~AtRest(rep[n][p])
     /\ rep' = TLCEval([n \in Honest |-> [p \in Nbrs(n) |-> Recover(rep[n][p])]])
-    /\ UNCHANGED <<counter, link, requests, seen, seqMax, deliveredBy, sessions, recent,
+    /\ UNCHANGED <<counter, link, requests, seen, seqMax, deliveredBy, kept, sessions, recent,
                    delivered, twice, known, asked, faults, byzSent>>
 
 ----------------------------------------------------------------------------
@@ -338,7 +353,7 @@ LoseFrame(s, r) ==
     /\ \E i \in 1..Len(link[<<s, r>>]) :
         link' = [link EXCEPT ![<<s, r>>] = RemoveAt(@, i)]
     /\ faults' = faults + 1
-    /\ UNCHANGED <<counter, requests, seen, seqMax, deliveredBy, rep, sessions, recent,
+    /\ UNCHANGED <<counter, requests, seen, seqMax, deliveredBy, kept, rep, sessions, recent,
                    delivered, twice, known, asked, byzSent>>
 
 LoseRequest(q) ==
@@ -346,7 +361,7 @@ LoseRequest(q) ==
     /\ q \in requests
     /\ requests' = requests \ {q}
     /\ faults' = faults + 1
-    /\ UNCHANGED <<counter, link, seen, seqMax, deliveredBy, rep, sessions, recent,
+    /\ UNCHANGED <<counter, link, seen, seqMax, deliveredBy, kept, rep, sessions, recent,
                    delivered, twice, known, asked, byzSent>>
 
 DuplicateFrame(s, r) ==
@@ -356,7 +371,7 @@ DuplicateFrame(s, r) ==
     /\ link[<<s, r>>] # <<>>
     /\ link' = [link EXCEPT ![<<s, r>>] = Append(@, Head(@))]
     /\ faults' = faults + 1
-    /\ UNCHANGED <<counter, requests, seen, seqMax, deliveredBy, rep, sessions, recent,
+    /\ UNCHANGED <<counter, requests, seen, seqMax, deliveredBy, kept, rep, sessions, recent,
                    delivered, twice, known, asked, byzSent>>
 
 \* An answer that outlives its session (120 s, or the four newest per peer).
@@ -364,7 +379,7 @@ ExpireSession(n, ses) ==
     /\ SessionsMayExpire
     /\ ses \in sessions[n]
     /\ sessions' = [sessions EXCEPT ![n] = @ \ {ses}]
-    /\ UNCHANGED <<counter, link, requests, seen, seqMax, deliveredBy, rep, recent,
+    /\ UNCHANGED <<counter, link, requests, seen, seqMax, deliveredBy, kept, rep, recent,
                    delivered, twice, known, asked, faults, byzSent>>
 
 ----------------------------------------------------------------------------
@@ -377,14 +392,14 @@ ByzReceive(s, a) ==
     /\ link[<<s, a>>] # <<>>
     /\ known' = [known EXCEPT ![a] = @ \cup {Head(link[<<s, a>>]).msg}]
     /\ link' = [link EXCEPT ![<<s, a>>] = Tail(@)]
-    /\ UNCHANGED <<counter, requests, seen, seqMax, deliveredBy, rep, sessions, recent,
+    /\ UNCHANGED <<counter, requests, seen, seqMax, deliveredBy, kept, rep, sessions, recent,
                    delivered, twice, asked, faults, byzSent>>
 
 ByzIgnoreRequest(q) ==
     /\ q \in requests
     /\ q.to \in Byzantine
     /\ requests' = requests \ {q}
-    /\ UNCHANGED <<counter, link, seen, seqMax, deliveredBy, rep, sessions, recent,
+    /\ UNCHANGED <<counter, link, seen, seqMax, deliveredBy, kept, rep, sessions, recent,
                    delivered, twice, known, asked, faults, byzSent>>
 
 Tags == 0..MaxRequests
@@ -403,7 +418,7 @@ ByzSend(a, r) ==
     /\ byzSent' = byzSent + 1
     /\ \E f \in AdversaryFrames(a) :
         link' = [link EXCEPT ![<<a, r>>] = Append(@, f)]
-    /\ UNCHANGED <<counter, requests, seen, seqMax, deliveredBy, rep, sessions, recent,
+    /\ UNCHANGED <<counter, requests, seen, seqMax, deliveredBy, kept, rep, sessions, recent,
                    delivered, twice, known, asked, faults>>
 
 \* Replays its own message without end, as fast as the link takes it.
@@ -414,7 +429,7 @@ ByzPersist(a, r) ==
     /\ {a, r} \in Edges
     /\ link[<<a, r>>] = <<>>
     /\ link' = [link EXCEPT ![<<a, r>>] = <<Frame(AdversaryMsg(a, 1, <<a, 1>>), TRUE, 0)>>]
-    /\ UNCHANGED <<counter, requests, seen, seqMax, deliveredBy, rep, sessions, recent,
+    /\ UNCHANGED <<counter, requests, seen, seqMax, deliveredBy, kept, rep, sessions, recent,
                    delivered, twice, known, asked, faults, byzSent>>
 
 ----------------------------------------------------------------------------
@@ -425,7 +440,7 @@ Next ==
     \/ \E p \in Pairs : RequestSync(p[1], p[2])
     \/ \E q \in requests : Answer(q) \/ LoseRequest(q) \/ ByzIgnoreRequest(q)
     \/ \E n \in Honest : ClearSeen(n) \/ \E ses \in sessions[n] : ExpireSession(n, ses)
-    \/ \E n \in Honest, o \in Nodes : ForgetOrigin(n, o)
+    \/ \E n \in Honest, o \in Nodes : ForgetOrigin(n, o) \/ ForgetFloor(n, o)
     \/ Tick
     \/ \E p \in Pairs : LoseFrame(p[1], p[2]) \/ DuplicateFrame(p[1], p[2])
     \/ \E p \in Pairs : ByzReceive(p[1], p[2]) \/ ByzSend(p[1], p[2]) \/ ByzPersist(p[1], p[2])
