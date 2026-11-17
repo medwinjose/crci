@@ -774,13 +774,17 @@ What holds and what does not:
   defence keeps 0.97 or more at both rates, against replay and against fresh-message floods. Under replay
   the static bucket alone also loses delivery at 256 kbit/s (0.757 at 2 copies).
 - Not monotonic in the attack: vanilla delivers 0.743 at 2 copies but 0.993 at 32 copies at 1 000 kbit/s.
-  A likely reason, not verified: with a heavier attack the attacker's own relay queue overflows
-  (`relay_drops.queue_full` in the summaries) and it sends less. Do not read the vanilla column as a trend.
+  A likely reason, not verified (the vanilla runs were not examined): with a heavier attack the attacker's own
+  relay queue overflows (`relay_drops.queue_full` in the summaries) and it sends less. Do not read the vanilla column as a trend.
 - **Criteria that fail as written:** at 1 000 kbit/s the full defence beats vanilla by only 0.007 at 32
   copies (criterion: at least 0.05; it holds at 256 kbit/s, 0.11). At 256 kbit/s the full defence bans the
   attacker at only 4 to 7 of 10 neighbours within the 60 s window (eviction median 40 to 47 s in the three replay x8 runs, against
-  about 2 s on an unlimited link; attacker frames queue and arrive more than W = 64 numbers late, which is
-  dropped without a strike). The cause is not verified. No honest node is banned in any run.
+  about 2 s on an unlimited link). Reading the raw logs of five full-defence replay runs: the attacker's relay
+  queue overflows (`queue_full` 21 577 to 516 781 frames, no other node drops any), neighbours log 656 to 985
+  stale-sequence drops (almost all naming the attacker in the one run where its ID could be matched, 807 of 815;
+  a stale frame is dropped without a strike) and only 12 to 21 strikes, 3 per banning neighbour. So most
+  of the attacker's frames reach a neighbour after the window has moved on, and only the few that arrive in
+  time are struck. This is consistent with, but not a controlled test of, the cause. No honest node is banned in any run.
 - **Fidelity:** 17 of 126 runs fail a fidelity criterion: the ping RTT p95 on the 15 runs without an attack
   (pings queue behind honest sync traffic; the allowance of one full frame per direction was too small)
   and acceptance lines held back in two vanilla flood-200 runs at 1 000 kbit/s. They are kept.
