@@ -57,6 +57,10 @@ not support. The paper in preparation corrects them:
   recovery), so the preprint's numbers do not apply to the current code.
 
 ### Added
+- The testbed can limit each node's receive rate (`testbed.py --rx-kbit`, `RX_KBIT` in `run_baselines.sh`): a netem
+  rate queue on the link into each node, shared by honest and attacker traffic. `docs/benchmarks.md` reports the
+  baselines on 256 and 1 000 kbit/s links (126 runs) with the criteria that failed and the runs that failed fidelity;
+  evidence in `docs/evidence/baselines-ratelimited-2026-11-16/`.
 - `crci-node --key-file FILE --key-passphrase-file FILE` keeps the node key in an encrypted file
   (AES-256-GCM, Argon2id), created on first start, so a restarted node keeps its ID. A wrong passphrase stops
   the node instead of creating a new key. Each start reserves the next 2^32 sequence numbers in that file,
