@@ -41,7 +41,7 @@ compromised devices.
 | Framing a neighbour by claiming its ID | Mutual Ed25519 challenge-response on every TCP connection; a peer whose declared node ID is not derived from the key it proved is refused, and strikes bind to that authenticated node ID | `transport/tcp.rs` |
 | Injecting, altering or replaying frames on the path | Every frame is signed by the dialer for the session (transcript hash) and numbered; a bad signature or counter closes the connection before the frame is processed | `transport/tcp.rs` |
 | Oversized / slow TCP frames | 1 MiB frame limit, 5 s to finish a frame that has started (a silent authenticated connection is closed after 10 min), 100 concurrent connections, admitted per source host | `transport/tcp.rs` |
-| Data at rest | AES-256-GCM, key derived with Argon2id; with `--key-file` the node key is kept this way, and a wrong passphrase stops the node instead of creating a new key | `storage/encrypted.rs`, `identity.rs` |
+| Data at rest | AES-256-GCM, each record bound to its ID, key derived with Argon2id (19 MiB, 2 passes, 1 lane, written out in the code); with `--key-file` the node key is kept this way, and a wrong passphrase stops the node instead of creating a new key | `storage/encrypted.rs`, `identity.rs` |
 | A restarted node reusing sequence numbers | With `--key-file` a restarted node keeps its ID; each start reserves the next 2^32 sequence numbers in the key file before sending, so neighbours never see a number twice from it | `identity.rs` |
 | Panics across FFI | Rust panics surface as Kotlin exceptions (recorded run: `docs/evidence/android-bft038-2026-08-23/`) | `ffi.rs` |
 
@@ -174,3 +174,14 @@ compromised devices.
     Measured through a real node, 90 fresh identities sending 10⁶ validly signed messages inside every budget
     leave its memory at about 19 MiB and its log at 32 bytes per message, and an honest neighbour loses nothing
     ([benchmarks.md](benchmarks.md#memory-per-node)).
+
+13. **The key file is not protected against rollback, and some local message fields never leave the node.**
+    Each record in the encrypted key file is authenticated and tied to its ID, so a record cannot be altered
+    or passed off under another ID. The file as a whole is not protected against being replaced by an older
+    authentic copy of itself or of one record (for example the sequence-number floor): that needs a trusted
+    monotonic counter outside the file, which a phone or a Raspberry Pi does not offer. A node whose key
+    file is rolled back can reuse sequence numbers, and its neighbours then drop or strike those messages;
+    the attacker needs write access to the device, which the model does not consider (see Not considered).
+    Separately, the in-process `Message` has fields that `WireMessage` does not carry (position,
+    resource type, expiry, priority, hop count); they are not sent, not signed, and come back as defaults
+    on the receiving side. The protocol transports the fields of `WireMessage` and no others.

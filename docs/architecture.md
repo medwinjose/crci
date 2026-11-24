@@ -25,7 +25,9 @@ Diagram: [`architecture/crci-architecture.html`](architecture/crci-architecture.
 Every message is a `WireMessage` (JSON) carrying the origin's Ed25519 public key, a signature and a
 sequence number, and every node runs the same checks in `NodeRuntime` (`crates/crci-core/src/runtime.rs`),
 whether messages arrive in-process (simulator, tests, benchmarks, Android FFI) or over TCP
-(`crci-node --listen`).
+(`crci-node --listen`). A `WireMessage` carries exactly the fields listed in `runtime.rs`; the in-process
+`Message` has more (position, resource type, expiry, priority, hop count), and those are neither sent nor
+signed: converting back fills them with defaults.
 
 ### Checks in `NodeRuntime::process_inbox`
 
@@ -103,7 +105,7 @@ and is never sent or authenticated; each node prints `Node <label> id <id>` once
 read by label.
 
 `crci-node --key-file FILE --key-passphrase-file FILE` keeps the key in an encrypted file (AES-256-GCM,
-key from the passphrase with Argon2id), created on first start, so a restarted node keeps its ID (and the
+key from the passphrase with Argon2id at 19 MiB, 2 passes and 1 lane, about 18 ms per derivation in a release build on an i5-12450HX, each record bound to its ID), created on first start, so a restarted node keeps its ID (and the
 reputation its neighbours hold for it). A wrong passphrase or a damaged file stops the node at start; it
 never makes a new key in their place. The file also stores a sequence-number floor: each start reserves the
 next 2^32 sequence numbers before sending anything, so a restarted node never reuses a number its

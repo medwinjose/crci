@@ -36,6 +36,12 @@ git history; `git log` is the complete record.
   honest node's ID first made receivers drop that node's messages. Such a claim is now a forgery: dropped,
   and its sender struck like the sender of a bad signature. Key pinning is removed.
 
+- Every record of the encrypted store is bound to its ID (associated data in AES-GCM), so a record cannot
+  be copied under another ID; records written before this change are still read, and the next write of an
+  ID replaces them. The Argon2id cost (19 MiB, 2 passes, 1 lane) is written out in the code instead of
+  taken from the library's defaults, so a library upgrade cannot make existing key files unreadable.
+  Rollback of the whole file to an older authentic copy is not detected (threat model, gap 13).
+
 ### Changed
 - The charts have a print layout (`make_figures.py --compact`): one panel per topology for the latency
   chart, a legend above each panel, a marker per series, round axis ticks.
@@ -50,6 +56,8 @@ git history; `git log` is the complete record.
   (`make run-figures`, `make_figures.py --data`); `make tla` stays a separate step (Java).
 
 ### Fixed
+- `validate_node_config` (Android FFI) rejected every IPv6 listen address; it now accepts `host:port` with a
+  numeric port and bracketed IPv6 (`[::1]:9000`).
 - A node more than one sync answer behind a peer (16 messages) caught up only 16 messages per 30 s
   round: at 20 % packet loss a node with a single neighbour received its last messages 55.8 s late. A
   node now asks that peer again 8 s after an answer that filled a whole batch (once per such answer),
