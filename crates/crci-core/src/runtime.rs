@@ -111,6 +111,19 @@ pub const OBSERVATIONS_MAX: usize = 1024;
 /// Divergence alerts kept (the oldest goes first).
 pub const DIVERGENCE_LOG_MAX: usize = 64;
 
+// Size limits of the fields a node stores, relays or prints. A signature says who wrote a message,
+// not that it is small: without them every table above is bounded in entries but not in bytes (a
+// TCP frame may hold 1 MiB). Larger than anything an honest node builds.
+
+/// Bytes of a message ID, and of the request ID a sync answer is tagged with.
+pub const MAX_ID_BYTES: usize = 128;
+/// Bytes of a message type (a chain-head announcement, the longest, stays below 210).
+pub const MAX_TYPE_BYTES: usize = 256;
+/// Bytes of the visibility word.
+pub const MAX_VISIBILITY_BYTES: usize = 16;
+/// Bytes of the address a sync answer is sent to: a DNS name and a port.
+pub const MAX_REPLY_TO_BYTES: usize = 260;
+
 /// Lines per second one key may print. A frame dropped by a budget costs no strike, so its sender
 /// is never stopped; without this its frames cost log volume at the pacing rate.
 pub struct LogGate {
@@ -523,6 +536,32 @@ impl WireMessage {
         verifying_key
             .verify_strict(&self.signing_bytes(), &signature)
             .is_ok()
+    }
+
+    /// Whether every field a node stores, relays or prints is within its size limit, and the ID and
+    /// type (which are printed) hold no control character, so a message cannot forge a log line.
+    /// Only a sync request carries a digest, which is never stored.
+    pub fn within_limits(&self) -> bool {
+        let printable = |s: &str, max: usize| s.len() <= max && !s.chars().any(char::is_control);
+        printable(&self.id, MAX_ID_BYTES)
+            && printable(&self.origin, MAX_ID_BYTES)
+            && printable(&self.message_type, MAX_TYPE_BYTES)
+            && printable(&self.visibility, MAX_VISIBILITY_BYTES)
+            && crate::validation::validate_payload_size(
+                self.note.as_deref().unwrap_or("").as_bytes(),
+            )
+            .is_ok()
+            && self
+                .answers_sync
+                .as_deref()
+                .is_none_or(|tag| printable(tag, MAX_ID_BYTES))
+            && self.sync.as_ref().is_none_or(|digest| {
+                self.message_type == SYNC_REQUEST_TYPE
+                    && digest
+                        .reply_to
+                        .as_deref()
+                        .is_none_or(|a| printable(a, MAX_REPLY_TO_BYTES))
+            })
     }
 
     /// Whether the origin is the node ID derived from `origin_pubkey`.
@@ -1330,6 +1369,14 @@ impl NodeRuntime {
                     continue;
                 }
             };
+            // An oversized field: dropped before it costs a check, a table entry or a log line. Not a
+            // strike; an honest node never relays such a message, for the same reason.
+            if !wire.within_limits() {
+                self.metrics
+                    .messages_rejected
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                continue;
+            }
             // The answer tag belongs to this hop only: it is never stored or relayed.
             let answers = wire.answers_sync.take();
             let key = message_key(&wire);
@@ -1371,10 +1418,14 @@ impl NodeRuntime {
                             &self.replay_filter
                         };
                         if window.is_out_of_window(&wire.origin, wire.seq) {
-                            println!(
-                                "  ⏰ [{}] STALE resend of '{}' from '{}' — out of window, dropped",
-                                self.label, wire.id, sender_id
-                            );
+                            let now = self.sybil_guard.now();
+                            let gate = format!("stale {sender_id}");
+                            if let Some(more) = self.drop_lines.pass(&gate, now) {
+                                println!(
+                                    "  ⏰ [{}] STALE resend of '{}' from '{}' — out of window, dropped{}",
+                                    self.label, wire.id, sender_id, more
+                                );
+                            }
                             continue;
                         }
                         // A message this node asked the sender for may cross with the same
@@ -1519,10 +1570,14 @@ impl NodeRuntime {
                 self.metrics
                     .messages_rejected
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                println!(
-                    "  ⏰ [{}] STALE seq {} from '{}' — out of window, dropped",
-                    self.label, wire.seq, wire.origin
-                );
+                let now = self.sybil_guard.now();
+                let gate = format!("stale {sender_id}");
+                if let Some(more) = self.drop_lines.pass(&gate, now) {
+                    println!(
+                        "  ⏰ [{}] STALE seq {} from '{}' — out of window, dropped{}",
+                        self.label, wire.seq, wire.origin, more
+                    );
+                }
                 continue;
             }
 

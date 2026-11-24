@@ -312,6 +312,37 @@ fn a_replay_relabelled_as_a_control_message_is_still_struck() {
     assert_eq!(node.byzantine_events, 1, "a relabelled replay is a strike");
 }
 
+/// Every stored or logged field of a message has a size limit, or memory and logs grow with what
+/// a validly signed message may carry (a frame may hold 1 MiB).
+#[test]
+fn a_message_with_an_oversized_field_is_dropped_without_a_strike() {
+    let (mut node, inbox) = receiver();
+    let origin = Identity::new("origin");
+    let big = "x".repeat(100_000);
+    let edits: [fn(&mut WireMessage, &str); 6] = [
+        |w, b| w.id = b.to_string(),
+        |w, b| w.message_type = b.to_string(),
+        |w, b| w.visibility = b.to_string(),
+        |w, b| w.note = Some(b.to_string()),
+        |w, _| w.id = "x\nNode receiver banned someone".to_string(),
+        |w, b| {
+            w.sync = Some(SyncDigest {
+                reply_to: Some(b.to_string()),
+                origins: Vec::new(),
+            });
+        },
+    ];
+    for (i, edit) in edits.iter().enumerate() {
+        let mut wire = signed(&origin, &format!("m-{i}"), i as u64 + 1);
+        edit(&mut wire, &big);
+        wire.sign_with(&origin);
+        assert_eq!(deliver(&mut node, &inbox, "relay", &wire), 0, "edit {i}");
+    }
+    assert!(node.seen_messages.is_empty());
+    assert!(node.recent_messages.is_empty());
+    assert_eq!(node.byzantine_events, 0);
+}
+
 /// A sequence number near the end of the range must not overflow the answer's window test.
 #[test]
 fn a_sync_request_about_the_last_sequence_numbers_is_answered_without_overflow() {

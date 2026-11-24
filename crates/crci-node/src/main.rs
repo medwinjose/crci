@@ -1329,6 +1329,9 @@ fn dial_targets(args: &Cli) -> Vec<String> {
 /// Field rules from the gossip pipeline, applied before a message reaches `NodeRuntime`
 /// so that malformed messages are neither delivered nor relayed.
 fn check_fields(wire: &runtime::WireMessage) -> Result<(), String> {
+    if !wire.within_limits() {
+        return Err("field too long or not printable".to_string());
+    }
     validation::validate_node_id(&wire.origin).map_err(|e| format!("invalid origin: {e}"))?;
     validation::validate_severity_u8(wire.severity).map_err(|e| e.to_string())?;
     validation::validate_seq(wire.seq).map_err(|e| e.to_string())?;
@@ -1795,6 +1798,7 @@ async fn run_node(
         // a fair share per sender, at least 20 per 10 s.
         let mut received_lines = runtime::FairLogGate::new(1000, 20);
         let mut accepted_lines = runtime::FairLogGate::new(1000, 20);
+        let mut rejected_lines = runtime::LogGate::new(5);
         while let Ok((sender_id, wire)) = recv_tcp.receive().await {
             let dequeued = std::time::Instant::now();
             // A banned peer's frames are dropped by NodeRuntime's admission check anyway; doing
@@ -1828,6 +1832,16 @@ async fn run_node(
                 continue;
             }
             dropping.remove(&sender_id);
+            // Before any line that prints the message's own strings.
+            if let Err(reason) = check_fields(&wire) {
+                if let Some(more) = rejected_lines.pass(&sender_id, dequeued) {
+                    println!(
+                        "Node {} rejected a message from {}: {}{}",
+                        recv_id, sender_id, reason, more
+                    );
+                }
+                continue;
+            }
             let received_printed = received_lines.pass(&sender_id, dequeued);
             recv_lines_held.0.store(
                 received_lines.held_back_total(),
@@ -1838,13 +1852,6 @@ async fn run_node(
                     "Node {} received message from {}: id={}, type={}, origin={}{}",
                     recv_id, sender_id, wire.id, wire.message_type, wire.origin, more
                 );
-            }
-            if let Err(reason) = check_fields(&wire) {
-                println!(
-                    "Node {} rejected '{}' from {}: {}",
-                    recv_id, wire.id, sender_id, reason
-                );
-                continue;
             }
             // An answer to this node's sync request, or ordinary gossip (for experiments
             // that attribute late deliveries).
@@ -1889,6 +1896,14 @@ async fn run_node(
             // Protocol compute for this frame (checks, signature, replay window, strikes); the
             // frame signature (verified by the transport) is not included.
             let proc_us = dequeued.elapsed().as_micros();
+            // Identities are free, so these sets are cut back to the peers still banned (whose
+            // records are bounded).
+            if banned.len() > sybil::MAX_TRACKED_PEERS || dropping.len() > sybil::MAX_TRACKED_PEERS
+            {
+                let mut n = recv_node.lock().unwrap_or_else(|e| e.into_inner());
+                banned.retain(|id| n.sybil_guard.is_banned(id));
+                dropping.retain(|id| n.sybil_guard.is_banned(id));
+            }
             // Strikes are always charged to the sender of the frame just processed, so a
             // ban can only start here.
             if sender_banned && banned.insert(sender_id.clone()) {
