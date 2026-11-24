@@ -1265,11 +1265,10 @@ impl TcpTransport {
                             .await;
                         });
                     }
-                    Err(ref e) if is_transient_error(e) => {
-                        log::warn!(
-                            "TcpListener accept failed with transient error: {}. Backing off...",
-                            e
-                        );
+                    // Never give up: Linux reports pending network errors of the new connection
+                    // here (accept(2)), and a listener that stopped would leave the node deaf.
+                    Err(e) => {
+                        log::warn!("TcpListener accept failed: {}. Backing off...", e);
                         tokio::select! {
                             _ = tokio::time::sleep(backoff) => {}
                             _ = cancel_token_clone.cancelled() => {
@@ -1277,10 +1276,6 @@ impl TcpTransport {
                             }
                         }
                         backoff = (backoff * 2).min(std::time::Duration::from_secs(1));
-                    }
-                    Err(e) => {
-                        log::error!("TcpListener accept failed with permanent error: {}. Shutting down listener.", e);
-                        break;
                     }
                 }
             }
@@ -1321,10 +1316,6 @@ impl TcpTransport {
         })
     }
 
-    /// Stop reading the connections of `identity` (a banned peer): they are closed and its
-    /// new connections refused for `SHUN_PROBE_INTERVAL`, after which one frame is let
-    /// through for the node to test whether the peer was readmitted. The node calls this
-    /// again when the probe shows it is still banned.
     /// The host (`host_of`) of `identity`'s latest authenticated connection, if it has one and
     /// the listener charges limits per host. A node charges that identity's message budget to it.
     pub fn peer_host(&self, identity: &str) -> Option<String> {
@@ -1332,6 +1323,10 @@ impl TcpTransport {
         reg.identity_host.get(identity).cloned()
     }
 
+    /// Stop reading the connections of `identity` (a banned peer): they are closed and its
+    /// new connections refused for `SHUN_PROBE_INTERVAL`, after which one frame is let
+    /// through for the node to test whether the peer was readmitted. The node calls this
+    /// again when the probe shows it is still banned.
     pub fn shun_peer(&self, identity: &str) {
         self.shun_peer_for(identity, SHUN_PROBE_INTERVAL);
     }
@@ -1346,10 +1341,6 @@ impl TcpTransport {
         self.signing_key.verifying_key()
     }
 
-    /// Queue `message` for `addr` without waiting. A task per peer sends the queue in
-    /// order over that peer's persistent connection, so a slow or unreachable peer delays
-    /// only its own frames. A frame that cannot be delivered is logged and dropped;
-    /// anti-entropy recovers it. Must be called inside a Tokio runtime.
     /// Addresses that currently have a relay queue.
     pub fn relay_targets(&self) -> usize {
         self.outbound
@@ -1359,6 +1350,10 @@ impl TcpTransport {
             .len()
     }
 
+    /// Queue `message` for `addr` without waiting. A task per peer sends the queue in
+    /// order over that peer's persistent connection, so a slow or unreachable peer delays
+    /// only its own frames. A frame that cannot be delivered is logged and dropped;
+    /// anti-entropy recovers it. Must be called inside a Tokio runtime.
     pub fn relay(&self, addr: &str, message: NetworkMessage) -> Result<(), TransportError> {
         let sender = {
             let mut queues = self
@@ -1666,34 +1661,6 @@ fn map_send_error(e: std::io::Error) -> TransportError {
         }
         _ => TransportError::ConnectionFailed(e.to_string()),
     }
-}
-
-fn is_transient_error(e: &std::io::Error) -> bool {
-    matches!(
-        e.kind(),
-        std::io::ErrorKind::ConnectionAborted
-            | std::io::ErrorKind::ConnectionReset
-            | std::io::ErrorKind::Interrupted
-    ) || e.raw_os_error() == Some(libc_emfile_value())
-        || e.raw_os_error() == Some(libc_enfile_value())
-}
-
-#[cfg(windows)]
-fn libc_emfile_value() -> i32 {
-    10024
-}
-#[cfg(unix)]
-fn libc_emfile_value() -> i32 {
-    24
-}
-
-#[cfg(windows)]
-fn libc_enfile_value() -> i32 {
-    10024
-}
-#[cfg(unix)]
-fn libc_enfile_value() -> i32 {
-    23
 }
 
 #[cfg(windows)]
