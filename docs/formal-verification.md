@@ -221,9 +221,11 @@ are dropped before the strike), the authenticity check, which is (a), and a `Rep
 excused (Lemma 2). ∎
 
 **Corollary 5 (honest neighbours).** Let p and r be honest neighbours, and suppose (A1) the link from p to r
-never duplicates a frame (TCP numbers frames and the node never re-sends one), (A2) p loses the floor of no origin whose
+never duplicates a frame (TCP numbers frames, the node never re-sends one, and it sends r gossip at one address
+only, whatever addresses lead to r), (A2) p loses the floor of no origin whose
 messages it relays (a forgotten origin keeps its floor, and p loses a floor only after 3 584 more origins are
-forgotten), and (A3) each sync answer p sends r, and each gossip copy that such
+forgotten; a p restarted from a key file keeps its relay marks, which play the part of the floors), and (A3) p
+sends an answer only to the node that asked, and each sync answer p sends r, and each gossip copy that such
 an answer overtakes, arrives while r's session for that request is open (120 s, the four newest per peer). Then r
 never strikes p, and by Lemma 1 never bans it.
 *Proof.* (a) is impossible: p forwards only messages whose signature verified at p, the signature covers every
@@ -386,6 +388,31 @@ host had 800 fresh messages accepted where one identity gets 20, then 20 per sec
 (`without_per_host_limits_every_identity_brings_a_fresh_budget`; with the fix 262 in 12.1 s, the bound being
 20 + 20 × 12.1 = 262). Fixed by charging all of a host's identities to one budget (Theorem 6).
 
+### Found while reading the code line by line
+
+Reading every line of the protocol core against Theorem 4 and Corollary 5 found ways to make an assumption of
+the corollary false at will. Each was reproduced first by a test that failed (`framing_tests.rs`; the first
+three on real processes, each ending in a ban of the honest node) and then fixed.
+
+- **Answers aimed at a third node (A3).** A sync request names the address its answer goes to. Any peer could
+  name a neighbour r of p: p then sent r up to 16 messages it had already relayed to it, tagged with a request
+  r never made. One signed request, three strikes, p banned by r. Answers now leave only to a listener that
+  authenticates as the requester.
+- **One node behind two addresses (A1).** A malicious peer that forwards the connections it accepts to r (or an
+  operator that lists r under two addresses) made p send r every message twice, over two sessions both
+  correctly authenticated as p. Gossip now leaves to a node at one address only.
+- **A restart (A2).** With a persistent key a restarted relay keeps its ID and loses its windows. It caught up
+  from one neighbour, accepted the messages as new and relayed them to another that had them from the earlier
+  run, which banned it. Relay marks now survive the restart.
+- **Unauthenticated fields in the repeat check.** A copy is recognised before its signature is checked, and its
+  own `origin` and type chose the window that decides whether a repeat is stale. Naming an origin whose window
+  is far ahead, or a control type, made a replay look stale: no strike. This framed nobody; it let a replayer
+  avoid strikes. The origin must now be the ID of the key, and control messages have their own keys.
+
+The model has none of the four: it has no addresses and no restarts, and its adversary cannot change a field
+of a copy without it being a different message. None of them contradicts Theorem 4; they are reasons the
+assumptions of Corollary 5 did not hold in the code, which the proof had taken for granted.
+
 ## How the model is tied to the code
 
 A specification only says something about the code if the two agree, so two tests check that they do:
@@ -429,6 +456,8 @@ The replay covers random behaviours, not all of them, and it checks the runtime,
   budget. Token buckets are modelled as loss.
 - **Sessions** never expire in the checks that pass: answers are assumed to arrive within 120 s, and at most
   four sessions per peer exist. `session-expires` shows what happens otherwise.
+- **Addresses and restarts:** a node has one link to each neighbour, answers go to the node that asked, and no
+  node restarts ([found while reading the code](#found-while-reading-the-code-line-by-line)).
 - **Chain-head announcements** are left out; they have their own counter and window.
 - **Periodic requests** are modelled as requests with something to answer, plus the bound on requests above.
 - **Time** is a grid: 20 s or 10 s in `Reputation.tla`, 100 s in `CRCI.tla`.

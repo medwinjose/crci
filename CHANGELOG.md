@@ -7,6 +7,23 @@ git history; `git log` is the complete record.
 ## [Unreleased]
 
 ### Security
+- A sync answer is sent only to a listener that authenticates as the requester. Before, a request could name a
+  third node's address: the answerer sent that node messages it already had from it, and was struck and banned
+  for them. One signed request from any peer was enough. A request whose ID does not name its author is not
+  answered.
+- Gossip leaves to each authenticated node at one address only. Before, a peer that forwarded its connections to
+  another peer, or a node listed under two addresses, made the sender deliver every message twice and get banned.
+- With `--key-file` a node keeps, encrypted in `FILE.relayed`, the highest sequence number accepted per origin, and
+  after a restart does not relay messages its last run may have relayed. Before, a restarted relay caught up, relayed
+  old messages again and was banned by its neighbours. SIGTERM now stops a node cleanly.
+- A repeat is judged on authenticated fields only: a replay whose origin or type had been changed could look stale
+  and was not struck.
+- Message fields have size limits in `NodeRuntime` (`WireMessage::within_limits`); before, a validly signed message
+  could carry up to 1 MiB in an ID or type, which the seen cache, the recent store and the log kept. Field checks run
+  before any line prints a message's strings, which can no longer contain control characters. Lines about stale and
+  rejected messages are limited per sender, and the node's sets of banned peers are bounded.
+- The TCP listener keeps accepting after any accept error (it stopped for good on errors Linux reports for a pending
+  connection, such as an unreachable host).
 - The TCP listener and the message budget charge each source host (an IPv4 address or an IPv6 /64), not
   each key. Keys are free, so before one machine could take a fresh budget with every new identity, and
   one key could lock honest neighbours out of a node: the listener refused every connection once 100 were

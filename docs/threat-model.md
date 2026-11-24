@@ -39,10 +39,15 @@ compromised devices.
 | Malformed input | Origin-ID length, severity range, sequence overflow and note size checked before `NodeRuntime` on a TCP node | `validation.rs`, `crci-node` `main.rs` |
 | Framing an author by replaying its message | Strikes fall on the connection that delivered a message, never on the message's author | `runtime.rs`, `transport/tcp.rs` |
 | Framing a neighbour by claiming its ID | Mutual Ed25519 challenge-response on every TCP connection; a peer whose declared node ID is not derived from the key it proved is refused, and strikes bind to that authenticated node ID | `transport/tcp.rs` |
+| Framing a node by aiming its sync answers at a third node | An answer leaves only to the node that asked: the request ID names its author, the request is answered only if it does, and the transport sends a tagged answer only to a listener that authenticated as that author. Before, one signed request naming a neighbour's address made the answerer send that neighbour copies of what it had relayed to it, three strikes and a ban | `runtime.rs`, `transport/tcp.rs` |
+| Framing a node through a second address (a peer that forwards its connections to another peer, one node configured under two addresses) | Gossip leaves to each authenticated node at one address only: the sender remembers the last 1 024 messages per listener and the address each went to | `transport/tcp.rs` |
+| A disguised replay (the copy's unauthenticated origin or type changed so it looks stale) | A frame counts as a copy only if its origin is the ID of the key it carries, and control messages have seen-cache keys of their own; anything else is judged as a new message, whose signature then fails | `runtime.rs` |
+| Oversized fields (memory and log growth inside every budget) | IDs, types, visibility, notes, answer tags and reply addresses have size limits, only a sync request carries a digest, printed fields hold no control character; outside them a message is dropped without a strike before anything is stored or printed | `runtime.rs`, `crci-node` `main.rs` |
 | Injecting, altering or replaying frames on the path | Every frame is signed by the dialer for the session (transcript hash) and numbered; a bad signature or counter closes the connection before the frame is processed | `transport/tcp.rs` |
 | Oversized / slow TCP frames | 1 MiB frame limit, 5 s to finish a frame that has started (a silent authenticated connection is closed after 10 min), 100 concurrent connections, admitted per source host | `transport/tcp.rs` |
 | Data at rest | AES-256-GCM, each record bound to its ID, key derived with Argon2id (19 MiB, 2 passes, 1 lane, written out in the code); with `--key-file` the node key is kept this way, and a wrong passphrase stops the node instead of creating a new key | `storage/encrypted.rs`, `identity.rs` |
 | A restarted node reusing sequence numbers | With `--key-file` a restarted node keeps its ID; each start reserves the next 2^32 sequence numbers in the key file before sending, so neighbours never see a number twice from it | `identity.rs` |
+| A restarted relay struck for relaying old messages again | With `--key-file` the node also keeps, encrypted beside the key, the highest sequence number accepted per origin (saved at most 5 s after a change, at once for a new origin, and on a clean stop). A restarted node accepts older messages and answers sync requests with them but does not relay them, plus 45 messages per origin after a run that did not stop cleanly | `identity.rs`, `runtime.rs` |
 | Panics across FFI | Rust panics surface as Kotlin exceptions (recorded run: `docs/evidence/android-bft038-2026-08-23/`) | `ffi.rs` |
 
 ## Known gaps (open, with the task that addresses each)
@@ -81,9 +86,9 @@ compromised devices.
    repeat, and any further repeat, is a strike. Under link flapping (20 % and 50 % of the links down for 5–10 s at a time,
    90 honest testbed runs) no neighbour was struck or banned, because a resumed link's sync answers are
    tagged ([benchmarks.md](benchmarks.md#link-flapping)). Answers go to the `reply_to` address named in the signed
-   request, so a requester can aim an answer (at most 16 messages) at a third party. Answers are limited per requester
-   (one per 5 s) and in total (a burst of 4, then one per second), which bounds that reflection but does
-   not remove it.
+   request, but are sent only if the node that answers at that address authenticates as the requester, so a
+   requester can still make a node open connections to an address of its choice, not send it messages. Answers
+   are limited per requester (one per 5 s) and in total (a burst of 4, then one per second).
 6. **New messages above the rate limit are throttled, not struck.** New messages beyond a neighbour's
    token bucket are dropped without a strike, so that honest bursts (for example after a partition) are
    never punished. Repeats are judged before the bucket, so a replay is struck whether or not the sender
@@ -182,6 +187,15 @@ compromised devices.
     monotonic counter outside the file, which a phone or a Raspberry Pi does not offer. A node whose key
     file is rolled back can reuse sequence numbers, and its neighbours then drop or strike those messages;
     the attacker needs write access to the device, which the model does not consider (see Not considered).
+    The same holds for the record of what the node relayed, kept beside the key file: rolled back or deleted, it
+    lets a restarted node relay old messages again and be struck for them. It also does not name origins the node
+    had forgotten (above 896), nor a new origin heard in the last second before a crash.
     Separately, the in-process `Message` has fields that `WireMessage` does not carry (position,
     resource type, expiry, priority, hop count); they are not sent, not signed, and come back as defaults
     on the receiving side. The protocol transports the fields of `WireMessage` and no others.
+
+14. **A peer that forwards connections can stand on another peer's link.** If an address leads, through a
+    malicious peer, to a node this node also reaches directly, each message goes out on whichever of the two
+    links sends it first. On the forwarded link the adversary can read (nothing is encrypted), delay or withhold
+    frames, but not alter or repeat them. That is omission, which the mechanism does not punish; other paths and
+    the next sync recover the message.

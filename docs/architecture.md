@@ -109,8 +109,15 @@ key from the passphrase with Argon2id at 19 MiB, 2 passes and 1 lane, about 18 m
 reputation its neighbours hold for it). A wrong passphrase or a damaged file stops the node at start; it
 never makes a new key in their place. The file also stores a sequence-number floor: each start reserves the
 next 2^32 sequence numbers before sending anything, so a restarted node never reuses a number its
-neighbours already hold from it (they would drop the new message, or strike it as a replay). Without
-`--key-file` the node generates a new key, and so a new ID, at every start.
+neighbours already hold from it (they would drop the new message, or strike it as a replay).
+Beside it, in `FILE.relayed` (same passphrase, same encryption, replaced in one step so that it does not
+grow), the node keeps the highest sequence number it accepted per origin (`RelayMarkStore`): saved at most
+5 s after a change, within about a second for a new origin, and when the node is stopped (SIGINT, SIGTERM).
+A restarted node has lost its replay windows, so it accepts messages its last run already relayed (it catches
+up from a neighbour within seconds); it delivers them and answers sync requests with them, but does not relay
+a message at or below its origin's mark, because a neighbour that holds it from this node would strike the
+repeat. After a run that did not stop cleanly the mark is raised by 45 messages, the most one origin can have
+accepted between two saves. Without `--key-file` the node generates a new key, and so a new ID, at every start.
 
 ### Over TCP: the `crci-node` binary
 
@@ -194,7 +201,11 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
 
 0. drops it if its sender is banned (see above);
 1. checks the field rules from `validation.rs` (origin ID length, severity 1–5, sequence overflow, note at
-   most 255 bytes) and drops a malformed message without a strike;
+   most 255 bytes) and the size limits of `WireMessage::within_limits` (ID and answer tag 128 bytes, type 256,
+   visibility 16, reply address 260; a digest only on a sync request; no control characters), and drops a
+   malformed message without a strike, before any line prints its strings. `NodeRuntime` applies the size
+   limits too, on every path: the tables' limits count entries, so without them validly signed messages of up
+   to 1 MiB, inside every budget, would be kept 1 024 at a time;
 2. passes the message to `NodeRuntime`, which applies the checks above;
 3. hands each message `NodeRuntime` accepted to `GossipPipeline` (`integration.rs`: AEDA, panic cooldown,
    duplicate/TTL, battery throttling, per-round rate limit). The pipeline only decides application-level
@@ -209,6 +220,10 @@ For each frame, `crci-node --listen` (`crates/crci-node/src/main.rs`, `run_node`
    unreachable peer delays only its own frames, and the receive loop never waits on the network. A
    connection the peer closed is detected before the next write and re-established with a new
    handshake; a frame that cannot be delivered is logged and dropped, and anti-entropy recovers it.
+   Gossip leaves to each authenticated node at one address only: two addresses can lead to one node (it is
+   configured twice, or a peer forwards its connections to another), and that node would strike the second
+   copy of everything. The sender remembers the last 1 024 messages per listener and the address each was
+   sent to, and skips one another address already carried.
    On Linux and Android a connection whose sent data stays unacknowledged for 5 s is aborted by the
    kernel (`TCP_USER_TIMEOUT`) and re-established for the next frame. Without this, TCP's exponential
    retransmission backoff held single links for up to 38 s at 20 % packet loss, and the sync answers
@@ -309,7 +324,11 @@ when the peer's last answer filled a whole batch of 16 (`NodeRuntime::full_sync_
 more), each at least 8 s after its previous request. A node 40 messages behind one peer therefore
 catches up in three answers about 8 s apart instead of three 30 s rounds. The session is opened after the
 listener's identity has been authenticated and before the request frame is sent. `reply_to` is the
-node's listen address, so it must be an address the peers can reach: a node listening on `0.0.0.0` or
+requester's choice, so an answer is sent only if the listener there authenticates as the requester: the
+request ID names its author (`sync-<node ID>-<number>`), a request under another ID is not answered, and the
+transport compares the tag with the listener's node ID (`is_request_of`). Otherwise a requester could aim a
+node's answers at a neighbour that already has those messages from it and get it struck. A node uses its
+own listen address, so it must be an address the peers can reach: a node listening on `0.0.0.0` or
 `::` prints a warning and does not request sync.
 
 ## `crci-core` modules

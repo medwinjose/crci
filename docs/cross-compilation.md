@@ -83,7 +83,7 @@ WantedBy=multi-user.target
 
 Use the Pi's own LAN address in `--listen` (here `192.168.1.50`), not `0.0.0.0`: peers answer anti-entropy requests at the listen address, and a node listening on `0.0.0.0` turns anti-entropy off.
 
-`--key-file` keeps the node's key, and so its node ID (derived from the key), across restarts; the file is created on first start and encrypted (AES-256-GCM, key from the passphrase with Argon2id). Put the passphrase on the first line of the passphrase file and make both files readable by the service user only (`chmod 600`). Without `--key-file` the node has a new ID at every start, and its neighbours treat it as a new peer.
+`--key-file` keeps the node's key, and so its node ID (derived from the key), across restarts; the file is created on first start and encrypted (AES-256-GCM, key from the passphrase with Argon2id). Put the passphrase on the first line of the passphrase file and make both files readable by the service user only (`chmod 600`). The node also writes `FILE.relayed` beside it, so it must be able to create files in that directory. Without `--key-file` the node has a new ID at every start, and its neighbours treat it as a new peer.
 
 3. Enable and start the service:
 ```bash
