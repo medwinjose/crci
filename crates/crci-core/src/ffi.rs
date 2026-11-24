@@ -27,9 +27,19 @@ pub fn validate_node_config(config: FfiNodeConfig) -> bool {
     if config.max_peers == 0 || config.max_peers > 256 {
         return false;
     }
-    // Very basic check for host:port
-    let parts: Vec<&str> = config.listen_addr.split(':').collect();
-    parts.len() == 2
+    host_and_port(&config.listen_addr)
+}
+
+/// `host:port` with a numeric port. A host containing a colon must be a bracketed IPv6
+/// address (`[::1]:9000`).
+fn host_and_port(addr: &str) -> bool {
+    match addr.rsplit_once(':') {
+        Some((host, port)) if port.parse::<u16>().is_ok() => {
+            !host.is_empty()
+                && (!host.contains(':') || (host.starts_with('[') && host.ends_with(']')))
+        }
+        _ => false,
+    }
 }
 
 #[uniffi::export]
@@ -187,4 +197,28 @@ pub fn metrics_snapshot() -> String {
         }
     }
     String::new()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::host_and_port;
+
+    #[test]
+    fn listen_addresses() {
+        for ok in ["127.0.0.1:9000", "0.0.0.0:0", "node.local:80", "[::1]:9000"] {
+            assert!(host_and_port(ok), "{ok}");
+        }
+        for bad in [
+            "",
+            "invalid_addr",
+            ":80",
+            "host:",
+            "host:port",
+            "::1:80",
+            "a:b:80",
+            "host:70000",
+        ] {
+            assert!(!host_and_port(bad), "{bad}");
+        }
+    }
 }

@@ -51,3 +51,15 @@ fn test_list_peers_stub_returns_empty() {
     let peers = list_peers_stub();
     assert_eq!(peers.len(), 0);
 }
+
+#[test]
+fn test_validate_node_config_accepts_ipv6_and_hostnames() {
+    for addr in ["[::1]:9000", "node.local:80"] {
+        let config = FfiNodeConfig {
+            node_id: "n".to_string(),
+            listen_addr: addr.to_string(),
+            max_peers: 8,
+        };
+        assert!(validate_node_config(config), "{addr}");
+    }
+}
