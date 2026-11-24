@@ -245,7 +245,7 @@ fn content(m: &WireMessage) -> String {
 
 fn small_text() -> impl Strategy<Value = String> {
     proptest::collection::vec(
-        prop_oneof![Just('a'), Just(':'), Just(' '), Just('1')],
+        prop_oneof![Just('a'), Just(':'), Just('\0'), Just('1')],
         0..12,
     )
     .prop_map(|v| v.into_iter().collect())
