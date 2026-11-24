@@ -126,6 +126,88 @@ pub async fn load_or_create(
     Ok((key, floor))
 }
 
+// ─── What an earlier run relayed ─────────────────────────────────────────────
+
+const RELAY_RECORD: &str = "relay-marks";
+/// How often a node saves its relay marks while they change (a new origin is saved at once).
+pub const RELAY_MARKS_INTERVAL: std::time::Duration = std::time::Duration::from_secs(5);
+/// Messages one origin can have accepted between two saves: its burst and what its budget refills.
+/// After a run that did not stop cleanly this many above each saved mark may have been relayed.
+pub const RELAY_MARKS_MARGIN: u64 = 45;
+
+/// Keeps, next to the node key, the highest sequence number this node accepted per origin, so a
+/// restarted node does not relay again what its neighbours hold from it already: they would strike
+/// the repeats as replays (`NodeRuntime::relayed_before`).
+pub struct RelayMarkStore(crate::storage::encrypted::EncryptedStore);
+
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+struct RelayMarks {
+    /// Saved when the run stopped, so nothing was relayed after it.
+    clean: bool,
+    marks: std::collections::HashMap<String, u64>,
+}
+
+impl RelayMarkStore {
+    /// Open the store belonging to the key file `key_file`, with the marks of the previous run and
+    /// the margin to add to them. A file that cannot be read yields no marks and an error to
+    /// report: the node can still run, at the risk of being struck for old messages.
+    pub async fn open(
+        key_file: &std::path::Path,
+        passphrase: &str,
+    ) -> Result<
+        (
+            Self,
+            std::collections::HashMap<String, u64>,
+            u64,
+            Option<crate::storage::StorageError>,
+        ),
+        crate::storage::StorageError,
+    > {
+        use crate::storage::{StorageBackend, StorageError};
+        let mut path = key_file.as_os_str().to_os_string();
+        path.push(".relayed");
+        let path = std::path::PathBuf::from(path);
+        // A power loss while the file was first made can leave it without its salt.
+        let store = match crate::storage::encrypted::EncryptedStore::new(&path, passphrase) {
+            Ok(store) => store,
+            Err(_) => {
+                std::fs::remove_file(&path)?;
+                crate::storage::encrypted::EncryptedStore::new(&path, passphrase)?
+            }
+        };
+        let (saved, error) = match store.read(RELAY_RECORD).await {
+            Ok(bytes) => match serde_json::from_slice::<RelayMarks>(&bytes) {
+                Ok(saved) => (saved, None),
+                Err(e) => (
+                    RelayMarks::default(),
+                    Some(StorageError::Serialisation(e.to_string())),
+                ),
+            },
+            Err(StorageError::NotFound(_)) => (RelayMarks::default(), None),
+            Err(e) => (RelayMarks::default(), Some(e)),
+        };
+        let margin = if saved.clean { 0 } else { RELAY_MARKS_MARGIN };
+        let this = Self(store);
+        // From here on the saved marks may fall behind.
+        this.save(&saved.marks, false).await?;
+        Ok((this, saved.marks, margin, error))
+    }
+
+    /// Replace the saved marks; `clean` if the node relays nothing after this.
+    pub async fn save(
+        &self,
+        marks: &std::collections::HashMap<String, u64>,
+        clean: bool,
+    ) -> Result<(), crate::storage::StorageError> {
+        let bytes = serde_json::to_vec(&RelayMarks {
+            clean,
+            marks: marks.clone(),
+        })
+        .map_err(|e| crate::storage::StorageError::Serialisation(e.to_string()))?;
+        self.0.replace_all(RELAY_RECORD, &bytes).await
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

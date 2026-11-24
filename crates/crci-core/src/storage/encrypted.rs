@@ -126,13 +126,8 @@ impl EncryptedStore {
         f.sync_all()?;
         Ok(())
     }
-}
 
-#[async_trait::async_trait]
-impl StorageBackend for EncryptedStore {
-    async fn write(&self, id: &str, plaintext: &[u8]) -> Result<(), StorageError> {
-        let _guard = self.file_mutex.lock().await;
-
+    fn seal(&self, id: &str, plaintext: &[u8]) -> Result<StorageRecord, StorageError> {
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
@@ -150,15 +145,39 @@ impl StorageBackend for EncryptedStore {
                 },
             )
             .map_err(|_| StorageError::AuthenticationFailed)?; // If encryption fails (rare)
-
-        let record = StorageRecord {
+        Ok(StorageRecord {
             id: id.to_string(),
             nonce: nonce_bytes,
             ciphertext,
-        };
+        })
+    }
 
-        self.append_record(&record)?;
+    /// Make `id` the only record of the file, replacing the file in one step. For a record that is
+    /// rewritten again and again, which would grow the append-only file without limit.
+    pub async fn replace_all(&self, id: &str, plaintext: &[u8]) -> Result<(), StorageError> {
+        let _guard = self.file_mutex.lock().await;
+        let serialized = bincode::serialize(&self.seal(id, plaintext)?)
+            .map_err(|e| StorageError::Serialisation(e.to_string()))?;
+        let mut salt = [0u8; 16];
+        fs::File::open(&self.path)?.read_exact(&mut salt)?;
+        let mut temporary = self.path.clone().into_os_string();
+        temporary.push(".new");
+        let mut f = fs::File::create(&temporary)?;
+        f.write_all(&salt)?;
+        f.write_all(&(serialized.len() as u64).to_le_bytes())?;
+        f.write_all(&serialized)?;
+        f.sync_all()?;
+        drop(f);
+        fs::rename(&temporary, &self.path)?;
         Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl StorageBackend for EncryptedStore {
+    async fn write(&self, id: &str, plaintext: &[u8]) -> Result<(), StorageError> {
+        let _guard = self.file_mutex.lock().await;
+        self.append_record(&self.seal(id, plaintext)?)
     }
 
     async fn read(&self, id: &str) -> Result<Vec<u8>, StorageError> {

@@ -86,7 +86,7 @@ async fn main() {
             }
         };
 
-        let mut node = make_node(&args, &label).await;
+        let (mut node, relay_marks) = make_node(&args, &label).await;
         if args.listen.is_none() {
             // With --listen, `run_node` prints this line.
             println!("Node {} id {}", label, node.id);
@@ -142,6 +142,7 @@ async fn main() {
                 Some(Arc::new(tcp)),
                 dial_targets(&args),
                 Experiment::from_args(&args, process_start),
+                relay_marks,
             )
             .await;
         }
@@ -150,7 +151,7 @@ async fn main() {
 
     if args.label.is_some() || args.listen.is_some() {
         let label = args.label.clone().unwrap_or_else(|| "cli-node".to_string());
-        let mut node = make_node(&args, &label).await;
+        let (mut node, relay_marks) = make_node(&args, &label).await;
         if let Some(rate) = args.sender_refill_per_sec {
             node.sybil_guard.sender_refill_per_sec = rate;
         }
@@ -206,6 +207,7 @@ async fn main() {
             tcp,
             dial_targets(&args),
             Experiment::from_args(&args, process_start),
+            relay_marks,
         )
         .await;
         return;
@@ -1499,11 +1501,14 @@ fn copies_to_send(
 /// The node labelled `label`. With `--key-file`, its key is the one kept in that encrypted file
 /// (created on first use), so it keeps its ID across restarts, and its sequence numbers start
 /// above any the previous run could have used. Without it, a fresh key: a new ID every start.
-async fn make_node(args: &Cli, label: &str) -> runtime::NodeRuntime {
+async fn make_node(
+    args: &Cli,
+    label: &str,
+) -> (runtime::NodeRuntime, Option<identity::RelayMarkStore>) {
     let inbox: transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
     let (Some(key_file), Some(passphrase_file)) = (&args.key_file, &args.key_passphrase_file)
     else {
-        return runtime::NodeRuntime::new(label, "zone-host", inbox);
+        return (runtime::NodeRuntime::new(label, "zone-host", inbox), None);
     };
     let passphrase = match std::fs::read_to_string(passphrase_file) {
         Ok(text) => text.lines().next().unwrap_or_default().to_string(),
@@ -1521,7 +1526,23 @@ async fn make_node(args: &Cli, label: &str) -> runtime::NodeRuntime {
             let mut node = runtime::NodeRuntime::with_identity(identity, "zone-host", inbox);
             node.seq_counter = seq_floor;
             node.control_seq_counter = seq_floor;
-            node
+            match identity::RelayMarkStore::open(key_file, &passphrase).await {
+                Ok((store, marks, margin, problem)) => {
+                    if let Some(e) = problem {
+                        eprintln!("Warning: what the last run relayed cannot be read ({e}); old messages may be relayed again");
+                    }
+                    node.relayed_before = marks;
+                    node.relay_margin = margin;
+                    (node, Some(store))
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Cannot open the relay marks beside {}: {e}",
+                        key_file.display()
+                    );
+                    std::process::exit(1);
+                }
+            }
         }
         Err(e) => {
             eprintln!("Cannot load the node key from {}: {e}", key_file.display());
@@ -1553,6 +1574,7 @@ async fn run_node(
     tcp: Option<Arc<transport::TcpTransport>>,
     dial: Vec<String>,
     experiment: Experiment,
+    relay_marks: Option<identity::RelayMarkStore>,
 ) {
     // Log lines name this node by its label (`node_id` here) and peers and origins by their
     // node IDs; this line maps one to the other.
@@ -2139,9 +2161,58 @@ async fn run_node(
     });
 
     println!("Node {} listening on {}", node_id, tcp.listen_addr);
-    tokio::signal::ctrl_c().await.unwrap_or(());
+    match relay_marks {
+        None => stop_requested().await,
+        Some(store) => {
+            let marks_now = || {
+                let n = node_arc.lock().unwrap_or_else(|e| e.into_inner());
+                n.relay_marks()
+            };
+            let mut saved = marks_now();
+            let mut saved_at = std::time::Instant::now();
+            let mut stop = std::pin::pin!(stop_requested());
+            loop {
+                tokio::select! {
+                    _ = &mut stop => break,
+                    _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {}
+                }
+                let marks = marks_now();
+                let due = saved_at.elapsed() >= identity::RELAY_MARKS_INTERVAL;
+                if marks.len() > saved.len() || (due && marks != saved) {
+                    if let Err(e) = store.save(&marks, false).await {
+                        log::warn!("relay marks not saved: {e}");
+                    }
+                    saved = marks;
+                    saved_at = std::time::Instant::now();
+                }
+            }
+            // Nothing is accepted, and so nothing relayed, after the marks are read.
+            let marks = {
+                let mut n = node_arc.lock().unwrap_or_else(|e| e.into_inner());
+                n.is_online = false;
+                n.relay_marks()
+            };
+            if let Err(e) = store.save(&marks, true).await {
+                log::warn!("relay marks not saved: {e}");
+            }
+        }
+    }
     print_lines_held(&node_id, lines_held_now(&lines_held));
     println!("Shutting down.");
+}
+
+/// Wait until the operator or the service manager asks the node to stop.
+async fn stop_requested() {
+    #[cfg(unix)]
+    if let Ok(mut term) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+    {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {}
+            _ = term.recv() => {}
+        }
+        return;
+    }
+    tokio::signal::ctrl_c().await.unwrap_or(());
 }
 
 fn lines_held_now(

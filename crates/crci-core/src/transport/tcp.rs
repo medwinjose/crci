@@ -965,6 +965,15 @@ impl Link {
     }
 }
 
+/// Messages remembered per listener as sent to it: as many as one relay queue can lag behind another.
+const SENT_REMEMBERED: usize = RELAY_QUEUE_LEN;
+
+/// The last messages sent to one listener, with the address each was sent to (both as hashes).
+struct SentTo {
+    recent: std::collections::VecDeque<(u64, u64)>,
+    last_used: std::time::Instant,
+}
+
 /// One authenticated outgoing connection per peer address, reused for every frame and
 /// re-established when it has closed. Sends to different peers take different locks, so a
 /// slow or unreachable peer delays only its own frames.
@@ -975,6 +984,9 @@ struct Outbound {
     /// Relay queue and last use per address. A sync request names where its answer goes, so a
     /// peer chooses addresses: see `MAX_RELAY_TARGETS`.
     queues: std::sync::Mutex<HashMap<String, (mpsc::Sender<NetworkMessage>, std::time::Instant)>>,
+    /// Gossip sent to each authenticated listener, whatever address it was reached at.
+    sent: std::sync::Mutex<HashMap<NodeId, SentTo>>,
+    tag_key: std::collections::hash_map::RandomState,
     handshakes: Arc<AtomicU64>,
     failures: Arc<AtomicU64>,
 }
@@ -983,6 +995,45 @@ impl Outbound {
     fn slot(&self, addr: &str) -> Arc<tokio::sync::Mutex<Link>> {
         let mut links = self.links.lock().unwrap_or_else(|e| e.into_inner());
         links.entry(addr.to_string()).or_default().clone()
+    }
+
+    /// Whether `message` may go to `peer`, the node that answers at `addr`. Two addresses can lead
+    /// to one node: it is configured twice, or a malicious peer forwards the connections it accepts
+    /// to someone else (it can read and delay them, not alter them). That node would take the
+    /// second copy of a message for a replay by this one, so gossip leaves to a node at one address
+    /// only, whichever is first. A sync answer leaves only to the node that asked: the address
+    /// comes from the request, and any other node would take the answer for replays.
+    fn may_send(&self, peer: &NodeId, addr: &str, message: &NetworkMessage) -> bool {
+        use std::hash::BuildHasher;
+        if let Some(request) = &message.answers_sync {
+            return crate::runtime::is_request_of(request, peer);
+        }
+        let now = std::time::Instant::now();
+        let msg_tag = self.tag_key.hash_one(crate::runtime::message_key(message));
+        let addr_tag = self.tag_key.hash_one(addr);
+        let mut sent = self.sent.lock().unwrap_or_else(|e| e.into_inner());
+        if sent.len() >= MAX_RELAY_TARGETS && !sent.contains_key(peer) {
+            let idle = sent
+                .iter()
+                .min_by_key(|(_, s)| s.last_used)
+                .map(|(id, _)| id.clone());
+            if let Some(id) = idle {
+                sent.remove(&id);
+            }
+        }
+        let to_peer = sent.entry(peer.clone()).or_insert_with(|| SentTo {
+            recent: std::collections::VecDeque::new(),
+            last_used: now,
+        });
+        to_peer.last_used = now;
+        if let Some((_, at)) = to_peer.recent.iter().rev().find(|(m, _)| *m == msg_tag) {
+            return *at == addr_tag;
+        }
+        if to_peer.recent.len() >= SENT_REMEMBERED {
+            to_peer.recent.pop_front();
+        }
+        to_peer.recent.push_back((msg_tag, addr_tag));
+        true
     }
 
     async fn send(&self, addr: &str, message: &NetworkMessage) -> Result<(), TransportError> {
@@ -1003,6 +1054,10 @@ impl Outbound {
             let Some(conn) = link.conn.as_mut() else {
                 continue;
             };
+            if !self.may_send(&conn.peer, addr, message) {
+                log::debug!("'{}' not sent to {} at {}", message.id, conn.peer, addr);
+                return Ok(());
+            }
             match conn.send(message).await {
                 Ok(()) => {
                     link.last_write = Some(std::time::Instant::now());
@@ -1238,6 +1293,8 @@ impl TcpTransport {
             key: signing_key.clone(),
             links: std::sync::Mutex::new(HashMap::new()),
             queues: std::sync::Mutex::new(HashMap::new()),
+            sent: std::sync::Mutex::new(HashMap::new()),
+            tag_key: std::collections::hash_map::RandomState::new(),
             handshakes: dialed_handshakes.clone(),
             failures: relay_failures.clone(),
         });

@@ -309,6 +309,11 @@ impl ReplayFilter {
         }
     }
 
+    /// The highest sequence number accepted from each tracked origin.
+    pub fn heads(&self) -> impl Iterator<Item = (&str, u64)> {
+        self.windows.iter().map(|(o, w)| (o.as_str(), w.seq_max))
+    }
+
     /// How many unique origins we're tracking.
     pub fn tracked_origins(&self) -> usize {
         self.windows.len()

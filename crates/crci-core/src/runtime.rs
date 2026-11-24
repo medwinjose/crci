@@ -286,8 +286,15 @@ impl SyncSession {
 /// its IDs with a new sequence number, and a relay that has cleared its seen cache since the first
 /// forwards the second as new; by key and ID alone a neighbour would strike that honest relay for
 /// a replay. The sequence number has no `:`, so the key stays unambiguous.
+///
+/// A control message has a key of its own kind (`c:`): the type decides which replay window a repeat
+/// is judged against, and a copy is recognised before its signature is checked, so a replay
+/// relabelled as a control message must not count as a copy of the message it was.
 pub fn message_key(wire: &WireMessage) -> String {
-    let mut key = String::with_capacity(54 + wire.id.len());
+    let mut key = String::with_capacity(56 + wire.id.len());
+    if is_control(wire) {
+        key.push_str("c:");
+    }
     for byte in wire.origin_pubkey.iter().take(16) {
         key.push_str(&format!("{byte:02x}"));
     }
@@ -360,6 +367,17 @@ pub struct SyncDigest {
     /// address (TCP); `None` means "reply to the sender".
     pub reply_to: Option<String>,
     pub origins: Vec<OriginDigest>,
+}
+
+/// Whether a sync answer tagged `request_id` answers a request of `node_id`. A request ID names its
+/// author (`build_sync_request`) and is only answered if it does, so an answer can be kept from
+/// leaving to anyone else: a node that has the answered messages from this node already would take
+/// them for replays, and the requester chooses the address the answer goes to.
+pub fn is_request_of(request_id: &str, node_id: &str) -> bool {
+    request_id
+        .strip_prefix("sync-")
+        .and_then(|rest| rest.strip_prefix(node_id))
+        .is_some_and(|rest| rest.starts_with('-'))
 }
 
 /// Domain-separation tag at the start of the bytes an origin signs for a `WireMessage`.
@@ -623,6 +641,13 @@ pub struct NodeRuntime {
     pub sync_excused_duplicates: u64,
     /// The chain head last announced to peers; an unchanged head is not announced again.
     pub last_announced_head: Option<([u8; 32], u64)>,
+    /// Per origin, the highest sequence number an earlier run of this node may have relayed
+    /// (`relay_marks` of that run). At or below it plus `relay_margin`, a message is accepted and
+    /// answered to sync requests but not relayed: neighbours may hold it from this node already,
+    /// and would strike the repeat.
+    pub relayed_before: HashMap<String, u64>,
+    /// Added to every mark of `relayed_before` (0 if the earlier run saved them when it stopped).
+    pub relay_margin: u64,
 }
 
 /// Which defences a node applies. `Full` is the protocol as shipped; the others are the baselines
@@ -726,7 +751,38 @@ impl NodeRuntime {
             ),
             sync_excused_duplicates: 0,
             last_announced_head: None,
+            relayed_before: HashMap::new(),
+            relay_margin: 0,
         }
+    }
+
+    /// What a later run under the same key needs in its `relayed_before`: the highest sequence number
+    /// accepted per tracked origin, and what earlier runs left for origins not heard since (at most
+    /// `MAX_TRACKED_ORIGINS` of those).
+    pub fn relay_marks(&self) -> HashMap<String, u64> {
+        let mut marks: HashMap<String, u64> = self
+            .replay_filter
+            .heads()
+            .map(|(origin, seq_max)| {
+                let before = self.relayed_before.get(origin).copied().unwrap_or(0);
+                (origin.to_string(), seq_max.max(before))
+            })
+            .collect();
+        let limit = marks.len() + MAX_TRACKED_ORIGINS;
+        for (origin, mark) in &self.relayed_before {
+            if marks.len() >= limit {
+                break;
+            }
+            marks.entry(origin.clone()).or_insert(*mark);
+        }
+        marks
+    }
+
+    /// Whether an earlier run of this node may have relayed `wire`.
+    fn may_have_relayed_before(&self, wire: &WireMessage) -> bool {
+        self.relayed_before
+            .get(&wire.origin)
+            .is_some_and(|mark| wire.seq <= mark.saturating_add(self.relay_margin))
     }
 
     /// Keep `wire` among the recent messages of its origin (for answering sync requests).
@@ -1006,6 +1062,13 @@ impl NodeRuntime {
             );
             return;
         }
+        if !is_request_of(&request.id, &request.origin) {
+            println!(
+                "  [{}] sync request from '{}' under an ID that is not its own — ignored",
+                self.label, sender
+            );
+            return;
+        }
         let window = self.replay_filter.window_size;
         if digest.origins.len() > SYNC_MAX_ORIGINS
             || digest
@@ -1058,7 +1121,9 @@ impl NodeRuntime {
             for (seq, wire) in &self.recent_messages[origin] {
                 let wanted = match theirs.get(origin.as_str()) {
                     None => true,
-                    Some((seq_max, held)) => *seq + window >= *seq_max && !held.contains(seq),
+                    Some((seq_max, held)) => {
+                        seq.saturating_add(window) >= *seq_max && !held.contains(seq)
+                    }
                 };
                 if wanted {
                     let mut answer = (**wire).clone();
@@ -1287,10 +1352,13 @@ impl NodeRuntime {
                 // copies are most of the traffic. A copy from another path is dropped for free; a
                 // repeat from the same sender is a replay whatever its budget, so a sender that
                 // keeps its budget empty cannot hide replays behind the rate limit. Apart from sync
-                // answers, an honest node sends each message to a neighbour once.
+                // answers, an honest node sends each message to a neighbour once. The key holds the
+                // signing key and the sequence number but not the origin, which the checks below
+                // use: a frame whose origin is not that key's ID is no copy, it is a forgery.
                 let repeat_from_sender = self
                     .seen_messages
                     .get(&key)
+                    .filter(|_| wire.origin_matches_key())
                     .map(|senders| senders.contains(&sender_tag));
                 match repeat_from_sender {
                     Some(true) => {
@@ -1640,7 +1708,9 @@ impl NodeRuntime {
             } else {
                 None
             };
-            if let Some(best) = next_hop {
+            if self.may_have_relayed_before(&wire) {
+                // Not relayed; neighbours that lack it get it by anti-entropy.
+            } else if let Some(best) = next_hop {
                 self.transport.send(&best.peer_id, &payload);
             } else {
                 for peer in &self.peers.clone() {
