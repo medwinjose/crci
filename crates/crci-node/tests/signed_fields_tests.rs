@@ -216,3 +216,98 @@ fn small_order_key_does_not_verify_any_message() {
     wire.note = Some("rewritten by a relay".to_string());
     assert!(!wire.verify_signature());
 }
+
+// ─── Unambiguous encoding ────────────────────────────────────────────────────
+// Two different messages must never give the same signing bytes, or a signature on one
+// would be valid for the other. The field-by-field tests above show that a change breaks
+// the signature; these show that no choice of field contents can make two messages collide.
+
+use crci_core::runtime::{OriginDigest, SyncDigest};
+use proptest::prelude::*;
+
+/// A message with every signed field set to a fixed value, to be varied by the tests.
+fn base() -> WireMessage {
+    let mut m = signed();
+    // `signed()` uses a fresh random key each call; the comparisons need every other field equal.
+    m.origin_pubkey = vec![9; 32];
+    m.sync = None;
+    m.answers_sync = None;
+    m
+}
+
+/// Everything the signature covers, in a comparable form.
+fn content(m: &WireMessage) -> String {
+    let mut c = m.clone();
+    c.signature_bytes.clear();
+    c.answers_sync = None;
+    format!("{c:?}")
+}
+
+fn small_text() -> impl Strategy<Value = String> {
+    proptest::collection::vec(
+        prop_oneof![Just('a'), Just(':'), Just(' '), Just('1')],
+        0..12,
+    )
+    .prop_map(|v| v.into_iter().collect())
+}
+
+proptest! {
+    #[test]
+    fn moving_the_boundary_between_two_text_fields_changes_the_bytes(
+        joined in small_text(), i in 0usize..13, j in 0usize..13, pair in 0u8..3,
+    ) {
+        let split = |at: usize| {
+            let at = at.min(joined.len());
+            (joined[..at].to_string(), joined[at..].to_string())
+        };
+        let with = |at: usize| {
+            let (left, right) = split(at);
+            let mut m = base();
+            match pair {
+                0 => { m.id = left; m.origin = right; }
+                1 => { m.visibility = left; m.message_type = right; }
+                _ => { m.message_type = left; m.note = Some(right); }
+            }
+            m
+        };
+        let (a, b) = (with(i), with(j));
+        prop_assert_eq!(
+            a.signing_bytes() == b.signing_bytes(),
+            content(&a) == content(&b)
+        );
+    }
+
+    #[test]
+    fn two_different_sync_digests_never_encode_alike(
+        origins_a in proptest::collection::vec((small_text(), 0u64..4, proptest::collection::vec(0u64..4, 0..3)), 0..3),
+        origins_b in proptest::collection::vec((small_text(), 0u64..4, proptest::collection::vec(0u64..4, 0..3)), 0..3),
+        reply_a in proptest::option::of(small_text()),
+        reply_b in proptest::option::of(small_text()),
+    ) {
+        let make = |reply_to: Option<String>, origins: Vec<(String, u64, Vec<u64>)>| {
+            let mut m = base();
+            m.sync = Some(SyncDigest {
+                reply_to,
+                origins: origins
+                    .into_iter()
+                    .map(|(origin, seq_max, held)| OriginDigest { origin, seq_max, held })
+                    .collect(),
+            });
+            m
+        };
+        let (a, b) = (make(reply_a, origins_a), make(reply_b, origins_b));
+        prop_assert_eq!(
+            a.signing_bytes() == b.signing_bytes(),
+            content(&a) == content(&b)
+        );
+    }
+
+    #[test]
+    fn a_present_empty_note_differs_from_no_note(text in small_text()) {
+        let mut a = base();
+        a.note = None;
+        let mut b = base();
+        b.note = Some(text);
+        prop_assert_ne!(a.signing_bytes(), b.signing_bytes());
+    }
+}
