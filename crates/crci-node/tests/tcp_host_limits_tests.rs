@@ -10,10 +10,11 @@ use crci_core::message::{Message, Signal, Visibility};
 use crci_core::runtime::WireMessage;
 use crci_core::transport::tcp::DialedConnection;
 use crci_core::transport::{ListenerLimits, TcpTransport, Transport};
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use std::net::IpAddr;
 use std::process::{Command, Stdio};
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 fn signed(identity: &Identity, id: &str, seq: u64) -> WireMessage {
@@ -119,9 +120,9 @@ async fn one_host_with_many_identities_holds_only_its_share_of_connections() {
     );
 }
 
-/// Start `crci-node --listen` with `extra` arguments; its address, its process, and everything
-/// it prints, read by a thread so that a full pipe never blocks the node.
-fn start_node(extra: &[&str]) -> (String, std::process::Child, std::thread::JoinHandle<String>) {
+/// Start `crci-node --listen` with `extra` arguments; its address, its process, and the number of
+/// messages it has accepted, counted by a thread that also keeps a full pipe from blocking the node.
+fn start_node(extra: &[&str]) -> (String, std::process::Child, Arc<AtomicUsize>) {
     let mut child = Command::new(env!("CARGO_BIN_EXE_crci-node"))
         .args(["--listen", "127.0.0.1:0", "--label", "receiver"])
         .args(extra)
@@ -141,12 +142,14 @@ fn start_node(extra: &[&str]) -> (String, std::process::Child, std::thread::Join
                     .last()
                     .unwrap_or_default()
                     .to_string();
-                let output = std::thread::spawn(move || {
-                    let mut out = String::new();
-                    let _ = reader.read_to_string(&mut out);
-                    out
+                let accepted = Arc::new(AtomicUsize::new(0));
+                let counter = accepted.clone();
+                std::thread::spawn(move || {
+                    for line in reader.lines().map_while(Result::ok) {
+                        counter.fetch_add(line.matches("accepted '").count(), Ordering::SeqCst);
+                    }
                 });
-                return (addr, child, output);
+                return (addr, child, accepted);
             }
             _ => {}
         }
@@ -157,12 +160,12 @@ fn start_node(extra: &[&str]) -> (String, std::process::Child, std::thread::Join
 }
 
 /// One host sends 20 fresh, validly signed messages from each of 40 identities (each its own
-/// origin, so the per-origin budget never applies); how many the node accepts, and in how long.
+/// origin, so the per-origin budget never applies); how many the node accepts, and how long it was given.
 fn accepted_from_one_host_with_many_identities(extra: &[&str]) -> (usize, f64) {
-    let (addr, mut child, output) = start_node(extra);
+    let (addr, mut child, accepted) = start_node(extra);
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let elapsed = rt.block_on(async {
-        let start = Instant::now();
+    let start = Instant::now();
+    rt.block_on(async {
         let mut conns = Vec::new();
         for _ in 0..40 {
             let identity = Identity::new("flooder");
@@ -179,21 +182,28 @@ fn accepted_from_one_host_with_many_identities(extra: &[&str]) -> (usize, f64) {
             }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
-        start.elapsed().as_secs_f64()
     });
-    std::thread::sleep(Duration::from_millis(1500));
+    // Until nothing new is accepted for two seconds: a slow machine needs time to drain.
+    let drain = Instant::now();
+    let (mut count, mut last) = (accepted.load(Ordering::SeqCst), Instant::now());
+    while last.elapsed() < Duration::from_secs(2) && drain.elapsed() < Duration::from_secs(60) {
+        std::thread::sleep(Duration::from_millis(50));
+        let now = accepted.load(Ordering::SeqCst);
+        if now != count {
+            (count, last) = (now, Instant::now());
+        }
+    }
+    let elapsed = start.elapsed().as_secs_f64();
     let _ = child.kill();
     let _ = child.wait();
-    let out = output.join().unwrap_or_default();
-    (out.matches("accepted '").count(), elapsed)
+    (count, elapsed)
 }
 
 #[test]
 fn a_host_gets_one_message_budget_however_many_identities_it_uses() {
     let (accepted, secs) = accepted_from_one_host_with_many_identities(&[]);
-    // The host's budget: a burst of 20, then 20 per second over the time it was sending (plus
-    // the time to drain the last frames).
-    let bound = 20.0 + 20.0 * (secs + 1.5);
+    // The host's budget: a burst of 20, then 20 per second while it was sending and draining.
+    let bound = 20.0 + 20.0 * secs;
     println!("one host, 40 identities, 800 fresh messages: {accepted} accepted in {secs:.1} s");
     assert!(
         (accepted as f64) <= bound,
