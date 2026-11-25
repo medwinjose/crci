@@ -150,7 +150,7 @@ CHECKS = {
                                    "OriginsMayBeForgotten": True, "SeenMayClear": True,
                                    "MaxSeq": 1, "MaxFaults": 1, "MaxRequests": 1},
                                   SAFETY, [], "pass", None),
-    # What a floor costs: a message lost before its origin was forgotten is never recovered.
+    # What forgetting costs: the only relay forgets a message it held and cannot fetch it again.
     "origin-forgotten-gap": ("MC", PROTOCOL,
                              {**HONEST_LINE, "OriginsMayBeForgotten": True, "MaxSeq": 2,
                               "MaxFaults": 1, "MaxRequests": 1},

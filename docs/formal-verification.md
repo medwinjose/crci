@@ -46,8 +46,9 @@ cache can be cleared whole, as its limit of 1 792 entries does. A switch lets a 
 limit on tracked origins does, keeping the origin's floor (the highest sequence number accepted; everything at or
 below it stays stale) as the code does; the safety checks with it on pass, with an adversary
 (`origin-forgotten-delivery`, `origin-forgotten-framing`) and with catch-up (`origin-forgotten-sync`,
-`origin-forgotten-triangle`). The floor costs delivery: a message lost before its origin was forgotten is never
-recovered (`origin-forgotten-gap`). A second switch lets the node lose that floor too, as the floor table's own limit
+`origin-forgotten-triangle`). Forgetting costs delivery: the origin's kept messages go
+with it, and the floor stops the node from fetching them again, so a neighbour that missed one and has no other
+source never gets it (`origin-forgotten-gap`). A second switch lets the node lose that floor too, as the floor table's own limit
 does; with it the two adversary checks break (`floor-forgotten-delivery`, `floor-forgotten-framing`): bounded memory
 still has a price while identities are free, now behind 3 584 floors as well as 896 origins.
 
@@ -142,7 +143,7 @@ that the assumption is needed. These are the assumptions the results above rest 
 | `seen-without-seq` | The sequence number in the seen-cache key | `HonestNeverStruck` | 8 | A reused message ID frames an honest relay ([below](#found-while-proving-the-bounds)). |
 | `copied-answers-ignored` | Noting answers that were dropped as copies | `HonestNeverStruck` | 8 | The gossip copy an answer overtook is struck ([below](#found-while-proving-the-bounds)). |
 | `window-too-small` | W at least the loss depth (W = 1, 3 messages, 1 loss) | `DeliveredWhenQuiescent` | 11 | A message that falls out of every neighbour's window before it is recovered is lost for good. |
-| `origin-forgotten-gap` | A node that remembers the origin | `DeliveredWhenQuiescent` | 5 | A message lost before its origin was forgotten lies below the floor: it stays stale and is not recovered. |
+| `origin-forgotten-gap` | A node that remembers the origin | `DeliveredWhenQuiescent` | 5 | The only relay forgets a message it held; the copy it had sent on is lost; its digest counts the message as held, so it is not sent to it again, and the node behind it never gets it. |
 | `floor-forgotten-delivery` | A forgotten origin's floor (it is lost too) | `NoDoubleDelivery` | 8 | After a node forgets an origin and its floor and clears its seen cache, a replay is delivered again. |
 | `floor-forgotten-framing` | The same | `HonestNeverStruck` | 9 | The node relays that replay, and a neighbour that still remembers the origin strikes it. |
 | `paced-replayer-spared` | Replays faster than recovery (a fair clock) | `EveryNeighbourBans` | 24 | The residual bound: an adversary that replays at most once per 300 s is never banned. |

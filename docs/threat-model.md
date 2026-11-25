@@ -168,8 +168,8 @@ compromised devices.
     an adversary that pushes an origin's floor out too, with 3 584 more forgotten origins at that relay while a
     neighbour still remembers the origin, gets the old effect back; the model checker shows both sides
     (`origin-forgotten-*` pass, `floor-forgotten-*` break), and tests on the real code check the floor and its
-    limit. Messages of a forgotten origin that the node never received are not recovered below the floor
-    (`origin-forgotten-gap`).
+    limit. Messages below the floor that the node never received are not recovered, and ones it held are no longer
+    there for a neighbour that missed them (`origin-forgotten-gap` shows the second on a line of nodes).
     Above 256 tracked origins a digest cannot list them all, so neighbours answer with repeats of the rest: recovery
     of lost messages slows down (an answer carries 16 messages), though no origin can be shut out of the
     answers; a flood of new origins also makes neighbours drop from their recent store (1 024 messages) what
