@@ -28,6 +28,8 @@ struct Expected {
     rep: BTreeMap<String, (i64, bool)>,
     seen: BTreeSet<(String, u64, String, String)>,
     window: BTreeMap<String, (u64, Vec<u64>)>,
+    /// One above the floor of each origin that was ever forgotten.
+    kept: BTreeMap<String, u64>,
 }
 
 #[derive(Default)]
@@ -45,6 +47,7 @@ struct Coverage {
     answered_frames: u64,
     ticks: u64,
     clears: u64,
+    forgets: u64,
     id_reuse: u64,
     own_id_new_seq: u64,
 }
@@ -292,6 +295,12 @@ impl Replay {
                     })
                     .collect();
             }
+            if let Some(kept) = delta["kept"].as_object() {
+                want.kept = kept
+                    .iter()
+                    .map(|(o, k)| (o.clone(), k.as_u64().unwrap()))
+                    .collect();
+            }
         }
     }
 
@@ -314,6 +323,7 @@ impl Replay {
                 .rep
                 .keys()
                 .chain(want.seen.iter().map(|(_, _, _, sender)| sender))
+                .chain(want.kept.keys())
                 .map(|n| (n.clone(), self.id(n)))
                 .collect();
             let window_names: BTreeMap<String, String> = self
@@ -360,6 +370,14 @@ impl Replay {
                 })
                 .collect();
             assert_eq!(got_window, want.window, "{at}: {name}'s replay window");
+            for (origin, below) in &want.kept {
+                let stale = |seq| node.replay_filter.is_out_of_window(&ids[origin], seq);
+                assert!(stale(below - 1), "{at}: {name}'s floor of {origin}");
+                assert!(
+                    want.window.contains_key(origin) || !stale(*below),
+                    "{at}: {name}'s floor of {origin} is above {below}"
+                );
+            }
         }
     }
 
@@ -549,6 +567,12 @@ impl Replay {
                 let node = self.nodes.get_mut(&text(event, "n")).unwrap();
                 node.seen_messages.clear();
             }
+            "forget" => {
+                coverage.forgets += 1;
+                let origin = self.id(&text(event, "o"));
+                let node = self.nodes.get_mut(&text(event, "n")).unwrap();
+                node.forget_origin(&origin);
+            }
             other => panic!("unknown event {other}"),
         }
         self.apply_changes(event);
@@ -573,7 +597,7 @@ fn the_code_does_what_the_model_does_on_every_step_of_its_behaviours() {
     println!(
         "{traces} traces, {steps} steps: accepted {} strikes {} excused {} banned-drops {} \
          forged {} stale {} stale-repeats {} own-echoes {} copies {} answers {} answered-frames {} ticks {} \
-         clears {} id-reuse {} own-id-new-seq {}",
+         clears {} forgets {} id-reuse {} own-id-new-seq {}",
         coverage.accepted,
         coverage.strikes,
         coverage.excused,
@@ -587,6 +611,7 @@ fn the_code_does_what_the_model_does_on_every_step_of_its_behaviours() {
         coverage.answered_frames,
         coverage.ticks,
         coverage.clears,
+        coverage.forgets,
         coverage.id_reuse,
         coverage.own_id_new_seq
     );
@@ -606,6 +631,7 @@ fn the_code_does_what_the_model_does_on_every_step_of_its_behaviours() {
         ("answered frames", coverage.answered_frames),
         ("ticks", coverage.ticks),
         ("seen-cache clears", coverage.clears),
+        ("forgotten origins", coverage.forgets),
         ("reused IDs", coverage.id_reuse),
         (
             "own IDs with a new sequence number",

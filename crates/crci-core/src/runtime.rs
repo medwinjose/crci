@@ -918,13 +918,18 @@ impl NodeRuntime {
             .map(|(_, _, origin)| origin.clone())
             .collect();
         for origin in &victims {
-            self.origin_activity.remove(origin);
-            self.origin_budgets.remove(origin);
-            self.replay_filter.forget(origin);
-            self.control_replay_filter.forget(origin);
-            self.recent_messages.remove(origin);
+            self.forget_origin(origin);
         }
-        self.origins_forgotten += victims.len() as u64;
+    }
+
+    /// Forget `origin` whole, except for its floor (`ReplayFilter::forget`).
+    pub fn forget_origin(&mut self, origin: &str) {
+        self.origin_activity.remove(origin);
+        self.origin_budgets.remove(origin);
+        self.replay_filter.forget(origin);
+        self.control_replay_filter.forget(origin);
+        self.recent_messages.remove(origin);
+        self.origins_forgotten += 1;
     }
 
     /// Build a signed sync request listing what this node holds. `reply_to` is the address

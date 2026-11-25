@@ -140,6 +140,21 @@ CHECKS = {
                                  {"OriginsMayBeForgotten": True, "SeenMayClear": True,
                                   "ByzFrames": 1, "MaxFaults": 0, "MaxRequests": 0},
                                  ["HonestNeverStruck"], [], "pass", None),
+    # Forgetting and anti-entropy together: a node asks for what it forgot and drops it as stale.
+    "origin-forgotten-sync": ("MC", PROTOCOL,
+                              {**HONEST_LINE, "OriginsMayBeForgotten": True, "SeenMayClear": True,
+                               "MaxSeq": 2, "MaxFaults": 0, "MaxRequests": 1},
+                              SAFETY, [], "pass", None),
+    "origin-forgotten-triangle": ("MC", PROTOCOL,
+                                  {**HONEST_LINE, "Edges": "mc_Triangle", "FifoLinks": False,
+                                   "OriginsMayBeForgotten": True, "SeenMayClear": True,
+                                   "MaxSeq": 1, "MaxFaults": 1, "MaxRequests": 1},
+                                  SAFETY, [], "pass", None),
+    # What a floor costs: a message lost before its origin was forgotten is never recovered.
+    "origin-forgotten-gap": ("MC", PROTOCOL,
+                             {**HONEST_LINE, "OriginsMayBeForgotten": True, "MaxSeq": 2,
+                              "MaxFaults": 1, "MaxRequests": 1},
+                             ["DeliveredWhenQuiescent"], [], "DeliveredWhenQuiescent", None),
     "floor-forgotten-delivery": ("MC", PROTOCOL,
                                  {"OriginsMayBeForgotten": True, "FloorsMayBeForgotten": True,
                                   "SeenMayClear": True, "ByzFrames": 1, "MaxFaults": 0,
@@ -175,6 +190,8 @@ TRACE_SETS = [
                    "MaxFaults": 0}, 7, 30),
     ("triangle", {**HONEST_LINE, "Edges": "mc_Triangle", "FifoLinks": False, "MaxSeq": 2,
                   "MaxFaults": 1, "SeenMayClear": True}, 8, 30),
+    ("forget", {"MaxSeq": 3, "W": 2, "MaxFaults": 0, "ByzFrames": 3, "SeenMayClear": True,
+                "OriginsMayBeForgotten": True}, 9, 30),
 ]
 
 
@@ -371,9 +388,11 @@ def message_of(m):
     return {"id": f"{identifier[0]}/{identifier[1]}", "o": m["origin"], "k": m["seq"]}
 
 
-def node_view(state, n):
+def node_view(state, n, w):
     """What the replay compares with the code, for honest node `n`."""
-    window = {o: [k, sorted({x[1] for x in state["deliveredBy"][n] if x[0] == o})]
+    kept = {o: k for o, k in state["kept"][n].items() if k > 0}
+    window = {o: [k, sorted({x[1] for x in state["deliveredBy"][n] if x[0] == o}
+                            | set(range(max(k - w, 0), min(k + 1, kept.get(o, 0)))))]
               for o, k in state["seqMax"][n].items() if k > 0}
     return {
         "d": sorted(list(x) for x in state["delivered"][n]),
@@ -381,10 +400,11 @@ def node_view(state, n):
         "seen": sorted([x[0][0], x[0][1], f"{x[0][2][0]}/{x[0][2][1]}", x[1]]
                        for x in state["seen"][n]),
         "win": window,
+        "kept": kept,
     }
 
 
-def trace_events(states):
+def trace_events(states, w):
     """One event per step of a TLC behaviour, each with the views of the nodes it changed."""
     events = []
     for prev, cur in zip(states, states[1:]):
@@ -421,12 +441,16 @@ def trace_events(states):
                      "to": sorted(p[1] for p in grown)}
         elif cur["rep"] != prev["rep"]:
             event = {"a": "tick"}
+        elif cur["kept"] != prev["kept"]:
+            n, o = next((n, o) for n in cur["kept"] for o in cur["kept"][n]
+                        if cur["kept"][n][o] != prev["kept"][n][o])
+            event = {"a": "forget", "n": n, "o": o}
         else:
             n = next(n for n in cur["seen"] if cur["seen"][n] != prev["seen"][n])
             event = {"a": "clear", "n": n}
         changes = {}
         for n in cur["seen"]:
-            before, after = node_view(prev, n), node_view(cur, n)
+            before, after = node_view(prev, n, w), node_view(cur, n, w)
             delta = {field: after[field] for field in after if after[field] != before[field]}
             if delta:
                 changes[n] = delta
@@ -459,7 +483,7 @@ def export_traces(path):
                     edges = sorted(list(p) for p in states[0]["link"] if p[0] < p[1])
                     line = {"set": name, "w": constants["W"], "edges": edges,
                             "honest": sorted(states[0]["seen"]),
-                            "events": trace_events(states)}
+                            "events": trace_events(states, constants["W"])}
                     sink.write(json.dumps(line, separators=(",", ":")) + "\n")
                 print(f"{name}: {len(files)} traces")
             finally:

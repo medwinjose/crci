@@ -127,7 +127,12 @@ RemoveAt(s, i) == SubSeq(s, 1, i - 1) \o SubSeq(s, i + 1, Len(s))
 Floor(n, o) == IF seqMax[n][o] > W THEN seqMax[n][o] - W ELSE 0
 OutOfWindow(n, o, k) == WindowEnabled /\ (k < Floor(n, o) \/ k < kept[n][o])
 
-Held(n) == {<<x[1], x[2]>> : x \in deliveredBy[n]}
+\* What a digest lists. A sequence number below a kept floor counts as held: the node would drop
+\* the message as stale (ReplayFilter::digest).
+Held(n) ==
+    {<<x[1], x[2]>> : x \in deliveredBy[n]} \cup
+    UNION {{<<o, k>> : k \in {j \in Floor(n, o)..seqMax[n][o] : j < kept[n][o]}} :
+           o \in {p \in Nodes : seqMax[n][p] # 0}}
 
 \* What a node relays to its neighbours. A node does not send a message to its origin.
 RelayTo(lk, n, m) ==
