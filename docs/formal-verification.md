@@ -24,7 +24,7 @@ are proved for any N: each concerns one observer and one neighbour at a time.
 ## Running
 
 ```bash
-make tla                                 # every check: about 85 min on 12 cores, several GB of temporary disk
+make tla                                 # every check: 80 to 100 min on 12 cores, several GB of temporary disk
 python3 docs/tla/check.py --quick        # the checks that take about a minute or less (run in CI)
 python3 docs/tla/check.py seen-by-id     # one check
 cargo test -p crci-core --test reputation_model_conformance --test protocol_model_conformance

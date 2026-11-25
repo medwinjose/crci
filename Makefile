@@ -9,7 +9,7 @@
 #   make flood OUT=/tmp/x     # invalid-signature flood runs (about 1 h)
 #   make flapping OUT=/tmp/x  # links going down and up every 5-10 s, honest and with a replayer (102 runs, about 5 h)
 #   make ratio OUT=/tmp/x     # 0-45 % of the nodes replaying, N = 20/50/100, plus the partition probability (90 runs, about 3 h)
-#   make tla                  # model-check the TLA+ specifications (needs Java; about 85 min on 12 cores, no root)
+#   make tla                  # model-check the TLA+ specifications (needs Java; 80 to 100 min on 12 cores, no root)
 #   make figures              # the four evaluation figures from the committed data (docs/figures/, seconds, no root)
 #   make run-figures OUT=/tmp/x # the same figures from the runs in OUT* (written to OUT-figures/)
 #   make benches              # in-process eviction, crypto and recovery benches, message size, PoW cost (minutes, no root)
