@@ -7,6 +7,13 @@ line endings, noted per folder below. SHA-256 hashes are of the files as committ
 Benchmark CSVs that feed the paper live next to their harness in
 `crates/crci-node/benches/results/` (see [docs/benchmarks.md](../benchmarks.md)).
 
+## `tla-2026-11-25/`
+
+TLC output of all 33 configurations of `docs/tla/check.py` (TLC 2.19, Java 17, 12 workers, Windows) on the models
+in which a digest counts what a kept floor covers; `check.log` is the summary, `models.sha256` the hashes of the
+specifications and of the exported behaviours at that commit. CRLF → LF, and the scratch path at the end of
+`check.log` shortened; `SHA256SUMS` is of the committed files.
+
 ## `host-limits-2026-11-17/`
 
 Limits charged per source host, and floors kept for forgotten origins, on one node binary (`binary.sha256`,

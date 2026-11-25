@@ -7,6 +7,13 @@ git history; `git log` is the complete record.
 ## [Unreleased]
 
 ### Security
+- Anti-entropy keeps recovering lost messages when a node tracks more than 256 origins. Before, a digest listed the
+  256 origins with the highest sequence numbers, which a signer chooses, and an answer carried the first 16
+  missing messages by origin ID, so repeats of what the digest left out filled every answer and lost messages of
+  later origins were not recovered; 300 signed messages under 300 keys were enough to cause it. A digest now
+  lists the most active origins and a changing choice of the others, an answer gives every origin a turn in a changing order, and
+  a node asks again early only after a full answer that brought something new. The TLA+ model's digest counts
+  what a kept floor covers, as the code's does, and replayed behaviours now forget origins.
 - A sync answer is sent only to a listener that authenticates as the requester. Before, a request could name a
   third node's address: the answerer sent that node messages it already had from it, and was struck and banned
   for them. One signed request from any peer was enough. A request whose ID does not name its author is not

@@ -77,8 +77,8 @@ compromised devices.
    message the requester did not list as held once without a strike, if it tags the repeat as an answer
    to that request (within 120 s), for at most 16 messages per request. A TCP node asks each neighbour
    every 30 s, and also whenever that neighbour re-establishes its relay connection (`link_resumed`) or
-   its last answer filled a whole batch of 16, at most once per 8 s. A malicious neighbour that reconnects
-   on purpose, or always answers with 16 messages, can therefore send at most 16 unpunished duplicates per
+   its last answer filled a whole batch of 16 with something new in it, at most once per 8 s. A malicious neighbour
+   that reconnects on purpose, or always answers with 16 messages, one of them new, can therefore send at most 16 unpunished duplicates per
    8 s (otherwise 16 per 30 s), only of messages the requester
    lacked when it asked; each is dropped, and each costs one signature check within the neighbour's token
    bucket. One untagged copy of a message that arrived as an answer to that request is excused too (an
@@ -168,7 +168,12 @@ compromised devices.
     an adversary that pushes an origin's floor out too, with 3 584 more forgotten origins at that relay while a
     neighbour still remembers the origin, gets the old effect back; the model checker shows both sides
     (`origin-forgotten-*` pass, `floor-forgotten-*` break), and tests on the real code check the floor and its
-    limit. Messages of a forgotten origin that the node never received are not recovered below the floor.
+    limit. Messages of a forgotten origin that the node never received are not recovered below the floor
+    (`origin-forgotten-gap`).
+    Above 256 tracked origins a digest cannot list them all, so neighbours answer with repeats of the rest: recovery
+    of lost messages slows down (an answer carries 16 messages), though no origin can be shut out of the
+    answers; a flood of new origins also makes neighbours drop from their recent store (1 024 messages) what
+    others may still need.
     Limits on the rest of the state have smaller
     costs: a clean transport peer that is forgotten loses nothing, and a banned one goes only when 1 024 peers
     are all banned; the recent store under a flood keeps less to answer sync requests with; a rescue message

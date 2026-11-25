@@ -1,0 +1,35 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 69 and seed -6550612455302993189 with 12 workers on 12 cores with 3577MB heap and 64MB offheap memory [pid: 4968] (Windows 11 10.0 amd64, Eclipse Adoptium 17.0.19 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file C:\Users\medwi\AppData\Local\Temp\tlc-delivery-q_xq3f88\MC.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\tlc-delivery-q_xq3f88\CRCI.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\tlc-delivery-q_xq3f88\CRCITypes.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\FiniteSets.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\TLC.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\Naturals.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module CRCITypes
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module CRCI
+Semantic processing of module MC
+Starting... (2026-11-25 16:31:57)
+Implied-temporal checking--satisfiability problem has 6 branches.
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-25 16:31:57.
+Checking 6 branches of temporal properties for the current state space with 57180 total distinct states at (2026-11-25 16:32:00)
+Finished checking temporal properties in 00s at 2026-11-25 16:32:00
+Progress(14) at 2026-11-25 16:32:00: 24,629 states generated (24,629 s/min), 9,530 distinct states found (9,530 ds/min), 4,388 states left on queue.
+Progress(26) at 2026-11-25 16:32:40: 434,253 states generated, 133,030 distinct states found, 0 states left on queue.
+Checking 6 branches of temporal properties for the complete state space with 798180 total distinct states at (2026-11-25 16:32:40)
+Finished checking temporal properties in 05s at 2026-11-25 16:32:46
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 2.2E-9
+  based on the actual fingerprints:  val = 3.2E-8
+434253 states generated, 133030 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 26.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 12 and the 95th percentile is 5).
+Finished in 49s at (2026-11-25 16:32:46)

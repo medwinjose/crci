@@ -291,14 +291,19 @@ unfaithful if any acceptance line was held back.
 all origins, the oldest goes first).
 To catch up, a node sends a neighbour a signed `sync_request`: a `WireMessage` whose `sync` digest lists,
 per origin, the highest accepted sequence number and every sequence number held inside the window
-(at most 256 origins), plus an optional `reply_to` address. The digest is covered by the requester's
+(at most 256 origins), plus an optional `reply_to` address. A node that tracks more lists the 128 with the most
+accepted messages and 128 others chosen at random for each request; an unlisted origin looks unknown to the
+neighbour. The digest is covered by the requester's
 signature. The neighbour answers only if the request came straight from its author (a relayed copy is
 ignored, so a captured request cannot be used to flood its author), at most once per 5 s per requester
-and about once per second in total (burst 4), with up to 16 of its recent messages that the digest lacks,
-oldest first, as ordinary signed messages, each tagged with the request's ID (`answers_sync`). The tag is
+and about once per second in total (burst 4), with up to 16 of its recent messages that the digest lacks, one
+per origin in turn, each origin's oldest first, in an order of origins that changes with every request, as ordinary signed messages, each tagged with the request's ID (`answers_sync`). The tag is
 per hop: it is not covered by the origin's signature (each hop sets its own) but by the TCP frame
 signature, so only the answering neighbour can set it, and it is removed on receipt and never stored or
-relayed. Requests are never delivered, stored or forwarded.
+relayed. Messages of origins the digest lists come first, because those are missing for certain; the rest may
+only repeat what the digest had no room for, and get what is left, at least a quarter of the batch. Without
+these two rules such repeats filled every answer once a node tracked more than 256 origins, and lost messages
+were not recovered. Requests are never delivered, stored or forwarded.
 
 An answer often repeats a message the same neighbour already relayed as gossip: the digest is a snapshot,
 and under packet loss the request itself can arrive seconds late (measured: honest neighbours were banned
@@ -320,8 +325,8 @@ In-process, `MeshSimulator::heal(a, b)` restores a link and has both ends reques
 from every `--peers` / `--dial` address 0.5 s after start and every 30 s, and retries an unreachable peer
 every 5 s, so a healed link is re-synchronised within about 5 s. It also requests from a peer as soon as
 that peer re-establishes its relay connection (`link_resumed`, see the message path above), and again
-when the peer's last answer filled a whole batch of 16 (`NodeRuntime::full_sync_answer`: it may hold
-more), each at least 8 s after its previous request. A node 40 messages behind one peer therefore
+when the peer's last answer filled a whole batch of 16 and brought something new
+(`NodeRuntime::full_sync_answer`: it may hold more), each at least 8 s after its previous request. A node 40 messages behind one peer therefore
 catches up in three answers about 8 s apart instead of three 30 s rounds. The session is opened after the
 listener's identity has been authenticated and before the request frame is sent. `reply_to` is the
 requester's choice, so an answer is sent only if the listener there authenticates as the requester: the

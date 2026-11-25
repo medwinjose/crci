@@ -1,0 +1,29 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Running breadth-first search Model-Checking with fp 6 and seed -8511197219225000014 with 12 workers on 12 cores with 3577MB heap and 64MB offheap memory [pid: 748] (Windows 11 10.0 amd64, Eclipse Adoptium 17.0.19 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file C:\Users\medwi\AppData\Local\Temp\tlc-origin-forgotten-framing-flzd79s8\MC.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\tlc-origin-forgotten-framing-flzd79s8\CRCI.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\tlc-origin-forgotten-framing-flzd79s8\CRCITypes.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\FiniteSets.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\TLC.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\Naturals.tla
+Parsing file C:\Users\medwi\AppData\Local\Temp\Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module CRCITypes
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module CRCI
+Semantic processing of module MC
+Starting... (2026-11-25 16:33:20)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-11-25 16:33:20.
+Progress(15) at 2026-11-25 16:33:23: 766,302 states generated (766,302 s/min), 161,664 distinct states found (161,664 ds/min), 59,408 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 4.4E-8
+  based on the actual fingerprints:  val = 1.0E-8
+2494390 states generated, 380811 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 22.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 11 and the 95th percentile is 4).
+Finished in 07s at (2026-11-25 16:33:27)

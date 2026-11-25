@@ -88,8 +88,8 @@ that spread. **The contact trace.** In an earlier recording the second seed bann
 Cause, found by re-running that seed with a per-link counter (a local diagnostic, not committed): that link
 (observer 34, replayer 108) has one 20 s contact after the fault. In a run where it is banned it carries 67
 frames from the replayer in that contact and exactly three strikes; in the runs where it is not, it carries no
-strike at all. A node answers a sync request with up to 16 messages chosen in the order of their origin IDs
-(`NodeRuntime::answer_sync`), and the IDs are derived from keys that are new in every run, so whether the
+strike at all. On this build a node answered a sync request with up to 16 messages chosen in the order of their origin
+IDs (`NodeRuntime::answer_sync`; since then in an order that changes with every request), and the IDs are derived from keys that are new in every run, so whether the
 replayer's repeats arrive as excused answers or as struck gossip copies changes between runs; over 15 runs of
 that seed the link was banned in 13. Not a defect: the excuse for answers is the designed one (at most 16 per
 request, [threat model](threat-model.md)), and the contact allows three strikes only just. **The real-node

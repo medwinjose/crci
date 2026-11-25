@@ -44,9 +44,11 @@ to one neighbour can. A frame dropped by a token bucket has the same effect as a
 modelled as loss. Honest nodes keep the seen cache, window and recent store as the code does, and the seen
 cache can be cleared whole, as its limit of 1 792 entries does. A switch lets a node forget an origin whole, as its
 limit on tracked origins does, keeping the origin's floor (the highest sequence number accepted; everything at or
-below it stays stale) as the code does; the two checks with it on (`origin-forgotten-delivery`,
-`origin-forgotten-framing`) pass. A second switch lets the node lose that floor too, as the floor table's own limit
-does; with it the same two checks break (`floor-forgotten-delivery`, `floor-forgotten-framing`): bounded memory
+below it stays stale) as the code does; the safety checks with it on pass, with an adversary
+(`origin-forgotten-delivery`, `origin-forgotten-framing`) and with catch-up (`origin-forgotten-sync`,
+`origin-forgotten-triangle`). The floor costs delivery: a message lost before its origin was forgotten is never
+recovered (`origin-forgotten-gap`). A second switch lets the node lose that floor too, as the floor table's own limit
+does; with it the two adversary checks break (`floor-forgotten-delivery`, `floor-forgotten-framing`): bounded memory
 still has a price while identities are free, now behind 3 584 floors as well as 896 origins.
 
 ## Properties
@@ -80,16 +82,18 @@ Safety needs none. Liveness needs the following, and no more:
 
 ## Results
 
-Run on 2026-11-17 on an Intel i5-12450HX (12 logical CPUs); 30 of 30 checks gave the expected outcome,
-80.5 min in total ([`evidence/host-limits-2026-11-17/tla/`](evidence/host-limits-2026-11-17/tla/)); the counts of every
-check that was there before are unchanged. Keying the seen
+Run on 2026-11-25 on an Intel i5-12450HX (12 logical CPUs): 33 of 33 checks gave the expected outcome,
+100 min in total ([`evidence/tla-2026-11-25/`](evidence/tla-2026-11-25/)). Every check that passes explored exactly
+as many states as in the run of 2026-11-17 (`evidence/host-limits-2026-11-17/tla/`). With 12 workers the depth
+TLC reports for a search, and the counterexample it meets first, vary a little from run to run (`rep-free`: depth
+91, 92 and 95); the tables give this run's. Keying the seen
 cache by sequence number too (below) roughly quadruples `honest-loss-sync`, the largest check. *Diameter* is the depth of TLC's complete state-graph search.
 
 ### Reputation (one observer, one peer)
 
 | Check | Setting | Outcome | Generated | Distinct | Diameter |
 |---|---|---|---|---|---|
-| `rep-free` | Every schedule of up to 6 strikes, 20 s grid | 4 invariants hold | 36 557 | 30 104 | 92 |
+| `rep-free` | Every schedule of up to 6 strikes, 20 s grid | 4 invariants hold | 36 557 | 30 104 | 95 |
 | `rep-forgiven` | The same, time fair | `EventuallyForgiven` holds | 36 557 | 30 104 | 91 |
 | `rep-spaced-300` | Strikes at least 300 s apart, 10 s grid, no history limit | Never banned | 63 | 61 | 61 |
 | `rep-paced-290` | A strike every 290 s | Banned at 10 150 s | 1 051 | 1 051 | 1 051 |
@@ -117,8 +121,10 @@ quiet link. All invariants but `DeliveredWhenQuiescent` hold in `window-slides` 
 | `window-slides` | Line | 3, 1 | 0, 1 | none | | 7 485 | 3 053 | 21 |
 | `delivery` | Line | 2, 2 | 1, 2 | none | `EventualDelivery` | 434 253 | 133 030 | 26 |
 | `eviction` | Kite | 1, 2 | 0, 0 | Unbounded replays | `EveryNeighbourBans` | 119 957 | 26 048 | 29 |
-| `origin-forgotten-delivery` | Kite | 1, 2 | 0, 0 | 1 | Origins may be forgotten (their floors kept), seen cache may clear; `NoDoubleDelivery` | 2 494 390 | 380 811 | 22 |
+| `origin-forgotten-delivery` | Kite | 1, 2 | 0, 0 | 1 | Origins may be forgotten (their floors kept), seen cache may clear; `NoDoubleDelivery` | 2 494 390 | 380 811 | 23 |
 | `origin-forgotten-framing` | Kite | 1, 2 | 0, 0 | 1 | The same; `HonestNeverStruck` | 2 494 390 | 380 811 | 22 |
+| `origin-forgotten-sync` | Line | 2, 2 | 0, 1 | none | The same; every invariant but `DeliveredWhenQuiescent` | 2 391 279 | 548 901 | 25 |
+| `origin-forgotten-triangle` | Triangle `s-h-r-s` | 1, 2 | 1, 1 | none | The same, and links reorder | 2 792 030 | 521 449 | 21 |
 
 ### Protocol: remove one thing, and TLC finds the failure
 
@@ -127,18 +133,19 @@ that the assumption is needed. These are the assumptions the results above rest 
 
 | Check | Removed | Violated | Trace (states) | What it means |
 |---|---|---|---|---|
-| `link-duplicates` | A network that does not duplicate | `HonestNeverStruck` | 5 | A duplicated frame strikes an honest neighbour (threat model, gap 9). TCP does not duplicate frames. |
-| `session-expires` | Answers arriving within their session | `HonestNeverStruck` | 7 | An answer later than 120 s, or beyond the four newest sessions per peer, is a strike. |
-| `no-excuse` | The excuse for answers | `HonestNeverStruck` | 6 | Why the excuse exists. |
+| `link-duplicates` | A network that does not duplicate | `HonestNeverStruck` | 7 | A duplicated frame strikes an honest neighbour (threat model, gap 9). TCP does not duplicate frames. |
+| `session-expires` | Answers arriving within their session | `HonestNeverStruck` | 8 | An answer later than 120 s, or beyond the four newest sessions per peer, is a strike. |
+| `no-excuse` | The excuse for answers | `HonestNeverStruck` | 8 | Why the excuse exists. |
 | `no-window` | The replay window | `NoDoubleDelivery` | 6 | After the seen cache clears, a replay would be delivered again. |
 | `no-signatures` | Signature checks | `NoForgedDelivery` | 3 | |
 | `seen-by-id` | The signing key in the seen-cache key | `DeliveredWhenQuiescent` | 14 | The first defect below. |
 | `seen-without-seq` | The sequence number in the seen-cache key | `HonestNeverStruck` | 8 | A reused message ID frames an honest relay ([below](#found-while-proving-the-bounds)). |
 | `copied-answers-ignored` | Noting answers that were dropped as copies | `HonestNeverStruck` | 8 | The gossip copy an answer overtook is struck ([below](#found-while-proving-the-bounds)). |
 | `window-too-small` | W at least the loss depth (W = 1, 3 messages, 1 loss) | `DeliveredWhenQuiescent` | 11 | A message that falls out of every neighbour's window before it is recovered is lost for good. |
+| `origin-forgotten-gap` | A node that remembers the origin | `DeliveredWhenQuiescent` | 5 | A message lost before its origin was forgotten lies below the floor: it stays stale and is not recovered. |
 | `floor-forgotten-delivery` | A forgotten origin's floor (it is lost too) | `NoDoubleDelivery` | 8 | After a node forgets an origin and its floor and clears its seen cache, a replay is delivered again. |
 | `floor-forgotten-framing` | The same | `HonestNeverStruck` | 9 | The node relays that replay, and a neighbour that still remembers the origin strikes it. |
-| `paced-replayer-spared` | Replays faster than recovery (a fair clock) | `EveryNeighbourBans` | 18 | The residual bound: an adversary that replays at most once per 300 s is never banned. |
+| `paced-replayer-spared` | Replays faster than recovery (a fair clock) | `EveryNeighbourBans` | 24 | The residual bound: an adversary that replays at most once per 300 s is never banned. |
 
 ## Analytical bounds
 
@@ -163,6 +170,10 @@ never undoes a strike. Theorem 1 states how much it undoes instead.
 **Lemma 1.** The score stays in [0, σ₀]; it falls only at a strike; between strikes it rises by at most ρ per
 second; a peer that is never struck is never banned. *Proof.* A strike clamps at 0, the cap is at most σ₀,
 recovery never lowers a score, and only a strike sets the ban. ∎
+
+Theorems 1–3 are about one record of one peer. A node keeps 1 024 such records; past that it forgets the
+longest idle first, records with remembered strikes after clean ones and banned ones last (`make_room`). A forgotten peer
+starts again at σ₀, which gains it nothing that a fresh key would not.
 
 **Theorem 1 (strike budget).** If a peer takes k strikes at t₁ ≤ … ≤ t_k and none of them bans it, then
 k π ≤ s(t₁⁻) − β + ρ (t_k − t₁) ≤ σ₀ − β + ρ (t_k − t₁).
@@ -214,7 +225,8 @@ and the key is random per node, so a collision cannot be aimed at anyone.
 from its key), or (b) two frames with the same signed origin and sequence
 number (at the seen-cache check: the same signing key, by its first 16 bytes, which takes 2¹²⁸ work to match,
 the same sequence number and the same ID), the second while that sequence
-number was inside the node's window and not excused as an answer to the node's own sync request.
+number was inside the node's window and not excused as an answer to the node's own sync request. The node's own
+messages have no window at it, so a second echo of one of them counts as inside.
 *Proof.* There are three strike sites, all in `process_inbox_delivered`: the seen-cache repeat (the entry holds
 p's tag only if p delivered the same key since the cache was last cleared; out-of-window and excused repeats
 are dropped before the strike), the authenticity check, which is (a), and a `Replayed` verdict that is not
@@ -226,7 +238,8 @@ only, whatever addresses lead to r), (A2) p loses the floor of no origin whose
 messages it relays (a forgotten origin keeps its floor, and p loses a floor only after 3 584 more origins are
 forgotten; a p restarted from a key file keeps its relay marks, which play the part of the floors), and (A3) p
 sends an answer only to the node that asked, and each sync answer p sends r, and each gossip copy that such
-an answer overtakes, arrives while r's session for that request is open (120 s, the four newest per peer). Then r
+an answer overtakes, arrives while r's session for that request is open (120 s; at most the four newest per peer,
+which requests spaced 8 s apart turn into at least 32 s; at most 96 over all peers). Then r
 never strikes p, and by Lemma 1 never bans it.
 *Proof.* (a) is impossible: p forwards only messages whose signature verified at p, the signature covers every
 field, and verification is deterministic. For (b): p sends r a given (origin, seq) at most once as gossip (it
@@ -274,8 +287,9 @@ sender's latest authenticated connection. Every message-signature verification, 
 invalid signature or a forged origin, every acceptance and every relay of a new message comes after that
 check, so each of them is bounded by b + qt too. Strikes for a repeat come before it and cost no signature
 check; each needs a frame, so (b) bounds them;
-(d) by Theorem 1 each identity of h is banned by its third strike within 100 s, so r bans at most
-(f + φt) / 3 of h's identities.
+(d) by Theorem 1 each identity of h is banned by its third strike within 100 s. Every ban needs a strike and
+every strike a frame, so r bans at most f + φt of h's identities in the interval, and at most (f + φt) / 3 of
+those that had no strike before it began.
 An identity that connects from several hosts can move its frames from one to another, so for an adversary with
 k hosts the bounds hold for the k together: k (b + qt) in (c), and so on.
 *Proof.* (a) A connection is admitted only with a handshake token of its host (capacity a, refill α), and an
@@ -284,8 +298,8 @@ takes a token from a bucket shared by the host's connections (capacity f, refill
 empty. (c) `crci-node` sets the sender's host (`SybilGuard::set_sender_host`) before each frame is processed, and
 `check` takes a token from the host's bucket (capacity b, refill q) as well as from the identity's; the order of
 `process_inbox_delivered` puts every signature check, strike for an invalid signature, acceptance and relay
-after `check`, and the seen-cache repeat check before it. (d) From the initial score, three strikes within 100 s
-ban (Theorem 1). In all three buckets the state of a host is forgotten only once its bucket is full again
+after `check`, and the seen-cache repeat check before it. (d) The strike that bans lies in the interval; from the
+initial score it is at least the third, as two leave 0.2. In all three buckets the state of a host is forgotten only once its bucket is full again
 (`forget_idle_hosts`, the listener's host table), so a forgotten host comes back exactly as it would have been;
 the identities' own records can be forgotten (`make_room`), which gives an identity a fresh budget of its own but
 not its host. ∎
@@ -413,6 +427,33 @@ The model has none of the four: it has no addresses and no restarts, and its adv
 of a copy without it being a different message. None of them contradicts Theorem 4; they are reasons the
 assumptions of Corollary 5 did not hold in the code, which the proof had taken for granted.
 
+### Found while comparing the model's limits with the code's
+
+The model has an answer carry everything its digest lacks and a digest list everything a node holds. The code
+limits both (16 messages, 256 origins), and "what the model leaves out" listed that without asking what it costs.
+
+- **Useless answers crowded out lost messages.** An origin a digest leaves out looks unknown, so its messages are
+  sent again at every request. A digest listed the 256 origins with the highest sequence numbers, which the signer
+  chooses, and an answer took the first 16 missing messages by origin ID, the same ones every time. Once a node
+  tracked more than 256 origins, with no adversary needed, a lost message whose origin sorted after 16 such
+  repeats was never recovered from that neighbour; an adversary could arrange it for every honest origin with
+  300 signed messages, one per key, inside every budget. No strike was involved, so no theorem is touched:
+  it is `EventualDelivery` that the code did not inherit from the model. Reproduced by the four tests at the end of
+  `partition_heal_tests.rs`, each failing before. A digest now lists the most active half of the origins, as
+  forgetting ranks them, and fills up with a different random choice each time; an answer gives every origin one
+  turn after another in an order that changes with every request, origins the digest lists first, the others at least a
+  quarter of the batch; and a node asks again early only after a full answer that brought something new. Recovery above 256 tracked
+  origins is still slower than below, and the model still has neither limit. Recorded data had shown it unnoticed: the six
+  long simulation runs with 300 authors (no loss, no adversary in three of them) excused 352 000–419 000 repeats each,
+  10.1–10.3 per request without attackers; on the new build 274 000–338 000, 9.3 per request. Bans, strikes and delivery are
+  the same in all 210 simulation runs.
+- **The model's digest left out what a floor covers.** A node whose origin was forgotten and came back lists the
+  sequence numbers below the kept floor as held; the model did not. Harmless (the answers were stale), but the
+  two differed and no test could see it, because no replayed behaviour forgot an origin. The model is corrected and
+  30 behaviours with forgetting are replayed.
+- **Theorem 6 (d) was too strong.** It bounded the identities banned in any interval by a third of the frames,
+  which overlooks identities struck twice before the interval began: one frame bans each of those.
+
 ## How the model is tied to the code
 
 A specification only says something about the code if the two agree, so two tests check that they do:
@@ -424,10 +465,10 @@ A specification only says something about the code if the two agree, so two test
   are replayed through real `NodeRuntime` instances, one per honest node, with real signatures and serialized
   frames. After every step every node must hold what the model says: accepted messages, each neighbour's
   score and ban, the seen cache and the replay window; digests, answer batches and relay targets are compared
-  too. The 260 committed behaviours (exported again on 2026-11-17, when the model gained the floor of a
-  forgotten origin, which changes TLC's random choices) have 9 196 steps: 2 044 messages accepted, 466 strikes,
-  826 excused answers, 64 frames of banned peers, 473 forged frames, 51 stale frames (11 of them repeats), 40 own
-  echoes, 591 gossip copies, 692 answers, 1 311 seen-cache clears, 222 clock ticks, 191 frames reusing another
+  too, and so is the floor of every forgotten origin. The 290 committed behaviours (260 exported on 2026-11-17, and 30 that forget origins
+  added on 2026-11-25, the others unchanged) have 10 588 steps: 2 297 messages accepted, 497 strikes,
+  839 excused answers, 64 frames of banned peers, 507 forged frames, 243 stale frames (28 of them repeats), 40 own
+  echoes, 611 gossip copies, 771 answers, 1 603 seen-cache clears, 195 forgotten origins, 222 clock ticks, 197 frames reusing another
   message's ID and 176 messages reusing their author's own ID with a new sequence number; 60 of them reorder
   frames on a link, 30 of those on a triangle. The test fails if any of these branches is never reached.
 
@@ -452,8 +493,11 @@ The replay covers random behaviours, not all of them, and it checks the runtime,
   (a 128-bit SHA-256 prefix).
 - **Transport:** the handshake and frame authentication are assumed, not modelled. So are the per-host
   admission limits (Lemma 3 and Theorem 6 are proved on the code instead), frame pacing and the
-  shun of banned peers, the limits on batch and origin counts in a digest, the 5 s answer cooldown and the answer
-  budget. Token buckets are modelled as loss.
+  shun of banned peers, the 5 s answer cooldown and the answer budget. Token buckets are modelled as loss.
+- **Sizes of digests and answers:** a digest lists every origin and an answer carries everything it lacks
+  ([what the limits cost](#found-while-comparing-the-models-limits-with-the-codes)).
+- **Echoes to the author:** a node does not send a message to its origin. A TCP node does, once, because it knows
+  its peers by address; the author drops the echo as a copy.
 - **Sessions** never expire in the checks that pass: answers are assumed to arrive within 120 s, and at most
   four sessions per peer exist. `session-expires` shows what happens otherwise.
 - **Addresses and restarts:** a node has one link to each neighbour, answers go to the node that asked, and no
