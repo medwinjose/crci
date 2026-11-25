@@ -56,7 +56,9 @@ pub const SYNC_RESUME_SPACING: Duration = Duration::from_secs(8);
 pub const SYNC_SESSION_TTL: Duration = Duration::from_secs(120);
 /// Open sessions kept per asked peer (the newest); bounds the digests held in memory.
 pub const SYNC_SESSIONS_PER_PEER: usize = 4;
-/// Most origins one digest lists.
+/// Most origins one digest lists. The answering peer takes an unlisted origin for one the requester
+/// has nothing of, so with more tracked origins than this the choice decides what is sent again
+/// (`build_sync_request`), and repeats must not fill an answer (`answer_sync`).
 pub const SYNC_MAX_ORIGINS: usize = 256;
 /// Accepted messages a node keeps for answering sync requests, over all origins (newest kept):
 /// about a minute of the highest load measured without drops (16 messages/s), two sync rounds.
@@ -275,6 +277,8 @@ pub struct SyncSession {
     exempted: HashSet<u64>,
     /// (origin, seq) pairs accepted as answers to this request (at most `SYNC_MAX_BATCH`).
     answered: HashSet<u64>,
+    /// Whether an answer to this request was accepted as a new message.
+    brought_new: bool,
 }
 
 impl SyncSession {
@@ -934,6 +938,10 @@ impl NodeRuntime {
 
     /// Build a signed sync request listing what this node holds. `reply_to` is the address
     /// to answer at when this node's transport identity is not an address (TCP).
+    ///
+    /// Above `SYNC_MAX_ORIGINS` tracked origins the digest lists the most active half by accepted
+    /// messages, as `forget_origins` ranks them, and fills up with a different random choice each time. A
+    /// ranking by sequence number would let a signer, who chooses it, fill the digest for good.
     pub fn build_sync_request(&mut self, reply_to: Option<String>) -> WireMessage {
         self.control_seq_counter += 1;
         let mut msg = Message::new(
@@ -945,11 +953,21 @@ impl NodeRuntime {
         msg.seq = self.control_seq_counter;
         let mut wire = WireMessage::from_message(&msg, &self.identity);
         wire.message_type = SYNC_REQUEST_TYPE.to_string();
+        let mut origins = self.replay_filter.digest(usize::MAX);
+        if origins.len() > SYNC_MAX_ORIGINS {
+            let activity = |origin: &str| {
+                let a = self.origin_activity.get(origin);
+                a.map_or((0, 0), |a| (a.accepted, a.last_active))
+            };
+            origins.sort_by_key(|(origin, _, _)| std::cmp::Reverse(activity(origin)));
+            let counter = self.control_seq_counter;
+            origins[SYNC_MAX_ORIGINS / 2..]
+                .sort_by_cached_key(|(origin, _, _)| self.message_tag(origin, counter));
+            origins.truncate(SYNC_MAX_ORIGINS);
+        }
         wire.sync = Some(SyncDigest {
             reply_to,
-            origins: self
-                .replay_filter
-                .digest(SYNC_MAX_ORIGINS)
+            origins: origins
                 .into_iter()
                 .map(|(origin, seq_max, held)| OriginDigest {
                     origin,
@@ -1017,19 +1035,22 @@ impl NodeRuntime {
                 held,
                 exempted: HashSet::new(),
                 answered: HashSet::new(),
+                brought_new: false,
             },
         );
     }
 
     /// The ID of the newest request to `peer` if its answers filled a whole batch
-    /// (`SYNC_MAX_BATCH`): the peer may hold more than one answer carries, so the caller should
-    /// ask again as soon as the resume spacing allows instead of at the next round.
+    /// (`SYNC_MAX_BATCH`) and brought something new: the peer may hold more than one answer carries,
+    /// so the caller should ask again as soon as the resume spacing allows instead of at the next
+    /// round. A batch of repeats is no such sign, and each new request closes the oldest of the
+    /// sessions kept per peer, whose answers may still be on the way.
     pub fn full_sync_answer(&self, peer: &str) -> Option<String> {
         self.sync_sessions
             .iter()
             .filter(|(_, s)| s.peer == peer)
             .max_by_key(|(id, s)| (s.opened_at, id.as_str()))
-            .filter(|(_, s)| s.answered.len() >= SYNC_MAX_BATCH)
+            .filter(|(_, s)| s.brought_new && s.answered.len() >= SYNC_MAX_BATCH)
             .map(|(id, _)| id.clone())
     }
 
@@ -1094,7 +1115,10 @@ impl NodeRuntime {
     }
 
     /// Answer a sync request from `sender` with up to `SYNC_MAX_BATCH` recent messages its
-    /// digest lacks, oldest first.
+    /// digest lacks: one per origin in turn, each origin's oldest first, the origins in an order
+    /// that changes with every request. Messages of origins the digest lists are missing for certain;
+    /// those of the others may be repeats of what it had no room for (or has forgotten), so they get
+    /// what the first leave and a quarter of the batch at least.
     fn answer_sync(&mut self, sender: &str, request: &WireMessage) {
         let Some(digest) = &request.sync else {
             return;
@@ -1155,30 +1179,42 @@ impl NodeRuntime {
                 )
             })
             .collect();
-        let mut origins: Vec<&String> = self.recent_messages.keys().collect();
-        origins.sort();
-        let mut batch: Vec<Vec<u8>> = Vec::new();
-        'origins: for origin in origins {
+        let (mut listed, mut unlisted) = (Vec::new(), Vec::new());
+        for (origin, messages) in &self.recent_messages {
             if *origin == request.origin {
                 continue;
             }
-            for (seq, wire) in &self.recent_messages[origin] {
-                let wanted = match theirs.get(origin.as_str()) {
-                    None => true,
-                    Some((seq_max, held)) => {
-                        seq.saturating_add(window) >= *seq_max && !held.contains(seq)
-                    }
-                };
-                if wanted {
-                    let mut answer = (**wire).clone();
-                    answer.answers_sync = Some(request.id.clone());
-                    if let Ok(payload) = serde_json::to_vec(&answer) {
-                        batch.push(payload);
-                    }
-                    if batch.len() >= SYNC_MAX_BATCH {
-                        break 'origins;
-                    }
+            let order = self.tag_key.hash_one((&request.id, origin));
+            let missing = |seq: u64| match theirs.get(origin.as_str()) {
+                None => true,
+                Some((seq_max, held)) => {
+                    seq.saturating_add(window) >= *seq_max && !held.contains(&seq)
                 }
+            };
+            let group = if theirs.contains_key(origin.as_str()) {
+                &mut listed
+            } else {
+                &mut unlisted
+            };
+            let wanted = messages.iter().filter(|(seq, _)| missing(**seq));
+            group.extend(
+                wanted
+                    .take(SYNC_MAX_BATCH)
+                    .enumerate()
+                    .map(|(turn, (_, wire))| (turn, order, wire)),
+            );
+        }
+        for group in [&mut listed, &mut unlisted] {
+            group.sort_by_key(|(turn, order, _)| (*turn, *order));
+        }
+        listed.truncate(SYNC_MAX_BATCH - unlisted.len().min(SYNC_MAX_BATCH / 4));
+        unlisted.truncate(SYNC_MAX_BATCH - listed.len());
+        let mut batch: Vec<Vec<u8>> = Vec::new();
+        for (_, _, wire) in listed.into_iter().chain(unlisted) {
+            let mut answer = (**wire).clone();
+            answer.answers_sync = Some(request.id.clone());
+            if let Ok(payload) = serde_json::to_vec(&answer) {
+                batch.push(payload);
             }
         }
         let dest = digest
@@ -1662,6 +1698,9 @@ impl NodeRuntime {
                 continue;
             }
             self.note_origin_active(&wire.origin);
+            if let Some(session) = answers.and_then(|id| self.sync_sessions.get_mut(&id)) {
+                session.brought_new |= session.peer == sender_id;
+            }
 
             // Anti-entropy requests are answered, never delivered, stored or forwarded.
             if wire.message_type == SYNC_REQUEST_TYPE {

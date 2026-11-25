@@ -780,3 +780,135 @@ fn an_own_message_echoed_after_the_seen_cache_cleared_is_not_relayed_again() {
     );
     assert_eq!(a.byzantine_events, 0);
 }
+
+// ── More origins than one digest lists ────────────────────────────────────────────
+
+/// Message `seq` of `author`, signed by it.
+fn signed(author: &Identity, seq: u64) -> WireMessage {
+    let mut m = msg(&format!("{}-{seq}", author.label), "");
+    m.seq = seq;
+    WireMessage::from_message(&m, author)
+}
+
+/// `a` and `b` both hold a message from each of 300 authors an adversary made. It chooses sequence
+/// numbers above everyone else's, highest for the IDs that sort last, so that the lowest IDs are
+/// the ones a digest ranked by sequence number leaves out. The author returned has an ID above them.
+fn flooded_pair() -> (Pair, Identity) {
+    let mut pair = Pair::new();
+    let mut authors: Vec<Identity> = (0..300).map(|_| Identity::new("flood")).collect();
+    authors.sort_by(|x, y| x.id.cmp(&y.id));
+    for (rank, author) in authors.iter().enumerate() {
+        let wire = signed(author, u64::MAX / 2 + rank as u64);
+        give(&mut pair, "a", &wire);
+        give(&mut pair, "b", &wire);
+    }
+    let honest = std::iter::repeat_with(|| Identity::new("honest"))
+        .find(|i| i.id > authors[200].id)
+        .unwrap();
+    (pair, honest)
+}
+
+/// Deliver `wire` to `to` from a third neighbour, with every budget full.
+fn give(pair: &mut Pair, to: &str, wire: &WireMessage) {
+    for node in [&mut pair.a, &mut pair.b] {
+        node.sybil_guard.advance_time(Duration::from_secs(1));
+    }
+    pair.inject("carol", to, wire);
+    let node = if to == "a" { &mut pair.a } else { &mut pair.b };
+    node.process_inbox();
+}
+
+/// `b` asks `a` once and takes the answers. Returns the request's ID and how many came.
+fn sync_once(pair: &mut Pair) -> (String, usize) {
+    for node in [&mut pair.a, &mut pair.b] {
+        node.sybil_guard.advance_time(Duration::from_secs(30));
+    }
+    let request = pair.b.request_sync(&pair.a.id);
+    pair.a.process_inbox();
+    let answers = pair.take("b");
+    pair.requeue("b", &answers);
+    pair.b.process_inbox();
+    (request, answers.len())
+}
+
+/// A digest lists at most `SYNC_MAX_ORIGINS` origins. The neighbour sends what the digest lacks, so
+/// the messages of unlisted origins come back at every request; they must not take the place of a
+/// message that was really lost.
+#[test]
+fn a_lost_message_is_recovered_whatever_other_origins_a_digest_leaves_out() {
+    let (mut pair, author) = flooded_pair();
+    for seq in 1..=3 {
+        let wire = signed(&author, seq);
+        give(&mut pair, "a", &wire);
+        give(&mut pair, "b", &wire);
+    }
+    give(&mut pair, "a", &signed(&author, 4));
+    assert!(!holds(&pair.b, "honest-4"));
+    sync_once(&mut pair);
+    assert!(holds(&pair.b, "honest-4"), "lost message not recovered");
+    assert_eq!(pair.b.byzantine_events, 0);
+}
+
+/// The same for the first message of an origin the requester has never heard of: nothing tells it
+/// from the origins the digest had no room for, so it takes its turn among them.
+#[test]
+fn the_first_message_of_an_unknown_origin_gets_its_turn() {
+    let (mut pair, newcomer) = flooded_pair();
+    give(&mut pair, "a", &signed(&newcomer, 1));
+    let mut rounds = 0;
+    while !holds(&pair.b, "honest-1") && rounds < 60 {
+        sync_once(&mut pair);
+        rounds += 1;
+    }
+    assert!(holds(&pair.b, "honest-1"), "not in {rounds} answers");
+    assert_eq!(pair.b.byzantine_events, 0);
+}
+
+/// Missing messages of listed origins leave room for origins the requester does not know.
+#[test]
+fn listed_origins_do_not_crowd_out_unknown_ones() {
+    let mut pair = Pair::new();
+    let busy = Identity::new("busy");
+    let wire = signed(&busy, 1);
+    give(&mut pair, "a", &wire);
+    give(&mut pair, "b", &wire);
+    for seq in 2..=40 {
+        give(&mut pair, "a", &signed(&busy, seq));
+    }
+    give(&mut pair, "a", &signed(&Identity::new("newcomer"), 1));
+    let (_, answers) = sync_once(&mut pair);
+    assert_eq!(answers, SYNC_MAX_BATCH);
+    assert!(holds(&pair.b, "newcomer-1"));
+    assert!(
+        holds(&pair.b, "busy-2") && holds(&pair.b, "busy-16"),
+        "oldest first"
+    );
+    assert!(!holds(&pair.b, "busy-17"));
+}
+
+/// A full answer that brought nothing new is no reason to ask again before the next round: what a
+/// digest leaves out would otherwise keep every node asking every neighbour.
+#[test]
+fn a_full_answer_without_anything_new_is_not_asked_for_again() {
+    let (mut pair, _) = flooded_pair();
+    for _ in 0..3 {
+        let (_, answers) = sync_once(&mut pair);
+        assert_eq!(answers, SYNC_MAX_BATCH);
+        assert_eq!(pair.b.full_sync_answer(&pair.a.id), None);
+    }
+}
+
+/// Every origin a node tracks gets listed in some digest, so a message of any of them that was lost is
+/// soon asked for as missing for certain.
+#[test]
+fn every_tracked_origin_is_listed_by_some_digest() {
+    let (mut pair, _) = flooded_pair();
+    let mut listed = std::collections::HashSet::new();
+    for _ in 0..60 {
+        let request = pair.b.build_sync_request(None);
+        let origins = request.sync.unwrap().origins;
+        assert!(origins.len() <= crci_core::runtime::SYNC_MAX_ORIGINS);
+        listed.extend(origins.into_iter().map(|o| o.origin));
+    }
+    assert_eq!(listed.len(), pair.b.replay_filter.tracked_origins());
+}
