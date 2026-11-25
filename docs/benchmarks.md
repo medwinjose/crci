@@ -556,11 +556,11 @@ sender, so it is a strike. Share of honest links on which the observer ever bann
 | q (duplicates per frame) | k = 1 | k = 3 | k = 5 |
 |---|---|---|---|
 | 0 | 0 | 0 | 0 |
-| 1e-5 | 5.4 % | 0 | 0 |
-| 3e-5 | 14.2 % | 0 | 0 |
-| 1e-4 | 40.2 % | 0.5 % | 0.03 % |
-| 3e-4 | 70.7 % | 10.9 % | 1 % |
-| 1e-3 | 88.2 % | 66.4 % | 41.6 % |
+| 1e-5 | 5.5 % | 0 | 0 |
+| 3e-5 | 14.5 % | 0 | 0 |
+| 1e-4 | 40.5 % | 0.5 % | 0.03 % |
+| 3e-4 | 69.2 % | 10.9 % | 1.1 % |
+| 1e-3 | 90.1 % | 67.6 % | 41.2 % |
 
 *Attackers.* An attacker that repeats every frame is banned at all of its neighbours for every k, and the
 extra cost of a larger k is small: 171 / 177 / 181 of its frames admitted per link before the ban for
