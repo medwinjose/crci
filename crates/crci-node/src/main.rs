@@ -488,9 +488,18 @@ async fn main() {
 
         println!("\n=== node-001 restarts — loading saved state ===");
         let fresh_inbox: crci_core::transport::SharedInbox = Arc::new(Mutex::new(HashMap::new()));
-        let mut restarted = crci_core::runtime::NodeRuntime::new("node-001", "zone-a", fresh_inbox);
-        restarted.load_state();
-        restarted.status();
+        // The node ID and the state file's key come from the signing key, so the restarted node
+        // must keep node-001's key to find and decrypt what it saved.
+        if let Some(saved) = sim.nodes.get("node-001") {
+            let identity = crci_core::identity::Identity::from_signing_key(
+                "node-001",
+                saved.identity.signing_key.clone(),
+            );
+            let mut restarted =
+                crci_core::runtime::NodeRuntime::with_identity(identity, "zone-a", fresh_inbox);
+            restarted.load_state();
+            restarted.status();
+        }
 
         println!("\n=== Cleaning up state files ===");
         for id in ["node-001", "node-002", "node-003", "node-006"] {

@@ -212,6 +212,24 @@ fn test_bft_reputation_persistence_clamping() {
 }
 
 #[test]
+fn a_node_restarted_with_its_key_reads_its_saved_state() {
+    // The state file's name and key come from the signing key, so only a restart with the same
+    // key can read it (a fresh key gives a new ID and a different file).
+    let inbox: SharedInbox = Arc::new(Mutex::new(HashMap::new()));
+    let mut node = NodeRuntime::new("restart-me", "zone-alpha", inbox.clone());
+    node.add_peer("some-peer");
+    node.save_state();
+    let identity = crci_core::identity::Identity::from_signing_key(
+        "restart-me",
+        node.identity.signing_key.clone(),
+    );
+    let mut restarted = NodeRuntime::with_identity(identity, "zone-alpha", inbox);
+    restarted.load_state();
+    assert_eq!(restarted.peers, vec!["some-peer".to_string()]);
+    node.storage.delete();
+}
+
+#[test]
 fn test_bft_reputation_no_idle_decay() {
     // Inactivity is not evidence: an idle peer keeps its score.
     let mut rep = PeerReputation::new(); // Starts at 0.5
