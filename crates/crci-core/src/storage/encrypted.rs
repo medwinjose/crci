@@ -93,13 +93,21 @@ impl EncryptedStore {
             return Ok(HashMap::new()); // Empty or broken
         }
 
+        let mut remaining = f.metadata()?.len().saturating_sub(salt.len() as u64);
         let mut map = HashMap::new();
         loop {
             let mut len_buf = [0u8; 8];
             if f.read_exact(&mut len_buf).is_err() {
                 break; // EOF
             }
+            remaining = remaining.saturating_sub(len_buf.len() as u64);
             let frame_len = u64::from_le_bytes(len_buf);
+            // A length longer than the rest of the file is a damaged or truncated frame: stop here
+            // instead of allocating whatever the length field says.
+            if frame_len > remaining {
+                break;
+            }
+            remaining -= frame_len;
             let mut frame_buf = vec![0u8; frame_len as usize];
             if f.read_exact(&mut frame_buf).is_err() {
                 break; // EOF or truncated
@@ -343,6 +351,29 @@ mod tests {
             store.read("b").await,
             Err(StorageError::AuthenticationFailed)
         ));
+        let _ = fs::remove_file(&path);
+    }
+
+    #[tokio::test]
+    async fn a_corrupt_length_field_ends_the_read_instead_of_allocating_it() {
+        let path = temp_file("badlen");
+        let store = EncryptedStore::new(&path, "pw").unwrap_or_else(|e| panic!("{e}"));
+        store
+            .write("a", b"kept")
+            .await
+            .unwrap_or_else(|e| panic!("{e}"));
+        let mut f = OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .unwrap_or_else(|e| panic!("{e}"));
+        f.write_all(&u64::MAX.to_le_bytes())
+            .unwrap_or_else(|e| panic!("{e}"));
+        f.write_all(b"short").unwrap_or_else(|e| panic!("{e}"));
+        drop(f);
+        assert_eq!(
+            store.read("a").await.unwrap_or_else(|e| panic!("{e}")),
+            b"kept"
+        );
         let _ = fs::remove_file(&path);
     }
 
