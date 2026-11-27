@@ -68,7 +68,8 @@ compromised devices.
    the score's rounding to 0.001 after each strike makes a replay every 299 s sustainable too). Faster
    pacing is banned (a replay every 290 s after 10 150 s, every 120 s after 480 s). An adversary that keeps
    replaying through repeated bans gets about 15 replays per hour past admission while banned 99.6 % of the time. Every
-   replay is dropped and costs one signature check (measured in
+   replay is dropped; it costs a lookup in the seen-message cache, or one signature check if the cache was
+   cleared since (at 1 792 entries) (measured in
    [benchmarks.md](benchmarks.md#paced-attack-vs-reputation-recovery)).
 4. **Duplicate-ID cache resets.** The seen-message cache is cleared completely at 1 792 entries, after which
    earlier IDs can be resent. Inside the replay window the sequence filter still strikes a repeat from the
@@ -80,7 +81,7 @@ compromised devices.
    its last answer filled a whole batch of 16 with something new in it, at most once per 8 s. A malicious neighbour
    that reconnects on purpose, or always answers with 16 messages, one of them new, can therefore send at most 16 unpunished duplicates per
    8 s (otherwise 16 per 30 s), only of messages the requester
-   lacked when it asked; each is dropped, and each costs one signature check within the neighbour's token
+   lacked when it asked; each is dropped, and each costs at most one signature check within the neighbour's token
    bucket. One untagged copy of a message that arrived as an answer to that request is excused too (an
    answer can overtake the gossip copy on another connection), within the same limits; every other untagged
    repeat, and any further repeat, is a strike. Under link flapping (20 % and 50 % of the links down for 5–10 s at a time,
@@ -137,8 +138,8 @@ compromised devices.
    strike occurred in any testbed run (flapping links included), but the protocol does not tell a duplicating link from a replaying
    peer. Measured with an injected duplicate fault (simulation, N = 100; not a property of any measured
    network): with the shipped three strikes no honest link is banned up to 3 × 10⁻⁵ duplicates per frame, 0.5 %
-   are at 10⁻⁴, 11 % at 3 × 10⁻⁴ and 66 % at 10⁻³ (five strikes: 0.03 %, 1 % and 42 %; one strike: 40 %, 71 % and
-   88 %). The price of a higher threshold is a faster sustainable paced replay: one per 300 s at three strikes,
+   are at 10⁻⁴, 10.9 % at 3 × 10⁻⁴ and 67.6 % at 10⁻³ (five strikes: 0.03 %, 1.1 % and 41.2 %; one strike: 40.5 %, 69.2 % and
+   90.1 %; final data set). The price of a higher threshold is a faster sustainable paced replay: one per 300 s at three strikes,
    one per 180 s at five ([benchmarks.md](benchmarks.md#strike-threshold-k)).
 10. **Without the per-origin budget a flood costs delivery; without bans a replayer is never isolated.**
     Switching defences off shows which one does what (emulation, 50 nodes): with only the per-sender
@@ -196,8 +197,8 @@ compromised devices.
     lets a restarted node relay old messages again and be struck for them. It also does not name origins the node
     had forgotten (above 896), nor a new origin heard in the last second before a crash.
     Separately, the in-process `Message` has fields that `WireMessage` does not carry (position,
-    resource type, expiry, priority, hop count); they are not sent, not signed, and come back as defaults
-    on the receiving side. The protocol transports the fields of `WireMessage` and no others.
+    resource type, expiry, priority, hop count); they are not sent and not signed, and the receiving side never has them
+    (it works on `WireMessage` directly). The protocol transports the fields of `WireMessage` and no others.
 
 14. **A peer that forwards connections can stand on another peer's link.** If an address leads, through a
     malicious peer, to a node this node also reaches directly, each message goes out on whichever of the two

@@ -1,6 +1,7 @@
 //! Chaos engineering scenarios for CRCI.
 //!
-//! Three scenarios, each self-contained and deterministic (seed 99).
+//! Four scenarios (packet loss at two rates, crash and restart, reconnect storm, partition and
+//! reconciliation), each self-contained and deterministic (seed 99).
 //! No new crates. Uses SimpleLcg from bench.rs pattern.
 //! All output prefixed with "CHAOS TEST:" for easy grep.
 

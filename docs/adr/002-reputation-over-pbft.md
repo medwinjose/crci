@@ -12,7 +12,7 @@ a few kbit/s) nor stable membership.
 ## Decision
 
 Do not run a consensus protocol. Each node keeps a **local** reputation score per neighbour, lowers it on
-locally verifiable misbehaviour (replays, invalid signatures, key changes) and stops accepting traffic from
+locally verifiable misbehaviour (replays and invalid signatures, including a message whose origin is not the ID derived from its key) and stops accepting traffic from
 a neighbour whose score falls below the ban threshold. Dissemination is plain gossip, O(n) per message.
 
 Separately, the demonstration application layer (AEDA and the mesh simulator in `mesh.rs`) aggregates

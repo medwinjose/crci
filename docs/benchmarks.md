@@ -181,8 +181,8 @@ score is above the damped ceiling it doubles the loss per period (0.3 − 0.001 
 The threshold, the strike at which each pace is banned and an upper bound on it are proved in
 [formal-verification.md](formal-verification.md#analytical-bounds) (a replay every 290 s: the 35th strike, as
 measured); the code's rounding of the score to 0.001 after each strike makes 299 s sustainable as well. An adversary that keeps replaying through bans (*P* = 1 s) gets about 15 replays per
-hour past admission across ban cycles while being banned 99.6 % of the time. Every replay is dropped and costs one
-signature check.
+hour past admission across ban cycles while being banned 99.6 % of the time. Every replay is dropped; it costs a lookup in the seen-message cache, or one signature check if the cache
+was cleared since.
 
 **Before this rule** (same commit lineage, previous recovery rules; real-time run, adversary sending valid
 traffic at 4 messages per second; harness and output in
@@ -551,7 +551,10 @@ stays 0.0005/s. Two costs pull in opposite directions.
 *Honest duplicates (simulation, N = 100, 108 runs).* Honest nodes duplicate an outgoing frame with
 probability q: an injected transport fault, not a measured network property (the TCP transport numbers its
 frames and the testbed at 20 % loss shows no honest strike). A duplicate is a same-ID repeat from the same
-sender, so it is a strike. Share of honest links on which the observer ever banned its peer:
+sender, so it is a strike. Share of honest links on which the observer ever banned its peer (final data set,
+[`evidence/final-2026-11-12/ablation/`](evidence/final-2026-11-12/ablation/); the other numbers of this
+section and the evidence link at its end are the earlier set of 2026-11-06, node build aa619cb0, whose k table
+differs in the second decimal):
 
 | q (duplicates per frame) | k = 1 | k = 3 | k = 5 |
 |---|---|---|---|

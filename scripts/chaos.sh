@@ -22,9 +22,9 @@ echo ""
 # 1. Run in-memory Rust Chaos Suite (4 Scenarios: Packet Loss, Crash+Restart, Reconnect Storm, Partition Reconciliation)
 echo "--- In-Memory Rust Chaos Suite (4 Scenarios) ---"
 if cargo test --lib chaos -- --nocapture; then
-  check "In-Memory Rust Chaos Suite (4 scenarios)" "ok"
+  check "In-Memory Rust Chaos Suite" "ok"
 else
-  check "In-Memory Rust Chaos Suite (4 scenarios)" "failed"
+  check "In-Memory Rust Chaos Suite" "failed"
 fi
 echo ""
 

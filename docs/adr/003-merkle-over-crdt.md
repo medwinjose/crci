@@ -21,9 +21,10 @@ themselves are not signed.
 ## Consequences
 
 **Lost:**
-- Automatic merging. After a partition, missing history has to be exchanged and replayed; no such
-  protocol exists yet (planned).
-- Compactness: the chain grows with every snapshot.
+- Automatic merging. After a partition, missing messages are exchanged by the digest-based anti-entropy
+  protocol; the chains themselves are not exchanged or merged (only their heads are compared).
+- Compactness: the chain gains a block every 50 delivered messages; in memory only the newest 512 to
+  1 023 blocks are kept, so very old heads can no longer be compared.
 
 **Gained:**
 - A local, tamper-evident record of what the node has seen, in order.

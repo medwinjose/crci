@@ -412,7 +412,7 @@ fn put_bool(out: &mut Vec<u8>, value: bool) {
 
 impl WireMessage {
     /// Bytes covered by the origin's Ed25519 signature: the domain tag, then every field
-    /// except the signature itself, in declaration order. Variable-length fields are
+    /// except the signature itself and the per-hop `answers_sync` tag, in declaration order. Variable-length fields are
     /// prefixed with their length (u64, big-endian), lists with their element count, and
     /// the optional `note`, `sync` and `sync.reply_to` with a presence byte, so no two
     /// distinct messages encode to the same bytes. A relay cannot change any field

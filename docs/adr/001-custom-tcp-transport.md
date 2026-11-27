@@ -25,8 +25,9 @@ payload (at most 1 MiB).
   and signs every frame for the session, but does not encrypt; confidentiality is not a goal today.
 
 **Gained:**
-- A transport small enough to read in full (`transport/tcp.rs`, about 750 lines including the
-  handshake, connection limits and timeouts).
+- A transport small enough to read in full (`transport/tcp.rs` was about 750 lines including the
+  handshake, connection limits and timeouts when this was decided; with per-host admission, relay queues
+  and their tests it is about 1 900 lines today, still one file).
 - Direct control over framing, limits and error handling.
 - Other media can implement the same trait (`ble.rs` and `lora.rs` are stubs today).
 

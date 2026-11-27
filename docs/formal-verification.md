@@ -3,7 +3,7 @@
 The isolation protocol is specified in TLA+ and model-checked with TLC, and the specification is tied to
 the Rust code by replaying what TLC explores through the real implementation.
 
-**What this is:** exhaustive checking of small instances, up to 42 million distinct states each. **What it
+**What this is:** exhaustive checking of small instances, up to about 104 million distinct states each. **What it
 is not:** a proof for every network size. A property below holds for the stated constants; nothing here
 says it holds at any N, though the mechanism does not depend on N and the emulation and simulation runs
 ([benchmarks.md](benchmarks.md)) test larger networks. The [analytical bounds](#analytical-bounds) further down
@@ -240,7 +240,7 @@ messages it relays (a forgotten origin keeps its floor, and p loses a floor only
 forgotten; a p restarted from a key file keeps its relay marks, which play the part of the floors), and (A3) p
 sends an answer only to the node that asked, and each sync answer p sends r, and each gossip copy that such
 an answer overtakes, arrives while r's session for that request is open (120 s; at most the four newest per peer,
-which requests spaced 8 s apart turn into at least 32 s; at most 96 over all peers). Then r
+which requests spaced 8 s apart turn into at least 32 s; at most 96 over all peers, oldest closed first, so the 32 s holds for a node with up to 24 neighbours). Then r
 never strikes p, and by Lemma 1 never bans it.
 *Proof.* (a) is impossible: p forwards only messages whose signature verified at p, the signature covers every
 field, and verification is deterministic. For (b): p sends r a given (origin, seq) at most once as gossip (it
